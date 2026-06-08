@@ -254,7 +254,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
     <div id="clients-list"><div class="loading">Loading clients...</div></div>
   </div>
-</div>
 
   <div id="tab-appts" style="display:none;">
     <div id="appts-list"><div class="loading">Loading appointments...</div></div>
@@ -653,11 +652,11 @@ function showModal(html) {
 function closeModal() { const m=document.getElementById('modal-ov'); if(m) m.remove(); }
 
 // ── OPEN CLIENT ──────────────────────────────────────────────
-function openClient(id) {
+function openClient(id, keepDialCount) {
   const c = clients.find(x => x.id === id);
   if (!c) return;
-  // Reset dial count to 1 for each new lead
-  window._dialCount = 1;
+  // Only reset dial count when opening a NEW lead, not when refreshing same lead
+  if (!keepDialCount) window._dialCount = 1;
   const sits = c.sits || [];
   const callLog = c.call_log || [];
   const statuses = ['New','Working','Appointment set','Closed','Dead'];
@@ -836,8 +835,8 @@ async function quickLog(id, outcome, statKey) {
   renderScore();
   // Auto-advance to next lead
   if (outcome === 'No answer') {
-    // For no answer, stay on current lead but refresh it
-    openClient(id);
+    // For no answer, stay on current lead but keep dial count
+    openClient(id, true);
   } else {
     // For all other dispositions, advance to next lead
     closeModal();
