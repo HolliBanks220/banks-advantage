@@ -1,1465 +1,1069 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>CWC Tracker — Banks Advantage</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>CWC Tracker · Banks Advantage</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  :root {
-    --navy: #1D3557;
-    --teal: #138181;
-    --teal-light: #1a9f9f;
-    --teal-dim: #0e6060;
-    --white: #ffffff;
-    --off-white: #f4f7f9;
-    --gray-100: #eef1f4;
-    --gray-200: #dde2e8;
-    --gray-400: #9aa5b4;
-    --gray-600: #5a6a7a;
-    --gray-800: #2d3a47;
-    --danger: #c0392b;
-    --danger-light: #e74c3c;
-    --success: #27ae60;
-    --warning: #e67e22;
-    --appt-color: #8e44ad;
-    --callback-color: #2980b9;
-    --font-main: 'Playfair Display', Georgia, serif;
-    --font-ui: 'DM Sans', 'Segoe UI', sans-serif;
-    --radius: 10px;
-    --shadow: 0 2px 12px rgba(29,53,87,0.10);
-    --shadow-lg: 0 6px 32px rgba(29,53,87,0.16);
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    font-family: var(--font-ui);
-    background: var(--off-white);
-    color: var(--gray-800);
-    min-height: 100vh;
-  }
-
-  /* ── HEADER ── */
-  .header {
-    background: var(--navy);
-    color: var(--white);
-    padding: 14px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
-  }
-  .header-left { display: flex; align-items: center; gap: 10px; }
-  .header h1 {
-    font-family: var(--font-main);
-    font-size: 1.25rem;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-  }
-  .header-badge {
-    background: var(--teal);
-    color: white;
-    font-size: 0.7rem;
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 20px;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-  }
-  .header-stats {
-    display: flex;
-    gap: 16px;
-    font-size: 0.8rem;
-    color: rgba(255,255,255,0.75);
-  }
-  .header-stat strong { color: var(--white); font-size: 1rem; }
-
-  /* ── TABS ── */
-  .tabs {
-    display: flex;
-    background: var(--navy);
-    border-top: 1px solid rgba(255,255,255,0.08);
-  }
-  .tab {
-    flex: 1;
-    padding: 11px 10px;
-    text-align: center;
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: rgba(255,255,255,0.55);
-    cursor: pointer;
-    border-bottom: 3px solid transparent;
-    transition: all 0.18s;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
-    font-size: 0.75rem;
-  }
-  .tab.active {
-    color: var(--white);
-    border-bottom-color: var(--teal);
-  }
-  .tab:hover:not(.active) { color: rgba(255,255,255,0.8); }
-
-  /* ── VIEWS ── */
-  .view { display: none; }
-  .view.active { display: block; }
-
-  /* ── BOARD ── */
-  .board-wrap { padding: 16px; }
-  .board-columns {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 12px;
-  }
-  @media (max-width: 700px) {
-    .board-columns { grid-template-columns: 1fr; }
-  }
-  .board-col {
-    background: var(--white);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    overflow: hidden;
-  }
-  .board-col-header {
-    padding: 10px 14px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .board-col-header.fresh { background: var(--teal); color: white; }
-  .board-col-header.active-col { background: var(--navy); color: white; }
-  .board-col-header.closed { background: var(--gray-600); color: white; }
-  .board-col-count {
-    background: rgba(255,255,255,0.25);
-    border-radius: 20px;
-    padding: 1px 8px;
-    font-size: 0.7rem;
-  }
-  .board-cards { padding: 8px; min-height: 60px; max-height: 420px; overflow-y: auto; }
-  .board-card {
-    background: var(--off-white);
-    border-radius: 6px;
-    padding: 8px 10px;
-    margin-bottom: 6px;
-    cursor: pointer;
-    border-left: 3px solid transparent;
-    transition: box-shadow 0.15s, transform 0.1s;
-    font-size: 0.82rem;
-  }
-  .board-card:hover { box-shadow: var(--shadow); transform: translateX(2px); }
-  .board-card.has-appt { border-left-color: var(--appt-color); }
-  .board-card.callback { border-left-color: var(--callback-color); }
-  .board-card-name { font-weight: 700; color: var(--navy); }
-  .board-card-phone { color: var(--gray-600); font-size: 0.75rem; }
-  .board-card-tag {
-    display: inline-block;
-    font-size: 0.65rem;
-    font-weight: 700;
-    padding: 1px 6px;
-    border-radius: 10px;
-    margin-top: 3px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-  .tag-appt { background: #f0e6fa; color: var(--appt-color); }
-  .tag-callback { background: #dbeeff; color: var(--callback-color); }
-  .tag-noanswer { background: var(--gray-100); color: var(--gray-600); }
-
-  /* ── LEADS VIEW ── */
-  .leads-wrap { padding: 12px 16px; }
-  .leads-toolbar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 12px;
-    flex-wrap: wrap;
-  }
-  .leads-search {
-    flex: 1;
-    min-width: 160px;
-    padding: 8px 12px;
-    border: 1.5px solid var(--gray-200);
-    border-radius: 8px;
-    font-size: 0.85rem;
-    font-family: var(--font-ui);
-    outline: none;
-    background: white;
-  }
-  .leads-search:focus { border-color: var(--teal); }
-  .leads-filter {
-    padding: 8px 10px;
-    border: 1.5px solid var(--gray-200);
-    border-radius: 8px;
-    font-size: 0.82rem;
-    font-family: var(--font-ui);
-    outline: none;
-    background: white;
-    color: var(--gray-800);
-  }
-  .leads-filter:focus { border-color: var(--teal); }
-  .leads-table-wrap { overflow-x: auto; }
-  .leads-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.82rem;
-    background: white;
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    overflow: hidden;
-  }
-  .leads-table th {
-    background: var(--navy);
-    color: rgba(255,255,255,0.85);
-    padding: 10px 12px;
-    text-align: left;
-    font-weight: 600;
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    white-space: nowrap;
-  }
-  .leads-table td {
-    padding: 9px 12px;
-    border-bottom: 1px solid var(--gray-100);
-    vertical-align: middle;
-    white-space: nowrap;
-  }
-  .leads-table tr:last-child td { border-bottom: none; }
-  .leads-table tr:hover td { background: var(--off-white); cursor: pointer; }
-  .leads-table .name-cell { font-weight: 700; color: var(--navy); }
-  .status-pill {
-    display: inline-block;
-    padding: 2px 9px;
-    border-radius: 12px;
-    font-size: 0.68rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-  .pill-new { background: #e0f5f5; color: var(--teal-dim); }
-  .pill-callback { background: #dbeeff; color: var(--callback-color); }
-  .pill-appt { background: #f0e6fa; color: var(--appt-color); }
-  .pill-notinterested { background: var(--gray-100); color: var(--gray-600); }
-
-  /* ── LEAD DETAIL PANEL ── */
-  .panel-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(29,53,87,0.45);
-    z-index: 100;
-    align-items: flex-end;
-    justify-content: center;
-  }
-  .panel-overlay.open { display: flex; }
-  @media (min-width: 600px) {
-    .panel-overlay { align-items: center; }
-  }
-  .panel {
-    background: white;
-    border-radius: 16px 16px 0 0;
-    width: 100%;
-    max-width: 560px;
-    max-height: 92vh;
-    overflow-y: auto;
-    box-shadow: 0 -8px 48px rgba(29,53,87,0.22);
-    padding-bottom: 20px;
-  }
-  @media (min-width: 600px) {
-    .panel { border-radius: 16px; }
-  }
-  .panel-header {
-    background: var(--navy);
-    color: white;
-    padding: 16px 20px;
-    border-radius: 16px 16px 0 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 2;
-  }
-  .panel-header h2 {
-    font-family: var(--font-main);
-    font-size: 1.15rem;
-    font-weight: 700;
-  }
-  .panel-close {
-    background: rgba(255,255,255,0.15);
-    border: none;
-    color: white;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    font-size: 1.1rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .panel-close:hover { background: rgba(255,255,255,0.25); }
-  .panel-body { padding: 16px 20px; }
-
-  /* Dial section */
-  .dial-section {
-    background: var(--navy);
-    border-radius: 10px;
-    padding: 14px 16px;
-    margin-bottom: 14px;
-    color: white;
-  }
-  .dial-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 10px;
-  }
-  .dial-phone {
-    font-size: 1.1rem;
-    font-weight: 700;
-    letter-spacing: 0.03em;
-  }
-  .dial-count-wrap {
-    display: flex;
-    align-items: center;
-    gap: 0;
-    background: rgba(255,255,255,0.12);
-    border-radius: 20px;
-    overflow: hidden;
-  }
-  .dial-count-btn {
-    background: none;
-    border: none;
-    color: white;
-    width: 28px;
-    height: 28px;
-    font-size: 1rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.12s;
-  }
-  .dial-count-btn:hover { background: rgba(255,255,255,0.15); }
-  .dial-count-label {
-    font-size: 0.78rem;
-    font-weight: 700;
-    padding: 0 8px;
-    color: rgba(255,255,255,0.9);
-  }
-
-  .disposition-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-  .disp-btn {
-    padding: 10px 8px;
-    border: none;
-    border-radius: 8px;
-    font-size: 0.8rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: opacity 0.15s, transform 0.1s;
-    font-family: var(--font-ui);
-  }
-  .disp-btn:hover { opacity: 0.88; transform: scale(0.98); }
-  .disp-noanswer { background: rgba(255,255,255,0.15); color: white; }
-  .disp-appt { background: var(--appt-color); color: white; }
-  .disp-callback { background: var(--callback-color); color: white; }
-  .disp-notinterested { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.6); }
-
-  /* Lead info fields */
-  .field-group { margin-bottom: 12px; }
-  .field-label {
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--gray-400);
-    margin-bottom: 4px;
-  }
-  .field-row {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-  }
-  .field-input {
-    flex: 1;
-    padding: 8px 10px;
-    border: 1.5px solid var(--gray-200);
-    border-radius: 7px;
-    font-size: 0.88rem;
-    font-family: var(--font-ui);
-    outline: none;
-    color: var(--gray-800);
-  }
-  .field-input:focus { border-color: var(--teal); }
-  .field-save-btn {
-    background: var(--teal);
-    color: white;
-    border: none;
-    border-radius: 7px;
-    padding: 8px 12px;
-    font-size: 0.78rem;
-    font-weight: 700;
-    cursor: pointer;
-    white-space: nowrap;
-    font-family: var(--font-ui);
-  }
-  .field-save-btn:hover { background: var(--teal-light); }
-
-  /* Appt badge */
-  .appt-badge {
-    background: #f0e6fa;
-    border: 1.5px solid var(--appt-color);
-    border-radius: 8px;
-    padding: 10px 12px;
-    margin-bottom: 12px;
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-  }
-  .appt-badge-icon { font-size: 1.2rem; }
-  .appt-badge-text { font-size: 0.82rem; color: var(--appt-color); }
-  .appt-badge-text strong { display: block; font-size: 0.9rem; margin-bottom: 2px; }
-  .appt-badge-notes { font-size: 0.78rem; color: var(--gray-600); margin-top: 2px; }
-
-  /* Call log */
-  .call-log-section h3 {
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--gray-400);
-    margin-bottom: 8px;
-  }
-  .call-log-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 7px 10px;
-    background: var(--off-white);
-    border-radius: 7px;
-    margin-bottom: 5px;
-    font-size: 0.78rem;
-  }
-  .call-log-disp {
-    font-weight: 700;
-    min-width: 100px;
-  }
-  .call-log-time { color: var(--gray-400); font-size: 0.72rem; margin-left: auto; }
-  .disp-color-noanswer { color: var(--gray-600); }
-  .disp-color-apptset { color: var(--appt-color); }
-  .disp-color-callback { color: var(--callback-color); }
-  .disp-color-notinterested { color: var(--danger); }
-
-  /* Appt modal */
-  .appt-modal-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(29,53,87,0.55);
-    z-index: 200;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-  }
-  .appt-modal-overlay.open { display: flex; }
-  .appt-modal {
-    background: white;
-    border-radius: 14px;
-    width: 100%;
-    max-width: 420px;
-    box-shadow: var(--shadow-lg);
-    overflow: hidden;
-  }
-  .appt-modal-header {
-    background: var(--appt-color);
-    color: white;
-    padding: 14px 18px;
-    font-family: var(--font-main);
-    font-size: 1.05rem;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .appt-modal-close {
-    background: rgba(255,255,255,0.18);
-    border: none;
-    color: white;
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .appt-modal-body { padding: 16px 18px; }
-  .appt-modal-body .field-group { margin-bottom: 14px; }
-  .appt-modal-body textarea {
-    width: 100%;
-    padding: 8px 10px;
-    border: 1.5px solid var(--gray-200);
-    border-radius: 7px;
-    font-size: 0.85rem;
-    font-family: var(--font-ui);
-    outline: none;
-    resize: vertical;
-    min-height: 70px;
-  }
-  .appt-modal-body textarea:focus { border-color: var(--appt-color); }
-  .appt-modal-footer {
-    padding: 0 18px 16px;
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-  }
-  .btn-primary {
-    background: var(--appt-color);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 9px 18px;
-    font-size: 0.85rem;
-    font-weight: 700;
-    cursor: pointer;
-    font-family: var(--font-ui);
-  }
-  .btn-secondary {
-    background: var(--gray-100);
-    color: var(--gray-600);
-    border: none;
-    border-radius: 8px;
-    padding: 9px 18px;
-    font-size: 0.85rem;
-    font-weight: 700;
-    cursor: pointer;
-    font-family: var(--font-ui);
-  }
-
-  /* ── APPTS VIEW ── */
-  .appts-wrap { padding: 16px; }
-  .appts-section-title {
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: var(--gray-400);
-    margin-bottom: 8px;
-    margin-top: 16px;
-  }
-  .appt-card {
-    background: white;
-    border-radius: 10px;
-    box-shadow: var(--shadow);
-    padding: 12px 14px;
-    margin-bottom: 8px;
-    border-left: 4px solid var(--appt-color);
-    cursor: pointer;
-    transition: box-shadow 0.15s;
-  }
-  .appt-card:hover { box-shadow: var(--shadow-lg); }
-  .appt-card-name { font-weight: 700; color: var(--navy); font-size: 0.92rem; }
-  .appt-card-dt { font-size: 0.8rem; color: var(--appt-color); font-weight: 600; margin-top: 2px; }
-  .appt-card-notes { font-size: 0.77rem; color: var(--gray-600); margin-top: 4px; }
-  .appt-card-phone { font-size: 0.77rem; color: var(--gray-400); }
-  .appt-card.past { border-left-color: var(--gray-400); opacity: 0.72; }
-  .empty-state {
-    text-align: center;
-    padding: 28px 20px;
-    color: var(--gray-400);
-    font-size: 0.85rem;
-  }
-  .empty-state-icon { font-size: 2rem; margin-bottom: 8px; }
-
-  /* Toast */
-  .toast {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%) translateY(80px);
-    background: var(--navy);
-    color: white;
-    padding: 10px 20px;
-    border-radius: 24px;
-    font-size: 0.82rem;
-    font-weight: 600;
-    box-shadow: var(--shadow-lg);
-    z-index: 999;
-    transition: transform 0.25s ease;
-    white-space: nowrap;
-  }
-  .toast.show { transform: translateX(-50%) translateY(0); }
-
-  /* Loader */
-  .loader {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 200px;
-    color: var(--gray-400);
-    font-size: 0.9rem;
-    gap: 8px;
-  }
-  .spinner {
-    width: 20px;
-    height: 20px;
-    border: 2.5px solid var(--gray-200);
-    border-top-color: var(--teal);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* Scrollbars */
-  ::-webkit-scrollbar { width: 5px; height: 5px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 3px; }
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f4f8;min-height:100vh;padding:12px;}
+.wrap{max-width:420px;margin:0 auto;padding:0 0 2rem;}
+.hdr{background:#1D3557;border-radius:12px;padding:14px 16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
+.hdr-title{font-size:16px;font-weight:500;color:#fff;}
+.hdr-sub{font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;}
+.nav-row{display:flex;align-items:center;gap:4px;}
+.pill{font-size:10px;padding:4px 9px;border-radius:20px;border:1px solid rgba(255,255,255,0.3);background:transparent;color:rgba(255,255,255,0.7);cursor:pointer;font-weight:500;}
+.pill.on{background:#138181;border-color:#138181;color:#fff;}
+.arrow-btn{background:rgba(255,255,255,0.15);border:none;border-radius:6px;color:#fff;font-size:14px;padding:3px 7px;cursor:pointer;}
+.period-label{font-size:10px;color:rgba(255,255,255,0.8);text-align:center;min-width:80px;}
+.tab-bar{display:flex;border-bottom:1px solid #e2eaf2;margin-bottom:12px;background:#fff;border-radius:10px 10px 0 0;padding:0 4px;}
+.tab{flex:1;padding:10px 2px;font-size:11px;font-weight:500;border:none;background:transparent;color:#5f7a99;cursor:pointer;border-bottom:2px solid transparent;}
+.tab.on{color:#1D3557;border-bottom-color:#138181;}
+.section-lbl{font-size:10px;font-weight:500;color:#1D3557;text-transform:uppercase;letter-spacing:0.07em;margin:12px 0 6px;}
+.stat-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:6px;}
+.stat-row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-bottom:6px;}
+.stat{border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:3px;}
+.stat-navy{background:#1D3557;} .stat-teal{background:#138181;}
+.stat-navy-lt{background:#E6F1FB;border:1px solid #B5D4F4;}
+.stat-teal-lt{background:#E1F5EE;border:1px solid #9FE1CB;}
+.stat-amber{background:#FAEEDA;border:1px solid #FAC775;}
+.stat-red{background:#FCEBEB;border:1px solid #F7C1C1;}
+.stat-green{background:#EAF3DE;border:1px solid #97C459;}
+.stat-purple{background:#EEEDFE;border:1px solid #AFA9EC;}
+.stat-lbl{font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;line-height:1.3;}
+.lbl-white{color:rgba(255,255,255,0.75);} .lbl-navy{color:#0C447C;} .lbl-teal{color:#085041;}
+.lbl-amber{color:#633806;} .lbl-red{color:#791F1F;} .lbl-green{color:#27500A;} .lbl-purple{color:#3C3489;}
+.stat-val{font-size:22px;font-weight:500;line-height:1;cursor:pointer;}
+.val-white{color:#fff;} .val-navy{color:#1D3557;} .val-teal{color:#138181;}
+.val-amber{color:#BA7517;} .val-red{color:#A32D2D;} .val-green{color:#3B6D11;} .val-purple{color:#3C3489;}
+.stat-sub{font-size:10px;line-height:1.4;}
+.sub-white{color:rgba(255,255,255,0.55);} .sub-navy{color:#185FA5;} .sub-teal{color:#0F6E56;}
+.sub-green{color:#3B6D11;} .sub-green2{color:#639922;}
+.stat-btns{display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;}
+.tap-btn{border:none;border-radius:20px;padding:3px 8px;font-size:11px;font-weight:500;cursor:pointer;}
+.tap-navy{background:rgba(255,255,255,0.2);color:#fff;} .tap-teal{background:rgba(255,255,255,0.2);color:#fff;}
+.tap-lt-navy{background:#1D3557;color:#fff;} .tap-lt-teal{background:#138181;color:#fff;}
+.tap-amber{background:#BA7517;color:#fff;} .tap-red{background:#A32D2D;color:#fff;}
+.hint{font-size:9px;color:rgba(255,255,255,0.4);} .hint-lt{font-size:9px;color:#b0c8dc;}
+.divider{height:1px;background:#e2eaf2;margin:10px 0;}
+.leads-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.add-btn{background:#138181;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:500;cursor:pointer;}
+.search{width:100%;border:1px solid #d0dcea;border-radius:8px;padding:8px 12px;font-size:14px;background:#f7fafd;color:#1a2e44;margin-bottom:8px;font-family:inherit;}
+.client-card{background:#fff;border:1px solid #e2eaf2;border-radius:10px;padding:12px 14px;margin-bottom:7px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.client-card:active{background:#f7fafd;}
+.client-name{font-size:14px;font-weight:500;color:#1D3557;}
+.client-meta{font-size:11px;color:#5f7a99;margin-top:1px;}
+.badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:500;}
+.b-CIA{background:#E6F1FB;color:#0C447C;} .b-MIA{background:#E1F5EE;color:#085041;}
+.b-New{background:#E1F5EE;color:#085041;} .b-Working{background:#E6F1FB;color:#0C447C;}
+.b-Appt{background:#FAEEDA;color:#633806;} .b-Closed{background:#EAF3DE;color:#27500A;}
+.b-Dead{background:#FCEBEB;color:#501313;}
+.fresh-tag{display:inline-block;font-size:9px;padding:1px 6px;border-radius:8px;background:#1D3557;color:#fff;font-weight:500;margin-left:4px;vertical-align:middle;}
+.call-btns{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;}
+.call-btn{border:none;border-radius:20px;padding:6px 11px;font-size:11px;font-weight:500;cursor:pointer;}
+.cb-navy{background:#1D3557;color:#fff;} .cb-teal{background:#138181;color:#fff;}
+.cb-green{background:#EAF3DE;color:#27500A;border:1px solid #97C459;}
+.cb-amber{background:#FAEEDA;color:#633806;border:1px solid #FAC775;}
+.cb-red{background:#FCEBEB;color:#791F1F;border:1px solid #F7C1C1;}
+.log-row{font-size:11px;color:#5f7a99;padding:3px 0;border-top:1px solid #f0f4f8;margin-top:4px;}
+.log-time{font-size:10px;color:#a0b8cc;}
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:flex-start;justify-content:center;padding:16px;z-index:1000;overflow-y:auto;}
+.modal{background:#fff;border-radius:12px;padding:1.25rem;width:100%;max-width:400px;margin:auto;}
+.modal-title{font-size:16px;font-weight:500;color:#1D3557;margin-bottom:4px;}
+.modal-sub{font-size:11px;color:#5f7a99;margin-bottom:14px;}
+.close-x{float:right;background:none;border:none;font-size:22px;cursor:pointer;color:#8fa8c0;margin-top:-4px;line-height:1;}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;}
+.field label{font-size:10px;color:#5f7a99;text-transform:uppercase;letter-spacing:0.05em;font-weight:500;}
+.field input,.field select,.field textarea{border:1px solid #d0dcea;border-radius:8px;padding:9px 12px;font-size:14px;background:#f7fafd;color:#1a2e44;width:100%;font-family:inherit;}
+.field textarea{min-height:52px;resize:vertical;}
+.row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+.save-btn{background:#1D3557;color:#fff;border:none;border-radius:8px;padding:11px;font-size:13px;font-weight:500;cursor:pointer;width:100%;margin-top:4px;}
+.sec-btn{background:#138181;color:#fff;border:none;border-radius:8px;padding:9px;font-size:12px;font-weight:500;cursor:pointer;width:100%;margin-top:6px;}
+.empty{font-size:13px;color:#a0b8cc;text-align:center;padding:2rem 0;}
+.loading{font-size:13px;color:#5f7a99;text-align:center;padding:1rem 0;}
+.flag-btn{border:1px solid #d0dcea;border-radius:20px;padding:5px 11px;font-size:11px;font-weight:500;cursor:pointer;background:#fff;color:#5f7a99;margin:2px;}
+.flag-btn.on-teal{background:#138181;color:#fff;border-color:#138181;}
+.flag-btn.on-navy{background:#1D3557;color:#fff;border-color:#1D3557;}
+.flag-btn.on-purple{background:#534AB7;color:#fff;border-color:#534AB7;}
+.app-card{background:#f7fafd;border:1px solid #e2eaf2;border-radius:8px;padding:8px 10px;margin-bottom:6px;}
+.upload-pill{font-size:10px;padding:3px 9px;border-radius:10px;font-weight:500;cursor:pointer;border:none;}
+.up-yes{background:#EAF3DE;color:#27500A;} .up-no{background:#FCEBEB;color:#791F1F;}
+.sit-card{border:1px solid #e2eaf2;border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#fff;}
+.journey-row{display:flex;gap:4px;align-items:center;margin-top:6px;flex-wrap:wrap;}
+.journey-dot{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;flex-shrink:0;}
+.jd-showed{background:#138181;} .jd-noshow{background:#E24B4A;} .jd-cancel{background:#BA7517;} .jd-pending{background:#c0cdd8;}
+.filter-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;}
+.filter-btn{font-size:10px;padding:4px 10px;border-radius:20px;border:1px solid #d0dcea;background:#fff;color:#5f7a99;cursor:pointer;font-weight:500;}
+.filter-btn.on{background:#1D3557;color:#fff;border-color:#1D3557;}
+.sync-bar{background:#1D3557;color:rgba(255,255,255,0.8);font-size:10px;text-align:center;padding:4px;border-radius:6px;margin-bottom:8px;}
+.dial-row{display:flex;gap:5px;margin-bottom:6px;align-items:center;}
+.dial-lbl{font-size:10px;color:#5f7a99;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;margin-right:2px;}
+.dial-cnt-btn{border:1px solid #d0dcea;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#5f7a99;transition:all 0.1s;}
+.dial-cnt-btn.on{background:#1D3557;color:#fff;border-color:#1D3557;}
 </style>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
 </head>
 <body>
-
-<!-- HEADER -->
-<div class="header">
-  <div class="header-left">
-    <div class="header-badge">CWC</div>
-    <h1>Banks Advantage</h1>
-  </div>
-  <div class="header-stats">
-    <div><strong id="hdr-dials">0</strong><br>Dials Today</div>
-    <div><strong id="hdr-convos">0</strong><br>Convos</div>
-    <div><strong id="hdr-appts">0</strong><br>Appts</div>
-  </div>
-</div>
-
-<!-- TABS -->
-<div class="tabs">
-  <div class="tab active" data-view="board">📋 Board</div>
-  <div class="tab" data-view="leads">📞 Leads</div>
-  <div class="tab" data-view="appts">📅 Appts</div>
-</div>
-
-<!-- BOARD VIEW -->
-<div class="view active" id="view-board">
-  <div class="board-wrap">
-    <div class="board-columns">
-      <div class="board-col">
-        <div class="board-col-header fresh">
-          <span>Fresh Leads</span>
-          <span class="board-col-count" id="col-count-new">0</span>
-        </div>
-        <div class="board-cards" id="col-new"></div>
+<div class="wrap" id="app">
+  <div class="hdr">
+    <div>
+      <div class="hdr-title">Banks Advantage · CWC</div>
+      <div class="hdr-sub" id="hdr-date"></div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+      <div class="nav-row">
+        <button class="pill on" onclick="setView('week',this)">Week</button>
+        <button class="pill" onclick="setView('month',this)">Month</button>
+        <button class="pill" onclick="setView('quarter',this)">Qtr</button>
+        <button class="pill" onclick="setView('year',this)">Year</button>
       </div>
-      <div class="board-col">
-        <div class="board-col-header active-col">
-          <span>Active</span>
-          <span class="board-col-count" id="col-count-active">0</span>
-        </div>
-        <div class="board-cards" id="col-active"></div>
-      </div>
-      <div class="board-col">
-        <div class="board-col-header closed">
-          <span>Closed Out</span>
-          <span class="board-col-count" id="col-count-closed">0</span>
-        </div>
-        <div class="board-cards" id="col-closed"></div>
+      <div class="nav-row">
+        <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
+        <div class="period-label" id="period-label">This week</div>
+        <button class="arrow-btn" onclick="shiftPeriod(1)">&#8594;</button>
       </div>
     </div>
   </div>
-</div>
 
-<!-- LEADS VIEW -->
-<div class="view" id="view-leads">
-  <div class="leads-wrap">
-    <div class="leads-toolbar">
-      <input class="leads-search" id="leads-search" type="text" placeholder="Search name or phone…" />
-      <select class="leads-filter" id="leads-filter">
-        <option value="">All Statuses</option>
-        <option value="new">Fresh</option>
-        <option value="callback">Callback</option>
-        <option value="appt">Appt Set</option>
-        <option value="notinterested">Not Interested</option>
-      </select>
+  <div id="sync-bar" class="sync-bar" style="display:none;">Syncing...</div>
+
+  <div class="tab-bar">
+    <button class="tab on" onclick="showTab('score',this)">Board</button>
+    <button class="tab" onclick="showTab('clients',this)">Leads</button>
+    <button class="tab" onclick="showTab('appts',this)">Appts</button>
+  </div>
+
+  <div id="tab-score">
+    <div class="section-lbl">Dialing activity</div>
+    <div class="stat-row">
+      <div class="stat stat-navy">
+        <div class="stat-lbl lbl-white">Dials</div>
+        <div class="hint">Tap to edit</div>
+        <div class="stat-val val-white" id="s-dials" onclick="startEdit('dials','dark')">0</div>
+        <div class="stat-btns">
+          <button class="tap-btn tap-navy" onclick="addStat('dials',1)">+1</button>
+          <button class="tap-btn tap-navy" onclick="addStat('dials',3)">+3</button>
+        </div>
+      </div>
+      <div class="stat stat-teal">
+        <div class="stat-lbl lbl-white">Conversations</div>
+        <div class="hint">Tap to edit</div>
+        <div class="stat-val val-white" id="s-convos" onclick="startEdit('convos','dark')">0</div>
+        <div class="stat-btns">
+          <button class="tap-btn tap-teal" onclick="addStat('convos',1)">+1</button>
+        </div>
+      </div>
+      <div class="stat stat-navy-lt">
+        <div class="stat-lbl lbl-navy">Appts booked</div>
+        <div class="hint-lt">Tap to edit</div>
+        <div class="stat-val val-navy" id="s-appts" onclick="startEdit('appts','navy')">0</div>
+        <div class="stat-btns">
+          <button class="tap-btn tap-lt-navy" onclick="addStat('appts',1)">+1</button>
+        </div>
+      </div>
     </div>
-    <div class="leads-table-wrap">
-      <table class="leads-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Phone</th>
-            <th>Status</th>
-            <th>Dials</th>
-            <th>City</th>
-          </tr>
-        </thead>
-        <tbody id="leads-tbody"></tbody>
-      </table>
+    <div class="stat-row">
+      <div class="stat stat-amber">
+        <div class="stat-lbl lbl-amber">Callbacks</div>
+        <div class="hint-lt">Tap to edit</div>
+        <div class="stat-val val-amber" id="s-callbacks" onclick="startEdit('callbacks','amber')">0</div>
+        <div class="stat-btns">
+          <button class="tap-btn tap-amber" onclick="addStat('callbacks',1)">+1</button>
+        </div>
+      </div>
+      <div class="stat stat-red">
+        <div class="stat-lbl lbl-red">Not interested</div>
+        <div class="hint-lt">Tap to edit</div>
+        <div class="stat-val val-red" id="s-dead" onclick="startEdit('dead','red')">0</div>
+        <div class="stat-btns">
+          <button class="tap-btn tap-red" onclick="addStat('dead',1)">+1</button>
+        </div>
+      </div>
+      <div class="stat stat-green">
+        <div class="stat-lbl lbl-green">Resolved</div>
+        <div class="stat-val val-green" id="s-resolved">0</div>
+        <div class="stat-sub sub-green" id="s-resolved-pct">0% of convos</div>
+        <div class="stat-sub" style="color:#639922;" id="s-resolved-fresh">0 fresh</div>
+      </div>
     </div>
+    <div class="divider"></div>
+    <div class="section-lbl">Sits this period</div>
+    <div class="stat-row">
+      <div class="stat stat-navy">
+        <div class="stat-lbl lbl-white">First sits</div>
+        <div class="stat-val val-white" id="p-first">0</div>
+        <div class="stat-sub sub-white" id="p-first-rate">0% showed</div>
+      </div>
+      <div class="stat stat-teal">
+        <div class="stat-lbl lbl-white">Showed</div>
+        <div class="stat-val val-white" id="p-showed">0</div>
+        <div class="stat-sub sub-white" id="p-sit-rate">0% sit rate</div>
+      </div>
+      <div class="stat stat-amber">
+        <div class="stat-lbl lbl-amber">No shows</div>
+        <div class="stat-val val-amber" id="p-noshow">0</div>
+        <div class="stat-sub" style="color:#854F0B;" id="p-cancel">0 canceled</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="section-lbl">Production</div>
+    <div class="stat-row">
+      <div class="stat stat-navy">
+        <div class="stat-lbl lbl-white">Closed HH</div>
+        <div class="stat-val val-white" id="p-closed">0</div>
+        <div class="stat-sub sub-white" id="p-close-rate">0% close rate</div>
+      </div>
+      <div class="stat stat-teal">
+        <div class="stat-lbl lbl-white">Written APV</div>
+        <div class="stat-val val-white" id="p-apv">$0</div>
+        <div class="stat-sub sub-white" id="p-apps">0 applications</div>
+      </div>
+      <div class="stat stat-navy-lt">
+        <div class="stat-lbl lbl-navy">APV / HH</div>
+        <div class="stat-val val-navy" id="p-apv-hh">$0</div>
+        <div class="stat-sub sub-navy" id="p-apps-hh">0 apps/HH</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="section-lbl">Pipeline</div>
+    <div class="stat-row">
+      <div class="stat stat-navy-lt"><div class="stat-lbl lbl-navy">New</div><div class="stat-val val-navy" id="pip-new">0</div><div class="stat-sub sub-navy" id="pip-fresh">0 fresh</div></div>
+      <div class="stat stat-teal-lt"><div class="stat-lbl lbl-teal">Working</div><div class="stat-val val-teal" id="pip-work">0</div></div>
+      <div class="stat stat-amber"><div class="stat-lbl lbl-amber">Appt set</div><div class="stat-val val-amber" id="pip-appt">0</div></div>
+    </div>
+    <div class="stat-row">
+      <div class="stat stat-teal"><div class="stat-lbl lbl-white">Closed</div><div class="stat-val val-white" id="pip-closed">0</div></div>
+      <div class="stat stat-red"><div class="stat-lbl lbl-red">Dead</div><div class="stat-val val-red" id="pip-dead">0</div></div>
+      <div class="stat stat-navy-lt"><div class="stat-lbl lbl-navy">Total</div><div class="stat-val val-navy" id="pip-total">0</div></div>
+    </div>
+  </div>
+
+  <div id="tab-clients" style="display:none;">
+    <div class="leads-hdr">
+      <div style="font-size:13px;font-weight:500;color:#1D3557;" id="client-count">Loading...</div>
+      <button class="add-btn" onclick="openAddClient()">+ Add lead</button>
+    </div>
+    <input class="search" placeholder="Search by name or phone..." oninput="renderClients(this.value)" id="client-search">
+    <div class="filter-row">
+      <button class="filter-btn on" onclick="setFilter('all',this)">All</button>
+      <button class="filter-btn" onclick="setFilter('New',this)">New</button>
+      <button class="filter-btn" onclick="setFilter('Working',this)">Working</button>
+      <button class="filter-btn" onclick="setFilter('Appointment set',this)">Appt</button>
+      <button class="filter-btn" onclick="setFilter('Closed',this)">Closed</button>
+      <button class="filter-btn" onclick="setFilter('Dead',this)">Dead</button>
+    </div>
+    <div id="clients-list"><div class="loading">Loading clients...</div></div>
   </div>
 </div>
 
-<!-- APPTS VIEW -->
-<div class="view" id="view-appts">
-  <div class="appts-wrap">
-    <div class="appts-section-title">Upcoming</div>
-    <div id="appts-upcoming"></div>
-    <div class="appts-section-title">Past</div>
-    <div id="appts-past"></div>
+  <div id="tab-appts" style="display:none;">
+    <div id="appts-list"><div class="loading">Loading appointments...</div></div>
   </div>
 </div>
-
-<!-- LEAD DETAIL PANEL -->
-<div class="panel-overlay" id="panel-overlay">
-  <div class="panel" id="panel">
-    <div class="panel-header">
-      <h2 id="panel-name">Lead Detail</h2>
-      <button class="panel-close" id="panel-close">✕</button>
-    </div>
-    <div class="panel-body">
-
-      <!-- Appt Badge -->
-      <div class="appt-badge" id="appt-badge" style="display:none">
-        <div class="appt-badge-icon">📅</div>
-        <div class="appt-badge-text">
-          <strong id="appt-badge-dt"></strong>
-          <div class="appt-badge-notes" id="appt-badge-notes"></div>
-        </div>
-      </div>
-
-      <!-- Dial Section -->
-      <div class="dial-section">
-        <div class="dial-top">
-          <div class="dial-phone" id="panel-phone">—</div>
-          <div class="dial-count-wrap">
-            <button class="dial-count-btn" id="dial-dec">−</button>
-            <div class="dial-count-label" id="dial-count-label">1×</div>
-            <button class="dial-count-btn" id="dial-inc">+</button>
-          </div>
-        </div>
-        <div class="disposition-grid">
-          <button class="disp-btn disp-noanswer" data-disp="noanswer">📵 No Answer</button>
-          <button class="disp-btn disp-appt" data-disp="apptset">📅 Appt Set</button>
-          <button class="disp-btn disp-callback" data-disp="callback">🔁 Callback</button>
-          <button class="disp-btn disp-notinterested" data-disp="notinterested">🚫 Not Interested</button>
-        </div>
-      </div>
-
-      <!-- Name Field -->
-      <div class="field-group">
-        <div class="field-label">Name</div>
-        <div class="field-row">
-          <input class="field-input" id="edit-name" type="text" placeholder="Full name" />
-          <button class="field-save-btn" id="save-name">Save</button>
-        </div>
-      </div>
-
-      <!-- Phone Field -->
-      <div class="field-group">
-        <div class="field-label">Phone</div>
-        <div class="field-row">
-          <input class="field-input" id="edit-phone" type="text" placeholder="Phone number" />
-          <button class="field-save-btn" id="save-phone">Save</button>
-        </div>
-      </div>
-
-      <!-- Address Field -->
-      <div class="field-group">
-        <div class="field-label">📍 Address</div>
-        <div class="field-row">
-          <input class="field-input" id="edit-address" type="text" placeholder="Street address, city, state" />
-          <button class="field-save-btn" id="save-address">Save</button>
-        </div>
-      </div>
-
-      <!-- Call Log -->
-      <div class="call-log-section">
-        <h3>Call Log</h3>
-        <div id="call-log-list"></div>
-      </div>
-
-    </div>
-  </div>
-</div>
-
-<!-- APPT MODAL -->
-<div class="appt-modal-overlay" id="appt-modal-overlay">
-  <div class="appt-modal">
-    <div class="appt-modal-header">
-      📅 Set Appointment
-      <button class="appt-modal-close" id="appt-modal-close">✕</button>
-    </div>
-    <div class="appt-modal-body">
-      <div class="field-group">
-        <div class="field-label">Date &amp; Time</div>
-        <input class="field-input" id="appt-datetime" type="datetime-local" style="width:100%" />
-      </div>
-      <div class="field-group">
-        <div class="field-label">Notes</div>
-        <textarea id="appt-notes" placeholder="Optional notes about this appointment…"></textarea>
-      </div>
-    </div>
-    <div class="appt-modal-footer">
-      <button class="btn-secondary" id="appt-modal-cancel">Cancel</button>
-      <button class="btn-primary" id="appt-modal-save">Save Appointment</button>
-    </div>
-  </div>
-</div>
-
-<!-- TOAST -->
-<div class="toast" id="toast"></div>
 
 <script>
-// ═══════════════════════════════════════════════════════
-//  SUPABASE CONFIG
-// ═══════════════════════════════════════════════════════
-const SUPA_URL = 'https://mdsaqxbqmvmusdtwlgay.supabase.co';
-const SUPA_KEY = 'sb_publishable_bIh3jnNzNjQ31D6KdDConw_cVJChb67';
+// ── SUPABASE CONFIG ──────────────────────────────────────────
+const SUPABASE_URL = 'https://mdsaqxbqmvmusdtwlgay.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_bIh3jnNzNjQ31D6KdDConw_cVJChb67';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-async function supa(path, opts) {
-  const url = SUPA_URL + '/rest/v1/' + path;
-  const headers = {
-    'apikey': SUPA_KEY,
-    'Authorization': 'Bearer ' + SUPA_KEY,
-    'Content-Type': 'application/json',
-    'Prefer': 'return=representation'
-  };
-  const res = await fetch(url, Object.assign({ headers }, opts || {}));
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error('Supabase error: ' + res.status + ' ' + txt);
-  }
-  const ct = res.headers.get('content-type') || '';
-  if (ct.includes('json') && res.status !== 204) return res.json();
-  return null;
-}
-
-// ═══════════════════════════════════════════════════════
-//  STATE
-// ═══════════════════════════════════════════════════════
-let leads = [];
-let stats = [];
-let currentLeadId = null;
-let currentDialCount = 1;
-
-// ═══════════════════════════════════════════════════════
-//  SEED DATA — 70 leads with addresses
-// ═══════════════════════════════════════════════════════
-const SEED_LEADS = [
-  { first_name: 'James', last_name: 'Thornton', phone: '(603) 555-0101', status: 'new', address: '12 Elm St, Manchester, NH 03101' },
-  { first_name: 'Sandra', last_name: 'McAllister', phone: '(603) 555-0102', status: 'new', address: '45 Maple Ave, Concord, NH 03301' },
-  { first_name: 'Robert', last_name: 'Jimenez', phone: '(617) 555-0103', status: 'new', address: '88 Oak Rd, Nashua, NH 03060' },
-  { first_name: 'Patricia', last_name: 'Nguyen', phone: '(617) 555-0104', status: 'new', address: '201 Pine St, Portsmouth, NH 03801' },
-  { first_name: 'Michael', last_name: 'Kowalski', phone: '(781) 555-0105', status: 'new', address: '33 Cedar Ln, Dover, NH 03820' },
-  { first_name: 'Linda', last_name: 'Okafor', phone: '(781) 555-0106', status: 'new', address: '77 Birch Way, Rochester, NH 03867' },
-  { first_name: 'David', last_name: 'Callahan', phone: '(508) 555-0107', status: 'new', address: '155 Walnut Dr, Keene, NH 03431' },
-  { first_name: 'Barbara', last_name: 'Steinberg', phone: '(508) 555-0108', status: 'new', address: '9 Chestnut Ct, Laconia, NH 03246' },
-  { first_name: 'Richard', last_name: 'Vasquez', phone: '(603) 555-0109', status: 'new', address: '412 Spruce Blvd, Lebanon, NH 03766' },
-  { first_name: 'Susan', last_name: 'Hartley', phone: '(603) 555-0110', status: 'new', address: '66 Ash St, Claremont, NH 03743' },
-  { first_name: 'Charles', last_name: 'Beaumont', phone: '(617) 555-0111', status: 'new', address: '300 Willow Pl, Exeter, NH 03833' },
-  { first_name: 'Karen', last_name: 'Fitzpatrick', phone: '(617) 555-0112', status: 'new', address: '18 Hickory Rd, Hampton, NH 03842' },
-  { first_name: 'Joseph', last_name: 'Nakamura', phone: '(781) 555-0113', status: 'new', address: '54 Poplar Ave, Derry, NH 03038' },
-  { first_name: 'Nancy', last_name: 'Obreski', phone: '(781) 555-0114', status: 'new', address: '720 Sycamore St, Salem, NH 03079' },
-  { first_name: 'Thomas', last_name: 'Guerrero', phone: '(508) 555-0115', status: 'new', address: '101 Beech Ln, Milford, NH 03055' },
-  { first_name: 'Margaret', last_name: 'Patel', phone: '(508) 555-0116', status: 'new', address: '88 Locust Dr, Merrimack, NH 03054' },
-  { first_name: 'Christopher', last_name: 'Engström', phone: '(603) 555-0117', status: 'new', address: '23 Dogwood Way, Londonderry, NH 03053' },
-  { first_name: 'Dorothy', last_name: 'Blackwell', phone: '(603) 555-0118', status: 'new', address: '467 Magnolia Ct, Hudson, NH 03051' },
-  { first_name: 'Daniel', last_name: 'Leblanc', phone: '(617) 555-0119', status: 'new', address: '55 Redwood Blvd, Goffstown, NH 03045' },
-  { first_name: 'Lisa', last_name: 'Yamamoto', phone: '(617) 555-0120', status: 'new', address: '190 Hawthorn St, Bedford, NH 03110' },
-  { first_name: 'Paul', last_name: 'Morrison', phone: '(781) 555-0121', status: 'new', address: '34 Linden Ave, Hooksett, NH 03106' },
-  { first_name: 'Betty', last_name: 'Osei', phone: '(781) 555-0122', status: 'new', address: '801 Cypress Rd, Bow, NH 03304' },
-  { first_name: 'Mark', last_name: 'Delacroix', phone: '(508) 555-0123', status: 'new', address: '62 Juniper Ln, Pembroke, NH 03275' },
-  { first_name: 'Sandra', last_name: 'Whitmore', phone: '(508) 555-0124', status: 'new', address: '115 Fir St, Allenstown, NH 03275' },
-  { first_name: 'Donald', last_name: 'Reardon', phone: '(603) 555-0125', status: 'new', address: '290 Aspen Way, Epsom, NH 03234' },
-  { first_name: 'Ashley', last_name: 'Christodoulou', phone: '(603) 555-0126', status: 'new', address: '47 Cottonwood Dr, Pittsfield, NH 03263' },
-  { first_name: 'Steven', last_name: 'Okonkwo', phone: '(617) 555-0127', status: 'new', address: '188 Tamarack Ln, Chichester, NH 03258' },
-  { first_name: 'Kimberly', last_name: 'Swanson', phone: '(617) 555-0128', status: 'new', address: '6 Hemlock Ct, Northfield, NH 03276' },
-  { first_name: 'George', last_name: 'Tran', phone: '(781) 555-0129', status: 'new', address: '340 Sumac St, Franklin, NH 03235' },
-  { first_name: 'Carol', last_name: 'Korhonen', phone: '(781) 555-0130', status: 'new', address: '75 Bayberry Rd, Tilton, NH 03276' },
-  { first_name: 'Kenneth', last_name: 'Mwangi', phone: '(508) 555-0131', status: 'new', address: '122 Rosewood Ave, Belmont, NH 03220' },
-  { first_name: 'Jessica', last_name: 'Bouchard', phone: '(508) 555-0132', status: 'new', address: '55 Cedarwood Dr, Gilford, NH 03249' },
-  { first_name: 'Edward', last_name: 'Reinhardt', phone: '(603) 555-0133', status: 'new', address: '200 Maplewood St, Meredith, NH 03253' },
-  { first_name: 'Helen', last_name: 'Afolabi', phone: '(603) 555-0134', status: 'new', address: '37 Sprucewood Ln, Center Harbor, NH 03226' },
-  { first_name: 'Brian', last_name: 'Castillo', phone: '(617) 555-0135', status: 'new', address: '89 Birchwood Ct, Ossipee, NH 03864' },
-  { first_name: 'Deborah', last_name: 'Lindqvist', phone: '(617) 555-0136', status: 'new', address: '166 Pinecrest Dr, Conway, NH 03818' },
-  { first_name: 'Ronald', last_name: 'Achebe', phone: '(781) 555-0137', status: 'new', address: '53 Timberline Rd, North Conway, NH 03860' },
-  { first_name: 'Stephanie', last_name: 'Hernandez', phone: '(781) 555-0138', status: 'new', address: '280 Ridgewood Ave, Wolfeboro, NH 03894' },
-  { first_name: 'Anthony', last_name: 'Plowright', phone: '(508) 555-0139', status: 'new', address: '44 Lakeview Dr, Alton, NH 03809' },
-  { first_name: 'Carolyn', last_name: 'Fujita', phone: '(508) 555-0140', status: 'new', address: '99 Shoreline Blvd, Gilmanton, NH 03237' },
-  { first_name: 'Kevin', last_name: 'Adeyemi', phone: '(603) 555-0141', status: 'new', address: '17 Clearwater Ln, Barnstead, NH 03218' },
-  { first_name: 'Sharon', last_name: 'Berglund', phone: '(603) 555-0142', status: 'new', address: '308 Meadowbrook Rd, Sanbornton, NH 03269' },
-  { first_name: 'Larry', last_name: 'Marchand', phone: '(617) 555-0143', status: 'new', address: '71 Hillcrest Dr, Weare, NH 03281' },
-  { first_name: 'Ruth', last_name: 'Olawale', phone: '(617) 555-0144', status: 'new', address: '150 Briarwood Ct, Dunbarton, NH 03046' },
-  { first_name: 'Eric', last_name: 'Halverson', phone: '(781) 555-0145', status: 'new', address: '235 Foxwood Rd, Antrim, NH 03440' },
-  { first_name: 'Sharon', last_name: 'Petrov', phone: '(781) 555-0146', status: 'new', address: '88 Woodland Way, Hillsborough, NH 03244' },
-  { first_name: 'Scott', last_name: 'Obasi', phone: '(508) 555-0147', status: 'new', address: '44 Forest Glen Ln, Deering, NH 03244' },
-  { first_name: 'Maria', last_name: 'Johansson', phone: '(508) 555-0148', status: 'new', address: '167 Oakwood Blvd, Henniker, NH 03242' },
-  { first_name: 'Jeffrey', last_name: 'Mbeki', phone: '(603) 555-0149', status: 'new', address: '22 Pinegrove Ct, Bradford, NH 03221' },
-  { first_name: 'Laura', last_name: 'Sorensen', phone: '(603) 555-0150', status: 'new', address: '90 Cedargrove Dr, Warner, NH 03278' },
-  { first_name: 'Gary', last_name: 'Tremblay', phone: '(617) 555-0151', status: 'new', address: '313 Heatherfield Rd, Sutton, NH 03273' },
-  { first_name: 'Judith', last_name: 'Adeola', phone: '(617) 555-0152', status: 'new', address: '55 Stonegate Ln, New London, NH 03257' },
-  { first_name: 'Frank', last_name: 'Kiefer', phone: '(781) 555-0153', status: 'new', address: '180 Birchfield Way, Sunapee, NH 03782' },
-  { first_name: 'Rachel', last_name: 'Osei-Bonsu', phone: '(781) 555-0154', status: 'new', address: '67 Lakewood Dr, Newport, NH 03773' },
-  { first_name: 'Raymond', last_name: 'Leclerc', phone: '(508) 555-0155', status: 'new', address: '240 Riverside Rd, Charlestown, NH 03603' },
-  { first_name: 'Angela', last_name: 'Sundin', phone: '(508) 555-0156', status: 'new', address: '15 Millbrook Ct, Acworth, NH 03601' },
-  { first_name: 'Jack', last_name: 'Ndegwa', phone: '(603) 555-0157', status: 'new', address: '500 Greenfield Ave, Walpole, NH 03608' },
-  { first_name: 'Melissa', last_name: 'Holmberg', phone: '(603) 555-0158', status: 'new', address: '83 Brookside Dr, Alstead, NH 03602' },
-  { first_name: 'Dennis', last_name: 'Moreau', phone: '(617) 555-0159', status: 'new', address: '127 Wilderwood Rd, Swanzey, NH 03446' },
-  { first_name: 'Rebecca', last_name: 'Adeyinka', phone: '(617) 555-0160', status: 'new', address: '39 Applewood Dr, Jaffrey, NH 03452' },
-  { first_name: 'Jerry', last_name: 'Gustafsson', phone: '(781) 555-0161', status: 'new', address: '198 Ridgeline Rd, Peterborough, NH 03458' },
-  { first_name: 'Katherine', last_name: 'Ibe', phone: '(781) 555-0162', status: 'new', address: '74 Stonepath Ln, Greenfield, NH 03047' },
-  { first_name: 'Harold', last_name: 'Rousseau', phone: '(508) 555-0163', status: 'new', address: '261 Crestview Dr, Lyndeborough, NH 03082' },
-  { first_name: 'Diane', last_name: 'Ekwueme', phone: '(508) 555-0164', status: 'new', address: '48 Highwood Ct, Wilton, NH 03086' },
-  { first_name: 'Walter', last_name: 'Strand', phone: '(603) 555-0165', status: 'new', address: '102 Forestview Rd, Mason, NH 03048' },
-  { first_name: 'Gloria', last_name: 'Oduya', phone: '(603) 555-0166', status: 'new', address: '55 Springsong Ln, Amherst, NH 03031' },
-  { first_name: 'Arthur', last_name: 'Perron', phone: '(617) 555-0167', status: 'new', address: '333 Hilltop Dr, Hollis, NH 03049' },
-  { first_name: 'Janet', last_name: 'Nilsson', phone: '(617) 555-0168', status: 'new', address: '27 Windmill Rd, Mont Vernon, NH 03057' },
-  { first_name: 'Wayne', last_name: 'Onyekachi', phone: '(781) 555-0169', status: 'new', address: '149 Meadow Way, Brookline, NH 03033' },
-  { first_name: 'Brenda', last_name: 'Lindberg', phone: '(781) 555-0170', status: 'new', address: '77 Valley View Rd, Mason, NH 03048' },
-];
-
-// ═══════════════════════════════════════════════════════
-//  INIT
-// ═══════════════════════════════════════════════════════
-async function init() {
-  showLoaders();
-  try {
-    await ensureSeed();
-    await loadAll();
-    render();
-  } catch (e) {
-    console.error(e);
-    showToast('Connection error — check Supabase config');
-  }
-}
-
-async function ensureSeed() {
-  const existing = await supa('clients?select=id&limit=1');
-  if (existing && existing.length > 0) return;
-  // Seed in batches of 20
-  for (let i = 0; i < SEED_LEADS.length; i += 20) {
-    const batch = SEED_LEADS.slice(i, i + 20).map(l => ({
-      first_name: l.first_name,
-      last_name: l.last_name,
-      phone: l.phone,
-      status: l.status,
-      address: l.address,
-      appt_datetime: null,
-      appt_notes: null
-    }));
-    await supa('clients', {
-      method: 'POST',
-      body: JSON.stringify(batch)
-    });
-  }
-}
-
-async function loadAll() {
-  const [l, s] = await Promise.all([
-    supa('clients?select=*&order=id.asc'),
-    supa('stats?select=*&order=created_at.desc&limit=500')
-  ]);
-  leads = l || [];
-  stats = s || [];
-}
-
-function showLoaders() {
-  ['col-new', 'col-active', 'col-closed', 'leads-tbody'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.innerHTML = '<div class="loader"><div class="spinner"></div> Loading…</div>';
-  });
-}
-
-// ═══════════════════════════════════════════════════════
-//  RENDER
-// ═══════════════════════════════════════════════════════
-function render() {
-  renderBoard();
-  renderLeadsTable();
-  renderAppts();
-  renderHeaderStats();
-}
-
-function fullName(l) {
-  return ((l.first_name || '') + ' ' + (l.last_name || '')).trim() || '—';
-}
-
-function cityFromAddress(addr) {
-  if (!addr) return '';
-  const parts = addr.split(',');
-  return parts.length > 1 ? parts[1].trim() : '';
-}
-
-// Board
-function renderBoard() {
-  const cols = { new: [], callback: [], appt: [], notinterested: [] };
-  leads.forEach(l => {
-    const s = l.status || 'new';
-    if (s === 'new') cols.new.push(l);
-    else if (s === 'callback') cols.callback.push(l);
-    else if (s === 'appt') cols.appt.push(l);
-    else if (s === 'notinterested') cols.notinterested.push(l);
-    else cols.new.push(l);
-  });
-
-  const fresh = [...cols.new];
-  const active = [...cols.callback, ...cols.appt];
-  const closed = [...cols.notinterested];
-
-  renderBoardCol('col-new', fresh);
-  renderBoardCol('col-active', active);
-  renderBoardCol('col-closed', closed);
-
-  document.getElementById('col-count-new').textContent = fresh.length;
-  document.getElementById('col-count-active').textContent = active.length;
-  document.getElementById('col-count-closed').textContent = closed.length;
-}
-
-function renderBoardCol(id, items) {
-  const el = document.getElementById(id);
-  if (!items.length) {
-    el.innerHTML = '<div style="padding:12px;color:#9aa5b4;font-size:0.78rem;text-align:center">None</div>';
-    return;
-  }
-  el.innerHTML = items.map(l => {
-    const s = l.status || 'new';
-    let tag = '';
-    let cls = '';
-    if (s === 'appt') { tag = '<span class="board-card-tag tag-appt">Appt</span>'; cls = 'has-appt'; }
-    else if (s === 'callback') { tag = '<span class="board-card-tag tag-callback">Callback</span>'; cls = 'callback'; }
-    const dialCount = dialCountForLead(l.id);
-    return '<div class="board-card ' + cls + '" data-id="' + l.id + '">' +
-      '<div class="board-card-name">' + esc(fullName(l)) + '</div>' +
-      '<div class="board-card-phone">' + esc(l.phone || '') + (dialCount ? ' &bull; ' + dialCount + ' dial' + (dialCount !== 1 ? 's' : '') : '') + '</div>' +
-      tag +
-      '</div>';
-  }).join('');
-}
-
-function dialCountForLead(id) {
-  return stats.filter(s => String(s.lead_id) === String(id)).length;
-}
-
-// Leads table
-function renderLeadsTable() {
-  const search = (document.getElementById('leads-search').value || '').toLowerCase();
-  const filter = document.getElementById('leads-filter').value;
-  let filtered = leads;
-  if (search) {
-    filtered = filtered.filter(l =>
-      fullName(l).toLowerCase().includes(search) ||
-      (l.phone || '').includes(search)
-    );
-  }
-  if (filter) {
-    filtered = filtered.filter(l => (l.status || 'new') === filter);
-  }
-
-  const tbody = document.getElementById('leads-tbody');
-  if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#9aa5b4;padding:24px">No leads found</td></tr>';
-    return;
-  }
-  tbody.innerHTML = filtered.map(l => {
-    const s = l.status || 'new';
-    const pillMap = { new: 'pill-new', callback: 'pill-callback', appt: 'pill-appt', notinterested: 'pill-notinterested' };
-    const pillLbl = { new: 'Fresh', callback: 'Callback', appt: 'Appt Set', notinterested: 'Not Interested' };
-    const dials = dialCountForLead(l.id);
-    return '<tr data-id="' + l.id + '">' +
-      '<td class="name-cell">' + esc(fullName(l)) + '</td>' +
-      '<td>' + esc(l.phone || '') + '</td>' +
-      '<td><span class="status-pill ' + (pillMap[s] || 'pill-new') + '">' + (pillLbl[s] || s) + '</span></td>' +
-      '<td>' + (dials || '—') + '</td>' +
-      '<td>' + esc(cityFromAddress(l.address)) + '</td>' +
-      '</tr>';
-  }).join('');
-}
-
-// Appts
-function renderAppts() {
-  const now = new Date();
-  const withAppt = leads.filter(l => l.appt_datetime);
-  withAppt.sort((a, b) => new Date(a.appt_datetime) - new Date(b.appt_datetime));
-  const upcoming = withAppt.filter(l => new Date(l.appt_datetime) >= now);
-  const past = withAppt.filter(l => new Date(l.appt_datetime) < now);
-
-  const upEl = document.getElementById('appts-upcoming');
-  const pastEl = document.getElementById('appts-past');
-
-  upEl.innerHTML = upcoming.length ? upcoming.map(l => apptCard(l, false)).join('') :
-    '<div class="empty-state"><div class="empty-state-icon">📅</div>No upcoming appointments</div>';
-  pastEl.innerHTML = past.length ? past.map(l => apptCard(l, true)).join('') :
-    '<div class="empty-state"><div class="empty-state-icon">📋</div>No past appointments</div>';
-}
-
-function apptCard(l, isPast) {
-  const dt = new Date(l.appt_datetime);
-  const dtStr = dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) +
-    ' at ' + dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-  return '<div class="appt-card ' + (isPast ? 'past' : '') + '" data-id="' + l.id + '">' +
-    '<div class="appt-card-name">' + esc(fullName(l)) + '</div>' +
-    '<div class="appt-card-dt">' + dtStr + '</div>' +
-    (l.appt_notes ? '<div class="appt-card-notes">' + esc(l.appt_notes) + '</div>' : '') +
-    '<div class="appt-card-phone">' + esc(l.phone || '') + '</div>' +
-    '</div>';
-}
-
-// Header stats
-function renderHeaderStats() {
-  const today = new Date().toDateString();
-  const todayStats = stats.filter(s => new Date(s.created_at).toDateString() === today);
-  const dials = todayStats.length;
-  const convos = todayStats.filter(s => s.disposition !== 'noanswer').length;
-  const appts = leads.filter(l => l.status === 'appt').length;
-  document.getElementById('hdr-dials').textContent = dials;
-  document.getElementById('hdr-convos').textContent = convos;
-  document.getElementById('hdr-appts').textContent = appts;
-}
-
-// ═══════════════════════════════════════════════════════
-//  LEAD PANEL
-// ═══════════════════════════════════════════════════════
-function openPanel(id) {
-  const lead = leads.find(l => String(l.id) === String(id));
-  if (!lead) return;
-  currentLeadId = lead.id;
-  currentDialCount = 1;
-
-  document.getElementById('panel-name').textContent = fullName(lead);
-  document.getElementById('panel-phone').textContent = lead.phone || '—';
-  document.getElementById('edit-name').value = fullName(lead);
-  document.getElementById('edit-phone').value = lead.phone || '';
-  document.getElementById('edit-address').value = lead.address || '';
-  document.getElementById('dial-count-label').textContent = '1\u00d7';
-
-  // Appt badge
-  const badge = document.getElementById('appt-badge');
-  if (lead.appt_datetime) {
-    const dt = new Date(lead.appt_datetime);
-    const dtStr = dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) +
-      ' at ' + dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    document.getElementById('appt-badge-dt').textContent = dtStr;
-    document.getElementById('appt-badge-notes').textContent = lead.appt_notes || '';
-    badge.style.display = 'flex';
-  } else {
-    badge.style.display = 'none';
-  }
-
-  // Call log
-  renderCallLog(lead.id);
-
-  document.getElementById('panel-overlay').classList.add('open');
-}
-
-function renderCallLog(id) {
-  const leadStats = stats.filter(s => String(s.lead_id) === String(id));
-  const list = document.getElementById('call-log-list');
-  if (!leadStats.length) {
-    list.innerHTML = '<div style="color:#9aa5b4;font-size:0.78rem;padding:8px 0">No calls logged yet</div>';
-    return;
-  }
-  const dispLabel = { noanswer: 'No Answer', apptset: 'Appt Set', callback: 'Callback', notinterested: 'Not Interested' };
-  const dispClass = { noanswer: 'disp-color-noanswer', apptset: 'disp-color-apptset', callback: 'disp-color-callback', notinterested: 'disp-color-notinterested' };
-  list.innerHTML = leadStats.map(s => {
-    const dt = new Date(s.created_at);
-    const dtStr = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
-      dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    const d = s.disposition || 'noanswer';
-    return '<div class="call-log-item">' +
-      '<span class="call-log-disp ' + (dispClass[d] || '') + '">' + (dispLabel[d] || d) + '</span>' +
-      '<span class="call-log-time">' + dtStr + '</span>' +
-      '</div>';
-  }).join('');
-}
-
-function closePanel() {
-  document.getElementById('panel-overlay').classList.remove('open');
-  currentLeadId = null;
-}
-
-// ═══════════════════════════════════════════════════════
-//  DISPOSITION
-// ═══════════════════════════════════════════════════════
-async function handleDisposition(disp) {
-  if (!currentLeadId) return;
-  const lead = leads.find(l => String(l.id) === String(currentLeadId));
-  if (!lead) return;
-
-  // Log stat rows — one per dial count
-  const statRows = [];
-  for (let i = 0; i < currentDialCount; i++) {
-    statRows.push({ lead_id: currentLeadId, disposition: disp });
-  }
-  try {
-    await supa('stats', { method: 'POST', body: JSON.stringify(statRows) });
-    stats = [...statRows.map(r => ({ ...r, created_at: new Date().toISOString() })), ...stats];
-  } catch (e) {
-    showToast('Error logging stat');
-    console.error(e);
-  }
-
-  if (disp === 'noanswer') {
-    showToast('Logged — no answer');
-    renderCallLog(currentLeadId);
-    renderHeaderStats();
-    renderBoard();
-    return;
-  }
-
-  // Non-no-answer: update status + count convo
-  let newStatus = lead.status;
-  if (disp === 'apptset') {
-    // open appt modal before advancing
-    openApptModal();
-    return;
-  } else if (disp === 'callback') {
-    newStatus = 'callback';
-  } else if (disp === 'notinterested') {
-    newStatus = 'notinterested';
-  }
-
-  try {
-    await supa('clients?id=eq.' + currentLeadId, {
-      method: 'PATCH',
-      body: JSON.stringify({ status: newStatus })
-    });
-    lead.status = newStatus;
-  } catch (e) { console.error(e); }
-
-  showToast(disp === 'callback' ? 'Callback set' : 'Marked not interested');
-  render();
-  closePanel();
-  advanceToNextLead(currentLeadId);
-}
-
-function advanceToNextLead(fromId) {
-  // open next new lead if available
-  const idx = leads.findIndex(l => String(l.id) === String(fromId));
-  const next = leads.slice(idx + 1).find(l => l.status === 'new');
-  if (next) setTimeout(() => openPanel(next.id), 400);
-}
-
-// ═══════════════════════════════════════════════════════
-//  APPT MODAL
-// ═══════════════════════════════════════════════════════
-function openApptModal() {
-  const now = new Date();
-  now.setMinutes(Math.ceil(now.getMinutes() / 15) * 15, 0, 0);
-  const pad = n => String(n).padStart(2, '0');
-  const local = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) +
-    'T' + pad(now.getHours()) + ':' + pad(now.getMinutes());
-  document.getElementById('appt-datetime').value = local;
-  document.getElementById('appt-notes').value = '';
-  document.getElementById('appt-modal-overlay').classList.add('open');
-}
-
-function closeApptModal() {
-  document.getElementById('appt-modal-overlay').classList.remove('open');
-}
-
-async function saveAppt() {
-  const dt = document.getElementById('appt-datetime').value;
-  const notes = document.getElementById('appt-notes').value;
-  if (!dt) { showToast('Please pick a date and time'); return; }
-  const lead = leads.find(l => String(l.id) === String(currentLeadId));
-  if (!lead) return;
-
-  try {
-    await supa('clients?id=eq.' + currentLeadId, {
-      method: 'PATCH',
-      body: JSON.stringify({ status: 'appt', appt_datetime: new Date(dt).toISOString(), appt_notes: notes })
-    });
-    lead.status = 'appt';
-    lead.appt_datetime = new Date(dt).toISOString();
-    lead.appt_notes = notes;
-    showToast('Appointment saved!');
-  } catch (e) { showToast('Error saving appointment'); console.error(e); return; }
-
-  closeApptModal();
-  render();
-  const savId = currentLeadId;
-  closePanel();
-  advanceToNextLead(savId);
-}
-
-// ═══════════════════════════════════════════════════════
-//  INLINE EDIT
-// ═══════════════════════════════════════════════════════
-async function saveName() {
-  if (!currentLeadId) return;
-  const val = document.getElementById('edit-name').value.trim();
-  if (!val) return;
-  const parts = val.split(' ');
-  const first = parts[0];
-  const last = parts.slice(1).join(' ');
-  try {
-    await supa('clients?id=eq.' + currentLeadId, {
-      method: 'PATCH',
-      body: JSON.stringify({ first_name: first, last_name: last })
-    });
-    const lead = leads.find(l => String(l.id) === String(currentLeadId));
-    if (lead) { lead.first_name = first; lead.last_name = last; }
-    document.getElementById('panel-name').textContent = val;
-    renderBoard();
-    renderLeadsTable();
-    showToast('Name updated');
-  } catch (e) { showToast('Error updating name'); }
-}
-
-async function savePhone() {
-  if (!currentLeadId) return;
-  const val = document.getElementById('edit-phone').value.trim();
-  if (!val) return;
-  try {
-    await supa('clients?id=eq.' + currentLeadId, {
-      method: 'PATCH',
-      body: JSON.stringify({ phone: val })
-    });
-    const lead = leads.find(l => String(l.id) === String(currentLeadId));
-    if (lead) lead.phone = val;
-    document.getElementById('panel-phone').textContent = val;
-    renderBoard();
-    renderLeadsTable();
-    showToast('Phone updated');
-  } catch (e) { showToast('Error updating phone'); }
-}
-
-async function saveAddress() {
-  if (!currentLeadId) return;
-  const val = document.getElementById('edit-address').value.trim();
-  try {
-    await supa('clients?id=eq.' + currentLeadId, {
-      method: 'PATCH',
-      body: JSON.stringify({ address: val })
-    });
-    const lead = leads.find(l => String(l.id) === String(currentLeadId));
-    if (lead) lead.address = val;
-    showToast('Address updated');
-  } catch (e) { showToast('Error updating address'); }
-}
-
-// ═══════════════════════════════════════════════════════
-//  DIAL COUNT (exposed globally for dialer)
-// ═══════════════════════════════════════════════════════
-window.setDialCount = function(n) {
-  if (n < 1) n = 1;
-  if (n > 9) n = 9;
-  currentDialCount = n;
-  document.getElementById('dial-count-label').textContent = n + '\u00d7';
+// ── CARRIERS ─────────────────────────────────────────────────
+const CARRIERS = {
+  'American Amicable':['Home Certainty','Term Made Simple','Dignity Solutions','QSFP'],
+  'Americo':['Term 100','Term 125','COB100','IUL','Eagle Select 1','Eagle Select 2','Eagle Select 3'],
+  'Gerber':['ADB','GIWL'],'Banner Life':['Beyond Term'],'SBLI':['Easy Trak'],
+  'Mutual of Omaha':['Living Promise','Term Express','IULE','Critical Advantage','Guaranteed Advantage','LTC'],
+  'TransAmerica':['FEX Ex','FEX Imm'],'UHL':['QSFC','Term'],
+  'Foresters':['DFL','IBC'],'F&G':['IUL'],'InsureRealty':['Lending Product'],'Annuity':['Annuity — TBD']
 };
 
-function incDial() { window.setDialCount(currentDialCount + 1); }
-function decDial() { window.setDialCount(currentDialCount - 1); }
+const SIT_REASONS = [
+  {value:'first',label:'First sit'},
+  {value:'resched-noshow',label:'Reschedule — no show'},
+  {value:'resched-cancel',label:'Reschedule — client canceled'},
+  {value:'cont-ppu',label:'Continuation — PPU'},
+  {value:'cont-followup',label:'Continuation — follow up'},
+  {value:'reset',label:'Reset — new product'}
+];
 
-// ═══════════════════════════════════════════════════════
-//  TOAST
-// ═══════════════════════════════════════════════════════
-let toastTimer = null;
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+const SEED_LEADS = [
+  {name:'Austin Maynard',phone:'614-562-5130',state:'OH',source:'CIA',address:'464 Yarmouth Ln, Columbus, OH 43228',notes:'Mortgage: $232,800 · Gender: Male · Tobacco: Y · Co-borrower: N'},
+  {name:'Candice Pennick',phone:'253-286-8078',state:'WA',source:'CIA',address:'2021 E Sherman St, Tacoma, WA 98404',notes:'Mortgage: $356,125 · Age: 45 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Movement Mortgage'},
+  {name:'Thaddeus Carney',phone:'757-254-6025',state:'VA',source:'CIA',address:'2049 Richard Ave, Hampton, VA 23664',notes:'Mortgage: $285,000 · Age: 74 · Gender: Female · Tobacco: N · Co-borrower: Y · Lender: Mutual of Omaha Mortgage'},
+  {name:'Sonia Treece',phone:'713-894-8160',state:'VA',source:'MIA',address:'708 Pile Ave, Chesapeake, VA 23320',notes:'Mortgage: $441,750 · Age: 50 · Lender: Movement Mortgage'},
+  {name:'Sahana Epari',phone:'703-628-3138',state:'VA',source:'CIA',address:'43047 Stuarts Glen Ter Unit 106, Ashburn, VA 20148',notes:'Mortgage: $413,600 · Age: 27 · Gender: Female · Tobacco: N · Co-borrower: Y · Lender: United Nations FCU'},
+  {name:'Nancy Monahan',phone:'860-930-0678',state:'CT',source:'CIA',address:'15 W Pine Way Unit 10, Plainville, CT 06062',notes:'Mortgage: $365,750 · Age: 81 · Gender: Female · Tobacco: N · Co-borrower: N'},
+  {name:'Kierra Moore',phone:'832-412-5950',state:'TX',source:'MIA',address:'17133 Pinewood Branch Dr, New Caney, TX 77357',notes:'Mortgage: $304,832 · Age: 30 · Lender: M & I Financial'},
+  {name:'Benjamin Leyk',phone:'509-724-6487',state:'WA',source:'CIA',address:'1215 S Van Marter Ln, Spokane Valley, WA 99206',notes:'Mortgage: $392,755 · Age: 38 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Canopy Mortgage'},
+  {name:'Winiford Sullivan',phone:'360-473-8054',state:'WA',source:'CIA',address:'3419 NE Cromwell St, Bremerton, WA 98311',notes:'Mortgage: $63,830 · Age: 85 · Gender: Male · Tobacco: N · Co-borrower: N · Lender: AmeriSave'},
+  {name:'Thomas Duffy',phone:'603-303-3039',state:'NH',source:'CIA',address:'28 Tuckaway Shores Rd, Nottingham, NH 03290',notes:'Mortgage: $300,000 · Age: 78 · Gender: Male · Tobacco: N · Co-borrower: N'},
+  {name:'Stacey Hairston',phone:'276-632-6241',state:'VA',source:'CIA',address:'183 Stockton Rd, Martinsville, VA 24112',notes:'Mortgage: $55,000 · Age: 69 · Gender: Male · Tobacco: N · Co-borrower: Y'},
+  {name:'Monica Farmer & Austin Farmer',phone:'980-285-0914',state:'NC',source:'MIA',address:'908 Woodside Dr, Kings Mountain, NC 28086',notes:'Mortgage: $340,714 · DOB: 1/14/2004 · Best time: Morning · Lender: Evergreen Moneysource'},
+  {name:'Lindsey King',phone:'253-880-5742',state:'WA',source:'CIA',address:'6834 20th St E Unit 4, Fife, WA 98424',notes:'Mortgage: $426,800 · Age: 35 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Cornerstone Home Lending'},
+  {name:'Karen Hapgood',phone:'603-312-3179',state:'NH',source:'CIA',address:'14 Richardson Dr, Dover, NH 03820',notes:'Mortgage: $169,000 · Age: 62 · Gender: Female · Tobacco: N · Co-borrower: Y'},
+  {name:'Joshua Henderson',phone:'757-373-2276',state:'VA',source:'CIA',address:'724 W Riverview Dr, Suffolk, VA 23434',notes:'Mortgage: $488,420 · Age: 51 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Atlantic Bay Mortgage'},
+  {name:'John Veillon',phone:'865-585-2338',state:'TN',source:'CIA',address:'123 Clare Bon Rd, Harrogate, TN 37752',notes:'Mortgage: $32,200 · Age: 42 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Lendage LLC'},
+  {name:'Jody Kittell',phone:'802-673-0718',state:'VA',source:'CIA',address:'174 Developmental Rd, Stuart, VA 24171',notes:'Mortgage: $64,000 · Age: 61 · Gender: Male · Tobacco: Y · Co-borrower: N · Lender: CF Mortgage'},
+  {name:'Joann Securo',phone:'401-575-7569',state:'RI',source:'CIA',address:'70 Stowe Ave, Riverside, RI 02915',notes:'Mortgage: $171,000 · Age: 72 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Banknewport'},
+  {name:'Jeanne Balcom',phone:'202-441-5370',state:'VA',source:'CIA',address:'2610 Midway St, Falls Church, VA 22046',notes:'Mortgage: $224,894 · Age: 65 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Rocket Mortgage'},
+  {name:'James Reavis',phone:'401-272-5504',state:'RI',source:'CIA',address:'83 Arlington Ave, Providence, RI 02906',notes:'Mortgage: $542,000 · Age: 63 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Washington Trust'},
+  {name:'Haroun Suliman',phone:'423-615-2153',state:'TN',source:'CIA',address:'3619 Gleason Dr, Chattanooga, TN 37412',notes:'Mortgage: $220,000 · Age: 40 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: American Pacific Mortgage'},
+  {name:'Gary Ball',phone:'931-854-7264',state:'TN',source:'CIA',address:'3491 Bald Knob Mountain Rd, Doyle, TN 38559',notes:'Mortgage: $56,354 · Age: 81 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Freedom Mortgage'},
+  {name:'Elizabeth Pena',phone:'956-645-5471',state:'TX',source:'MIA',address:'402 Dutour Ct, Laredo, TX 78045',notes:'Mortgage: $204,000 · DOB: 1/23/1972 · Best time: Evening · Lender: Carrington Mortgage'},
+  {name:'Dimitry Paskar',phone:'971-229-9194',state:'WA',source:'CIA',address:'513 NW 30th Ave, Battle Ground, WA 98604',notes:'Mortgage: $411,283 · Age: 21 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Intelliloan'},
+  {name:'David Tucker',phone:'253-315-1345',state:'WA',source:'CIA',address:'4308 S J St, Tacoma, WA 98418',notes:'Mortgage: $286,500 · Age: 70 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Rocket Mortgage'},
+  {name:'Daniel Aisenberg',phone:'857-615-7456',state:'NH',source:'CIA',address:'51 Riddle St, Manchester, NH 03102',notes:'Mortgage: $471,145 · Age: 33 · Gender: Male · Tobacco: Y · Co-borrower: N'},
+  {name:'Carol Nelson',phone:'401-376-3225',state:'RI',source:'CIA',address:'56 Coyle Ave, Rumford, RI 02916',notes:'Mortgage: $100,000 · Age: 64 · Gender: Female · Tobacco: Y · Co-borrower: N'},
+  {name:'Briana Gooding & Lawrence Ricci',phone:'401-465-4324',state:'RI',source:'MIA',address:'638 Plainfield Pike, Scituate, RI 02857',notes:'Mortgage: $379,990 · DOB: 10/22/1994 · Gender: M · Best time: Evening · Lender: Paramount Residential'},
+  {name:'Bebe Serrenco',phone:'310-710-2278',state:'NC',source:'MIA',address:'503 Cedar St, Eden, NC 27288',notes:'Mortgage: $136,300 · Age: 62 · Gender: Female · DOB: 8/27/1957'},
+  {name:'Andrew Lufkin',phone:'207-441-1111',state:'ME',source:'MIA',address:'4 Beacon St, Livermore Falls, ME 04254',notes:'Mortgage: $298,493 · Age: 45 · Lender: CMG HM LNS'},
+  {name:'Tryce Nunnelly',phone:'774-510-8450',state:'MA',source:'CIA',address:'298 Grinnell St, Fall River, MA 02721',notes:'Mortgage: $188,000 · Age: 68 · Gender: Male · Tobacco: Y · Co-borrower: N'},
+  {name:'Paul Mcdonough',phone:'617-592-1020',state:'MA',source:'CIA',address:'798 Ware St, Mansfield, MA 02048',notes:'Mortgage: $499,000 · Age: 65 · Gender: Male · Tobacco: N · Co-borrower: Y'},
+  {name:'Kelhyn Pesantez',phone:'203-964-7116',state:'MA',source:'CIA',address:'31 Whiting St, North Attleboro, MA 02760',notes:'Mortgage: $555,038 · Age: 30 · Gender: Female · Tobacco: N · Co-borrower: N'},
+  {name:'James Lyons',phone:'757-813-3846',state:'VA',source:'CIA',address:'225 Hampton Roads Ave, Hampton, VA 23661',notes:'Mortgage: $123,000 · Age: 55 · Gender: Male · Tobacco: N · Co-borrower: N · Lender: Sun West Mortgage'},
+  {name:'Elyse Disciullo',phone:'781-718-5151',state:'MA',source:'CIA',address:'57 Seconsett Island Rd, Mashpee, MA 02649',notes:'Mortgage: $585,000 · Age: 69 · Gender: Female · Tobacco: N · Co-borrower: N'},
+  {name:'Dennis Emily',phone:'941-451-3894',state:'TN',source:'CIA',address:'210 Indian Rock Trl, Jamestown, TN 38556',notes:'Mortgage: $296,000 · Age: 74 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Nexa Mortgage'},
+  {name:'Quinton Owens',phone:'804-988-3159',state:'VA',source:'CIA',address:'4031 Sunny Creek Dr, Chesterfield, VA 23832',notes:'Mortgage: $378,026 · Gender: Male · Tobacco: N · Co-borrower: Y'},
+  {name:'Timothy Kaestner',phone:'817-938-3321',state:'TX',source:'MIA',address:'1055 Miller Rd, Azle, TX 76020',notes:'Mortgage: $467,032 · Age: 63 · Lender: Sfmc LP'},
+  {name:'Nathan Cavazos',phone:'361-207-0676',state:'TX',source:'MIA',address:'102 Saltillo Dr, Alice, TX 78332',notes:'Mortgage: $398,100 · Age: 38 · Lender: First Community Bank'},
+  {name:'Juan Sierra',phone:'425-787-0551',state:'WA',source:'CIA',address:'2118 143rd Pl SW, Lynnwood, WA 98087',notes:'Mortgage: $375,000 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Homebridge Financial'},
+  {name:'Billy Benavides',phone:'979-282-1136',state:'TX',source:'MIA',address:'2025 Fm 1157, Ganado, TX 77962',notes:'Mortgage: $61,500 · Gender: Male · Co-borrower: N · Lender: Capital Farm Credit'},
+  {name:'Angela Jones',phone:'760-420-2179',state:'TN',source:'MIA',address:'428 Ward Dr, Maryville, TN 37801',notes:'Mortgage: $75,000 · Age: 56'},
+  {name:'William Silva',phone:'603-809-8565',state:'NH',source:'CIA',address:'29 Hamburg St, Manchester, NH 03102',notes:'Mortgage: $387,000 · Gender: Male · Tobacco: N · Co-borrower: N'},
+  {name:'Thomas Dalton',phone:'425-387-7333',state:'WA',source:'CIA',address:'956 Rowe Rd, Camano Island, WA 98282',notes:'Mortgage: $125,000 · Gender: Female · Tobacco: N · Co-borrower: Y · Lender: Horizon Credit Union'},
+  {name:'Terry Saffioti',phone:'860-625-1559',state:'CT',source:'CIA',address:'60 Rogers Lake Trl, Old Lyme, CT 06371',notes:'Mortgage: $100,000 · Gender: Male · Tobacco: N · Co-borrower: Y'},
+  {name:'Terrence Troope',phone:'317-854-2300',state:'NC',source:'CIA',address:'3703 Cessna Way, Wilson, NC 27896',notes:'Mortgage: $386,024 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Freedom Mortgage'},
+  {name:'Susan Viens',phone:'508-309-5516',state:'MA',source:'CIA',address:'16 Sabbatt Rd, Pocasset, MA 02559',notes:'Mortgage: $362,738 · Gender: Female · Tobacco: N · Co-borrower: N'},
+  {name:'Sharonette Houchens',phone:'804-874-2839',state:'VA',source:'CIA',address:'3846 Dominion Townes Cir, Richmond, VA 23223',notes:'Mortgage: $240,089 · Gender: Female · Tobacco: N · Co-borrower: Y · Lender: PennyMac'},
+  {name:'Ryan Connarton',phone:'603-520-9036',state:'NH',source:'CIA',address:'5 Holly Ln, Meredith, NH 03253',notes:'Mortgage: $232,707 · Gender: Male · Tobacco: Y · Co-borrower: N'},
+  {name:'Peter Thompson',phone:'603-387-4269',state:'NH',source:'CIA',address:'47 Sage Dr, Tilton, NH 03276',notes:'Mortgage: $184,000 · Gender: Male · Tobacco: N · Co-borrower: Y'},
+  {name:'Nikolas Elevitch',phone:'959-229-8791',state:'CT',source:'CIA',address:'24 Calhoun St, Washington Depot, CT 06794',notes:'Mortgage: $247,000 · Gender: Male · Tobacco: N · Co-borrower: N'},
+  {name:'Michael Hussey',phone:'774-272-2152',state:'MA',source:'MIA',address:'39 Out of Bounds Dr, South Yarmouth, MA 02664',notes:'Mortgage: $750,000 · Age: 64 · Email: mjhuz@yahoo.com'},
+  {name:'Martin Gonzalez',phone:'210-316-3891',state:'TX',source:'CIA',address:'859 Via Alta Ln, El Paso, TX 79912',notes:'Mortgage: $575,000 · Gender: Male · Tobacco: Y · Co-borrower: Y · Lender: Paramount Residential'},
+  {name:'Jodi Kirk',phone:'781-558-0721',state:'MA',source:'MIA',address:'945 Riverside Dr Apt 3b, Methuen, MA 01844',notes:'Mortgage: $256,125 · Gender: Female · Co-borrower: N'},
+  {name:'Joan Liberto',phone:'832-240-8972',state:'TX',source:'MIA',address:'6433 Autumn Equinox Dr, Houston, TX 77048',notes:'Mortgage: $134,265 · Gender: Female · Co-borrower: Y · Co-borrower age: 70 · Lender: Loandepot'},
+  {name:'Ellen Matheson',phone:'603-244-8088',state:'NH',source:'CIA',address:'2 Vine St, Franklin, NH 03235',notes:'Mortgage: $95,500 · Gender: Female · Tobacco: N · Co-borrower: N'},
+  {name:'Donna Sormanti',phone:'401-944-4535',state:'RI',source:'CIA',address:'235 Morgan Ave Apt 12, Johnston, RI 02919',notes:'Mortgage: $157,100 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: PennyMac'},
+  {name:'Daniel Obrien',phone:'781-477-2922',state:'MA',source:'CIA',address:'57 Buckwood Dr, South Yarmouth, MA 02664',notes:'Mortgage: $400,000 · Gender: Male · Tobacco: N · Co-borrower: Y'},
+  {name:'Daniel Collette',phone:'401-500-5633',state:'RI',source:'CIA',address:'109 Hawksley Ave, Warwick, RI 02889',notes:'Mortgage: $364,200 · Gender: Male · Tobacco: N · Co-borrower: N · Lender: PennyMac'},
+  {name:'Craig Casano',phone:'774-269-2935',state:'MA',source:'CIA',address:'19 Glacier Way, Buzzards Bay, MA 02532',notes:'Mortgage: $500,000 · Gender: Male · Tobacco: N · Co-borrower: N'},
+  {name:'Corey Wilkerson',phone:'919-737-3800',state:'NH',source:'CIA',address:'162 Lakeside Oaks Dr, Barrington, NH 03825',notes:'Mortgage: $607,788 · Gender: Male · Tobacco: N · Co-borrower: N'},
+  {name:'Briana Gooding',phone:'401-465-4324',state:'RI',source:'CIA',address:'638 Plainfield Pike, Scituate, RI 02857',notes:'Mortgage: $379,990 · Gender: Female · Tobacco: N · Co-borrower: Y · Lender: Paramount Residential'},
+  {name:'Barbara Lemay',phone:'401-680-3421',state:'RI',source:'CIA',address:'51 Sibyl St, Providence, RI 02909',notes:'Mortgage: $277,800 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Rocket Mortgage'},
+  {name:'Austin Hooie',phone:'256-221-3470',state:'TN',source:'CIA',address:'150 Westwood Cir, Ripley, TN 38063',notes:'Mortgage: $254,308 · Gender: Male · Tobacco: Y · Co-borrower: N · Lender: Huntington National Bank'},
+  {name:'Andrew Pascual',phone:'864-684-7203',state:'SC',source:'MIA',address:'7 Townsend St, Laurens, SC 29360',notes:'Mortgage: $245,471 · Age: 22'},
+  {name:'Albert Nolli',phone:'508-681-0218',state:'MA',source:'CIA',address:'3 Widow Coombs Walk, Sandwich, MA 02563',notes:'Mortgage: $65,000 · Gender: Female · Tobacco: N · Co-borrower: N'},
+  {name:'Wilson Celestin',phone:'508-598-8081',state:'MA',source:'CIA',address:'36 Fordney St, Fall River, MA 02720',notes:'Mortgage: $484,070 · Gender: Male · Tobacco: N · Co-borrower: N'},
+  {name:'Kimberly Reid',phone:'702-250-2557',state:'TX',source:'CIA',address:'23817 Glowing Embers Dr, Elgin, TX 78621',notes:'Mortgage: $217,968 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Lennar Mortgage'},
+  {name:'William Sims',phone:'701-801-3797',state:'TN',source:'MIA',address:'537 King Ave, Memphis, TN 38109',notes:'Mortgage: $68,000 · DOB: 6/31/1965 · Gender: Male · Best time: Any'},
+  {name:'John Fernandes',phone:'203-888-8888',state:'CT',source:'CIA',address:'429 Quaker Farms Rd, Oxford, CT 06478',notes:'Mortgage: $600,000 · Gender: Female · Tobacco: Y · Co-borrower: N'}
+];
+
+// ── STATE ────────────────────────────────────────────────────
+let clients = [];
+let stats = [];
+let view = 'week';
+let periodOffset = 0;
+let activeFilter = 'all';
+let seeded = false;
+
+document.getElementById('hdr-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+
+// ── INIT ─────────────────────────────────────────────────────
+async function init() {
+  showSync('Loading your data...');
+  await loadClients();
+  await loadStats();
+  // Seed if empty
+  if (clients.length === 0 && !seeded) {
+    seeded = true;
+    showSync('Setting up your leads...');
+    await seedLeads();
+    await loadClients();
+  }
+  hideSync();
+  renderScore();
+  if (document.getElementById('tab-clients').style.display !== 'none') renderClients();
 }
 
-// ═══════════════════════════════════════════════════════
-//  UTILITY
-// ═══════════════════════════════════════════════════════
-function esc(str) {
-  return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+async function loadClients() {
+  const { data, error } = await sb.from('clients').select('*').order('created_at', { ascending: false });
+  if (!error && data) clients = data;
 }
 
-// ═══════════════════════════════════════════════════════
-//  EVENT LISTENERS
-// ═══════════════════════════════════════════════════════
-// Tabs
-document.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-    tab.classList.add('active');
-    document.getElementById('view-' + tab.dataset.view).classList.add('active');
-    if (tab.dataset.view === 'appts') renderAppts();
-    if (tab.dataset.view === 'leads') renderLeadsTable();
+async function loadStats() {
+  const { data, error } = await sb.from('stats').select('*');
+  if (!error && data) stats = data;
+}
+
+async function seedLeads() {
+  const today = new Date().toISOString().slice(0,10);
+  const rows = SEED_LEADS.map(l => ({
+    name: l.name, phone: l.phone, address: l.address||'', state: l.state, source: l.source,
+    status: 'New', assigned_date: today, notes: l.notes,
+    health_notes: '', policy_notes: '', call_log: [], sits: []
+  }));
+  await sb.from('clients').insert(rows);
+}
+
+function showSync(msg) {
+  const bar = document.getElementById('sync-bar');
+  bar.textContent = msg;
+  bar.style.display = 'block';
+}
+function hideSync() {
+  document.getElementById('sync-bar').style.display = 'none';
+}
+
+// ── HELPERS ──────────────────────────────────────────────────
+const FRESH_DAYS = 17;
+function isFresh(c) {
+  const d = c.assigned_date || c.created_at;
+  if (!d) return false;
+  return (new Date() - new Date(d)) / (1000*60*60*24) <= FRESH_DAYS;
+}
+
+function fmt(n) { return n >= 1000 ? '$' + Math.round(n/100)/10 + 'k' : '$' + n; }
+function pct(n, d) { return d > 0 ? Math.round((n/d)*100) + '%' : '—'; }
+function todayStr() { return new Date().toISOString().slice(0,10); }
+
+function getPeriodBounds() {
+  const now = new Date(); let start, end, label;
+  if (view === 'week') {
+    const day = now.getDay(); const diff = day === 6 ? 0 : day + 1;
+    const sat = new Date(now); sat.setDate(now.getDate() - diff + periodOffset*7); sat.setHours(0,0,0,0);
+    const fri = new Date(sat); fri.setDate(sat.getDate()+6); fri.setHours(23,59,59,999);
+    start = sat; end = fri;
+    label = periodOffset===0?'This week':periodOffset===-1?'Last week':sat.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+fri.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  } else if (view === 'month') {
+    const d = new Date(now.getFullYear(), now.getMonth()+periodOffset, 1);
+    start = d; end = new Date(d.getFullYear(), d.getMonth()+1, 0, 23,59,59,999);
+    label = periodOffset===0?'This month':d.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  } else if (view === 'quarter') {
+    const m = now.getMonth(); const qs = m-(m%3)+periodOffset*3;
+    start = new Date(now.getFullYear(),qs,1); end = new Date(now.getFullYear(),qs+3,0,23,59,59,999);
+    label = periodOffset===0?'This quarter':'Q'+(Math.floor(qs/3)+1)+' '+start.getFullYear();
+  } else {
+    const yr = now.getFullYear()+periodOffset;
+    start = new Date(yr,0,1); end = new Date(yr,11,31,23,59,59,999);
+    label = periodOffset===0?'This year':String(yr);
+  }
+  return {start, end, label};
+}
+
+function setView(v, btn) { view=v; periodOffset=0; document.querySelectorAll('.pill').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); renderScore(); }
+function shiftPeriod(d) { periodOffset+=d; renderScore(); }
+
+// ── STATS ────────────────────────────────────────────────────
+async function addStat(key, n) {
+  const row = { stat_key: key, value: n, recorded_at: new Date().toISOString() };
+  const { data } = await sb.from('stats').insert([row]).select();
+  if (data) stats.push(data[0]);
+  renderScore();
+}
+
+function sumStat(key, start, end) {
+  return stats.filter(s => {
+    const t = new Date(s.recorded_at);
+    return s.stat_key === key && t >= start && t <= end;
+  }).reduce((a,s) => a + s.value, 0);
+}
+
+async function setStat(key, total) {
+  const {start, end} = getPeriodBounds();
+  const diff = total - sumStat(key, start, end);
+  if (diff !== 0) await addStat(key, diff);
+}
+
+function startEdit(key, theme) {
+  const el = document.getElementById('s-'+key);
+  const current = parseInt(el.textContent) || 0;
+  const colorMap = {dark:'color:#fff;border-bottom:2px solid rgba(255,255,255,0.5)',navy:'color:#1D3557;border-bottom:2px solid #1D3557',amber:'color:#BA7517;border-bottom:2px solid #BA7517',red:'color:#A32D2D;border-bottom:2px solid #A32D2D'};
+  const inp = document.createElement('input');
+  inp.type='number'; inp.min='0'; inp.value=current;
+  inp.style.cssText='font-size:22px;font-weight:500;width:100%;background:transparent;border:none;outline:none;padding:0;font-family:inherit;'+colorMap[theme];
+  el.replaceWith(inp); inp.focus(); inp.select();
+  async function commit() { const val=Math.max(0,parseInt(inp.value)||0); await setStat(key,val); inp.replaceWith(el); el.textContent=val; }
+  inp.addEventListener('blur', commit);
+  inp.addEventListener('keydown', e => { if(e.key==='Enter') inp.blur(); if(e.key==='Escape'){inp.replaceWith(el);renderScore();} });
+}
+
+// ── SCOREBOARD ───────────────────────────────────────────────
+function renderScore() {
+  const {start, end, label} = getPeriodBounds();
+  document.getElementById('period-label').textContent = label;
+
+  const dials=sumStat('dials',start,end), convos=sumStat('convos',start,end);
+  const appts=sumStat('appts',start,end), callbacks=sumStat('callbacks',start,end), dead=sumStat('dead',start,end);
+  const resolved = appts + dead;
+
+  ['dials','convos','appts','callbacks','dead'].forEach((k,i) => {
+    const el = document.getElementById('s-'+k);
+    if (el && el.tagName !== 'INPUT') el.textContent = [dials,convos,appts,callbacks,dead][i];
   });
-});
+  document.getElementById('s-resolved').textContent = resolved;
+  document.getElementById('s-resolved-pct').textContent = pct(resolved,convos) + ' of ' + convos + ' convos';
 
-// Board card clicks
-document.getElementById('col-new').addEventListener('click', e => {
-  const card = e.target.closest('[data-id]');
-  if (card) openPanel(card.dataset.id);
-});
-document.getElementById('col-active').addEventListener('click', e => {
-  const card = e.target.closest('[data-id]');
-  if (card) openPanel(card.dataset.id);
-});
-document.getElementById('col-closed').addEventListener('click', e => {
-  const card = e.target.closest('[data-id]');
-  if (card) openPanel(card.dataset.id);
-});
+  const freshRes = clients.filter(c => {
+    const isRes = c.status==='Appointment set'||c.status==='Dead'||c.status==='Closed';
+    const callInP = (c.call_log||[]).some(cl => { const t=new Date(cl.ts); return t>=start&&t<=end; });
+    return isRes && callInP && isFresh(c);
+  }).length;
+  document.getElementById('s-resolved-fresh').textContent = freshRes + ' fresh (≤17d)';
 
-// Leads table clicks
-document.getElementById('leads-tbody').addEventListener('click', e => {
-  const row = e.target.closest('[data-id]');
-  if (row) openPanel(row.dataset.id);
-});
+  const allSits = clients.flatMap(c => (c.sits||[]).filter(s => { const d=new Date(s.datetime); return d>=start&&d<=end; }));
+  const firstSits = allSits.filter(s => s.reason==='first'||!s.reason);
+  const firstShowed = firstSits.filter(s => s.outcome==='showed').length;
+  const totalShowed = allSits.filter(s => s.outcome==='showed').length;
+  const totalNoshow = allSits.filter(s => s.outcome==='noshow').length;
+  const totalCanceled = allSits.filter(s => s.outcome==='canceled').length;
+  document.getElementById('p-first').textContent = firstSits.length;
+  document.getElementById('p-first-rate').textContent = pct(firstShowed,firstSits.length) + ' showed';
+  document.getElementById('p-showed').textContent = totalShowed;
+  document.getElementById('p-sit-rate').textContent = pct(totalShowed,allSits.length) + ' sit rate';
+  document.getElementById('p-noshow').textContent = totalNoshow;
+  document.getElementById('p-cancel').textContent = totalCanceled + ' canceled';
 
-// Appts clicks
-document.getElementById('appts-upcoming').addEventListener('click', e => {
-  const card = e.target.closest('[data-id]');
-  if (card) openPanel(card.dataset.id);
-});
-document.getElementById('appts-past').addEventListener('click', e => {
-  const card = e.target.closest('[data-id]');
-  if (card) openPanel(card.dataset.id);
-});
+  const satSits = allSits.filter(s => s.outcome==='showed');
+  const closedSits = satSits.filter(s => (s.apps||[]).length > 0);
+  const totalAPV = satSits.reduce((a,s) => a+(s.apps||[]).reduce((b,ap) => b+(ap.premium||0),0),0);
+  const totalApps = satSits.reduce((a,s) => a+(s.apps||[]).length,0);
+  const apvPerHH = closedSits.length>0 ? Math.round(closedSits.reduce((a,s)=>a+(s.apps||[]).reduce((b,ap)=>b+(ap.premium||0),0),0)/closedSits.length) : 0;
+  const appsPerHH = closedSits.length>0 ? Math.round((closedSits.reduce((a,s)=>a+(s.apps||[]).length,0)/closedSits.length)*10)/10 : 0;
+  document.getElementById('p-closed').textContent = closedSits.length;
+  document.getElementById('p-close-rate').textContent = pct(closedSits.length,totalShowed) + ' close rate';
+  document.getElementById('p-apv').textContent = fmt(totalAPV);
+  document.getElementById('p-apps').textContent = totalApps + ' applications';
+  document.getElementById('p-apv-hh').textContent = fmt(apvPerHH);
+  document.getElementById('p-apps-hh').textContent = appsPerHH + ' apps/HH';
 
-// Panel close
-document.getElementById('panel-close').addEventListener('click', closePanel);
-document.getElementById('panel-overlay').addEventListener('click', e => {
-  if (e.target === document.getElementById('panel-overlay')) closePanel();
-});
+  document.getElementById('pip-new').textContent = clients.filter(c=>c.status==='New').length;
+  document.getElementById('pip-fresh').textContent = clients.filter(c=>c.status==='New'&&isFresh(c)).length + ' fresh';
+  document.getElementById('pip-work').textContent = clients.filter(c=>c.status==='Working').length;
+  document.getElementById('pip-appt').textContent = clients.filter(c=>c.status==='Appointment set').length;
+  document.getElementById('pip-closed').textContent = clients.filter(c=>c.status==='Closed').length;
+  document.getElementById('pip-dead').textContent = clients.filter(c=>c.status==='Dead').length;
+  document.getElementById('pip-total').textContent = clients.length;
+}
 
-// Dispositions
-document.querySelectorAll('.disp-btn').forEach(btn => {
-  btn.addEventListener('click', () => handleDisposition(btn.dataset.disp));
-});
+// ── TABS ─────────────────────────────────────────────────────
+function showTab(t, btn) {
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on')); btn.classList.add('on');
+  document.getElementById('tab-score').style.display = t==='score'?'block':'none';
+  document.getElementById('tab-clients').style.display = t==='clients'?'block':'none';
+  document.getElementById('tab-appts').style.display = t==='appts'?'block':'none';
+  if (t==='clients') renderClients();
+  if (t==='appts') renderAppts();
+}
 
-// Dial count
-document.getElementById('dial-inc').addEventListener('click', incDial);
-document.getElementById('dial-dec').addEventListener('click', decDial);
+function renderAppts() {
+  const el = document.getElementById('appts-list');
+  const now = new Date();
+  const withAppts = clients.filter(c => c.appt_datetime);
+  const upcoming = withAppts.filter(c => new Date(c.appt_datetime) >= now).sort((a,b) => new Date(a.appt_datetime)-new Date(b.appt_datetime));
+  const past = withAppts.filter(c => new Date(c.appt_datetime) < now).sort((a,b) => new Date(b.appt_datetime)-new Date(a.appt_datetime));
 
-// Save buttons
-document.getElementById('save-name').addEventListener('click', saveName);
-document.getElementById('save-phone').addEventListener('click', savePhone);
-document.getElementById('save-address').addEventListener('click', saveAddress);
+  function apptCard(c) {
+    const dt = new Date(c.appt_datetime);
+    const dateStr = dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+    const timeStr = dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    const isPast = dt < now;
+    return `<div class="client-card" onclick="openClient('${c.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <div class="client-name">${c.name||'Unknown'}</div>
+          <div class="client-meta">${c.phone||''} · ${c.state||''}</div>
+          ${c.address?`<div style="font-size:10px;color:#8fa8c0;margin-top:2px;">📍 ${c.address}</div>`:''}
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:13px;font-weight:600;color:${isPast?'#A32D2D':'#138181'};">${timeStr}</div>
+          <div style="font-size:10px;color:#5f7a99;">${dateStr}</div>
+          <span class="${statusBadge(c.status)}" style="margin-top:3px;display:inline-block;">${c.status}</span>
+        </div>
+      </div>
+      ${c.appt_notes?`<div style="font-size:11px;color:#5f7a99;margin-top:4px;font-style:italic;">${c.appt_notes}</div>`:''}
+    </div>`;
+  }
 
-// Appt modal
-document.getElementById('appt-modal-close').addEventListener('click', closeApptModal);
-document.getElementById('appt-modal-cancel').addEventListener('click', closeApptModal);
-document.getElementById('appt-modal-save').addEventListener('click', saveAppt);
-document.getElementById('appt-modal-overlay').addEventListener('click', e => {
-  if (e.target === document.getElementById('appt-modal-overlay')) closeApptModal();
-});
+  let html = '';
+  if (upcoming.length) {
+    html += `<div class="section-lbl">Upcoming (${upcoming.length})</div>`;
+    html += upcoming.map(apptCard).join('');
+  }
+  if (past.length) {
+    html += `<div class="section-lbl" style="margin-top:12px;">Past (${past.length})</div>`;
+    html += past.map(apptCard).join('');
+  }
+  if (!withAppts.length) {
+    html = '<div class="empty">No appointments set yet.</div>';
+  }
+  el.innerHTML = html;
+}
 
-// Search/filter
-document.getElementById('leads-search').addEventListener('input', renderLeadsTable);
-document.getElementById('leads-filter').addEventListener('change', renderLeadsTable);
+function setFilter(f, btn) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('on')); btn.classList.add('on');
+  renderClients(document.getElementById('client-search').value);
+}
 
-// ═══════════════════════════════════════════════════════
-//  BOOT
-// ═══════════════════════════════════════════════════════
+// ── CLIENT LIST ──────────────────────────────────────────────
+function badgeClass(src) { return 'badge b-' + (src||'').split(' ')[0]; }
+function statusBadge(s) { const m={'New':'b-New','Working':'b-Working','Appointment set':'b-Appt','Closed':'b-Closed','Dead':'b-Dead'}; return 'badge '+(m[s]||'b-New'); }
+function dotClass(s) { if(s.outcome==='showed')return'jd-showed'; if(s.outcome==='noshow')return'jd-noshow'; if(s.outcome==='canceled')return'jd-cancel'; return'jd-pending'; }
+
+function renderClients(q='') {
+  const el = document.getElementById('clients-list');
+  let list = clients.filter(c => {
+    const matchQ = !q || (c.name||'').toLowerCase().includes(q.toLowerCase()) || (c.phone||'').includes(q);
+    const matchF = activeFilter==='all' || c.status===activeFilter;
+    return matchQ && matchF;
+  });
+  document.getElementById('client-count').textContent = clients.length + ' leads · ' + list.length + ' shown';
+  if (!list.length) { el.innerHTML='<div class="empty">No leads match.</div>'; return; }
+  el.innerHTML = list.map(c => {
+    const fresh = isFresh(c);
+    const sits = c.sits || [];
+    const lastCall = (c.call_log||[]).slice(-1)[0];
+    const journey = sits.map((s,si) => `<div class="journey-dot ${dotClass(s)}" title="${s.outcome||'pending'}">${si+1}</div>`).join('');
+    return `<div class="client-card" onclick="openClient('${c.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <div class="client-name">${c.name||'Unknown'}${fresh?'<span class="fresh-tag">fresh</span>':''}</div>
+          <div class="client-meta">${c.phone||''} · ${c.state||''}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
+          <span class="${badgeClass(c.source)}">${c.source||''}</span>
+          <span class="${statusBadge(c.status)}">${c.status||'New'}</span>
+        </div>
+      </div>
+      ${sits.length?`<div class="journey-row">${journey}</div>`:''}
+      ${lastCall?`<div class="log-row"><span class="log-time">${new Date(lastCall.ts).toLocaleDateString('en-US',{month:'short',day:'numeric'})} ${new Date(lastCall.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</span> · ${lastCall.outcome}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+// ── MODAL ────────────────────────────────────────────────────
+function showModal(html) {
+  closeModal();
+  const ov = document.createElement('div'); ov.className='modal-overlay'; ov.id='modal-ov';
+  ov.innerHTML = '<div class="modal">' + html + '</div>';
+  ov.addEventListener('click', e => { if(e.target===ov) closeModal(); });
+  document.body.appendChild(ov);
+}
+function closeModal() { const m=document.getElementById('modal-ov'); if(m) m.remove(); }
+
+// ── OPEN CLIENT ──────────────────────────────────────────────
+function openClient(id) {
+  const c = clients.find(x => x.id === id);
+  if (!c) return;
+  // Reset dial count to 1 for each new lead
+  window._dialCount = 1;
+  const sits = c.sits || [];
+  const callLog = c.call_log || [];
+  const statuses = ['New','Working','Appointment set','Closed','Dead'];
+  const suggestedReason = sits.length===0?'first':sits[sits.length-1].outcome==='noshow'?'resched-noshow':sits[sits.length-1].ppu?'cont-ppu':'cont-followup';
+
+  const callHistory = callLog.slice().reverse().slice(0,6).map(cl => `
+    <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:5px;">
+      <div style="width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0;background:${cl.outcome==='Appt set'?'#138181':cl.outcome==='Not interested'?'#E24B4A':cl.outcome==='Callback'?'#BA7517':'#1D3557'};"></div>
+      <div>
+        <div style="font-size:12px;color:#1a2e44;font-weight:500;">${cl.outcome}${cl.dials>1?' <span style="font-size:10px;color:#5f7a99;">('+cl.dials+'× dialed)</span>':''}</div>
+        ${cl.appt_datetime?`<div style="font-size:11px;font-weight:600;color:#138181;">📅 ${new Date(cl.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(cl.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>`:''}
+        ${cl.appt_notes?`<div style="font-size:10px;color:#5f7a99;font-style:italic;">${cl.appt_notes}</div>`:''}
+        <div style="font-size:10px;color:#a0b8cc;">${new Date(cl.ts).toLocaleDateString('en-US',{month:'short',day:'numeric'})} ${new Date(cl.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
+      </div>
+    </div>`).join('');
+
+  const sitsHtml = sits.map((s,si) => {
+    const reason = SIT_REASONS.find(r=>r.value===s.reason)||SIT_REASONS[0];
+    const appsList = (s.apps||[]).map((ap,ai) => `
+      <div class="app-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div><div style="font-size:13px;font-weight:500;color:#1D3557;">${ap.carrier} — ${ap.product}</div>
+          <div style="font-size:11px;color:#5f7a99;">$${(ap.faceAmount||0).toLocaleString()} face · $${(ap.premium||0).toLocaleString()}/yr APV${ap.notes?' · '+ap.notes:''}</div></div>
+          <button class="upload-pill ${ap.uploaded?'up-yes':'up-no'}" onclick="toggleUpload('${id}',${si},${ai})">${ap.uploaded?'✓ Uploaded':'Not uploaded'}</button>
+        </div>
+      </div>`).join('');
+    const flags = [s.ppu?'PPU':'',s.selfReset?'Reset→self':'',s.sme?'Reset→SME':'',s.recruitAsk?'Recruiting ask':''].filter(Boolean).join(' · ');
+    const ol = s.outcome==='showed'?{t:'Showed',c:'#138181'}:s.outcome==='noshow'?{t:'No show',c:'#E24B4A'}:s.outcome==='canceled'?{t:'Canceled',c:'#BA7517'}:{t:'Pending',c:'#8fa8c0'};
+    return `<div class="sit-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+        <div>
+          <div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;">Sit ${si+1}</div>
+          <div style="font-size:13px;font-weight:500;color:#1D3557;">${new Date(s.datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'})}</div>
+          <div style="font-size:11px;color:#138181;">${reason.label}${flags?' · '+flags:''}</div>
+        </div>
+        <span style="font-size:12px;font-weight:500;color:${ol.c};">${ol.t}</span>
+      </div>
+      ${appsList}
+      <div style="display:flex;gap:5px;margin-top:6px;">
+        <button style="flex:1;background:#E1F5EE;border:none;border-radius:6px;padding:6px;font-size:11px;color:#085041;cursor:pointer;font-weight:500;" onclick="openAddApp('${id}',${si})">+ App</button>
+        <button style="flex:1;background:#f0f4f8;border:none;border-radius:6px;padding:6px;font-size:11px;color:#1D3557;cursor:pointer;font-weight:500;" onclick="openEditSit('${id}',${si})">Edit sit</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:2px;">
+    <div style="flex:1;">
+      <input id="edit-name" value="${c.name||''}" style="font-size:16px;font-weight:500;color:#1D3557;border:none;border-bottom:2px solid transparent;outline:none;background:transparent;width:100%;font-family:inherit;padding:0;" onfocus="this.style.borderBottomColor='#138181'" onblur="this.style.borderBottomColor='transparent'">
+    </div>
+    <button onclick="saveNamePhone('${id}')" style="font-size:10px;background:#138181;color:#fff;border:none;border-radius:6px;padding:3px 8px;cursor:pointer;margin-left:6px;white-space:nowrap;">Save</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+    <input id="edit-phone" value="${c.phone||''}" style="font-size:13px;color:#5f7a99;border:none;border-bottom:2px solid transparent;outline:none;background:transparent;font-family:inherit;width:140px;padding:0;" onfocus="this.style.borderBottomColor='#138181'" onblur="this.style.borderBottomColor='transparent'">
+    <span style="color:#5f7a99;font-size:13px;">· ${c.state||''} · <span class="${badgeClass(c.source)}">${c.source||''}</span></span>
+  </div>
+  ${c.address?`<div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">📍 ${c.address}</div>`:''}
+  ${c.appt_datetime?`<div style="font-size:12px;font-weight:600;color:#138181;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:6px;padding:5px 10px;margin-bottom:8px;display:inline-block;">📅 Appt: ${new Date(c.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(c.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}${c.appt_notes?' · '+c.appt_notes:''}</div>`:''}
+  <div class="dial-row">
+    <span class="dial-lbl">Dials:</span>
+    <button class="dial-cnt-btn on" id="dcb-1" onclick="setDialCount(1)">1×</button>
+    <button class="dial-cnt-btn" id="dcb-2" onclick="setDialCount(2)">2×</button>
+    <button class="dial-cnt-btn" id="dcb-3" onclick="setDialCount(3)">3×</button>
+  </div>
+  <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;">
+    <button class="call-btn cb-navy" onclick="quickLog('${id}','No answer','dials')">No answer</button>
+    <button class="call-btn cb-green" onclick="openApptPicker('${id}')">Appt set</button>
+    <button class="call-btn cb-amber" onclick="quickLog('${id}','Callback','callbacks')">Callback</button>
+    <button class="call-btn cb-red" onclick="quickLog('${id}','Not interested','dead')">Not interested</button>
+  </div>
+  <div class="section-lbl" style="margin-top:0;">Sit history</div>
+  ${sitsHtml||'<div style="font-size:12px;color:#a0b8cc;margin-bottom:8px;">No sits logged yet.</div>'}
+  <button class="sec-btn" onclick="openAddSit('${id}','${suggestedReason}')">+ Log sit ${sits.length+1}</button>
+  <div class="section-lbl">Call log</div>
+  <div style="padding-left:4px;margin-bottom:12px;">${callHistory||'<div style="font-size:12px;color:#a0b8cc;">No calls yet.</div>'}</div>
+  <div class="section-lbl">Notes</div>
+  <div class="field"><label>Property address</label><input type="text" id="cn-address" value="${c.address||''}" placeholder="123 Main St, City, ST 00000"></div>
+  <div class="field"><textarea id="cn-notes" style="min-height:44px;">${c.notes||''}</textarea></div>
+  <div class="field"><label>Health notes</label><textarea id="cn-health" style="min-height:36px;">${c.health_notes||''}</textarea></div>
+  <div class="field"><label>Policy planning</label><textarea id="cn-policy" style="min-height:36px;">${c.policy_notes||''}</textarea></div>
+  <div class="row2">
+    <div class="field"><label>Status</label><select id="cn-status">${statuses.map(s=>`<option${c.status===s?' selected':''}>${s}</option>`).join('')}</select></div>
+    <div class="field"><label>HQ assigned</label><input type="date" id="cn-assigned" value="${c.assigned_date||todayStr()}"></div>
+  </div>
+  <button class="save-btn" onclick="updateClient('${id}')">Save</button>`);
+}
+
+// ── APPT PICKER ──────────────────────────────────────────────
+function openApptPicker(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  // Default to next business day at 10am
+  const d = new Date(); d.setDate(d.getDate()+1); d.setHours(10,0,0,0);
+  const dt = d.toISOString().slice(0,16);
+  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+  <div class="modal-title">Set appointment</div>
+  <div class="modal-sub">${c.name}</div>
+  <div class="field"><label>Date & time</label><input type="datetime-local" id="appt-dt" value="${dt}" style="font-size:16px;"></div>
+  <div class="field"><label>Notes (optional)</label><input type="text" id="appt-note-field" placeholder="e.g. Call back on cell, spouse available..."></div>
+  <button class="save-btn" onclick="confirmAppt('${id}')">Confirm appointment</button>`);
+}
+
+async function confirmAppt(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const dtVal = document.getElementById('appt-dt').value;
+  if (!dtVal) return;
+  const apptNotesEl = document.getElementById('appt-note-field');
+  const apptNotes = apptNotesEl ? apptNotesEl.value.trim() : '';
+  const apptDatetime = new Date(dtVal).toISOString();
+  const dialCount = window._dialCount || 1;
+  const callLog = [...(c.call_log||[]), {
+    ts: new Date().toISOString(),
+    outcome: 'Appt set',
+    dials: dialCount,
+    appt_datetime: apptDatetime,
+    appt_notes: apptNotes
+  }];
+  showSync('Saving...');
+  await sb.from('clients').update({
+    call_log: callLog,
+    status: 'Appointment set',
+    appt_datetime: apptDatetime,
+    appt_notes: apptNotes
+  }).eq('id', id);
+  c.call_log = callLog;
+  c.status = 'Appointment set';
+  c.appt_datetime = apptDatetime;
+  c.appt_notes = apptNotes;
+  await addStat('dials', dialCount);
+  await addStat('appts', 1);
+  await addStat('convos', 1);
+  window._dialCount = 1;
+  hideSync();
+  closeModal();
+  renderClients(document.getElementById('client-search').value);
+  renderScore();
+  // Auto-advance to next client
+  const list = clients.filter(cl => cl.status === 'New' || cl.status === 'Working');
+  const idx = list.findIndex(cl => cl.id === id);
+  const next = list[idx + 1] || list[idx - 1];
+  if (next) setTimeout(() => openClient(next.id), 300);
+}
+
+// ── DIAL COUNT ───────────────────────────────────────────────
+// window._dialCount is the source of truth. Dialers can write to it directly.
+// e.g. window.setDialCount(3) from an external dialer integration.
+window._dialCount = 1;
+function setDialCount(n) {
+  window._dialCount = n;
+  [1,2,3].forEach(i => {
+    const btn = document.getElementById('dcb-'+i);
+    if (btn) btn.classList.toggle('on', i===n);
+  });
+}
+
+// ── QUICK LOG ────────────────────────────────────────────────
+async function quickLog(id, outcome, statKey) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const dialCount = window._dialCount || 1;
+  const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(), outcome, dials:dialCount}];
+  let newStatus = c.status;
+  if (outcome==='Not interested') newStatus='Dead';
+  else if (outcome==='Appt set') newStatus='Appointment set';
+  else if (outcome==='Conversation'||outcome==='Callback') newStatus='Working';
+  showSync('Saving...');
+  await sb.from('clients').update({call_log:callLog, status:newStatus}).eq('id',id);
+  c.call_log = callLog; c.status = newStatus;
+  // Log actual dial count to stats
+  await addStat('dials', dialCount);
+  if (statKey !== 'dials') {
+    await addStat(statKey, 1);
+    await addStat('convos', 1); // any outcome other than no answer = conversation
+  }
+  // Reset dial count to 1 after logging
+  window._dialCount = 1;
+  hideSync();
+  renderScore();
+  // Auto-advance to next lead
+  if (outcome === 'No answer') {
+    // For no answer, stay on current lead but refresh it
+    openClient(id);
+  } else {
+    // For all other dispositions, advance to next lead
+    closeModal();
+    renderClients(document.getElementById('client-search') ? document.getElementById('client-search').value : '');
+    const list = clients.filter(cl => cl.status === 'New' || cl.status === 'Working');
+    const idx = list.findIndex(cl => cl.id === id);
+    const next = list[idx + 1] || list[idx - 1];
+    if (next) setTimeout(() => openClient(next.id), 300);
+  }
+}
+
+// ── SAVE NAME/PHONE INLINE ──────────────────────────────────
+async function saveNamePhone(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const name = document.getElementById('edit-name').value.trim();
+  const phone = document.getElementById('edit-phone').value.trim();
+  if (!name) return;
+  showSync('Saving...');
+  await sb.from('clients').update({name, phone}).eq('id',id);
+  c.name = name; c.phone = phone;
+  hideSync();
+  openClient(id);
+  renderClients(document.getElementById('client-search').value);
+}
+
+// ── UPDATE CLIENT ────────────────────────────────────────────
+async function updateClient(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const updates = {
+    address: document.getElementById('cn-address').value.trim(),
+    notes: document.getElementById('cn-notes').value.trim(),
+    health_notes: document.getElementById('cn-health').value.trim(),
+    policy_notes: document.getElementById('cn-policy').value.trim(),
+    status: document.getElementById('cn-status').value,
+    assigned_date: document.getElementById('cn-assigned').value
+  };
+  showSync('Saving...');
+  await sb.from('clients').update(updates).eq('id',id);
+  Object.assign(c, updates);
+  hideSync();
+  closeModal();
+  renderClients(document.getElementById('client-search').value);
+  renderScore();
+}
+
+// ── ADD CLIENT ───────────────────────────────────────────────
+function openAddClient() {
+  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+  <div class="modal-title">Add lead</div>
+  <div class="field"><label>Full name</label><input type="text" id="cl-name" placeholder="John & Mary Jones"></div>
+  <div class="field"><label>Phone</label><input type="tel" id="cl-phone" placeholder="603-555-0100"></div>
+  <div class="row2">
+    <div class="field"><label>State</label><input type="text" id="cl-state" placeholder="NH" maxlength="2"></div>
+    <div class="field"><label>Lead type</label><select id="cl-src"><option>MIA</option><option>CIA</option><option>MIB</option><option>CIB</option><option>CIC</option><option>Referral</option><option>Existing client</option><option>Warm market</option></select></div>
+  </div>
+  <div class="field"><label>Property address</label><input type="text" id="cl-address" placeholder="123 Main St, City, ST 00000"></div>
+  <div class="field"><label>HQ assigned date</label><input type="date" id="cl-assigned" value="${todayStr()}"></div>
+  <div class="field"><label>Notes</label><textarea id="cl-notes" placeholder="Mortgage amount, age, details..."></textarea></div>
+  <button class="save-btn" onclick="saveClient()">Add client</button>`);
+}
+
+async function saveClient() {
+  const name = document.getElementById('cl-name').value.trim();
+  const phone = document.getElementById('cl-phone').value.trim();
+  if (!name||!phone) return;
+  const row = {name, phone, address:document.getElementById('cl-address').value.trim(), state:document.getElementById('cl-state').value.trim().toUpperCase(), source:document.getElementById('cl-src').value, assigned_date:document.getElementById('cl-assigned').value||todayStr(), notes:document.getElementById('cl-notes').value.trim(), health_notes:'', policy_notes:'', status:'New', call_log:[], sits:[]};
+  showSync('Saving...');
+  const {data} = await sb.from('clients').insert([row]).select();
+  if (data) clients.unshift(data[0]);
+  hideSync();
+  closeModal();
+  renderClients();
+  renderScore();
+}
+
+// ── SITS ─────────────────────────────────────────────────────
+function openAddSit(id, suggestedReason) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const now = new Date(); now.setMinutes(0,0,0); now.setHours(now.getHours()+1);
+  const reasonOptions = SIT_REASONS.map(r=>`<option value="${r.value}"${r.value===suggestedReason?' selected':''}>${r.label}</option>`).join('');
+  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+  <div class="modal-title">Log sit — ${c.name}</div>
+  <div class="field"><label>Date & time</label><input type="datetime-local" id="sit-dt" value="${now.toISOString().slice(0,16)}"></div>
+  <div class="field"><label>Reason</label><select id="sit-reason">${reasonOptions}</select></div>
+  <div class="field"><label>Type</label><select id="sit-type"><option>Mortgage protection</option><option>Continuation</option><option>Policy review / PPU</option><option>Retirement strategy</option><option>Existing client — additional coverage</option><option>Other</option></select></div>
+  <div class="section-lbl">Outcome (if known)</div>
+  <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+    <button class="call-btn cb-teal" onclick="setPendingOutcome('showed')">Showed</button>
+    <button class="call-btn cb-red" onclick="setPendingOutcome('noshow')">No show</button>
+    <button class="call-btn cb-amber" onclick="setPendingOutcome('canceled')">Canceled</button>
+    <button class="call-btn" style="background:#f0f4f8;color:#5f7a99;border:1px solid #d0dcea;" onclick="setPendingOutcome('pending')">Pending</button>
+  </div>
+  <div class="field"><label>Notes</label><textarea id="sit-notes" placeholder="Notes..."></textarea></div>
+  <button class="save-btn" onclick="saveSit('${id}')">Save sit</button>`);
+  window._sitOutcome = 'pending';
+}
+
+function setPendingOutcome(val) { window._sitOutcome = val; }
+
+async function saveSit(id) {
+  const dt = document.getElementById('sit-dt').value; if (!dt) return;
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const outcome = window._sitOutcome==='pending' ? undefined : window._sitOutcome;
+  const newSit = {datetime:new Date(dt).toISOString(), reason:document.getElementById('sit-reason').value, type:document.getElementById('sit-type').value, outcome, notes:document.getElementById('sit-notes').value.trim(), apps:[], ppu:false, selfReset:false, sme:false, recruitAsk:false, refsask:0, refs:0, created:new Date().toISOString()};
+  const sits = [...(c.sits||[]), newSit];
+  let newStatus = c.status;
+  if (outcome==='showed') newStatus='Closed';
+  else if (!outcome) newStatus='Appointment set';
+  showSync('Saving...');
+  await sb.from('clients').update({sits, status:newStatus}).eq('id',id);
+  c.sits = sits; c.status = newStatus;
+  hideSync();
+  openClient(id);
+  renderScore();
+}
+
+function openEditSit(id, si) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const s = c.sits[si];
+  const reasonOptions = SIT_REASONS.map(r=>`<option value="${r.value}"${r.value===s.reason?' selected':''}>${r.label}</option>`).join('');
+  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+  <div class="modal-title">Edit sit ${si+1} — ${c.name}</div>
+  <div class="field"><label>Reason</label><select id="er-reason">${reasonOptions}</select></div>
+  <div class="section-lbl" style="margin-top:4px;">Outcome</div>
+  <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+    <button class="call-btn cb-teal" onclick="setSitOutcome('${id}',${si},'showed')">Showed${s.outcome==='showed'?' ✓':''}</button>
+    <button class="call-btn cb-red" onclick="setSitOutcome('${id}',${si},'noshow')">No show${s.outcome==='noshow'?' ✓':''}</button>
+    <button class="call-btn cb-amber" onclick="setSitOutcome('${id}',${si},'canceled')">Canceled${s.outcome==='canceled'?' ✓':''}</button>
+  </div>
+  <div class="row2">
+    <div class="field"><label>Refs asked</label><input type="number" id="er-refsask" min="0" value="${s.refsask||0}"></div>
+    <div class="field"><label>Refs collected</label><input type="number" id="er-refs" min="0" value="${s.refs||0}"></div>
+  </div>
+  <div class="section-lbl">Flags</div>
+  <div style="display:flex;flex-wrap:wrap;margin-bottom:10px;">
+    <button class="flag-btn${s.ppu?' on-teal':''}" onclick="toggleSitFlag('${id}',${si},'ppu')">PPU${s.ppu?' ✓':''}</button>
+    <button class="flag-btn${s.selfReset?' on-navy':''}" onclick="toggleSitFlag('${id}',${si},'selfReset')">Reset→self${s.selfReset?' ✓':''}</button>
+    <button class="flag-btn${s.sme?' on-purple':''}" onclick="toggleSitFlag('${id}',${si},'sme')">Reset→SME${s.sme?' ✓':''}</button>
+    <button class="flag-btn${s.recruitAsk?' on-navy':''}" onclick="toggleSitFlag('${id}',${si},'recruitAsk')">Recruiting ask${s.recruitAsk?' ✓':''}</button>
+  </div>
+  <div class="field"><label>Notes</label><textarea id="er-notes">${s.notes||''}</textarea></div>
+  <button class="save-btn" onclick="saveEditSit('${id}',${si})">Save</button>`);
+}
+
+async function setSitOutcome(id, si, val) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  c.sits[si].outcome = val;
+  if (val==='showed') c.status='Closed';
+  showSync('Saving...');
+  await sb.from('clients').update({sits:c.sits, status:c.status}).eq('id',id);
+  hideSync();
+  openEditSit(id, si);
+  renderScore();
+}
+
+async function toggleSitFlag(id, si, k) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  c.sits[si][k] = !c.sits[si][k];
+  showSync('Saving...');
+  await sb.from('clients').update({sits:c.sits}).eq('id',id);
+  hideSync();
+  openEditSit(id, si);
+}
+
+async function saveEditSit(id, si) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  c.sits[si].reason = document.getElementById('er-reason').value;
+  c.sits[si].refs = parseInt(document.getElementById('er-refs').value)||0;
+  c.sits[si].refsask = parseInt(document.getElementById('er-refsask').value)||0;
+  c.sits[si].notes = document.getElementById('er-notes').value.trim();
+  showSync('Saving...');
+  await sb.from('clients').update({sits:c.sits}).eq('id',id);
+  hideSync();
+  openClient(id);
+  renderScore();
+}
+
+// ── APPLICATIONS ─────────────────────────────────────────────
+function openAddApp(id, si) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const carriers = Object.keys(CARRIERS);
+  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+  <div class="modal-title">Log application</div>
+  <div class="modal-sub">${c.name} — Sit ${si+1}</div>
+  <div class="field"><label>Carrier</label><select id="ap-carrier" onchange="updateProducts()">${carriers.map(c=>`<option>${c}</option>`).join('')}</select></div>
+  <div class="field"><label>Product</label><select id="ap-product"></select></div>
+  <div class="row2">
+    <div class="field"><label>Face amount ($)</label><input type="number" id="ap-face" min="0" placeholder="250000"></div>
+    <div class="field"><label>Annual premium ($)</label><input type="number" id="ap-premium" min="0" placeholder="1200"></div>
+  </div>
+  <div class="field"><label>Notes</label><input type="text" id="ap-notes" placeholder="10yr term, preferred..."></div>
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+    <input type="checkbox" id="ap-uploaded" style="width:16px;height:16px;">
+    <label for="ap-uploaded" style="font-size:13px;color:#1D3557;">Already uploaded to carrier & IMO</label>
+  </div>
+  <button class="save-btn" onclick="saveApp('${id}',${si})">Add application</button>`);
+  updateProducts();
+}
+
+function updateProducts() {
+  const carrier = document.getElementById('ap-carrier').value;
+  document.getElementById('ap-product').innerHTML = (CARRIERS[carrier]||[]).map(p=>`<option>${p}</option>`).join('');
+}
+
+async function saveApp(id, si) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const app = {carrier:document.getElementById('ap-carrier').value, product:document.getElementById('ap-product').value, faceAmount:parseInt(document.getElementById('ap-face').value)||0, premium:parseInt(document.getElementById('ap-premium').value)||0, notes:document.getElementById('ap-notes').value.trim(), uploaded:document.getElementById('ap-uploaded').checked, created:new Date().toISOString()};
+  c.sits[si].apps = [...(c.sits[si].apps||[]), app];
+  if (app.premium > 0) c.status = 'Closed';
+  showSync('Saving...');
+  await sb.from('clients').update({sits:c.sits, status:c.status}).eq('id',id);
+  hideSync();
+  openClient(id);
+  renderScore();
+}
+
+async function toggleUpload(id, si, ai) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  c.sits[si].apps[ai].uploaded = !c.sits[si].apps[ai].uploaded;
+  showSync('Saving...');
+  await sb.from('clients').update({sits:c.sits}).eq('id',id);
+  hideSync();
+  openClient(id);
+}
+
+// ── GO ───────────────────────────────────────────────────────
 init();
 </script>
 </body>
