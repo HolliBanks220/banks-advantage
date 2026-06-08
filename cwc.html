@@ -797,7 +797,7 @@ function openClient(id, keepDialCount) {
     <button onclick="saveNamePhone('${id}')" style="font-size:10px;background:#138181;color:#fff;border:none;border-radius:6px;padding:3px 8px;cursor:pointer;margin-left:6px;white-space:nowrap;">Save</button>
   </div>
   <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
-    <a href="tel:${(c.phone||'').replace(/[^0-9+]/g,'')}" style="font-size:13px;color:#138181;font-weight:500;text-decoration:none;margin-right:4px;">📞 ${c.phone||''}</a>
+    <a href="tel:${(c.phone||'').replace(/[^0-9+]/g,'')}" onclick="setTimeout(()=>window.focus(),3000)" style="font-size:13px;color:#138181;font-weight:500;text-decoration:none;margin-right:4px;">📞 ${c.phone||''}</a>
     <input id="edit-phone" value="${c.phone||''}" style="font-size:11px;color:#5f7a99;border:none;border-bottom:1px solid transparent;outline:none;background:transparent;font-family:inherit;width:120px;padding:0;" onfocus="this.style.borderBottomColor='#138181'" onblur="this.style.borderBottomColor='transparent'" placeholder="edit number">
     <span style="color:#5f7a99;font-size:13px;">· ${c.state||''} · <span class="${badgeClass(c.source)}">${c.source||''}</span></span>
     <span style="font-size:12px;color:#5f7a99;">· Age: <input id="edit-age" value="${c.age||''}" type="number" min="0" max="120" style="width:40px;font-size:12px;color:#1D3557;border:none;border-bottom:1px solid #d0dcea;outline:none;background:transparent;font-family:inherit;padding:0;" onchange="autoSaveField('${id}','age',parseInt(this.value)||null)"></span>
@@ -810,7 +810,7 @@ function openClient(id, keepDialCount) {
     <button class="dial-cnt-btn" id="dcb-2" onclick="setDialCount(2)">2×</button>
     <button class="dial-cnt-btn" id="dcb-3" onclick="setDialCount(3)">3×</button>
   </div>
-  <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;">
+  <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;">
     <button class="call-btn cb-navy" onclick="quickLog('${id}','No answer','dials')">No answer</button>
     <button class="call-btn cb-green" onclick="openApptPicker('${id}')">Appt set</button>
     <button class="call-btn cb-amber" onclick="quickLog('${id}','Callback','callbacks')">Callback</button>
@@ -818,9 +818,7 @@ function openClient(id, keepDialCount) {
     <button class="call-btn" style="background:#E24B4A;color:#fff;" onclick="quickLog('${id}','No show','noshow')">No show</button>
     <button class="call-btn cb-red" onclick="quickLog('${id}','Not interested','dead')">Not interested</button>
   </div>
-  <div class="section-lbl" style="margin-top:0;">Sit history</div>
-  ${sitsHtml||'<div style="font-size:12px;color:#a0b8cc;margin-bottom:8px;">No sits logged yet.</div>'}
-  <button class="sec-btn" onclick="openAddSit('${id}','${suggestedReason}')">+ Log sit ${sits.length+1}</button>
+  <button class="save-btn" onclick="updateClient('${id}')" style="margin-bottom:12px;">Save & next</button>
   <div class="section-lbl">Call log</div>
   <div style="padding-left:4px;margin-bottom:12px;">${callHistory||'<div style="font-size:12px;color:#a0b8cc;">No calls yet.</div>'}</div>
   <div class="section-lbl">Notes</div>
@@ -833,7 +831,9 @@ function openClient(id, keepDialCount) {
     <div class="field"><label>Status</label><select id="cn-status">${statuses.map(s=>`<option${c.status===s?' selected':''}>${s}</option>`).join('')}</select></div>
     <div class="field"><label>HQ assigned</label><input type="date" id="cn-assigned" value="${c.assigned_date||todayStr()}"></div>
   </div>
-  <button class="save-btn" onclick="updateClient('${id}')">Save</button>`);
+  <div class="section-lbl" style="margin-top:4px;">Sit history</div>
+  ${sitsHtml||'<div style="font-size:12px;color:#a0b8cc;margin-bottom:8px;">No sits logged yet.</div>'}
+  <button class="sec-btn" onclick="openAddSit('${id}','${suggestedReason}')">+ Log sit ${sits.length+1}</button>`);
 }
 
 // ── APPT PICKER ──────────────────────────────────────────────
