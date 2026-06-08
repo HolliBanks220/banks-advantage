@@ -60,6 +60,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .b-Appt{background:#FAEEDA;color:#633806;} .b-Closed{background:#EAF3DE;color:#27500A;}
 .b-Dead{background:#FCEBEB;color:#501313;}
 .b-No{background:#F3EEFB;color:#5B2D8E;}
+.b-Noshow{background:#FDEAEA;color:#A32D2D;border:1px solid #F7C1C1;}
 .fresh-tag{display:inline-block;font-size:9px;padding:1px 6px;border-radius:8px;background:#1D3557;color:#fff;font-weight:500;margin-left:4px;vertical-align:middle;}
 .call-btns{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;}
 .call-btn{border:none;border-radius:20px;padding:6px 11px;font-size:11px;font-weight:500;cursor:pointer;}
@@ -102,6 +103,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .dial-lbl{font-size:10px;color:#5f7a99;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;margin-right:2px;}
 .dial-cnt-btn{border:1px solid #d0dcea;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#5f7a99;transition:all 0.1s;}
 .dial-cnt-btn.on{background:#1D3557;color:#fff;border-color:#1D3557;}
+.app-layout{display:flex;gap:16px;align-items:flex-start;}
+.app-main{flex:1;min-width:0;}
+.appt-sidebar{width:220px;flex-shrink:0;background:#fff;border-radius:10px;border:1px solid #e2eaf2;padding:12px;position:sticky;top:12px;}
+.appt-sidebar-title{font-size:10px;font-weight:600;color:#1D3557;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;}
+.appt-sidebar-item{padding:6px 0;border-bottom:1px solid #f0f4f8;cursor:pointer;}
+.appt-sidebar-item:last-child{border-bottom:none;}
+.appt-banner{background:#1D3557;color:#fff;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;cursor:pointer;display:none;}
+@media(min-width:700px){.appt-banner{display:none!important;}}
+@media(max-width:699px){.appt-sidebar{display:none!important;}.appt-banner{display:block!important;}}
 </style>
 </head>
 <body>
@@ -128,6 +138,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
   <div id="sync-bar" class="sync-bar" style="display:none;">Syncing...</div>
 
+  <div id="appt-banner" class="appt-banner" onclick="showTab('appts',document.querySelector('.tab:nth-child(3)'))">
+    📅 <span id="next-appt-text">Loading...</span>
+  </div>
+
+  <div class="app-layout">
+  <div class="app-main">
   <div class="tab-bar">
     <button class="tab on" onclick="showTab('score',this)">Board</button>
     <button class="tab" onclick="showTab('clients',this)">Leads</button>
@@ -234,6 +250,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
     <div class="stat-row">
       <div class="stat stat-teal"><div class="stat-lbl lbl-white">Closed</div><div class="stat-val val-white" id="pip-closed">0</div></div>
+      <div class="stat stat-red"><div class="stat-lbl lbl-red">No show</div><div class="stat-val val-red" id="pip-noshow">0</div></div>
       <div class="stat stat-red"><div class="stat-lbl lbl-red">Dead</div><div class="stat-val val-red" id="pip-dead">0</div></div>
       <div class="stat stat-purple"><div class="stat-lbl lbl-purple">No sale</div><div class="stat-val val-purple" id="pip-nosale">0</div></div>
       <div class="stat stat-navy-lt"><div class="stat-lbl lbl-navy">Total</div><div class="stat-val val-navy" id="pip-total">0</div></div>
@@ -252,6 +269,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <button class="filter-btn" onclick="setFilter('warm',this)">🟡 Warm</button>
       <button class="filter-btn" onclick="setFilter('open',this)">⚪ Open</button>
       <button class="filter-btn" onclick="setFilter('none',this)">0 attempts</button>
+      <button class="filter-btn" onclick="setFilter('noshow',this)">No show</button>
       <button class="filter-btn" onclick="setFilter('New',this)">New</button>
       <button class="filter-btn" onclick="setFilter('Working',this)">Working</button>
       <button class="filter-btn" onclick="setFilter('Appointment set',this)">Appt</button>
@@ -265,6 +283,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div id="tab-appts" style="display:none;">
     <div id="appts-list"><div class="loading">Loading appointments...</div></div>
   </div>
+  </div><!-- end app-main -->
+
+  <div class="appt-sidebar" id="appt-sidebar">
+    <div class="appt-sidebar-title">📅 Upcoming</div>
+    <div id="sidebar-appts"><div style="font-size:11px;color:#a0b8cc;">No appointments</div></div>
+  </div>
+  </div><!-- end app-layout -->
 </div>
 
 <script>
@@ -389,6 +414,7 @@ async function init() {
   }
   hideSync();
   renderScore();
+  renderSidebar();
   if (document.getElementById('tab-clients').style.display !== 'none') renderClients();
 }
 
@@ -548,6 +574,7 @@ function renderScore() {
   document.getElementById('pip-work').textContent = clients.filter(c=>c.status==='Working').length;
   document.getElementById('pip-appt').textContent = clients.filter(c=>c.status==='Appointment set').length;
   document.getElementById('pip-closed').textContent = clients.filter(c=>c.status==='Closed').length;
+  document.getElementById('pip-noshow').textContent = clients.filter(c=>c.status==='No show').length;
   document.getElementById('pip-dead').textContent = clients.filter(c=>c.status==='Dead').length;
   document.getElementById('pip-nosale').textContent = clients.filter(c=>c.status==='No sale').length;
   document.getElementById('pip-total').textContent = clients.length;
@@ -561,6 +588,51 @@ function showTab(t, btn) {
   document.getElementById('tab-appts').style.display = t==='appts'?'block':'none';
   if (t==='clients') renderClients();
   if (t==='appts') renderAppts();
+}
+
+function renderSidebar() {
+  const now = new Date();
+  const upcoming = clients
+    .filter(c => c.appt_datetime && new Date(c.appt_datetime) >= now)
+    .sort((a,b) => new Date(a.appt_datetime)-new Date(b.appt_datetime))
+    .slice(0,8);
+
+  // Desktop sidebar
+  const sidebar = document.getElementById('sidebar-appts');
+  if (sidebar) {
+    if (!upcoming.length) {
+      sidebar.innerHTML = '<div style="font-size:11px;color:#a0b8cc;">No upcoming appointments</div>';
+    } else {
+      sidebar.innerHTML = upcoming.map(c => {
+        const dt = new Date(c.appt_datetime);
+        const isToday = dt.toDateString() === now.toDateString();
+        const dateStr = isToday ? 'Today' : dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+        const timeStr = dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+        const isPast = dt < now;
+        return `<div class="appt-sidebar-item" onclick="openClient('${c.id}')">
+          <div style="font-size:12px;font-weight:500;color:#1D3557;">${c.name}</div>
+          <div style="font-size:11px;color:${isPast?'#A32D2D':'#138181'};font-weight:500;">${dateStr} · ${timeStr}</div>
+          ${c.appt_notes?`<div style="font-size:10px;color:#8fa8c0;">${c.appt_notes}</div>`:''}
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // Mobile banner - show next appt
+  const banner = document.getElementById('appt-banner');
+  const bannerText = document.getElementById('next-appt-text');
+  if (banner && bannerText) {
+    if (upcoming.length) {
+      const next = upcoming[0];
+      const dt = new Date(next.appt_datetime);
+      const isToday = dt.toDateString() === now.toDateString();
+      const timeStr = dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+      bannerText.textContent = `Next: ${next.name} · ${isToday?'Today':''}  ${timeStr}`;
+      banner.style.display = 'block';
+    } else {
+      banner.style.display = 'none';
+    }
+  }
 }
 
 function renderAppts() {
@@ -615,7 +687,7 @@ function setFilter(f, btn) {
 
 // ── CLIENT LIST ──────────────────────────────────────────────
 function badgeClass(src) { return 'badge b-' + (src||'').split(' ')[0]; }
-function statusBadge(s) { const m={'New':'b-New','Working':'b-Working','Appointment set':'b-Appt','Closed':'b-Closed','No sale':'b-No','Dead':'b-Dead'}; return 'badge '+(m[s]||'b-New'); }
+function statusBadge(s) { const m={'New':'b-New','Working':'b-Working','Appointment set':'b-Appt','Closed':'b-Closed','No sale':'b-No','No show':'b-Noshow','Dead':'b-Dead'}; return 'badge '+(m[s]||'b-New'); }
 function dotClass(s) { if(s.outcome==='showed')return'jd-showed'; if(s.outcome==='noshow')return'jd-noshow'; if(s.outcome==='canceled')return'jd-cancel'; return'jd-pending'; }
 
 function renderClients(q='') {
@@ -630,6 +702,7 @@ function renderClients(q='') {
     else if (activeFilter==='warm') matchF = days >= 5 && days <= 17 && c.status !== 'Dead';
     else if (activeFilter==='open') matchF = days > 17 && c.status !== 'Dead';
     else if (activeFilter==='none') matchF = attempts === 0 && c.status !== 'Dead';
+    else if (activeFilter==='noshow') matchF = c.status === 'No show' && !c.appt_datetime;
     else matchF = c.status===activeFilter;
     return matchQ && matchF;
   });
@@ -675,7 +748,7 @@ function openClient(id, keepDialCount) {
   if (!keepDialCount) { window._dialCount = 1; window._dialCountSet = false; }
   const sits = c.sits || [];
   const callLog = c.call_log || [];
-  const statuses = ['New','Working','Appointment set','Closed','No sale','Dead'];
+  const statuses = ['New','Working','Appointment set','No show','Closed','No sale','Dead'];
   const suggestedReason = sits.length===0?'first':sits[sits.length-1].outcome==='noshow'?'resched-noshow':sits[sits.length-1].ppu?'cont-ppu':'cont-followup';
 
   const callHistory = callLog.slice().reverse().slice(0,6).map(cl => `
@@ -743,6 +816,7 @@ function openClient(id, keepDialCount) {
     <button class="call-btn cb-green" onclick="openApptPicker('${id}')">Appt set</button>
     <button class="call-btn cb-amber" onclick="quickLog('${id}','Callback','callbacks')">Callback</button>
     <button class="call-btn" style="background:#534AB7;color:#fff;" onclick="openReschedulePicker('${id}')">Reschedule</button>
+    <button class="call-btn" style="background:#E24B4A;color:#fff;" onclick="quickLog('${id}','No show','noshow')">No show</button>
     <button class="call-btn cb-red" onclick="quickLog('${id}','Not interested','dead')">Not interested</button>
   </div>
   <div class="section-lbl" style="margin-top:0;">Sit history</div>
@@ -906,6 +980,7 @@ async function quickLog(id, outcome, statKey) {
   let newStatus = c.status;
   if (outcome==='Not interested') newStatus='Dead';
   else if (outcome==='Appt set') newStatus='Appointment set';
+  else if (outcome==='No show') newStatus='No show';
   else if (outcome==='Conversation'||outcome==='Callback') newStatus='Working';
   showSync('Saving...');
   await sb.from('clients').update({call_log:callLog, status:newStatus}).eq('id',id);
