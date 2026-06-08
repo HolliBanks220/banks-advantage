@@ -656,7 +656,6 @@ function openClient(id) {
   </div>
   <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;">
     <button class="call-btn cb-navy" onclick="quickLog('${id}','No answer','dials')">No answer</button>
-    <button class="call-btn cb-teal" onclick="quickLog('${id}','Conversation','convos')">Convo</button>
     <button class="call-btn cb-green" onclick="quickLog('${id}','Appt set','appts')">Appt set</button>
     <button class="call-btn cb-amber" onclick="quickLog('${id}','Callback','callbacks')">Callback</button>
     <button class="call-btn cb-red" onclick="quickLog('${id}','Not interested','dead')">Not interested</button>
@@ -703,7 +702,10 @@ async function quickLog(id, outcome, statKey) {
   c.call_log = callLog; c.status = newStatus;
   // Log actual dial count to stats
   await addStat('dials', dialCount);
-  if (statKey !== 'dials') await addStat(statKey, 1);
+  if (statKey !== 'dials') {
+    await addStat(statKey, 1);
+    await addStat('convos', 1); // any outcome other than no answer = conversation
+  }
   // Reset dial count to 1 after logging
   window._dialCount = 1;
   hideSync();
