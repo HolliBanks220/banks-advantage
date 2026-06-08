@@ -248,6 +248,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <input class="search" placeholder="Search by name or phone..." oninput="renderClients(this.value)" id="client-search">
     <div class="filter-row">
       <button class="filter-btn on" onclick="setFilter('all',this)">All</button>
+      <button class="filter-btn" onclick="setFilter('fresh',this)">🟢 Fresh</button>
+      <button class="filter-btn" onclick="setFilter('warm',this)">🟡 Warm</button>
+      <button class="filter-btn" onclick="setFilter('open',this)">⚪ Open</button>
+      <button class="filter-btn" onclick="setFilter('none',this)">0 attempts</button>
       <button class="filter-btn" onclick="setFilter('New',this)">New</button>
       <button class="filter-btn" onclick="setFilter('Working',this)">Working</button>
       <button class="filter-btn" onclick="setFilter('Appointment set',this)">Appt</button>
@@ -290,47 +294,47 @@ const SIT_REASONS = [
 
 const SEED_LEADS = [
   {name:'Austin Maynard',phone:'614-562-5130',state:'OH',source:'CIA',address:'464 Yarmouth Ln, Columbus, OH 43228',notes:'Mortgage: $232,800 · Gender: Male · Tobacco: Y · Co-borrower: N'},
-  {name:'Candice Pennick',phone:'253-286-8078',state:'WA',source:'CIA',address:'2021 E Sherman St, Tacoma, WA 98404',notes:'Mortgage: $356,125 · Age: 45 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Movement Mortgage'},
-  {name:'Thaddeus Carney',phone:'757-254-6025',state:'VA',source:'CIA',address:'2049 Richard Ave, Hampton, VA 23664',notes:'Mortgage: $285,000 · Age: 74 · Gender: Female · Tobacco: N · Co-borrower: Y · Lender: Mutual of Omaha Mortgage'},
-  {name:'Sonia Treece',phone:'713-894-8160',state:'VA',source:'MIA',address:'708 Pile Ave, Chesapeake, VA 23320',notes:'Mortgage: $441,750 · Age: 50 · Lender: Movement Mortgage'},
-  {name:'Sahana Epari',phone:'703-628-3138',state:'VA',source:'CIA',address:'43047 Stuarts Glen Ter Unit 106, Ashburn, VA 20148',notes:'Mortgage: $413,600 · Age: 27 · Gender: Female · Tobacco: N · Co-borrower: Y · Lender: United Nations FCU'},
-  {name:'Nancy Monahan',phone:'860-930-0678',state:'CT',source:'CIA',address:'15 W Pine Way Unit 10, Plainville, CT 06062',notes:'Mortgage: $365,750 · Age: 81 · Gender: Female · Tobacco: N · Co-borrower: N'},
-  {name:'Kierra Moore',phone:'832-412-5950',state:'TX',source:'MIA',address:'17133 Pinewood Branch Dr, New Caney, TX 77357',notes:'Mortgage: $304,832 · Age: 30 · Lender: M & I Financial'},
-  {name:'Benjamin Leyk',phone:'509-724-6487',state:'WA',source:'CIA',address:'1215 S Van Marter Ln, Spokane Valley, WA 99206',notes:'Mortgage: $392,755 · Age: 38 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Canopy Mortgage'},
-  {name:'Winiford Sullivan',phone:'360-473-8054',state:'WA',source:'CIA',address:'3419 NE Cromwell St, Bremerton, WA 98311',notes:'Mortgage: $63,830 · Age: 85 · Gender: Male · Tobacco: N · Co-borrower: N · Lender: AmeriSave'},
-  {name:'Thomas Duffy',phone:'603-303-3039',state:'NH',source:'CIA',address:'28 Tuckaway Shores Rd, Nottingham, NH 03290',notes:'Mortgage: $300,000 · Age: 78 · Gender: Male · Tobacco: N · Co-borrower: N'},
-  {name:'Stacey Hairston',phone:'276-632-6241',state:'VA',source:'CIA',address:'183 Stockton Rd, Martinsville, VA 24112',notes:'Mortgage: $55,000 · Age: 69 · Gender: Male · Tobacco: N · Co-borrower: Y'},
+  {name:'Candice Pennick',age:45,phone:'253-286-8078',state:'WA',source:'CIA',address:'2021 E Sherman St, Tacoma, WA 98404',notes:'Mortgage: $356,125 · Age: 45 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Movement Mortgage'},
+  {name:'Thaddeus Carney',age:74,phone:'757-254-6025',state:'VA',source:'CIA',address:'2049 Richard Ave, Hampton, VA 23664',notes:'Mortgage: $285,000 · Age: 74 · Gender: Female · Tobacco: N · Co-borrower: Y · Lender: Mutual of Omaha Mortgage'},
+  {name:'Sonia Treece',age:50,phone:'713-894-8160',state:'VA',source:'MIA',address:'708 Pile Ave, Chesapeake, VA 23320',notes:'Mortgage: $441,750 · Age: 50 · Lender: Movement Mortgage'},
+  {name:'Sahana Epari',age:27,phone:'703-628-3138',state:'VA',source:'CIA',address:'43047 Stuarts Glen Ter Unit 106, Ashburn, VA 20148',notes:'Mortgage: $413,600 · Age: 27 · Gender: Female · Tobacco: N · Co-borrower: Y · Lender: United Nations FCU'},
+  {name:'Nancy Monahan',age:81,phone:'860-930-0678',state:'CT',source:'CIA',address:'15 W Pine Way Unit 10, Plainville, CT 06062',notes:'Mortgage: $365,750 · Age: 81 · Gender: Female · Tobacco: N · Co-borrower: N'},
+  {name:'Kierra Moore',age:30,phone:'832-412-5950',state:'TX',source:'MIA',address:'17133 Pinewood Branch Dr, New Caney, TX 77357',notes:'Mortgage: $304,832 · Age: 30 · Lender: M & I Financial'},
+  {name:'Benjamin Leyk',age:38,phone:'509-724-6487',state:'WA',source:'CIA',address:'1215 S Van Marter Ln, Spokane Valley, WA 99206',notes:'Mortgage: $392,755 · Age: 38 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Canopy Mortgage'},
+  {name:'Winiford Sullivan',age:85,phone:'360-473-8054',state:'WA',source:'CIA',address:'3419 NE Cromwell St, Bremerton, WA 98311',notes:'Mortgage: $63,830 · Age: 85 · Gender: Male · Tobacco: N · Co-borrower: N · Lender: AmeriSave'},
+  {name:'Thomas Duffy',age:78,phone:'603-303-3039',state:'NH',source:'CIA',address:'28 Tuckaway Shores Rd, Nottingham, NH 03290',notes:'Mortgage: $300,000 · Age: 78 · Gender: Male · Tobacco: N · Co-borrower: N'},
+  {name:'Stacey Hairston',age:69,phone:'276-632-6241',state:'VA',source:'CIA',address:'183 Stockton Rd, Martinsville, VA 24112',notes:'Mortgage: $55,000 · Age: 69 · Gender: Male · Tobacco: N · Co-borrower: Y'},
   {name:'Monica Farmer & Austin Farmer',phone:'980-285-0914',state:'NC',source:'MIA',address:'908 Woodside Dr, Kings Mountain, NC 28086',notes:'Mortgage: $340,714 · DOB: 1/14/2004 · Best time: Morning · Lender: Evergreen Moneysource'},
-  {name:'Lindsey King',phone:'253-880-5742',state:'WA',source:'CIA',address:'6834 20th St E Unit 4, Fife, WA 98424',notes:'Mortgage: $426,800 · Age: 35 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Cornerstone Home Lending'},
-  {name:'Karen Hapgood',phone:'603-312-3179',state:'NH',source:'CIA',address:'14 Richardson Dr, Dover, NH 03820',notes:'Mortgage: $169,000 · Age: 62 · Gender: Female · Tobacco: N · Co-borrower: Y'},
-  {name:'Joshua Henderson',phone:'757-373-2276',state:'VA',source:'CIA',address:'724 W Riverview Dr, Suffolk, VA 23434',notes:'Mortgage: $488,420 · Age: 51 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Atlantic Bay Mortgage'},
-  {name:'John Veillon',phone:'865-585-2338',state:'TN',source:'CIA',address:'123 Clare Bon Rd, Harrogate, TN 37752',notes:'Mortgage: $32,200 · Age: 42 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Lendage LLC'},
-  {name:'Jody Kittell',phone:'802-673-0718',state:'VA',source:'CIA',address:'174 Developmental Rd, Stuart, VA 24171',notes:'Mortgage: $64,000 · Age: 61 · Gender: Male · Tobacco: Y · Co-borrower: N · Lender: CF Mortgage'},
-  {name:'Joann Securo',phone:'401-575-7569',state:'RI',source:'CIA',address:'70 Stowe Ave, Riverside, RI 02915',notes:'Mortgage: $171,000 · Age: 72 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Banknewport'},
-  {name:'Jeanne Balcom',phone:'202-441-5370',state:'VA',source:'CIA',address:'2610 Midway St, Falls Church, VA 22046',notes:'Mortgage: $224,894 · Age: 65 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Rocket Mortgage'},
-  {name:'James Reavis',phone:'401-272-5504',state:'RI',source:'CIA',address:'83 Arlington Ave, Providence, RI 02906',notes:'Mortgage: $542,000 · Age: 63 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Washington Trust'},
-  {name:'Haroun Suliman',phone:'423-615-2153',state:'TN',source:'CIA',address:'3619 Gleason Dr, Chattanooga, TN 37412',notes:'Mortgage: $220,000 · Age: 40 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: American Pacific Mortgage'},
-  {name:'Gary Ball',phone:'931-854-7264',state:'TN',source:'CIA',address:'3491 Bald Knob Mountain Rd, Doyle, TN 38559',notes:'Mortgage: $56,354 · Age: 81 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Freedom Mortgage'},
-  {name:'Elizabeth Pena',phone:'956-645-5471',state:'TX',source:'MIA',address:'402 Dutour Ct, Laredo, TX 78045',notes:'Mortgage: $204,000 · DOB: 1/23/1972 · Best time: Evening · Lender: Carrington Mortgage'},
-  {name:'Dimitry Paskar',phone:'971-229-9194',state:'WA',source:'CIA',address:'513 NW 30th Ave, Battle Ground, WA 98604',notes:'Mortgage: $411,283 · Age: 21 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Intelliloan'},
-  {name:'David Tucker',phone:'253-315-1345',state:'WA',source:'CIA',address:'4308 S J St, Tacoma, WA 98418',notes:'Mortgage: $286,500 · Age: 70 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Rocket Mortgage'},
-  {name:'Daniel Aisenberg',phone:'857-615-7456',state:'NH',source:'CIA',address:'51 Riddle St, Manchester, NH 03102',notes:'Mortgage: $471,145 · Age: 33 · Gender: Male · Tobacco: Y · Co-borrower: N'},
-  {name:'Carol Nelson',phone:'401-376-3225',state:'RI',source:'CIA',address:'56 Coyle Ave, Rumford, RI 02916',notes:'Mortgage: $100,000 · Age: 64 · Gender: Female · Tobacco: Y · Co-borrower: N'},
-  {name:'Briana Gooding & Lawrence Ricci',phone:'401-465-4324',state:'RI',source:'MIA',address:'638 Plainfield Pike, Scituate, RI 02857',notes:'Mortgage: $379,990 · DOB: 10/22/1994 · Gender: M · Best time: Evening · Lender: Paramount Residential'},
-  {name:'Bebe Serrenco',phone:'310-710-2278',state:'NC',source:'MIA',address:'503 Cedar St, Eden, NC 27288',notes:'Mortgage: $136,300 · Age: 62 · Gender: Female · DOB: 8/27/1957'},
-  {name:'Andrew Lufkin',phone:'207-441-1111',state:'ME',source:'MIA',address:'4 Beacon St, Livermore Falls, ME 04254',notes:'Mortgage: $298,493 · Age: 45 · Lender: CMG HM LNS'},
-  {name:'Tryce Nunnelly',phone:'774-510-8450',state:'MA',source:'CIA',address:'298 Grinnell St, Fall River, MA 02721',notes:'Mortgage: $188,000 · Age: 68 · Gender: Male · Tobacco: Y · Co-borrower: N'},
-  {name:'Paul Mcdonough',phone:'617-592-1020',state:'MA',source:'CIA',address:'798 Ware St, Mansfield, MA 02048',notes:'Mortgage: $499,000 · Age: 65 · Gender: Male · Tobacco: N · Co-borrower: Y'},
-  {name:'Kelhyn Pesantez',phone:'203-964-7116',state:'MA',source:'CIA',address:'31 Whiting St, North Attleboro, MA 02760',notes:'Mortgage: $555,038 · Age: 30 · Gender: Female · Tobacco: N · Co-borrower: N'},
-  {name:'James Lyons',phone:'757-813-3846',state:'VA',source:'CIA',address:'225 Hampton Roads Ave, Hampton, VA 23661',notes:'Mortgage: $123,000 · Age: 55 · Gender: Male · Tobacco: N · Co-borrower: N · Lender: Sun West Mortgage'},
-  {name:'Elyse Disciullo',phone:'781-718-5151',state:'MA',source:'CIA',address:'57 Seconsett Island Rd, Mashpee, MA 02649',notes:'Mortgage: $585,000 · Age: 69 · Gender: Female · Tobacco: N · Co-borrower: N'},
-  {name:'Dennis Emily',phone:'941-451-3894',state:'TN',source:'CIA',address:'210 Indian Rock Trl, Jamestown, TN 38556',notes:'Mortgage: $296,000 · Age: 74 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Nexa Mortgage'},
+  {name:'Lindsey King',age:35,phone:'253-880-5742',state:'WA',source:'CIA',address:'6834 20th St E Unit 4, Fife, WA 98424',notes:'Mortgage: $426,800 · Age: 35 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Cornerstone Home Lending'},
+  {name:'Karen Hapgood',age:62,phone:'603-312-3179',state:'NH',source:'CIA',address:'14 Richardson Dr, Dover, NH 03820',notes:'Mortgage: $169,000 · Age: 62 · Gender: Female · Tobacco: N · Co-borrower: Y'},
+  {name:'Joshua Henderson',age:51,phone:'757-373-2276',state:'VA',source:'CIA',address:'724 W Riverview Dr, Suffolk, VA 23434',notes:'Mortgage: $488,420 · Age: 51 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Atlantic Bay Mortgage'},
+  {name:'John Veillon',age:42,phone:'865-585-2338',state:'TN',source:'CIA',address:'123 Clare Bon Rd, Harrogate, TN 37752',notes:'Mortgage: $32,200 · Age: 42 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Lendage LLC'},
+  {name:'Jody Kittell',age:61,phone:'802-673-0718',state:'VA',source:'CIA',address:'174 Developmental Rd, Stuart, VA 24171',notes:'Mortgage: $64,000 · Age: 61 · Gender: Male · Tobacco: Y · Co-borrower: N · Lender: CF Mortgage'},
+  {name:'Joann Securo',age:72,phone:'401-575-7569',state:'RI',source:'CIA',address:'70 Stowe Ave, Riverside, RI 02915',notes:'Mortgage: $171,000 · Age: 72 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Banknewport'},
+  {name:'Jeanne Balcom',age:65,phone:'202-441-5370',state:'VA',source:'CIA',address:'2610 Midway St, Falls Church, VA 22046',notes:'Mortgage: $224,894 · Age: 65 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Rocket Mortgage'},
+  {name:'James Reavis',age:63,phone:'401-272-5504',state:'RI',source:'CIA',address:'83 Arlington Ave, Providence, RI 02906',notes:'Mortgage: $542,000 · Age: 63 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Washington Trust'},
+  {name:'Haroun Suliman',age:40,phone:'423-615-2153',state:'TN',source:'CIA',address:'3619 Gleason Dr, Chattanooga, TN 37412',notes:'Mortgage: $220,000 · Age: 40 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: American Pacific Mortgage'},
+  {name:'Gary Ball',age:81,phone:'931-854-7264',state:'TN',source:'CIA',address:'3491 Bald Knob Mountain Rd, Doyle, TN 38559',notes:'Mortgage: $56,354 · Age: 81 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Freedom Mortgage'},
+  {name:'Elizabeth Pena',age:54,phone:'956-645-5471',state:'TX',source:'MIA',address:'402 Dutour Ct, Laredo, TX 78045',notes:'Mortgage: $204,000 · DOB: 1/23/1972 · Best time: Evening · Lender: Carrington Mortgage'},
+  {name:'Dimitry Paskar',age:21,phone:'971-229-9194',state:'WA',source:'CIA',address:'513 NW 30th Ave, Battle Ground, WA 98604',notes:'Mortgage: $411,283 · Age: 21 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Intelliloan'},
+  {name:'David Tucker',age:70,phone:'253-315-1345',state:'WA',source:'CIA',address:'4308 S J St, Tacoma, WA 98418',notes:'Mortgage: $286,500 · Age: 70 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Rocket Mortgage'},
+  {name:'Daniel Aisenberg',age:33,phone:'857-615-7456',state:'NH',source:'CIA',address:'51 Riddle St, Manchester, NH 03102',notes:'Mortgage: $471,145 · Age: 33 · Gender: Male · Tobacco: Y · Co-borrower: N'},
+  {name:'Carol Nelson',age:64,phone:'401-376-3225',state:'RI',source:'CIA',address:'56 Coyle Ave, Rumford, RI 02916',notes:'Mortgage: $100,000 · Age: 64 · Gender: Female · Tobacco: Y · Co-borrower: N'},
+  {name:'Briana Gooding & Lawrence Ricci',age:31,phone:'401-465-4324',state:'RI',source:'MIA',address:'638 Plainfield Pike, Scituate, RI 02857',notes:'Mortgage: $379,990 · DOB: 10/22/1994 · Gender: M · Best time: Evening · Lender: Paramount Residential'},
+  {name:'Bebe Serrenco',age:62,phone:'310-710-2278',state:'NC',source:'MIA',address:'503 Cedar St, Eden, NC 27288',notes:'Mortgage: $136,300 · Age: 62 · Gender: Female · DOB: 8/27/1957'},
+  {name:'Andrew Lufkin',age:45,phone:'207-441-1111',state:'ME',source:'MIA',address:'4 Beacon St, Livermore Falls, ME 04254',notes:'Mortgage: $298,493 · Age: 45 · Lender: CMG HM LNS'},
+  {name:'Tryce Nunnelly',age:68,phone:'774-510-8450',state:'MA',source:'CIA',address:'298 Grinnell St, Fall River, MA 02721',notes:'Mortgage: $188,000 · Age: 68 · Gender: Male · Tobacco: Y · Co-borrower: N'},
+  {name:'Paul Mcdonough',age:65,phone:'617-592-1020',state:'MA',source:'CIA',address:'798 Ware St, Mansfield, MA 02048',notes:'Mortgage: $499,000 · Age: 65 · Gender: Male · Tobacco: N · Co-borrower: Y'},
+  {name:'Kelhyn Pesantez',age:30,phone:'203-964-7116',state:'MA',source:'CIA',address:'31 Whiting St, North Attleboro, MA 02760',notes:'Mortgage: $555,038 · Age: 30 · Gender: Female · Tobacco: N · Co-borrower: N'},
+  {name:'James Lyons',age:55,phone:'757-813-3846',state:'VA',source:'CIA',address:'225 Hampton Roads Ave, Hampton, VA 23661',notes:'Mortgage: $123,000 · Age: 55 · Gender: Male · Tobacco: N · Co-borrower: N · Lender: Sun West Mortgage'},
+  {name:'Elyse Disciullo',age:69,phone:'781-718-5151',state:'MA',source:'CIA',address:'57 Seconsett Island Rd, Mashpee, MA 02649',notes:'Mortgage: $585,000 · Age: 69 · Gender: Female · Tobacco: N · Co-borrower: N'},
+  {name:'Dennis Emily',age:74,phone:'941-451-3894',state:'TN',source:'CIA',address:'210 Indian Rock Trl, Jamestown, TN 38556',notes:'Mortgage: $296,000 · Age: 74 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Nexa Mortgage'},
   {name:'Quinton Owens',phone:'804-988-3159',state:'VA',source:'CIA',address:'4031 Sunny Creek Dr, Chesterfield, VA 23832',notes:'Mortgage: $378,026 · Gender: Male · Tobacco: N · Co-borrower: Y'},
-  {name:'Timothy Kaestner',phone:'817-938-3321',state:'TX',source:'MIA',address:'1055 Miller Rd, Azle, TX 76020',notes:'Mortgage: $467,032 · Age: 63 · Lender: Sfmc LP'},
-  {name:'Nathan Cavazos',phone:'361-207-0676',state:'TX',source:'MIA',address:'102 Saltillo Dr, Alice, TX 78332',notes:'Mortgage: $398,100 · Age: 38 · Lender: First Community Bank'},
+  {name:'Timothy Kaestner',age:63,phone:'817-938-3321',state:'TX',source:'MIA',address:'1055 Miller Rd, Azle, TX 76020',notes:'Mortgage: $467,032 · Age: 63 · Lender: Sfmc LP'},
+  {name:'Nathan Cavazos',age:38,phone:'361-207-0676',state:'TX',source:'MIA',address:'102 Saltillo Dr, Alice, TX 78332',notes:'Mortgage: $398,100 · Age: 38 · Lender: First Community Bank'},
   {name:'Juan Sierra',phone:'425-787-0551',state:'WA',source:'CIA',address:'2118 143rd Pl SW, Lynnwood, WA 98087',notes:'Mortgage: $375,000 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Homebridge Financial'},
   {name:'Billy Benavides',phone:'979-282-1136',state:'TX',source:'MIA',address:'2025 Fm 1157, Ganado, TX 77962',notes:'Mortgage: $61,500 · Gender: Male · Co-borrower: N · Lender: Capital Farm Credit'},
-  {name:'Angela Jones',phone:'760-420-2179',state:'TN',source:'MIA',address:'428 Ward Dr, Maryville, TN 37801',notes:'Mortgage: $75,000 · Age: 56'},
+  {name:'Angela Jones',age:56,phone:'760-420-2179',state:'TN',source:'MIA',address:'428 Ward Dr, Maryville, TN 37801',notes:'Mortgage: $75,000 · Age: 56'},
   {name:'William Silva',phone:'603-809-8565',state:'NH',source:'CIA',address:'29 Hamburg St, Manchester, NH 03102',notes:'Mortgage: $387,000 · Gender: Male · Tobacco: N · Co-borrower: N'},
   {name:'Thomas Dalton',phone:'425-387-7333',state:'WA',source:'CIA',address:'956 Rowe Rd, Camano Island, WA 98282',notes:'Mortgage: $125,000 · Gender: Female · Tobacco: N · Co-borrower: Y · Lender: Horizon Credit Union'},
   {name:'Terry Saffioti',phone:'860-625-1559',state:'CT',source:'CIA',address:'60 Rogers Lake Trl, Old Lyme, CT 06371',notes:'Mortgage: $100,000 · Gender: Male · Tobacco: N · Co-borrower: Y'},
@@ -340,7 +344,7 @@ const SEED_LEADS = [
   {name:'Ryan Connarton',phone:'603-520-9036',state:'NH',source:'CIA',address:'5 Holly Ln, Meredith, NH 03253',notes:'Mortgage: $232,707 · Gender: Male · Tobacco: Y · Co-borrower: N'},
   {name:'Peter Thompson',phone:'603-387-4269',state:'NH',source:'CIA',address:'47 Sage Dr, Tilton, NH 03276',notes:'Mortgage: $184,000 · Gender: Male · Tobacco: N · Co-borrower: Y'},
   {name:'Nikolas Elevitch',phone:'959-229-8791',state:'CT',source:'CIA',address:'24 Calhoun St, Washington Depot, CT 06794',notes:'Mortgage: $247,000 · Gender: Male · Tobacco: N · Co-borrower: N'},
-  {name:'Michael Hussey',phone:'774-272-2152',state:'MA',source:'MIA',address:'39 Out of Bounds Dr, South Yarmouth, MA 02664',notes:'Mortgage: $750,000 · Age: 64 · Email: mjhuz@yahoo.com'},
+  {name:'Michael Hussey',age:64,phone:'774-272-2152',state:'MA',source:'MIA',address:'39 Out of Bounds Dr, South Yarmouth, MA 02664',notes:'Mortgage: $750,000 · Age: 64 · Email: mjhuz@yahoo.com'},
   {name:'Martin Gonzalez',phone:'210-316-3891',state:'TX',source:'CIA',address:'859 Via Alta Ln, El Paso, TX 79912',notes:'Mortgage: $575,000 · Gender: Male · Tobacco: Y · Co-borrower: Y · Lender: Paramount Residential'},
   {name:'Jodi Kirk',phone:'781-558-0721',state:'MA',source:'MIA',address:'945 Riverside Dr Apt 3b, Methuen, MA 01844',notes:'Mortgage: $256,125 · Gender: Female · Co-borrower: N'},
   {name:'Joan Liberto',phone:'832-240-8972',state:'TX',source:'MIA',address:'6433 Autumn Equinox Dr, Houston, TX 77048',notes:'Mortgage: $134,265 · Gender: Female · Co-borrower: Y · Co-borrower age: 70 · Lender: Loandepot'},
@@ -350,14 +354,14 @@ const SEED_LEADS = [
   {name:'Daniel Collette',phone:'401-500-5633',state:'RI',source:'CIA',address:'109 Hawksley Ave, Warwick, RI 02889',notes:'Mortgage: $364,200 · Gender: Male · Tobacco: N · Co-borrower: N · Lender: PennyMac'},
   {name:'Craig Casano',phone:'774-269-2935',state:'MA',source:'CIA',address:'19 Glacier Way, Buzzards Bay, MA 02532',notes:'Mortgage: $500,000 · Gender: Male · Tobacco: N · Co-borrower: N'},
   {name:'Corey Wilkerson',phone:'919-737-3800',state:'NH',source:'CIA',address:'162 Lakeside Oaks Dr, Barrington, NH 03825',notes:'Mortgage: $607,788 · Gender: Male · Tobacco: N · Co-borrower: N'},
-  {name:'Briana Gooding',phone:'401-465-4324',state:'RI',source:'CIA',address:'638 Plainfield Pike, Scituate, RI 02857',notes:'Mortgage: $379,990 · Gender: Female · Tobacco: N · Co-borrower: Y · Lender: Paramount Residential'},
+  {name:'Briana Gooding',age:31,phone:'401-465-4324',state:'RI',source:'CIA',address:'638 Plainfield Pike, Scituate, RI 02857',notes:'Mortgage: $379,990 · Gender: Female · Tobacco: N · Co-borrower: Y · Lender: Paramount Residential'},
   {name:'Barbara Lemay',phone:'401-680-3421',state:'RI',source:'CIA',address:'51 Sibyl St, Providence, RI 02909',notes:'Mortgage: $277,800 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Rocket Mortgage'},
   {name:'Austin Hooie',phone:'256-221-3470',state:'TN',source:'CIA',address:'150 Westwood Cir, Ripley, TN 38063',notes:'Mortgage: $254,308 · Gender: Male · Tobacco: Y · Co-borrower: N · Lender: Huntington National Bank'},
-  {name:'Andrew Pascual',phone:'864-684-7203',state:'SC',source:'MIA',address:'7 Townsend St, Laurens, SC 29360',notes:'Mortgage: $245,471 · Age: 22'},
+  {name:'Andrew Pascual',age:22,phone:'864-684-7203',state:'SC',source:'MIA',address:'7 Townsend St, Laurens, SC 29360',notes:'Mortgage: $245,471 · Age: 22'},
   {name:'Albert Nolli',phone:'508-681-0218',state:'MA',source:'CIA',address:'3 Widow Coombs Walk, Sandwich, MA 02563',notes:'Mortgage: $65,000 · Gender: Female · Tobacco: N · Co-borrower: N'},
   {name:'Wilson Celestin',phone:'508-598-8081',state:'MA',source:'CIA',address:'36 Fordney St, Fall River, MA 02720',notes:'Mortgage: $484,070 · Gender: Male · Tobacco: N · Co-borrower: N'},
   {name:'Kimberly Reid',phone:'702-250-2557',state:'TX',source:'CIA',address:'23817 Glowing Embers Dr, Elgin, TX 78621',notes:'Mortgage: $217,968 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Lennar Mortgage'},
-  {name:'William Sims',phone:'701-801-3797',state:'TN',source:'MIA',address:'537 King Ave, Memphis, TN 38109',notes:'Mortgage: $68,000 · DOB: 6/31/1965 · Gender: Male · Best time: Any'},
+  {name:'William Sims',age:60,phone:'701-801-3797',state:'TN',source:'MIA',address:'537 King Ave, Memphis, TN 38109',notes:'Mortgage: $68,000 · DOB: 6/31/1965 · Gender: Male · Best time: Any'},
   {name:'John Fernandes',phone:'203-888-8888',state:'CT',source:'CIA',address:'429 Quaker Farms Rd, Oxford, CT 06478',notes:'Mortgage: $600,000 · Gender: Female · Tobacco: Y · Co-borrower: N'}
 ];
 
@@ -401,7 +405,7 @@ async function loadStats() {
 async function seedLeads() {
   const today = new Date().toISOString().slice(0,10);
   const rows = SEED_LEADS.map(l => ({
-    name: l.name, phone: l.phone, address: l.address||'', state: l.state, source: l.source,
+    name: l.name, phone: l.phone, address: l.address||'', age: l.age||null, state: l.state, source: l.source,
     status: 'New', assigned_date: today, notes: l.notes,
     health_notes: '', policy_notes: '', call_log: [], sits: []
   }));
@@ -618,7 +622,15 @@ function renderClients(q='') {
   const el = document.getElementById('clients-list');
   let list = clients.filter(c => {
     const matchQ = !q || (c.name||'').toLowerCase().includes(q.toLowerCase()) || (c.phone||'').includes(q);
-    const matchF = activeFilter==='all' ? c.status !== 'Dead' : c.status===activeFilter;
+    const days = Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24));
+    const attempts = (c.call_log||[]).length;
+    let matchF = false;
+    if (activeFilter==='all') matchF = c.status !== 'Dead';
+    else if (activeFilter==='fresh') matchF = days <= 4 && c.status !== 'Dead';
+    else if (activeFilter==='warm') matchF = days >= 5 && days <= 17 && c.status !== 'Dead';
+    else if (activeFilter==='open') matchF = days > 17 && c.status !== 'Dead';
+    else if (activeFilter==='none') matchF = attempts === 0 && c.status !== 'Dead';
+    else matchF = c.status===activeFilter;
     return matchQ && matchF;
   });
   document.getElementById('client-count').textContent = clients.length + ' leads · ' + list.length + ' shown';
@@ -632,7 +644,7 @@ function renderClients(q='') {
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
         <div>
           <div class="client-name">${c.name||'Unknown'}${fresh?'<span class="fresh-tag">fresh</span>':''}</div>
-          <div class="client-meta">${c.phone||''} · ${c.state||''} · <span style="color:#8fa8c0;">${Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24))}d</span> · <span style="color:#8fa8c0;">${(c.call_log||[]).length} attempts</span></div>
+          <div class="client-meta">${c.phone||''} · ${c.state||''}${c.age?' · <span style="color:#1D3557;font-weight:500;">'+c.age+'</span>':''} · <span style="color:#8fa8c0;">${Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24))}d</span> · <span style="color:#8fa8c0;">${(c.call_log||[]).length} att</span></div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
           <span class="${badgeClass(c.source)}">${c.source||''}</span>
@@ -716,6 +728,7 @@ function openClient(id, keepDialCount) {
   <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
     <input id="edit-phone" value="${c.phone||''}" style="font-size:13px;color:#5f7a99;border:none;border-bottom:2px solid transparent;outline:none;background:transparent;font-family:inherit;width:140px;padding:0;" onfocus="this.style.borderBottomColor='#138181'" onblur="this.style.borderBottomColor='transparent'">
     <span style="color:#5f7a99;font-size:13px;">· ${c.state||''} · <span class="${badgeClass(c.source)}">${c.source||''}</span></span>
+    <span style="font-size:12px;color:#5f7a99;">· Age: <input id="edit-age" value="${c.age||''}" type="number" min="0" max="120" style="width:40px;font-size:12px;color:#1D3557;border:none;border-bottom:1px solid #d0dcea;outline:none;background:transparent;font-family:inherit;padding:0;" onchange="autoSaveField('${id}','age',parseInt(this.value)||null)"></span>
   </div>
   ${c.address?`<div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">📍 ${c.address}</div>`:''}
   ${c.appt_datetime?`<div style="font-size:12px;font-weight:600;color:#138181;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:6px;padding:5px 10px;margin-bottom:8px;display:inline-block;">📅 Appt: ${new Date(c.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(c.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}${c.appt_notes?' · '+c.appt_notes:''}</div>`:''}
