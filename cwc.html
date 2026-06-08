@@ -717,7 +717,7 @@ function renderClients(q='') {
     else if (activeFilter==='warm') matchF = days >= 5 && days <= 17 && c.status !== 'Dead';
     else if (activeFilter==='open') matchF = days > 17 && c.status !== 'Dead';
     else if (activeFilter==='none') matchF = attempts === 0 && c.status !== 'Dead';
-    else if (activeFilter==='noshow') matchF = c.status === 'No show' && !c.appt_datetime;
+    else if (activeFilter==='noshow') matchF = c.status === 'No show';
     else matchF = c.status===activeFilter;
     return matchQ && matchF;
   });
