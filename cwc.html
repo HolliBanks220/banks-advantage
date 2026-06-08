@@ -873,13 +873,24 @@ async function updateClient(id) {
     status: document.getElementById('cn-status').value,
     assigned_date: document.getElementById('cn-assigned').value
   };
+  // Log dials as No Answer if dial count > 0
+  const dialCount = window._dialCount || 1;
+  const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(), outcome:'No answer', dials:dialCount}];
+  updates.call_log = callLog;
   showSync('Saving...');
   await sb.from('clients').update(updates).eq('id',id);
   Object.assign(c, updates);
+  await addStat('dials', dialCount);
+  window._dialCount = 1;
   hideSync();
   closeModal();
   renderClients(document.getElementById('client-search').value);
   renderScore();
+  // Auto-advance to next lead
+  const list = clients.filter(cl => cl.status === 'New' || cl.status === 'Working');
+  const idx = list.findIndex(cl => cl.id === id);
+  const next = list[idx + 1] || list[idx - 1];
+  if (next) setTimeout(() => openClient(next.id), 300);
 }
 
 // ── ADD CLIENT ───────────────────────────────────────────────
