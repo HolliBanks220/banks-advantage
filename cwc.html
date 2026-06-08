@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>CWC Tracker · Banks Advantage</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f4f8;min-height:100vh;padding:12px;}
+.wrap{max-width:420px;margin:0 auto;padding:0 0 2rem;}
+.hdr{background:#1D3557;border-radius:12px;padding:14px 16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
+.hdr-title{font-size:16px;font-weight:500;color:#fff;}
+.hdr-sub{font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;}
+.nav-row{display:flex;align-items:center;gap:4px;}
+.pill{font-size:10px;padding:4px 9px;border-radius:20px;border:1px solid rgba(255,255,255,0.3);background:transparent;color:rgba(255,255,255,0.7);cursor:pointer;font-weight:500;}
+.pill.on{background:#138181;border-color:#138181;color:#fff;}
+.arrow-btn{background:rgba(255,255,255,0.15);border:none;border-radius:6px;color:#fff;font-size:14px;padding:3px 7px;cursor:pointer;}
+.period-label{font-size:10px;color:rgba(255,255,255,0.8);text-align:center;min-width:80px;}
+.tab-bar{display:flex;border-bottom:1px solid #e2eaf2;margin-bottom:12px;background:#fff;border-radius:10px 10px 0 0;padding:0 4px;}
+.tab{flex:1;padding:10px 2px;font-size:11px;font-weight:500;border:none;background:transparent;color:#5f7a99;cursor:pointer;border-bottom:2px solid transparent;}
+.tab.on{color:#1D3557;border-bottom-color:#138181;}
+.section-lbl{font-size:10px;font-weight:500;color:#1D3557;text-transform:uppercase;letter-spacing:0.07em;margin:12px 0 6px;}
+.stat-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:6px;}
+.stat-row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-bottom:6px;}
+.stat{border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:3px;}
+.stat-navy{background:#1D3557;} .stat-teal{background:#138181;}
+.stat-navy-lt{background:#E6F1FB;border:1px solid #B5D4F4;}
+.stat-teal-lt{background:#E1F5EE;border:1px solid #9FE1CB;}
+.stat-amber{background:#FAEEDA;border:1px solid #FAC775;}
+.stat-red{background:#FCEBEB;border:1px solid #F7C1C1;}
+.stat-green{background:#EAF3DE;border:1px solid #97C459;}
+.stat-purple{background:#EEEDFE;border:1px solid #AFA9EC;}
+.stat-lbl{font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;line-height:1.3;}
+.lbl-white{color:rgba(255,255,255,0.75);} .lbl-navy{color:#0C447C;} .lbl-teal{color:#085041;}
+.lbl-amber{color:#633806;} .lbl-red{color:#791F1F;} .lbl-green{color:#27500A;} .lbl-purple{color:#3C3489;}
+.stat-val{font-size:22px;font-weight:500;line-height:1;cursor:pointer;}
+.val-white{color:#fff;} .val-navy{color:#1D3557;} .val-teal{color:#138181;}
+.val-amber{color:#BA7517;} .val-red{color:#A32D2D;} .val-green{color:#3B6D11;} .val-purple{color:#3C3489;}
+.stat-sub{font-size:10px;line-height:1.4;}
+.sub-white{color:rgba(255,255,255,0.55);} .sub-navy{color:#185FA5;} .sub-teal{color:#0F6E56;}
+.sub-green{color:#3B6D11;} .sub-green2{color:#639922;}
+.stat-btns{display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;}
+.tap-btn{border:none;border-radius:20px;padding:3px 8px;font-size:11px;font-weight:500;cursor:pointer;}
+.tap-navy{background:rgba(255,255,255,0.2);color:#fff;} .tap-teal{background:rgba(255,255,255,0.2);color:#fff;}
+.tap-lt-navy{background:#1D3557;color:#fff;} .tap-lt-teal{background:#138181;color:#fff;}
+.tap-amber{background:#BA7517;color:#fff;} .tap-red{background:#A32D2D;color:#fff;}
+.hint{font-size:9px;color:rgba(255,255,255,0.4);} .hint-lt{font-size:9px;color:#b0c8dc;}
+.divider{height:1px;background:#e2eaf2;margin:10px 0;}
+.leads-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.add-btn{background:#138181;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:500;cursor:pointer;}
+.search{width:100%;border:1px solid #d0dcea;border-radius:8px;padding:8px 12px;font-size:14px;background:#f7fafd;color:#1a2e44;margin-bottom:8px;font-family:inherit;}
+.client-card{background:#fff;border:1px solid #e2eaf2;border-radius:10px;padding:12px 14px;margin-bottom:7px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.client-card:active{background:#f7fafd;}
+.client-name{font-size:14px;font-weight:500;color:#1D3557;}
+.client-meta{font-size:11px;color:#5f7a99;margin-top:1px;}
+.badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:500;}
+.b-CIA{background:#E6F1FB;color:#0C447C;} .b-MIA{background:#E1F5EE;color:#085041;}
+.b-New{background:#E1F5EE;color:#085041;} .b-Working{background:#E6F1FB;color:#0C447C;}
+.b-Appt{background:#FAEEDA;color:#633806;} .b-Closed{background:#EAF3DE;color:#27500A;}
+.b-Dead{background:#FCEBEB;color:#501313;}
+.fresh-tag{display:inline-block;font-size:9px;padding:1px 6px;border-radius:8px;background:#1D3557;color:#fff;font-weight:500;margin-left:4px;vertical-align:middle;}
+.call-btns{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;}
+.call-btn{border:none;border-radius:20px;padding:6px 11px;font-size:11px;font-weight:500;cursor:pointer;}
+.cb-navy{background:#1D3557;color:#fff;} .cb-teal{background:#138181;color:#fff;}
+.cb-green{background:#EAF3DE;color:#27500A;border:1px solid #97C459;}
+.cb-amber{background:#FAEEDA;color:#633806;border:1px solid #FAC775;}
+.cb-red{background:#FCEBEB;color:#791F1F;border:1px solid #F7C1C1;}
+.log-row{font-size:11px;color:#5f7a99;padding:3px 0;border-top:1px solid #f0f4f8;margin-top:4px;}
+.log-time{font-size:10px;color:#a0b8cc;}
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:flex-start;justify-content:center;padding:16px;z-index:1000;overflow-y:auto;}
+.modal{background:#fff;border-radius:12px;padding:1.25rem;width:100%;max-width:400px;margin:auto;}
+.modal-title{font-size:16px;font-weight:500;color:#1D3557;margin-bottom:4px;}
+.modal-sub{font-size:11px;color:#5f7a99;margin-bottom:14px;}
+.close-x{float:right;background:none;border:none;font-size:22px;cursor:pointer;color:#8fa8c0;margin-top:-4px;line-height:1;}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;}
+.field label{font-size:10px;color:#5f7a99;text-transform:uppercase;letter-spacing:0.05em;font-weight:500;}
+.field input,.field select,.field textarea{border:1px solid #d0dcea;border-radius:8px;padding:9px 12px;font-size:14px;background:#f7fafd;color:#1a2e44;width:100%;font-family:inherit;}
+.field textarea{min-height:52px;resize:vertical;}
+.row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+.save-btn{background:#1D3557;color:#fff;border:none;border-radius:8px;padding:11px;font-size:13px;font-weight:500;cursor:pointer;width:100%;margin-top:4px;}
+.sec-btn{background:#138181;color:#fff;border:none;border-radius:8px;padding:9px;font-size:12px;font-weight:500;cursor:pointer;width:100%;margin-top:6px;}
+.empty{font-size:13px;color:#a0b8cc;text-align:center;padding:2rem 0;}
+.loading{font-size:13px;color:#5f7a99;text-align:center;padding:1rem 0;}
+.flag-btn{border:1px solid #d0dcea;border-radius:20px;padding:5px 11px;font-size:11px;font-weight:500;cursor:pointer;background:#fff;color:#5f7a99;margin:2px;}
+.flag-btn.on-teal{background:#138181;color:#fff;border-color:#138181;}
+.flag-btn.on-navy{background:#1D3557;color:#fff;border-color:#1D3557;}
+.flag-btn.on-purple{background:#534AB7;color:#fff;border-color:#534AB7;}
+.app-card{background:#f7fafd;border:1px solid #e2eaf2;border-radius:8px;padding:8px 10px;margin-bottom:6px;}
+.upload-pill{font-size:10px;padding:3px 9px;border-radius:10px;font-weight:500;cursor:pointer;border:none;}
+.up-yes{background:#EAF3DE;color:#27500A;} .up-no{background:#FCEBEB;color:#791F1F;}
+.sit-card{border:1px solid #e2eaf2;border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#fff;}
+.journey-row{display:flex;gap:4px;align-items:center;margin-top:6px;flex-wrap:wrap;}
+.journey-dot{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;flex-shrink:0;}
+.jd-showed{background:#138181;} .jd-noshow{background:#E24B4A;} .jd-cancel{background:#BA7517;} .jd-pending{background:#c0cdd8;}
+.filter-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;}
+.filter-btn{font-size:10px;padding:4px 10px;border-radius:20px;border:1px solid #d0dcea;background:#fff;color:#5f7a99;cursor:pointer;font-weight:500;}
+.filter-btn.on{background:#1D3557;color:#fff;border-color:#1D3557;}
+.sync-bar{background:#1D3557;color:rgba(255,255,255,0.8);font-size:10px;text-align:center;padding:4px;border-radius:6px;margin-bottom:8px;}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <div class="hdr">
+    <div>
+      <div class="hdr-title">Banks Advantage · CWC</div>
+      <div class="hdr-sub" id="hdr-date"></div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+      <div class="nav-row">
+        <button class="pill on" onclick="setView('week',this)">Week</button>
+        <button class="pill" onclick="setView('month',this)">Month</button>
+        <button class="pill" onclick="setView('quarter',this)">Qtr</button>
+        <button class="pill" onclick="setView('year',this)">Year</button>
+      </div>
+      <div class="nav-row">
+        <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
+        <div class="period-label" id="period-label">This week</div>
+        <button class="arrow-btn" onclick="shiftPeriod(1)">&#8594;</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="sync-bar" class="sync-bar" style="display:none;">Syncing...</div>
+
+  <div class="tab-bar">
+    <button class="tab on" onclick="showTab('score',this)">Board</button>
+    <button class="tab" onclick="showTab('clients',this)">Clients</button>
+  </div>
+
+  <div id="tab-score">
+    <div class="section-lbl">Dialing activity</div>
+    <div class="stat-row">
+      <div class="stat stat-navy">
+        <div class="stat-lbl lbl-white">Dials</div>
+        <div class="hint">Tap to edit</div>
+        <div class="stat-val val-white" id="s-dials" onclick="startEdit('dials','dark')">0</div>
+        <div class="stat-btns">
+          <button class="tap-btn tap-navy" onclick="addStat('dials',1)">+1</button>
+          <button class="tap-btn tap-navy" onclick="addStat('dials',3)">+3</button>
+        </div>
+      </div>
+      <div class="stat stat-teal">
+        <div class="stat-lbl lbl-white">Conversations</div>
+        <div class="hint">Tap to edit</div>
+        <div class="stat-val val-white" id="s-convos" onclick="startEdit('convos','dark')">0</div>
+        <div class="stat-btns">
+          <button class="tap-btn tap-teal" onclick="addStat('convos',1)">+1</button>
+        </div>
+      </div>
+      <div class="stat stat-navy-lt">
+        <div class="stat-lbl lbl-navy">Appts booked</div>
+        <div class="hint-lt">Tap to edit</div>
+        <div class="stat-val val-navy" id="s-appts" onclick="startEdit('appts','navy')">0</div>
+        <div class="stat-btns">
+          <button class="tap-btn tap-lt-navy" onclick="addStat('appts',1)">+1</button>
+        </div>
+      </div>
+    </div>
+    <div class="stat-row">
+      <div class="stat stat-amber">
+        <div class="stat-lbl lbl-amber">Callbacks</div>
+        <div class="hint-lt">Tap to edit</div>
+        <div class="stat-val val-amber" id="s-callbacks" onclick="startEdit('callbacks','amber')">0</div>
+        <div class="stat-btns">
+          <button class="tap-btn tap-amber" onclick="addStat('callbacks',1)">+1</button>
+        </div>
+      </div>
+      <div class="stat stat-red">
+        <div class="stat-lbl lbl-red">Not interested</div>
+        <div class="hint-lt">Tap to edit</div>
+        <div class="stat-val val-red" id="s-dead" onclick="startEdit('dead','red')">0</div>
+        <div class="stat-btns">
+          <button class="tap-btn tap-red" onclick="addStat('dead',1)">+1</button>
+        </div>
+      </div>
+      <div class="stat stat-green">
+        <div class="stat-lbl lbl-green">Resolved</div>
+        <div class="stat-val val-green" id="s-resolved">0</div>
+        <div class="stat-sub sub-green" id="s-resolved-pct">0% of convos</div>
+        <div class="stat-sub" style="color:#639922;" id="s-resolved-fresh">0 fresh</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="section-lbl">Sits this period</div>
+    <div class="stat-row">
+      <div class="stat stat-navy">
+        <div class="stat-lbl lbl-white">First sits</div>
+        <div class="stat-val val-white" id="p-first">0</div>
+        <div class="stat-sub sub-white" id="p-first-rate">0% showed</div>
+      </div>
+      <div class="stat stat-teal">
+        <div class="stat-lbl lbl-white">Showed</div>
+        <div class="stat-val val-white" id="p-showed">0</div>
+        <div class="stat-sub sub-white" id="p-sit-rate">0% sit rate</div>
+      </div>
+      <div class="stat stat-amber">
+        <div class="stat-lbl lbl-amber">No shows</div>
+        <div class="stat-val val-amber" id="p-noshow">0</div>
+        <div class="stat-sub" style="color:#854F0B;" id="p-cancel">0 canceled</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="section-lbl">Production</div>
+    <div class="stat-row">
+      <div class="stat stat-navy">
+        <div class="stat-lbl lbl-white">Closed HH</div>
+        <div class="stat-val val-white" id="p-closed">0</div>
+        <div class="stat-sub sub-white" id="p-close-rate">0% close rate</div>
+      </div>
+      <div class="stat stat-teal">
+        <div class="stat-lbl lbl-white">Written APV</div>
+        <div class="stat-val val-white" id="p-apv">$0</div>
+        <div class="stat-sub sub-white" id="p-apps">0 applications</div>
+      </div>
+      <div class="stat stat-navy-lt">
+        <div class="stat-lbl lbl-navy">APV / HH</div>
+        <div class="stat-val val-navy" id="p-apv-hh">$0</div>
+        <div class="stat-sub sub-navy" id="p-apps-hh">0 apps/HH</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="section-lbl">Pipeline</div>
+    <div class="stat-row">
+      <div class="stat stat-navy-lt"><div class="stat-lbl lbl-navy">New</div><div class="stat-val val-navy" id="pip-new">0</div><div class="stat-sub sub-navy" id="pip-fresh">0 fresh</div></div>
+      <div class="stat stat-teal-lt"><div class="stat-lbl lbl-teal">Working</div><div class="stat-val val-teal" id="pip-work">0</div></div>
+      <div class="stat stat-amber"><div class="stat-lbl lbl-amber">Appt set</div><div class="stat-val val-amber" id="pip-appt">0</div></div>
+    </div>
+    <div class="stat-row">
+      <div class="stat stat-teal"><div class="stat-lbl lbl-white">Closed</div><div class="stat-val val-white" id="pip-closed">0</div></div>
+      <div class="stat stat-red"><div class="stat-lbl lbl-red">Dead</div><div class="stat-val val-red" id="pip-dead">0</div></div>
+      <div class="stat stat-navy-lt"><div class="stat-lbl lbl-navy">Total</div><div class="stat-val val-navy" id="pip-total">0</div></div>
+    </div>
+  </div>
+
+  <div id="tab-clients" style="display:none;">
+    <div class="leads-hdr">
+      <div style="font-size:13px;font-weight:500;color:#1D3557;" id="client-count">Loading...</div>
+      <button class="add-btn" onclick="openAddClient()">+ Add client</button>
+    </div>
+    <input class="search" placeholder="Search by name or phone..." oninput="renderClients(this.value)" id="client-search">
+    <div class="filter-row">
+      <button class="filter-btn on" onclick="setFilter('all',this)">All</button>
+      <button class="filter-btn" onclick="setFilter('New',this)">New</button>
+      <button class="filter-btn" onclick="setFilter('Working',this)">Working</button>
+      <button class="filter-btn" onclick="setFilter('Appointment set',this)">Appt</button>
+      <button class="filter-btn" onclick="setFilter('Closed',this)">Closed</button>
+      <button class="filter-btn" onclick="setFilter('Dead',this)">Dead</button>
+    </div>
+    <div id="clients-list"><div class="loading">Loading clients...</div></div>
+  </div>
+</div>
+
+<script>
+// ── SUPABASE CONFIG ──────────────────────────────────────────
+const SUPABASE_URL = 'https://mdsaqxbqmvmusdtwlgay.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_bIh3jnNzNjQ31D6KdDConw_cVJChb67';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ── CARRIERS ─────────────────────────────────────────────────
+const CARRIERS = {
+  'American Amicable':['Home Certainty','Term Made Simple','Dignity Solutions','QSFP'],
+  'Americo':['Term 100','Term 125','COB100','IUL','Eagle Select 1','Eagle Select 2','Eagle Select 3'],
+  'Gerber':['ADB','GIWL'],'Banner Life':['Beyond Term'],'SBLI':['Easy Trak'],
+  'Mutual of Omaha':['Living Promise','Term Express','IULE','Critical Advantage','Guaranteed Advantage','LTC'],
+  'TransAmerica':['FEX Ex','FEX Imm'],'UHL':['QSFC','Term'],
+  'Foresters':['DFL','IBC'],'F&G':['IUL'],'InsureRealty':['Lending Product'],'Annuity':['Annuity — TBD']
+};
+
+const SIT_REASONS = [
+  {value:'first',label:'First sit'},
+  {value:'resched-noshow',label:'Reschedule — no show'},
+  {value:'resched-cancel',label:'Reschedule — client canceled'},
+  {value:'cont-ppu',label:'Continuation — PPU'},
+  {value:'cont-followup',label:'Continuation — follow up'},
+  {value:'reset',label:'Reset — new product'}
+];
+
+const SEED_LEADS = [
+  {name:'Austin Maynard',phone:'614-562-5130',state:'OH',source:'CIA',notes:'Mortgage: $232,800 · Gender: Male · Tobacco: Y · Co-borrower: N'},
+  {name:'Candice Pennick',phone:'253-286-8078',state:'WA',source:'CIA',notes:'Mortgage: $356,125 · Gender: Female · Tobacco: N · Co-borrower: N · Age: 45'},
+  {name:'Thaddeus Carney',phone:'757-254-6025',state:'VA',source:'CIA',notes:'Mortgage: $285,000 · Gender: Female · Tobacco: N · Co-borrower: Y · Age: 74'},
+  {name:'Sonia Treece',phone:'713-894-8160',state:'TX',source:'MIA',notes:'Mortgage: $441,750 · Age: 50'},
+  {name:'Sahana Epari',phone:'703-628-3138',state:'VA',source:'CIA',notes:'Mortgage: $413,600 · Gender: Female · Tobacco: N · Co-borrower: Y · Age: 27'},
+  {name:'Nancy Monahan',phone:'860-930-0678',state:'CT',source:'CIA',notes:'Mortgage: $365,750 · Gender: Female · Tobacco: N · Co-borrower: N · Age: 81'},
+  {name:'Kierra Moore',phone:'832-412-5950',state:'TX',source:'MIA',notes:'Mortgage: $304,832 · Age: 30'},
+  {name:'Benjamin Leyk',phone:'509-724-6487',state:'WA',source:'CIA',notes:'Mortgage: $392,755 · Gender: Male · Tobacco: N · Co-borrower: Y · Age: 38'},
+  {name:'Winiford Sullivan',phone:'360-473-8054',state:'WA',source:'CIA',notes:'Mortgage: $63,830 · Gender: Male · Tobacco: N · Co-borrower: N · Age: 85'},
+  {name:'Thomas Duffy',phone:'603-303-3039',state:'NH',source:'CIA',notes:'Mortgage: $300,000 · Gender: Male · Tobacco: N · Co-borrower: N · Age: 78'},
+  {name:'Stacey Hairston',phone:'276-632-6241',state:'VA',source:'CIA',notes:'Mortgage: $55,000 · Gender: Male · Tobacco: N · Co-borrower: Y · Age: 69'},
+  {name:'Monica & Austin Farmer',phone:'980-285-0914',state:'NC',source:'MIA',notes:'Mortgage: $340,714 · Best time: morning'},
+  {name:'Lindsey King',phone:'253-880-5742',state:'WA',source:'CIA',notes:'Mortgage: $426,800 · Gender: Female · Tobacco: N · Co-borrower: N · Age: 35'},
+  {name:'Karen Hapgood',phone:'603-312-3179',state:'NH',source:'CIA',notes:'Mortgage: $169,000 · Gender: Female · Tobacco: N · Co-borrower: Y · Age: 62'},
+  {name:'Joshua Henderson',phone:'757-373-2276',state:'VA',source:'CIA',notes:'Mortgage: $488,420 · Gender: Male · Tobacco: N · Co-borrower: Y · Age: 51'},
+  {name:'John Veillon',phone:'865-585-2338',state:'TN',source:'CIA',notes:'Mortgage: $32,200 · Gender: Male · Tobacco: N · Co-borrower: Y · Age: 42'},
+  {name:'Jody Kittell',phone:'802-673-0718',state:'VA',source:'CIA',notes:'Mortgage: $64,000 · Gender: Male · Tobacco: Y · Co-borrower: N · Age: 61'},
+  {name:'Joann Securo',phone:'401-575-7569',state:'RI',source:'CIA',notes:'Mortgage: $171,000 · Gender: Female · Tobacco: N · Co-borrower: N · Age: 72'},
+  {name:'Jeanne Balcom',phone:'202-441-5370',state:'VA',source:'CIA',notes:'Mortgage: $224,894 · Gender: Female · Tobacco: N · Co-borrower: N · Age: 65'},
+  {name:'James Reavis',phone:'401-272-5504',state:'RI',source:'CIA',notes:'Mortgage: $542,000 · Gender: Male · Tobacco: N · Co-borrower: Y · Age: 63'},
+  {name:'Haroun Suliman',phone:'423-615-2153',state:'TN',source:'CIA',notes:'Mortgage: $220,000 · Gender: Male · Tobacco: N · Co-borrower: Y · Age: 40'},
+  {name:'Gary Ball',phone:'931-854-7264',state:'TN',source:'CIA',notes:'Mortgage: $56,354 · Gender: Male · Tobacco: N · Co-borrower: Y · Age: 81'},
+  {name:'Elizabeth Pena',phone:'956-645-5471',state:'TX',source:'MIA',notes:'Mortgage: $204,000 · Best time: evening'},
+  {name:'Dimitry Paskar',phone:'971-229-9194',state:'WA',source:'CIA',notes:'Mortgage: $411,283 · Gender: Male · Tobacco: N · Co-borrower: Y · Age: 21'},
+  {name:'David Tucker',phone:'253-315-1345',state:'WA',source:'CIA',notes:'Mortgage: $286,500 · Gender: Male · Tobacco: N · Co-borrower: Y · Age: 70'},
+  {name:'Daniel Aisenberg',phone:'857-615-7456',state:'NH',source:'CIA',notes:'Mortgage: $471,145 · Gender: Male · Tobacco: Y · Co-borrower: N · Age: 33'},
+  {name:'Carol Nelson',phone:'401-376-3225',state:'RI',source:'CIA',notes:'Mortgage: $100,000 · Gender: Female · Tobacco: Y · Co-borrower: N · Age: 64'},
+  {name:'Briana Gooding & Lawrence Ricci',phone:'401-450-4341',state:'RI',source:'MIA',notes:'Mortgage: $379,990 · Best time: evening'},
+  {name:'William Sims',phone:'310-710-2778',state:'TN',source:'MIA',notes:'Mortgage: $68,000'},
+  {name:'Andrew Lufkin',phone:'207-441-1111',state:'ME',source:'MIA',notes:'Mortgage: $298,493 · Age: 45'},
+  {name:'Tryce Nunnelly',phone:'774-510-8450',state:'MA',source:'CIA',notes:'Mortgage: $188,000 · Gender: Male · Tobacco: Y · Co-borrower: N · Age: 68'},
+  {name:'Paul Mcdonough',phone:'617-592-1020',state:'MA',source:'CIA',notes:'Mortgage: $499,000 · Gender: Male · Tobacco: N · Co-borrower: Y · Age: 65'},
+  {name:'Kelhyn Pesantez',phone:'203-964-7116',state:'MA',source:'CIA',notes:'Mortgage: $555,038 · Gender: Female · Tobacco: N · Co-borrower: N · Age: 30'},
+  {name:'James Lyons',phone:'757-813-3846',state:'VA',source:'CIA',notes:'Mortgage: $123,000 · Gender: Male · Tobacco: N · Co-borrower: N · Age: 55'},
+  {name:'Elyse Disciullo',phone:'781-718-5151',state:'MA',source:'CIA',notes:'Mortgage: $585,000 · Gender: Female · Tobacco: N · Co-borrower: N · Age: 69'},
+  {name:'Dennis Emily',phone:'941-451-3894',state:'TN',source:'CIA',notes:'Mortgage: $296,000 · Gender: Male · Tobacco: N · Co-borrower: Y · Age: 74'},
+  {name:'Quinton Owens',phone:'804-988-3159',state:'VA',source:'CIA',notes:'Mortgage: $378,026 · Gender: Male · Tobacco: N · Co-borrower: Y'},
+  {name:'Bebe Serrenco',phone:'310-710-2278',state:'NC',source:'MIA',notes:'Mortgage: $136,300 · Age: 62 · Gender: Female'},
+  {name:'Timothy Kaestner',phone:'817-938-3321',state:'TX',source:'MIA',notes:'Mortgage: $467,032 · Age: 63'},
+  {name:'Nathan Cavazos',phone:'361-207-0676',state:'TX',source:'MIA',notes:'Mortgage: $398,100 · Age: 38'},
+  {name:'Juan Sierra',phone:'425-787-0551',state:'WA',source:'CIA',notes:'Mortgage: $375,000 · Gender: Female · Tobacco: N · Co-borrower: N'},
+  {name:'Billy Benavides',phone:'979-282-1136',state:'TX',source:'MIA',notes:'Mortgage: $61,500 · Gender: Male · Co-borrower: N'},
+  {name:'Angela Jones',phone:'760-420-2179',state:'TN',source:'MIA',notes:'Mortgage: $75,000 · Age: 56'},
+  {name:'William Silva',phone:'603-809-8565',state:'NH',source:'CIA',notes:'Mortgage: $387,000 · Gender: Male · Tobacco: N · Co-borrower: N'},
+  {name:'Thomas Dalton',phone:'425-387-7333',state:'WA',source:'CIA',notes:'Mortgage: $125,000 · Gender: Female · Tobacco: N · Co-borrower: Y'},
+  {name:'Terry Saffioti',phone:'860-625-1559',state:'CT',source:'CIA',notes:'Mortgage: $100,000 · Gender: Male · Tobacco: N · Co-borrower: Y'},
+  {name:'Terrence Troope',phone:'317-854-2300',state:'NC',source:'CIA',notes:'Mortgage: $386,024 · Gender: Male · Tobacco: N · Co-borrower: Y'},
+  {name:'Susan Viens',phone:'508-309-5516',state:'MA',source:'CIA',notes:'Mortgage: $362,738 · Gender: Female · Tobacco: N · Co-borrower: N'},
+  {name:'Sharonette Houchens',phone:'804-874-2839',state:'VA',source:'CIA',notes:'Mortgage: $240,089 · Gender: Female · Tobacco: N · Co-borrower: Y'},
+  {name:'Ryan Connarton',phone:'603-520-9036',state:'NH',source:'CIA',notes:'Mortgage: $232,707 · Gender: Male · Tobacco: Y · Co-borrower: N'},
+  {name:'Peter Thompson',phone:'603-387-4269',state:'NH',source:'CIA',notes:'Mortgage: $184,000 · Gender: Male · Tobacco: N · Co-borrower: Y'},
+  {name:'Nikolas Elevitch',phone:'959-229-8791',state:'CT',source:'CIA',notes:'Mortgage: $247,000 · Gender: Male · Tobacco: N · Co-borrower: N'},
+  {name:'Michael Hussey',phone:'774-272-2152',state:'MA',source:'MIA',notes:'Mortgage: $750,000 · Age: 64'},
+  {name:'Martin Gonzalez',phone:'210-316-3891',state:'TX',source:'CIA',notes:'Mortgage: $575,000 · Gender: Male · Tobacco: Y · Co-borrower: Y'},
+  {name:'Jodi Kirk',phone:'781-558-0721',state:'MA',source:'MIA',notes:'Mortgage: $256,125 · Gender: Female · Co-borrower: N'},
+  {name:'Joan Liberto',phone:'832-240-8972',state:'TX',source:'MIA',notes:'Mortgage: $134,265 · Gender: Female · Co-borrower: Y'},
+  {name:'Ellen Matheson',phone:'603-244-8088',state:'NH',source:'CIA',notes:'Mortgage: $95,500 · Gender: Female · Tobacco: N · Co-borrower: N'},
+  {name:'Donna Sormanti',phone:'401-944-4535',state:'RI',source:'CIA',notes:'Mortgage: $157,100 · Gender: Female · Tobacco: N · Co-borrower: N'},
+  {name:'Daniel Obrien',phone:'781-477-2922',state:'MA',source:'CIA',notes:'Mortgage: $400,000 · Gender: Male · Tobacco: N · Co-borrower: Y'},
+  {name:'Daniel Collette',phone:'401-500-5633',state:'RI',source:'CIA',notes:'Mortgage: $364,200 · Gender: Male · Tobacco: N · Co-borrower: N'},
+  {name:'Craig Casano',phone:'774-269-2935',state:'MA',source:'CIA',notes:'Mortgage: $500,000 · Gender: Male · Tobacco: N · Co-borrower: N'},
+  {name:'Corey Wilkerson',phone:'919-737-3800',state:'NH',source:'CIA',notes:'Mortgage: $607,788 · Gender: Male · Tobacco: N · Co-borrower: N'},
+  {name:'Briana Gooding',phone:'401-465-4324',state:'RI',source:'CIA',notes:'Mortgage: $379,990 · Gender: Female · Tobacco: N · Co-borrower: Y'},
+  {name:'Barbara Lemay',phone:'401-680-3421',state:'RI',source:'CIA',notes:'Mortgage: $277,800 · Gender: Female · Tobacco: N · Co-borrower: N'},
+  {name:'Austin Hooie',phone:'256-221-3470',state:'TN',source:'CIA',notes:'Mortgage: $254,308 · Gender: Male · Tobacco: Y · Co-borrower: N'},
+  {name:'Andrew Pascual',phone:'864-684-7203',state:'SC',source:'MIA',notes:'Mortgage: $245,471 · Age: 22'},
+  {name:'Albert Nolli',phone:'508-681-0218',state:'MA',source:'CIA',notes:'Mortgage: $65,000 · Gender: Female · Tobacco: N · Co-borrower: N'},
+  {name:'Wilson Celestin',phone:'508-598-8081',state:'MA',source:'CIA',notes:'Mortgage: $484,070 · Gender: Male · Tobacco: N · Co-borrower: N'},
+  {name:'Kimberly Reid',phone:'702-250-2557',state:'TX',source:'CIA',notes:'Mortgage: $217,968 · Gender: Female · Tobacco: N · Co-borrower: N'},
+  {name:'John Fernandes',phone:'203-888-8888',state:'CT',source:'CIA',notes:'Mortgage: $600,000 · Gender: Female · Tobacco: Y · Co-borrower: N'}
+];
+
+// ── STATE ────────────────────────────────────────────────────
+let clients = [];
+let stats = [];
+let view = 'week';
+let periodOffset = 0;
+let activeFilter = 'all';
+let seeded = false;
+
+document.getElementById('hdr-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+
+// ── INIT ─────────────────────────────────────────────────────
+async function init() {
+  showSync('Loading your data...');
+  await loadClients();
+  await loadStats();
+  // Seed if empty
+  if (clients.length === 0 && !seeded) {
+    seeded = true;
+    showSync('Setting up your leads...');
+    await seedLeads();
+    await loadClients();
+  }
+  hideSync();
+  renderScore();
+  if (document.getElementById('tab-clients').style.display !== 'none') renderClients();
+}
+
+async function loadClients() {
+  const { data, error } = await sb.from('clients').select('*').order('created_at', { ascending: false });
+  if (!error && data) clients = data;
+}
+
+async function loadStats() {
+  const { data, error } = await sb.from('stats').select('*');
+  if (!error && data) stats = data;
+}
+
+async function seedLeads() {
+  const today = new Date().toISOString().slice(0,10);
+  const rows = SEED_LEADS.map(l => ({
+    name: l.name, phone: l.phone, state: l.state, source: l.source,
+    status: 'New', assigned_date: today, notes: l.notes,
+    health_notes: '', policy_notes: '', call_log: [], sits: []
+  }));
+  await sb.from('clients').insert(rows);
+}
+
+function showSync(msg) {
+  const bar = document.getElementById('sync-bar');
+  bar.textContent = msg;
+  bar.style.display = 'block';
+}
+function hideSync() {
+  document.getElementById('sync-bar').style.display = 'none';
+}
+
+// ── HELPERS ──────────────────────────────────────────────────
+const FRESH_DAYS = 17;
+function isFresh(c) {
+  const d = c.assigned_date || c.created_at;
+  if (!d) return false;
+  return (new Date() - new Date(d)) / (1000*60*60*24) <= FRESH_DAYS;
+}
+
+function fmt(n) { return n >= 1000 ? '$' + Math.round(n/100)/10 + 'k' : '$' + n; }
+function pct(n, d) { return d > 0 ? Math.round((n/d)*100) + '%' : '—'; }
+function todayStr() { return new Date().toISOString().slice(0,10); }
+
+function getPeriodBounds() {
+  const now = new Date(); let start, end, label;
+  if (view === 'week') {
+    const day = now.getDay(); const diff = day === 6 ? 0 : day + 1;
+    const sat = new Date(now); sat.setDate(now.getDate() - diff + periodOffset*7); sat.setHours(0,0,0,0);
+    const fri = new Date(sat); fri.setDate(sat.getDate()+6); fri.setHours(23,59,59,999);
+    start = sat; end = fri;
+    label = periodOffset===0?'This week':periodOffset===-1?'Last week':sat.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+fri.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  } else if (view === 'month') {
+    const d = new Date(now.getFullYear(), now.getMonth()+periodOffset, 1);
+    start = d; end = new Date(d.getFullYear(), d.getMonth()+1, 0, 23,59,59,999);
+    label = periodOffset===0?'This month':d.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  } else if (view === 'quarter') {
+    const m = now.getMonth(); const qs = m-(m%3)+periodOffset*3;
+    start = new Date(now.getFullYear(),qs,1); end = new Date(now.getFullYear(),qs+3,0,23,59,59,999);
+    label = periodOffset===0?'This quarter':'Q'+(Math.floor(qs/3)+1)+' '+start.getFullYear();
+  } else {
+    const yr = now.getFullYear()+periodOffset;
+    start = new Date(yr,0,1); end = new Date(yr,11,31,23,59,59,999);
+    label = periodOffset===0?'This year':String(yr);
+  }
+  return {start, end, label};
+}
+
+function setView(v, btn) { view=v; periodOffset=0; document.querySelectorAll('.pill').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); renderScore(); }
+function shiftPeriod(d) { periodOffset+=d; renderScore(); }
+
+// ── STATS ────────────────────────────────────────────────────
+async function addStat(key, n) {
+  const row = { stat_key: key, value: n, recorded_at: new Date().toISOString() };
+  const { data } = await sb.from('stats').insert([row]).select();
+  if (data) stats.push(data[0]);
+  renderScore();
+}
+
+function sumStat(key, start, end) {
+  return stats.filter(s => {
+    const t = new Date(s.recorded_at);
+    return s.stat_key === key && t >= start && t <= end;
+  }).reduce((a,s) => a + s.value, 0);
+}
+
+async function setStat(key, total) {
+  const {start, end} = getPeriodBounds();
+  const diff = total - sumStat(key, start, end);
+  if (diff !== 0) await addStat(key, diff);
+}
+
+function startEdit(key, theme) {
+  const el = document.getElementById('s-'+key);
+  const current = parseInt(el.textContent) || 0;
+  const colorMap = {dark:'color:#fff;border-bottom:2px solid rgba(255,255,255,0.5)',navy:'color:#1D3557;border-bottom:2px solid #1D3557',amber:'color:#BA7517;border-bottom:2px solid #BA7517',red:'color:#A32D2D;border-bottom:2px solid #A32D2D'};
+  const inp = document.createElement('input');
+  inp.type='number'; inp.min='0'; inp.value=current;
+  inp.style.cssText='font-size:22px;font-weight:500;width:100%;background:transparent;border:none;outline:none;padding:0;font-family:inherit;'+colorMap[theme];
+  el.replaceWith(inp); inp.focus(); inp.select();
+  async function commit() { const val=Math.max(0,parseInt(inp.value)||0); await setStat(key,val); inp.replaceWith(el); el.textContent=val; }
+  inp.addEventListener('blur', commit);
+  inp.addEventListener('keydown', e => { if(e.key==='Enter') inp.blur(); if(e.key==='Escape'){inp.replaceWith(el);renderScore();} });
+}
+
+// ── SCOREBOARD ───────────────────────────────────────────────
+function renderScore() {
+  const {start, end, label} = getPeriodBounds();
+  document.getElementById('period-label').textContent = label;
+
+  const dials=sumStat('dials',start,end), convos=sumStat('convos',start,end);
+  const appts=sumStat('appts',start,end), callbacks=sumStat('callbacks',start,end), dead=sumStat('dead',start,end);
+  const resolved = appts + dead;
+
+  ['dials','convos','appts','callbacks','dead'].forEach((k,i) => {
+    const el = document.getElementById('s-'+k);
+    if (el && el.tagName !== 'INPUT') el.textContent = [dials,convos,appts,callbacks,dead][i];
+  });
+  document.getElementById('s-resolved').textContent = resolved;
+  document.getElementById('s-resolved-pct').textContent = pct(resolved,convos) + ' of ' + convos + ' convos';
+
+  const freshRes = clients.filter(c => {
+    const isRes = c.status==='Appointment set'||c.status==='Dead'||c.status==='Closed';
+    const callInP = (c.call_log||[]).some(cl => { const t=new Date(cl.ts); return t>=start&&t<=end; });
+    return isRes && callInP && isFresh(c);
+  }).length;
+  document.getElementById('s-resolved-fresh').textContent = freshRes + ' fresh (≤17d)';
+
+  const allSits = clients.flatMap(c => (c.sits||[]).filter(s => { const d=new Date(s.datetime); return d>=start&&d<=end; }));
+  const firstSits = allSits.filter(s => s.reason==='first'||!s.reason);
+  const firstShowed = firstSits.filter(s => s.outcome==='showed').length;
+  const totalShowed = allSits.filter(s => s.outcome==='showed').length;
+  const totalNoshow = allSits.filter(s => s.outcome==='noshow').length;
+  const totalCanceled = allSits.filter(s => s.outcome==='canceled').length;
+  document.getElementById('p-first').textContent = firstSits.length;
+  document.getElementById('p-first-rate').textContent = pct(firstShowed,firstSits.length) + ' showed';
+  document.getElementById('p-showed').textContent = totalShowed;
+  document.getElementById('p-sit-rate').textContent = pct(totalShowed,allSits.length) + ' sit rate';
+  document.getElementById('p-noshow').textContent = totalNoshow;
+  document.getElementById('p-cancel').textContent = totalCanceled + ' canceled';
+
+  const satSits = allSits.filter(s => s.outcome==='showed');
+  const closedSits = satSits.filter(s => (s.apps||[]).length > 0);
+  const totalAPV = satSits.reduce((a,s) => a+(s.apps||[]).reduce((b,ap) => b+(ap.premium||0),0),0);
+  const totalApps = satSits.reduce((a,s) => a+(s.apps||[]).length,0);
+  const apvPerHH = closedSits.length>0 ? Math.round(closedSits.reduce((a,s)=>a+(s.apps||[]).reduce((b,ap)=>b+(ap.premium||0),0),0)/closedSits.length) : 0;
+  const appsPerHH = closedSits.length>0 ? Math.round((closedSits.reduce((a,s)=>a+(s.apps||[]).length,0)/closedSits.length)*10)/10 : 0;
+  document.getElementById('p-closed').textContent = closedSits.length;
+  document.getElementById('p-close-rate').textContent = pct(closedSits.length,totalShowed) + ' close rate';
+  document.getElementById('p-apv').textContent = fmt(totalAPV);
+  document.getElementById('p-apps').textContent = totalApps + ' applications';
+  document.getElementById('p-apv-hh').textContent = fmt(apvPerHH);
+  document.getElementById('p-apps-hh').textContent = appsPerHH + ' apps/HH';
+
+  document.getElementById('pip-new').textContent = clients.filter(c=>c.status==='New').length;
+  document.getElementById('pip-fresh').textContent = clients.filter(c=>c.status==='New'&&isFresh(c)).length + ' fresh';
+  document.getElementById('pip-work').textContent = clients.filter(c=>c.status==='Working').length;
+  document.getElementById('pip-appt').textContent = clients.filter(c=>c.status==='Appointment set').length;
+  document.getElementById('pip-closed').textContent = clients.filter(c=>c.status==='Closed').length;
+  document.getElementById('pip-dead').textContent = clients.filter(c=>c.status==='Dead').length;
+  document.getElementById('pip-total').textContent = clients.length;
+}
+
+// ── TABS ─────────────────────────────────────────────────────
+function showTab(t, btn) {
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on')); btn.classList.add('on');
+  document.getElementById('tab-score').style.display = t==='score'?'block':'none';
+  document.getElementById('tab-clients').style.display = t==='clients'?'block':'none';
+  if (t==='clients') renderClients();
+}
+
+function setFilter(f, btn) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('on')); btn.classList.add('on');
+  renderClients(document.getElementById('client-search').value);
+}
+
+// ── CLIENT LIST ──────────────────────────────────────────────
+function badgeClass(src) { return 'badge b-' + (src||'').split(' ')[0]; }
+function statusBadge(s) { const m={'New':'b-New','Working':'b-Working','Appointment set':'b-Appt','Closed':'b-Closed','Dead':'b-Dead'}; return 'badge '+(m[s]||'b-New'); }
+function dotClass(s) { if(s.outcome==='showed')return'jd-showed'; if(s.outcome==='noshow')return'jd-noshow'; if(s.outcome==='canceled')return'jd-cancel'; return'jd-pending'; }
+
+function renderClients(q='') {
+  const el = document.getElementById('clients-list');
+  let list = clients.filter(c => {
+    const matchQ = !q || (c.name||'').toLowerCase().includes(q.toLowerCase()) || (c.phone||'').includes(q);
+    const matchF = activeFilter==='all' || c.status===activeFilter;
+    return matchQ && matchF;
+  });
+  document.getElementById('client-count').textContent = clients.length + ' clients · ' + list.length + ' shown';
+  if (!list.length) { el.innerHTML='<div class="empty">No clients match.</div>'; return; }
+  el.innerHTML = list.map(c => {
+    const fresh = isFresh(c);
+    const sits = c.sits || [];
+    const lastCall = (c.call_log||[]).slice(-1)[0];
+    const journey = sits.map((s,si) => `<div class="journey-dot ${dotClass(s)}" title="${s.outcome||'pending'}">${si+1}</div>`).join('');
+    return `<div class="client-card" onclick="openClient('${c.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <div class="client-name">${c.name||'Unknown'}${fresh?'<span class="fresh-tag">fresh</span>':''}</div>
+          <div class="client-meta">${c.phone||''} · ${c.state||''}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
+          <span class="${badgeClass(c.source)}">${c.source||''}</span>
+          <span class="${statusBadge(c.status)}">${c.status||'New'}</span>
+        </div>
+      </div>
+      ${sits.length?`<div class="journey-row">${journey}</div>`:''}
+      ${lastCall?`<div class="log-row"><span class="log-time">${new Date(lastCall.ts).toLocaleDateString('en-US',{month:'short',day:'numeric'})} ${new Date(lastCall.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</span> · ${lastCall.outcome}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+// ── MODAL ────────────────────────────────────────────────────
+function showModal(html) {
+  closeModal();
+  const ov = document.createElement('div'); ov.className='modal-overlay'; ov.id='modal-ov';
+  ov.innerHTML = '<div class="modal">' + html + '</div>';
+  ov.addEventListener('click', e => { if(e.target===ov) closeModal(); });
+  document.body.appendChild(ov);
+}
+function closeModal() { const m=document.getElementById('modal-ov'); if(m) m.remove(); }
+
+// ── OPEN CLIENT ──────────────────────────────────────────────
+function openClient(id) {
+  const c = clients.find(x => x.id === id);
+  if (!c) return;
+  const sits = c.sits || [];
+  const callLog = c.call_log || [];
+  const statuses = ['New','Working','Appointment set','Closed','Dead'];
+  const suggestedReason = sits.length===0?'first':sits[sits.length-1].outcome==='noshow'?'resched-noshow':sits[sits.length-1].ppu?'cont-ppu':'cont-followup';
+
+  const callHistory = callLog.slice().reverse().slice(0,6).map(cl => `
+    <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:5px;">
+      <div style="width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0;background:${cl.outcome==='Appt set'?'#138181':cl.outcome==='Not interested'?'#E24B4A':cl.outcome==='Callback'?'#BA7517':'#1D3557'};"></div>
+      <div><div style="font-size:12px;color:#1a2e44;font-weight:500;">${cl.outcome}</div>
+      <div style="font-size:10px;color:#a0b8cc;">${new Date(cl.ts).toLocaleDateString('en-US',{month:'short',day:'numeric'})} ${new Date(cl.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div></div>
+    </div>`).join('');
+
+  const sitsHtml = sits.map((s,si) => {
+    const reason = SIT_REASONS.find(r=>r.value===s.reason)||SIT_REASONS[0];
+    const appsList = (s.apps||[]).map((ap,ai) => `
+      <div class="app-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div><div style="font-size:13px;font-weight:500;color:#1D3557;">${ap.carrier} — ${ap.product}</div>
+          <div style="font-size:11px;color:#5f7a99;">$${(ap.faceAmount||0).toLocaleString()} face · $${(ap.premium||0).toLocaleString()}/yr APV${ap.notes?' · '+ap.notes:''}</div></div>
+          <button class="upload-pill ${ap.uploaded?'up-yes':'up-no'}" onclick="toggleUpload('${id}',${si},${ai})">${ap.uploaded?'✓ Uploaded':'Not uploaded'}</button>
+        </div>
+      </div>`).join('');
+    const flags = [s.ppu?'PPU':'',s.selfReset?'Reset→self':'',s.sme?'Reset→SME':'',s.recruitAsk?'Recruiting ask':''].filter(Boolean).join(' · ');
+    const ol = s.outcome==='showed'?{t:'Showed',c:'#138181'}:s.outcome==='noshow'?{t:'No show',c:'#E24B4A'}:s.outcome==='canceled'?{t:'Canceled',c:'#BA7517'}:{t:'Pending',c:'#8fa8c0'};
+    return `<div class="sit-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+        <div>
+          <div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;">Sit ${si+1}</div>
+          <div style="font-size:13px;font-weight:500;color:#1D3557;">${new Date(s.datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'})}</div>
+          <div style="font-size:11px;color:#138181;">${reason.label}${flags?' · '+flags:''}</div>
+        </div>
+        <span style="font-size:12px;font-weight:500;color:${ol.c};">${ol.t}</span>
+      </div>
+      ${appsList}
+      <div style="display:flex;gap:5px;margin-top:6px;">
+        <button style="flex:1;background:#E1F5EE;border:none;border-radius:6px;padding:6px;font-size:11px;color:#085041;cursor:pointer;font-weight:500;" onclick="openAddApp('${id}',${si})">+ App</button>
+        <button style="flex:1;background:#f0f4f8;border:none;border-radius:6px;padding:6px;font-size:11px;color:#1D3557;cursor:pointer;font-weight:500;" onclick="openEditSit('${id}',${si})">Edit sit</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+  <div class="modal-title">${c.name}</div>
+  <div class="modal-sub">${c.phone} · ${c.state||''} · <span class="${badgeClass(c.source)}">${c.source||''}</span></div>
+  <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;">
+    <button class="call-btn cb-navy" onclick="quickLog('${id}','No answer','dials')">No answer</button>
+    <button class="call-btn cb-teal" onclick="quickLog('${id}','Conversation','convos')">Convo</button>
+    <button class="call-btn cb-green" onclick="quickLog('${id}','Appt set','appts')">Appt set</button>
+    <button class="call-btn cb-amber" onclick="quickLog('${id}','Callback','callbacks')">Callback</button>
+    <button class="call-btn cb-red" onclick="quickLog('${id}','Not interested','dead')">Not interested</button>
+  </div>
+  <div class="section-lbl" style="margin-top:0;">Sit history</div>
+  ${sitsHtml||'<div style="font-size:12px;color:#a0b8cc;margin-bottom:8px;">No sits logged yet.</div>'}
+  <button class="sec-btn" onclick="openAddSit('${id}','${suggestedReason}')">+ Log sit ${sits.length+1}</button>
+  <div class="section-lbl">Call log</div>
+  <div style="padding-left:4px;margin-bottom:12px;">${callHistory||'<div style="font-size:12px;color:#a0b8cc;">No calls yet.</div>'}</div>
+  <div class="section-lbl">Notes</div>
+  <div class="field"><textarea id="cn-notes" style="min-height:44px;">${c.notes||''}</textarea></div>
+  <div class="field"><label>Health notes</label><textarea id="cn-health" style="min-height:36px;">${c.health_notes||''}</textarea></div>
+  <div class="field"><label>Policy planning</label><textarea id="cn-policy" style="min-height:36px;">${c.policy_notes||''}</textarea></div>
+  <div class="row2">
+    <div class="field"><label>Status</label><select id="cn-status">${statuses.map(s=>`<option${c.status===s?' selected':''}>${s}</option>`).join('')}</select></div>
+    <div class="field"><label>HQ assigned</label><input type="date" id="cn-assigned" value="${c.assigned_date||todayStr()}"></div>
+  </div>
+  <button class="save-btn" onclick="updateClient('${id}')">Save</button>`);
+}
+
+// ── QUICK LOG ────────────────────────────────────────────────
+async function quickLog(id, outcome, statKey) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(), outcome}];
+  let newStatus = c.status;
+  if (outcome==='Not interested') newStatus='Dead';
+  else if (outcome==='Appt set') newStatus='Appointment set';
+  else if (outcome==='Conversation'||outcome==='Callback') newStatus='Working';
+  showSync('Saving...');
+  await sb.from('clients').update({call_log:callLog, status:newStatus}).eq('id',id);
+  c.call_log = callLog; c.status = newStatus;
+  await addStat(statKey, 1);
+  hideSync();
+  openClient(id);
+  renderScore();
+}
+
+// ── UPDATE CLIENT ────────────────────────────────────────────
+async function updateClient(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const updates = {
+    notes: document.getElementById('cn-notes').value.trim(),
+    health_notes: document.getElementById('cn-health').value.trim(),
+    policy_notes: document.getElementById('cn-policy').value.trim(),
+    status: document.getElementById('cn-status').value,
+    assigned_date: document.getElementById('cn-assigned').value
+  };
+  showSync('Saving...');
+  await sb.from('clients').update(updates).eq('id',id);
+  Object.assign(c, updates);
+  hideSync();
+  closeModal();
+  renderClients(document.getElementById('client-search').value);
+  renderScore();
+}
+
+// ── ADD CLIENT ───────────────────────────────────────────────
+function openAddClient() {
+  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+  <div class="modal-title">Add client</div>
+  <div class="field"><label>Full name</label><input type="text" id="cl-name" placeholder="John & Mary Jones"></div>
+  <div class="field"><label>Phone</label><input type="tel" id="cl-phone" placeholder="603-555-0100"></div>
+  <div class="row2">
+    <div class="field"><label>State</label><input type="text" id="cl-state" placeholder="NH" maxlength="2"></div>
+    <div class="field"><label>Lead type</label><select id="cl-src"><option>MIA</option><option>CIA</option><option>MIB</option><option>CIB</option><option>CIC</option><option>Referral</option><option>Existing client</option><option>Warm market</option></select></div>
+  </div>
+  <div class="field"><label>HQ assigned date</label><input type="date" id="cl-assigned" value="${todayStr()}"></div>
+  <div class="field"><label>Notes</label><textarea id="cl-notes" placeholder="Mortgage amount, age, details..."></textarea></div>
+  <button class="save-btn" onclick="saveClient()">Add client</button>`);
+}
+
+async function saveClient() {
+  const name = document.getElementById('cl-name').value.trim();
+  const phone = document.getElementById('cl-phone').value.trim();
+  if (!name||!phone) return;
+  const row = {name, phone, state:document.getElementById('cl-state').value.trim().toUpperCase(), source:document.getElementById('cl-src').value, assigned_date:document.getElementById('cl-assigned').value||todayStr(), notes:document.getElementById('cl-notes').value.trim(), health_notes:'', policy_notes:'', status:'New', call_log:[], sits:[]};
+  showSync('Saving...');
+  const {data} = await sb.from('clients').insert([row]).select();
+  if (data) clients.unshift(data[0]);
+  hideSync();
+  closeModal();
+  renderClients();
+  renderScore();
+}
+
+// ── SITS ─────────────────────────────────────────────────────
+function openAddSit(id, suggestedReason) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const now = new Date(); now.setMinutes(0,0,0); now.setHours(now.getHours()+1);
+  const reasonOptions = SIT_REASONS.map(r=>`<option value="${r.value}"${r.value===suggestedReason?' selected':''}>${r.label}</option>`).join('');
+  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+  <div class="modal-title">Log sit — ${c.name}</div>
+  <div class="field"><label>Date & time</label><input type="datetime-local" id="sit-dt" value="${now.toISOString().slice(0,16)}"></div>
+  <div class="field"><label>Reason</label><select id="sit-reason">${reasonOptions}</select></div>
+  <div class="field"><label>Type</label><select id="sit-type"><option>Mortgage protection</option><option>Continuation</option><option>Policy review / PPU</option><option>Retirement strategy</option><option>Existing client — additional coverage</option><option>Other</option></select></div>
+  <div class="section-lbl">Outcome (if known)</div>
+  <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+    <button class="call-btn cb-teal" onclick="setPendingOutcome('showed')">Showed</button>
+    <button class="call-btn cb-red" onclick="setPendingOutcome('noshow')">No show</button>
+    <button class="call-btn cb-amber" onclick="setPendingOutcome('canceled')">Canceled</button>
+    <button class="call-btn" style="background:#f0f4f8;color:#5f7a99;border:1px solid #d0dcea;" onclick="setPendingOutcome('pending')">Pending</button>
+  </div>
+  <div class="field"><label>Notes</label><textarea id="sit-notes" placeholder="Notes..."></textarea></div>
+  <button class="save-btn" onclick="saveSit('${id}')">Save sit</button>`);
+  window._sitOutcome = 'pending';
+}
+
+function setPendingOutcome(val) { window._sitOutcome = val; }
+
+async function saveSit(id) {
+  const dt = document.getElementById('sit-dt').value; if (!dt) return;
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const outcome = window._sitOutcome==='pending' ? undefined : window._sitOutcome;
+  const newSit = {datetime:new Date(dt).toISOString(), reason:document.getElementById('sit-reason').value, type:document.getElementById('sit-type').value, outcome, notes:document.getElementById('sit-notes').value.trim(), apps:[], ppu:false, selfReset:false, sme:false, recruitAsk:false, refsask:0, refs:0, created:new Date().toISOString()};
+  const sits = [...(c.sits||[]), newSit];
+  let newStatus = c.status;
+  if (outcome==='showed') newStatus='Closed';
+  else if (!outcome) newStatus='Appointment set';
+  showSync('Saving...');
+  await sb.from('clients').update({sits, status:newStatus}).eq('id',id);
+  c.sits = sits; c.status = newStatus;
+  hideSync();
+  openClient(id);
+  renderScore();
+}
+
+function openEditSit(id, si) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const s = c.sits[si];
+  const reasonOptions = SIT_REASONS.map(r=>`<option value="${r.value}"${r.value===s.reason?' selected':''}>${r.label}</option>`).join('');
+  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+  <div class="modal-title">Edit sit ${si+1} — ${c.name}</div>
+  <div class="field"><label>Reason</label><select id="er-reason">${reasonOptions}</select></div>
+  <div class="section-lbl" style="margin-top:4px;">Outcome</div>
+  <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+    <button class="call-btn cb-teal" onclick="setSitOutcome('${id}',${si},'showed')">Showed${s.outcome==='showed'?' ✓':''}</button>
+    <button class="call-btn cb-red" onclick="setSitOutcome('${id}',${si},'noshow')">No show${s.outcome==='noshow'?' ✓':''}</button>
+    <button class="call-btn cb-amber" onclick="setSitOutcome('${id}',${si},'canceled')">Canceled${s.outcome==='canceled'?' ✓':''}</button>
+  </div>
+  <div class="row2">
+    <div class="field"><label>Refs asked</label><input type="number" id="er-refsask" min="0" value="${s.refsask||0}"></div>
+    <div class="field"><label>Refs collected</label><input type="number" id="er-refs" min="0" value="${s.refs||0}"></div>
+  </div>
+  <div class="section-lbl">Flags</div>
+  <div style="display:flex;flex-wrap:wrap;margin-bottom:10px;">
+    <button class="flag-btn${s.ppu?' on-teal':''}" onclick="toggleSitFlag('${id}',${si},'ppu')">PPU${s.ppu?' ✓':''}</button>
+    <button class="flag-btn${s.selfReset?' on-navy':''}" onclick="toggleSitFlag('${id}',${si},'selfReset')">Reset→self${s.selfReset?' ✓':''}</button>
+    <button class="flag-btn${s.sme?' on-purple':''}" onclick="toggleSitFlag('${id}',${si},'sme')">Reset→SME${s.sme?' ✓':''}</button>
+    <button class="flag-btn${s.recruitAsk?' on-navy':''}" onclick="toggleSitFlag('${id}',${si},'recruitAsk')">Recruiting ask${s.recruitAsk?' ✓':''}</button>
+  </div>
+  <div class="field"><label>Notes</label><textarea id="er-notes">${s.notes||''}</textarea></div>
+  <button class="save-btn" onclick="saveEditSit('${id}',${si})">Save</button>`);
+}
+
+async function setSitOutcome(id, si, val) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  c.sits[si].outcome = val;
+  if (val==='showed') c.status='Closed';
+  showSync('Saving...');
+  await sb.from('clients').update({sits:c.sits, status:c.status}).eq('id',id);
+  hideSync();
+  openEditSit(id, si);
+  renderScore();
+}
+
+async function toggleSitFlag(id, si, k) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  c.sits[si][k] = !c.sits[si][k];
+  showSync('Saving...');
+  await sb.from('clients').update({sits:c.sits}).eq('id',id);
+  hideSync();
+  openEditSit(id, si);
+}
+
+async function saveEditSit(id, si) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  c.sits[si].reason = document.getElementById('er-reason').value;
+  c.sits[si].refs = parseInt(document.getElementById('er-refs').value)||0;
+  c.sits[si].refsask = parseInt(document.getElementById('er-refsask').value)||0;
+  c.sits[si].notes = document.getElementById('er-notes').value.trim();
+  showSync('Saving...');
+  await sb.from('clients').update({sits:c.sits}).eq('id',id);
+  hideSync();
+  openClient(id);
+  renderScore();
+}
+
+// ── APPLICATIONS ─────────────────────────────────────────────
+function openAddApp(id, si) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const carriers = Object.keys(CARRIERS);
+  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+  <div class="modal-title">Log application</div>
+  <div class="modal-sub">${c.name} — Sit ${si+1}</div>
+  <div class="field"><label>Carrier</label><select id="ap-carrier" onchange="updateProducts()">${carriers.map(c=>`<option>${c}</option>`).join('')}</select></div>
+  <div class="field"><label>Product</label><select id="ap-product"></select></div>
+  <div class="row2">
+    <div class="field"><label>Face amount ($)</label><input type="number" id="ap-face" min="0" placeholder="250000"></div>
+    <div class="field"><label>Annual premium ($)</label><input type="number" id="ap-premium" min="0" placeholder="1200"></div>
+  </div>
+  <div class="field"><label>Notes</label><input type="text" id="ap-notes" placeholder="10yr term, preferred..."></div>
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+    <input type="checkbox" id="ap-uploaded" style="width:16px;height:16px;">
+    <label for="ap-uploaded" style="font-size:13px;color:#1D3557;">Already uploaded to carrier & IMO</label>
+  </div>
+  <button class="save-btn" onclick="saveApp('${id}',${si})">Add application</button>`);
+  updateProducts();
+}
+
+function updateProducts() {
+  const carrier = document.getElementById('ap-carrier').value;
+  document.getElementById('ap-product').innerHTML = (CARRIERS[carrier]||[]).map(p=>`<option>${p}</option>`).join('');
+}
+
+async function saveApp(id, si) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const app = {carrier:document.getElementById('ap-carrier').value, product:document.getElementById('ap-product').value, faceAmount:parseInt(document.getElementById('ap-face').value)||0, premium:parseInt(document.getElementById('ap-premium').value)||0, notes:document.getElementById('ap-notes').value.trim(), uploaded:document.getElementById('ap-uploaded').checked, created:new Date().toISOString()};
+  c.sits[si].apps = [...(c.sits[si].apps||[]), app];
+  if (app.premium > 0) c.status = 'Closed';
+  showSync('Saving...');
+  await sb.from('clients').update({sits:c.sits, status:c.status}).eq('id',id);
+  hideSync();
+  openClient(id);
+  renderScore();
+}
+
+async function toggleUpload(id, si, ai) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  c.sits[si].apps[ai].uploaded = !c.sits[si].apps[ai].uploaded;
+  showSync('Saving...');
+  await sb.from('clients').update({sits:c.sits}).eq('id',id);
+  hideSync();
+  openClient(id);
+}
+
+// ── GO ───────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
