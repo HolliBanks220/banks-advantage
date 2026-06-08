@@ -650,7 +650,7 @@ function showModal(html) {
   closeModal();
   const ov = document.createElement('div'); ov.className='modal-overlay'; ov.id='modal-ov';
   ov.innerHTML = '<div class="modal">' + html + '</div>';
-  ov.addEventListener('click', e => { if(e.target===ov) closeModal(); });
+  // Removed click-outside-to-close to prevent accidental data loss
   document.body.appendChild(ov);
 }
 function closeModal() { const m=document.getElementById('modal-ov'); if(m) m.remove(); }
@@ -660,7 +660,7 @@ function openClient(id, keepDialCount) {
   const c = clients.find(x => x.id === id);
   if (!c) return;
   // Only reset dial count when opening a NEW lead, not when refreshing same lead
-  if (!keepDialCount) window._dialCount = 1;
+  if (!keepDialCount) { window._dialCount = 1; window._dialCountSet = false; }
   const sits = c.sits || [];
   const callLog = c.call_log || [];
   const statuses = ['New','Working','Appointment set','Closed','No sale','Dead'];
@@ -737,10 +737,11 @@ function openClient(id, keepDialCount) {
   <div class="section-lbl">Call log</div>
   <div style="padding-left:4px;margin-bottom:12px;">${callHistory||'<div style="font-size:12px;color:#a0b8cc;">No calls yet.</div>'}</div>
   <div class="section-lbl">Notes</div>
-  <div class="field"><label>Property address</label><input type="text" id="cn-address" value="${c.address||''}" placeholder="123 Main St, City, ST 00000"></div>
-  <div class="field"><textarea id="cn-notes" style="min-height:44px;">${c.notes||''}</textarea></div>
-  <div class="field"><label>Health notes</label><textarea id="cn-health" style="min-height:36px;">${c.health_notes||''}</textarea></div>
-  <div class="field"><label>Policy planning</label><textarea id="cn-policy" style="min-height:36px;">${c.policy_notes||''}</textarea></div>
+  <div class="field"><label>Property address</label><input type="text" id="cn-address" value="${c.address||''}" placeholder="123 Main St, City, ST 00000" onchange="autoSaveField('${id}','address',this.value)"></div>
+  <div class="field"><textarea id="cn-notes" style="min-height:120px;" oninput="scheduleAutoSave('${id}')">${c.notes||''}</textarea></div>
+  <div class="field"><label>Health notes</label><textarea id="cn-health" style="min-height:120px;" oninput="scheduleAutoSave('${id}')">${c.health_notes||''}</textarea></div>
+  <div class="field"><label>Policy planning</label><textarea id="cn-policy" style="min-height:120px;" oninput="scheduleAutoSave('${id}')">${c.policy_notes||''}</textarea></div>
+  <div class="field"><label>PPU notes</label><textarea id="cn-ppu" style="min-height:120px;" oninput="scheduleAutoSave('${id}')">${c.ppu_notes||''}</textarea></div>
   <div class="row2">
     <div class="field"><label>Status</label><select id="cn-status">${statuses.map(s=>`<option${c.status===s?' selected':''}>${s}</option>`).join('')}</select></div>
     <div class="field"><label>HQ assigned</label><input type="date" id="cn-assigned" value="${c.assigned_date||todayStr()}"></div>
@@ -807,12 +808,46 @@ async function confirmAppt(id) {
 // window._dialCount is the source of truth. Dialers can write to it directly.
 // e.g. window.setDialCount(3) from an external dialer integration.
 window._dialCount = 1;
+window._dialCountSet = false;
 function setDialCount(n) {
   window._dialCount = n;
+  window._dialCountSet = true;
   [1,2,3].forEach(i => {
     const btn = document.getElementById('dcb-'+i);
     if (btn) btn.classList.toggle('on', i===n);
   });
+}
+
+// ── AUTO SAVE ────────────────────────────────────────────────
+let _autoSaveTimer = null;
+function scheduleAutoSave(id) {
+  clearTimeout(_autoSaveTimer);
+  _autoSaveTimer = setTimeout(() => silentSave(id), 1500);
+}
+
+async function silentSave(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const notesEl = document.getElementById('cn-notes');
+  const healthEl = document.getElementById('cn-health');
+  const policyEl = document.getElementById('cn-policy');
+  const ppuEl = document.getElementById('cn-ppu');
+  const addrEl = document.getElementById('cn-address');
+  if (!notesEl) return; // modal no longer open
+  const updates = {};
+  if (notesEl) updates.notes = notesEl.value.trim();
+  if (healthEl) updates.health_notes = healthEl.value.trim();
+  if (policyEl) updates.policy_notes = policyEl.value.trim();
+  if (ppuEl) updates.ppu_notes = ppuEl.value.trim();
+  if (addrEl) updates.address = addrEl.value.trim();
+  await sb.from('clients').update(updates).eq('id', id);
+  Object.assign(c, updates);
+}
+
+async function autoSaveField(id, field, value) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const updates = {}; updates[field] = value;
+  await sb.from('clients').update(updates).eq('id', id);
+  Object.assign(c, updates);
 }
 
 // ── QUICK LOG ────────────────────────────────────────────────
@@ -874,18 +909,22 @@ async function updateClient(id) {
     notes: document.getElementById('cn-notes').value.trim(),
     health_notes: document.getElementById('cn-health').value.trim(),
     policy_notes: document.getElementById('cn-policy').value.trim(),
+    ppu_notes: (document.getElementById('cn-ppu')||{value:''}).value.trim(),
     status: document.getElementById('cn-status').value,
     assigned_date: document.getElementById('cn-assigned').value
   };
-  // Log dials as No Answer if dial count > 0
-  const dialCount = window._dialCount || 1;
-  const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(), outcome:'No answer', dials:dialCount}];
-  updates.call_log = callLog;
+  // Only log dials if user explicitly tapped a dial count button
+  if (window._dialCountSet) {
+    const dialCount = window._dialCount || 1;
+    const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(), outcome:'No answer', dials:dialCount}];
+    updates.call_log = callLog;
+    await addStat('dials', dialCount);
+    window._dialCount = 1;
+    window._dialCountSet = false;
+  }
   showSync('Saving...');
   await sb.from('clients').update(updates).eq('id',id);
   Object.assign(c, updates);
-  await addStat('dials', dialCount);
-  window._dialCount = 1;
   hideSync();
   closeModal();
   renderClients(document.getElementById('client-search').value);
