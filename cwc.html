@@ -618,7 +618,7 @@ function renderClients(q='') {
   const el = document.getElementById('clients-list');
   let list = clients.filter(c => {
     const matchQ = !q || (c.name||'').toLowerCase().includes(q.toLowerCase()) || (c.phone||'').includes(q);
-    const matchF = activeFilter==='all' || c.status===activeFilter;
+    const matchF = activeFilter==='all' ? c.status !== 'Dead' : c.status===activeFilter;
     return matchQ && matchF;
   });
   document.getElementById('client-count').textContent = clients.length + ' leads · ' + list.length + ' shown';
@@ -632,7 +632,7 @@ function renderClients(q='') {
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
         <div>
           <div class="client-name">${c.name||'Unknown'}${fresh?'<span class="fresh-tag">fresh</span>':''}</div>
-          <div class="client-meta">${c.phone||''} · ${c.state||''}</div>
+          <div class="client-meta">${c.phone||''} · ${c.state||''} · <span style="color:#8fa8c0;">${Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24))}d</span> · <span style="color:#8fa8c0;">${(c.call_log||[]).length} attempts</span></div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
           <span class="${badgeClass(c.source)}">${c.source||''}</span>
@@ -729,6 +729,7 @@ function openClient(id, keepDialCount) {
     <button class="call-btn cb-navy" onclick="quickLog('${id}','No answer','dials')">No answer</button>
     <button class="call-btn cb-green" onclick="openApptPicker('${id}')">Appt set</button>
     <button class="call-btn cb-amber" onclick="quickLog('${id}','Callback','callbacks')">Callback</button>
+    <button class="call-btn" style="background:#534AB7;color:#fff;" onclick="openReschedulePicker('${id}')">Reschedule</button>
     <button class="call-btn cb-red" onclick="quickLog('${id}','Not interested','dead')">Not interested</button>
   </div>
   <div class="section-lbl" style="margin-top:0;">Sit history</div>
@@ -750,6 +751,40 @@ function openClient(id, keepDialCount) {
 }
 
 // ── APPT PICKER ──────────────────────────────────────────────
+function openReschedulePicker(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const d = new Date(); d.setDate(d.getDate()+1); d.setHours(10,0,0,0);
+  const dt = d.toISOString().slice(0,16);
+  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+  <div class="modal-title">Reschedule appointment</div>
+  <div class="modal-sub">${c.name}</div>
+  <div class="field"><label>New date & time</label><input type="datetime-local" id="appt-dt" value="${dt}" style="font-size:16px;"></div>
+  <div class="field"><label>Notes (optional)</label><input type="text" id="appt-note-field" placeholder="e.g. No show — rescheduled, confirmed via text..."></div>
+  <button class="save-btn" style="background:#534AB7;" onclick="confirmReschedule('${id}')">Confirm reschedule</button>`);
+}
+
+async function confirmReschedule(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const dtVal = document.getElementById('appt-dt').value;
+  if (!dtVal) return;
+  const apptNotesEl = document.getElementById('appt-note-field');
+  const apptNotes = apptNotesEl ? apptNotesEl.value.trim() : '';
+  const apptDatetime = new Date(dtVal).toISOString();
+  const dialCount = window._dialCount || 1;
+  const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(),outcome:'Rescheduled',dials:dialCount,appt_datetime:apptDatetime,appt_notes:apptNotes}];
+  showSync('Saving...');
+  await sb.from('clients').update({call_log:callLog,status:'Appointment set',appt_datetime:apptDatetime,appt_notes:apptNotes}).eq('id',id);
+  c.call_log=callLog; c.status='Appointment set'; c.appt_datetime=apptDatetime; c.appt_notes=apptNotes;
+  await addStat('dials',dialCount); await addStat('appts',1); await addStat('convos',1);
+  window._dialCount=1; window._dialCountSet=false; hideSync(); closeModal();
+  renderClients(document.getElementById('client-search') ? document.getElementById('client-search').value : '');
+  renderScore();
+  const allActive = clients.filter(cl => cl.status === 'New' || cl.status === 'Working');
+  const currentIdx = allActive.findIndex(cl => cl.id === id);
+  const nextLead = allActive[currentIdx + 1] || allActive[currentIdx - 1];
+  if (nextLead) setTimeout(() => openClient(nextLead.id), 300);
+}
+
 function openApptPicker(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   // Default to next business day at 10am
@@ -868,22 +903,21 @@ async function quickLog(id, outcome, statKey) {
     await addStat(statKey, 1);
     await addStat('convos', 1); // any outcome other than no answer = conversation
   }
+  // Capture next lead BEFORE status changes take effect
+  const allActive = clients.filter(cl => cl.status === 'New' || cl.status === 'Working');
+  const currentIdx = allActive.findIndex(cl => cl.id === id);
+  const nextLead = allActive[currentIdx + 1] || allActive[currentIdx - 1];
+
   // Reset dial count to 1 after logging
   window._dialCount = 1;
   hideSync();
   renderScore();
-  // Auto-advance to next lead
   if (outcome === 'No answer') {
-    // For no answer, stay on current lead but keep dial count
     openClient(id, true);
   } else {
-    // For all other dispositions, advance to next lead
     closeModal();
     renderClients(document.getElementById('client-search') ? document.getElementById('client-search').value : '');
-    const list = clients.filter(cl => cl.status === 'New' || cl.status === 'Working');
-    const idx = list.findIndex(cl => cl.id === id);
-    const next = list[idx + 1] || list[idx - 1];
-    if (next) setTimeout(() => openClient(next.id), 300);
+    if (nextLead) setTimeout(() => openClient(nextLead.id), 300);
   }
 }
 
