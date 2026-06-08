@@ -981,9 +981,10 @@ async function quickLog(id, outcome, statKey) {
   else if (outcome==='Appt set') newStatus='Appointment set';
   else if (outcome==='No show') newStatus='No show';
   else if (outcome==='Conversation'||outcome==='Callback') newStatus='Working';
+  // Update memory first so renderScore reflects immediately
+  c.call_log = callLog; c.status = newStatus;
   showSync('Saving...');
   await sb.from('clients').update({call_log:callLog, status:newStatus}).eq('id',id);
-  c.call_log = callLog; c.status = newStatus;
   // Log actual dial count to stats
   await addStat('dials', dialCount);
   if (statKey !== 'dials') {
