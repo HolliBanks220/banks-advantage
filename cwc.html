@@ -97,6 +97,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .filter-btn{font-size:10px;padding:4px 10px;border-radius:20px;border:1px solid #d0dcea;background:#fff;color:#5f7a99;cursor:pointer;font-weight:500;}
 .filter-btn.on{background:#1D3557;color:#fff;border-color:#1D3557;}
 .sync-bar{background:#1D3557;color:rgba(255,255,255,0.8);font-size:10px;text-align:center;padding:4px;border-radius:6px;margin-bottom:8px;}
+.dial-row{display:flex;gap:5px;margin-bottom:6px;align-items:center;}
+.dial-lbl{font-size:10px;color:#5f7a99;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;margin-right:2px;}
+.dial-cnt-btn{border:1px solid #d0dcea;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#5f7a99;transition:all 0.1s;}
+.dial-cnt-btn.on{background:#1D3557;color:#fff;border-color:#1D3557;}
 </style>
 </head>
 <body>
@@ -608,7 +612,7 @@ function openClient(id) {
   const callHistory = callLog.slice().reverse().slice(0,6).map(cl => `
     <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:5px;">
       <div style="width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0;background:${cl.outcome==='Appt set'?'#138181':cl.outcome==='Not interested'?'#E24B4A':cl.outcome==='Callback'?'#BA7517':'#1D3557'};"></div>
-      <div><div style="font-size:12px;color:#1a2e44;font-weight:500;">${cl.outcome}</div>
+      <div><div style="font-size:12px;color:#1a2e44;font-weight:500;">${cl.outcome}${cl.dials>1?' <span style="font-size:10px;color:#5f7a99;">('+cl.dials+'× dialed)</span>':''}</div>
       <div style="font-size:10px;color:#a0b8cc;">${new Date(cl.ts).toLocaleDateString('en-US',{month:'short',day:'numeric'})} ${new Date(cl.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div></div>
     </div>`).join('');
 
@@ -644,6 +648,12 @@ function openClient(id) {
   showModal(`<button class="close-x" onclick="closeModal()">×</button>
   <div class="modal-title">${c.name}</div>
   <div class="modal-sub">${c.phone} · ${c.state||''} · <span class="${badgeClass(c.source)}">${c.source||''}</span></div>
+  <div class="dial-row">
+    <span class="dial-lbl">Dials:</span>
+    <button class="dial-cnt-btn on" id="dcb-1" onclick="setDialCount(1)">1×</button>
+    <button class="dial-cnt-btn" id="dcb-2" onclick="setDialCount(2)">2×</button>
+    <button class="dial-cnt-btn" id="dcb-3" onclick="setDialCount(3)">3×</button>
+  </div>
   <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;">
     <button class="call-btn cb-navy" onclick="quickLog('${id}','No answer','dials')">No answer</button>
     <button class="call-btn cb-teal" onclick="quickLog('${id}','Conversation','convos')">Convo</button>
@@ -667,10 +677,23 @@ function openClient(id) {
   <button class="save-btn" onclick="updateClient('${id}')">Save</button>`);
 }
 
+// ── DIAL COUNT ───────────────────────────────────────────────
+// window._dialCount is the source of truth. Dialers can write to it directly.
+// e.g. window.setDialCount(3) from an external dialer integration.
+window._dialCount = 1;
+function setDialCount(n) {
+  window._dialCount = n;
+  [1,2,3].forEach(i => {
+    const btn = document.getElementById('dcb-'+i);
+    if (btn) btn.classList.toggle('on', i===n);
+  });
+}
+
 // ── QUICK LOG ────────────────────────────────────────────────
 async function quickLog(id, outcome, statKey) {
   const c = clients.find(x=>x.id===id); if (!c) return;
-  const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(), outcome}];
+  const dialCount = window._dialCount || 1;
+  const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(), outcome, dials:dialCount}];
   let newStatus = c.status;
   if (outcome==='Not interested') newStatus='Dead';
   else if (outcome==='Appt set') newStatus='Appointment set';
@@ -678,7 +701,11 @@ async function quickLog(id, outcome, statKey) {
   showSync('Saving...');
   await sb.from('clients').update({call_log:callLog, status:newStatus}).eq('id',id);
   c.call_log = callLog; c.status = newStatus;
-  await addStat(statKey, 1);
+  // Log actual dial count to stats
+  await addStat('dials', dialCount);
+  if (statKey !== 'dials') await addStat(statKey, 1);
+  // Reset dial count to 1 after logging
+  window._dialCount = 1;
   hideSync();
   openClient(id);
   renderScore();
