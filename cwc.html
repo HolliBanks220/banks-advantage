@@ -124,7 +124,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
       <div class="nav-row">
-        <button class="pill on" onclick="setView('week',this)">Week</button>
+        <button class="pill on" onclick="setView('day',this)">Day</button>
+        <button class="pill" onclick="setView('week',this)">Week</button>
         <button class="pill" onclick="setView('month',this)">Month</button>
         <button class="pill" onclick="setView('quarter',this)">Qtr</button>
         <button class="pill" onclick="setView('year',this)">Year</button>
@@ -391,7 +392,7 @@ const SEED_LEADS = [
 // ── STATE ────────────────────────────────────────────────────
 let clients = [];
 let stats = [];
-let view = 'week';
+let view = 'day';
 let periodOffset = 0;
 let activeFilter = 'all';
 let seeded = false;
@@ -459,7 +460,14 @@ function todayStr() { return new Date().toISOString().slice(0,10); }
 
 function getPeriodBounds() {
   const now = new Date(); let start, end, label;
-  if (view === 'week') {
+  if (view === 'day') {
+    const d = new Date(now);
+    d.setDate(now.getDate() + periodOffset);
+    start = new Date(d); start.setHours(0,0,0,0);
+    end = new Date(d); end.setHours(23,59,59,999);
+    const isToday = periodOffset === 0;
+    label = isToday ? 'Today' : d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+  } else if (view === 'week') {
     const day = now.getDay(); const diff = day === 6 ? 0 : day + 1;
     const sat = new Date(now); sat.setDate(now.getDate() - diff + periodOffset*7); sat.setHours(0,0,0,0);
     const fri = new Date(sat); fri.setDate(sat.getDate()+6); fri.setHours(23,59,59,999);
