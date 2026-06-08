@@ -532,7 +532,8 @@ function renderScore() {
     if (el && el.tagName !== 'INPUT') el.textContent = [dials,convos,appts,callbacks,dead][i];
   });
   document.getElementById('s-resolved').textContent = resolved;
-  document.getElementById('s-resolved-pct').textContent = pct(resolved,convos) + ' of ' + convos + ' convos';
+  const totalLeads = clients.length;
+  document.getElementById('s-resolved-pct').textContent = pct(resolved,totalLeads) + ' of ' + totalLeads + ' leads';
 
   const freshRes = clients.filter(c => {
     const isRes = c.status==='Appointment set'||c.status==='Dead'||c.status==='Closed';
@@ -547,11 +548,19 @@ function renderScore() {
   const totalShowed = allSits.filter(s => s.outcome==='showed').length;
   const totalNoshow = allSits.filter(s => s.outcome==='noshow').length;
   const totalCanceled = allSits.filter(s => s.outcome==='canceled').length;
-  document.getElementById('p-first').textContent = firstSits.length;
-  document.getElementById('p-first-rate').textContent = pct(firstShowed,firstSits.length) + ' sat';
+  // Also count no-shows logged via disposition button (not sit history)
+  const dispNoShows = clients.reduce((acc, c) => {
+    return acc + (c.call_log||[]).filter(cl => {
+      const t = new Date(cl.ts); return cl.outcome==='No show' && t>=start && t<=end;
+    }).length;
+  }, 0);
+  // Count appts scheduled in period from appts stat
+  const periodAppts = sumStat('appts', start, end);
+  document.getElementById('p-first').textContent = periodAppts;
+  document.getElementById('p-first-rate').textContent = pct(totalShowed, periodAppts) + ' sat';
   document.getElementById('p-showed').textContent = totalShowed;
   document.getElementById('p-sit-rate').textContent = pct(totalShowed,allSits.length) + ' sit rate';
-  document.getElementById('p-noshow').textContent = totalNoshow;
+  document.getElementById('p-noshow').textContent = totalNoshow + dispNoShows;
   document.getElementById('p-cancel').textContent = totalCanceled + ' canceled';
 
   const satSits = allSits.filter(s => s.outcome==='showed');
