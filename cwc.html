@@ -59,6 +59,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .b-New{background:#E1F5EE;color:#085041;} .b-Working{background:#E6F1FB;color:#0C447C;}
 .b-Appt{background:#FAEEDA;color:#633806;} .b-Closed{background:#EAF3DE;color:#27500A;}
 .b-Dead{background:#FCEBEB;color:#501313;}
+.b-No{background:#F3EEFB;color:#5B2D8E;}
 .fresh-tag{display:inline-block;font-size:9px;padding:1px 6px;border-radius:8px;background:#1D3557;color:#fff;font-weight:500;margin-left:4px;vertical-align:middle;}
 .call-btns{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;}
 .call-btn{border:none;border-radius:20px;padding:6px 11px;font-size:11px;font-weight:500;cursor:pointer;}
@@ -234,6 +235,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="stat-row">
       <div class="stat stat-teal"><div class="stat-lbl lbl-white">Closed</div><div class="stat-val val-white" id="pip-closed">0</div></div>
       <div class="stat stat-red"><div class="stat-lbl lbl-red">Dead</div><div class="stat-val val-red" id="pip-dead">0</div></div>
+      <div class="stat stat-purple"><div class="stat-lbl lbl-purple">No sale</div><div class="stat-val val-purple" id="pip-nosale">0</div></div>
       <div class="stat stat-navy-lt"><div class="stat-lbl lbl-navy">Total</div><div class="stat-val val-navy" id="pip-total">0</div></div>
     </div>
   </div>
@@ -250,6 +252,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <button class="filter-btn" onclick="setFilter('Working',this)">Working</button>
       <button class="filter-btn" onclick="setFilter('Appointment set',this)">Appt</button>
       <button class="filter-btn" onclick="setFilter('Closed',this)">Closed</button>
+      <button class="filter-btn" onclick="setFilter('No sale',this)">No sale</button>
       <button class="filter-btn" onclick="setFilter('Dead',this)">Dead</button>
     </div>
     <div id="clients-list"><div class="loading">Loading clients...</div></div>
@@ -542,6 +545,7 @@ function renderScore() {
   document.getElementById('pip-appt').textContent = clients.filter(c=>c.status==='Appointment set').length;
   document.getElementById('pip-closed').textContent = clients.filter(c=>c.status==='Closed').length;
   document.getElementById('pip-dead').textContent = clients.filter(c=>c.status==='Dead').length;
+  document.getElementById('pip-nosale').textContent = clients.filter(c=>c.status==='No sale').length;
   document.getElementById('pip-total').textContent = clients.length;
 }
 
@@ -607,7 +611,7 @@ function setFilter(f, btn) {
 
 // ── CLIENT LIST ──────────────────────────────────────────────
 function badgeClass(src) { return 'badge b-' + (src||'').split(' ')[0]; }
-function statusBadge(s) { const m={'New':'b-New','Working':'b-Working','Appointment set':'b-Appt','Closed':'b-Closed','Dead':'b-Dead'}; return 'badge '+(m[s]||'b-New'); }
+function statusBadge(s) { const m={'New':'b-New','Working':'b-Working','Appointment set':'b-Appt','Closed':'b-Closed','No sale':'b-No','Dead':'b-Dead'}; return 'badge '+(m[s]||'b-New'); }
 function dotClass(s) { if(s.outcome==='showed')return'jd-showed'; if(s.outcome==='noshow')return'jd-noshow'; if(s.outcome==='canceled')return'jd-cancel'; return'jd-pending'; }
 
 function renderClients(q='') {
@@ -659,7 +663,7 @@ function openClient(id, keepDialCount) {
   if (!keepDialCount) window._dialCount = 1;
   const sits = c.sits || [];
   const callLog = c.call_log || [];
-  const statuses = ['New','Working','Appointment set','Closed','Dead'];
+  const statuses = ['New','Working','Appointment set','Closed','No sale','Dead'];
   const suggestedReason = sits.length===0?'first':sits[sits.length-1].outcome==='noshow'?'resched-noshow':sits[sits.length-1].ppu?'cont-ppu':'cont-followup';
 
   const callHistory = callLog.slice().reverse().slice(0,6).map(cl => `
@@ -999,7 +1003,66 @@ async function setSitOutcome(id, si, val) {
   showSync('Saving...');
   await sb.from('clients').update({sits:c.sits, status:c.status}).eq('id',id);
   hideSync();
-  openEditSit(id, si);
+  renderScore();
+  // After logging a showed outcome, prompt for reset
+  if (val==='showed') {
+    openResetPrompt(id);
+  } else {
+    openEditSit(id, si);
+  }
+}
+
+function openResetPrompt(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+  <div class="modal-title">Sit logged ✓</div>
+  <div class="modal-sub">${c.name}</div>
+  <div style="margin-bottom:16px;font-size:13px;color:#1D3557;">Schedule a reset appointment?</div>
+  <div style="display:flex;gap:8px;">
+    <button class="save-btn" style="background:#138181;" onclick="openResetPicker('${id}')">Yes — schedule reset</button>
+    <button class="save-btn" style="background:#5f7a99;" onclick="closeModal();openClient('${id}')">No — done</button>
+  </div>`);
+}
+
+function openResetPicker(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const d = new Date(); d.setDate(d.getDate()+7); d.setHours(10,0,0,0);
+  const dt = d.toISOString().slice(0,16);
+  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+  <div class="modal-title">Schedule reset</div>
+  <div class="modal-sub">${c.name}</div>
+  <div class="field"><label>Date & time</label><input type="datetime-local" id="reset-dt" value="${dt}" style="font-size:16px;"></div>
+  <div class="field"><label>Notes (optional)</label><input type="text" id="reset-note-field" placeholder="e.g. Call to confirm, bring spouse..."></div>
+  <button class="save-btn" onclick="confirmReset('${id}')">Confirm reset</button>`);
+}
+
+async function confirmReset(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const dtVal = document.getElementById('reset-dt').value;
+  if (!dtVal) return;
+  const resetNotes = document.getElementById('reset-note-field') ? document.getElementById('reset-note-field').value.trim() : '';
+  const resetDatetime = new Date(dtVal).toISOString();
+  const callLog = [...(c.call_log||[]), {
+    ts: new Date().toISOString(),
+    outcome: 'Reset scheduled',
+    appt_datetime: resetDatetime,
+    appt_notes: resetNotes
+  }];
+  showSync('Saving...');
+  await sb.from('clients').update({
+    call_log: callLog,
+    status: 'Appointment set',
+    appt_datetime: resetDatetime,
+    appt_notes: resetNotes
+  }).eq('id', id);
+  c.call_log = callLog;
+  c.status = 'Appointment set';
+  c.appt_datetime = resetDatetime;
+  c.appt_notes = resetNotes;
+  await addStat('appts', 1);
+  hideSync();
+  closeModal();
+  renderClients(document.getElementById('client-search') ? document.getElementById('client-search').value : '');
   renderScore();
 }
 
