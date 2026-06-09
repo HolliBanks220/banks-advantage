@@ -15,35 +15,24 @@
   --red:#c0392b;--red-pale:#fdf0ee;
 }
 body{font-family:'DM Sans',sans-serif;background:var(--off);color:var(--text);min-height:100vh}
-
-/* ── HEADER ── */
 header{background:var(--navy);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200}
 .logo{font-family:'Playfair Display',serif;color:#fff;font-size:1.25rem}.logo span{color:var(--teal2)}
 .badge{background:var(--teal);color:#fff;font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:5px 12px;border-radius:20px}
-
-/* ── CLIENT BAR ── */
 .cbar{background:var(--navy2);border-bottom:1px solid rgba(255,255,255,.08);padding:9px 28px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .cbar select{background:#1e3a5f;border:1.5px solid rgba(255,255,255,.15);color:#fff;border-radius:7px;padding:6px 10px;font-family:'DM Sans',sans-serif;font-size:.82rem;min-width:190px;cursor:pointer}
 .cbar select:focus{outline:none;border-color:var(--teal)}
 .cbar select option{background:#1e3a5f}
 .cbtn{border:none;border-radius:7px;padding:6px 13px;font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap}
-.cbtn.save{background:var(--gold);color:var(--navy)}
-.cbtn.save:hover{background:#d4af5c}
-.cbtn.new{background:var(--teal);color:#fff}
-.cbtn.new:hover{background:var(--teal2)}
-.cbtn.del{background:rgba(192,57,43,.2);color:#ff8a80;border:1px solid rgba(192,57,43,.3)}
-.cbtn.del:hover{background:rgba(192,57,43,.35)}
+.cbtn.save{background:var(--gold);color:var(--navy)}.cbtn.save:hover{background:#d4af5c}
+.cbtn.new{background:var(--teal);color:#fff}.cbtn.new:hover{background:var(--teal2)}
+.cbtn.del{background:rgba(192,57,43,.2);color:#ff8a80;border:1px solid rgba(192,57,43,.3)}.cbtn.del:hover{background:rgba(192,57,43,.35)}
 .cdiv{width:1px;height:22px;background:rgba(255,255,255,.12)}
 .clbl{color:rgba(255,255,255,.4);font-size:.72rem;letter-spacing:.05em}
 .cstat{color:rgba(255,255,255,.45);font-size:.72rem;font-style:italic;margin-left:auto}
 .cstat.ok{color:#4dd0c4}
-
-/* ── LAYOUT ── */
 .wrap{max-width:960px;margin:0 auto;padding:28px 20px 80px}
 h1{font-family:'Playfair Display',serif;font-size:1.65rem;color:var(--navy);margin-bottom:3px}
 .sub{color:var(--gt);font-size:.85rem;margin-bottom:28px}
-
-/* ── SECTION ── */
 .sec{background:#fff;border-radius:12px;border:1px solid var(--gl);margin-bottom:18px;overflow:hidden}
 .sh{background:var(--navy);padding:13px 18px;display:flex;align-items:center;gap:10px}
 .sh.teal{background:var(--teal)}.sh.gold{background:var(--gold)}
@@ -51,60 +40,58 @@ h1{font-family:'Playfair Display',serif;font-size:1.65rem;color:var(--navy);marg
 .st{color:#fff;font-weight:600;font-size:.9rem}
 .stm{margin-left:auto;color:rgba(255,255,255,.55);font-size:.72rem}
 .sb{padding:18px}
-
-/* ── SCRIPT ── */
 .script{background:var(--navy);border-left:3px solid var(--teal);border-radius:0 8px 8px 0;padding:13px 15px;margin-bottom:14px}
 .script p{color:rgba(255,255,255,.92);font-size:.855rem;line-height:1.7;font-style:italic}
 .script p+p{margin-top:7px}
 .slbl{font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--teal2);margin-bottom:5px}
-
-/* ── BRANCHES ── */
 .bg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:14px}
 .br{border-radius:8px;padding:11px 13px;border:1px solid var(--gl)}
 .br.g{background:#f0faf5;border-color:#b2dfca}.br.y{background:#fdfbf0;border-color:#e8d990}.br.b{background:var(--teal-pale);border-color:#a3d4d4}
 .brl{font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
 .br.g .brl{color:#2e7d5a}.br.y .brl{color:#8a7000}.br.b .brl{color:var(--teal)}
 .br p{font-size:.78rem;color:var(--text);line-height:1.5;font-style:italic}
-
-/* ── QUESTIONS ── */
 .qs{list-style:none;margin-bottom:14px}
 .qs li{padding:8px 0;border-bottom:1px solid var(--gl);font-size:.855rem;display:flex;align-items:flex-start;gap:9px}
 .qs li:last-child{border-bottom:none}
 .qb{width:6px;height:6px;border-radius:50%;background:var(--teal);margin-top:7px;flex-shrink:0}
 .fu{font-size:.76rem;color:var(--teal);font-style:italic;margin-top:2px}
 .fu::before{content:"↳ "}
-
-/* ── FORMS ── */
 label{font-size:.68rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--gt);display:block;margin-bottom:3px}
 input[type=number],input[type=text],select,textarea{border:1.5px solid var(--gm);border-radius:7px;padding:8px 11px;font-family:'DM Sans',sans-serif;font-size:.855rem;color:var(--text);background:#fff;transition:border-color .2s;width:100%}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(19,129,129,.1)}
 textarea{resize:vertical;min-height:54px}
 .f{display:flex;flex-direction:column;gap:3px}
 .fg{display:grid;gap:11px;margin-bottom:11px}
-.fg2{grid-template-columns:1fr 1fr}
-.fg3{grid-template-columns:1fr 1fr 1fr}
-.fg4{grid-template-columns:1fr 1fr 1fr 1fr}
+.fg2{grid-template-columns:1fr 1fr}.fg3{grid-template-columns:1fr 1fr 1fr}.fg4{grid-template-columns:1fr 1fr 1fr 1fr}
 
-/* ── STATED GAP ── */
+/* SINGLE/COUPLE TOGGLE */
+.toggle-wrap{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.toggle-wrap label{font-size:.82rem;text-transform:none;letter-spacing:0;color:var(--text);font-weight:600;margin-bottom:0}
+.tog{display:flex;background:var(--gl);border-radius:20px;padding:3px;gap:3px}
+.tog button{border:none;border-radius:16px;padding:6px 16px;font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;background:transparent;color:var(--gt);transition:all .2s}
+.tog button.on{background:var(--navy);color:#fff}
+
+/* STATED GAP */
 .sgap{background:var(--teal-pale);border:2px solid var(--teal);border-radius:10px;padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
 .sgap .f{flex:1;min-width:170px}
 .sgap-note{font-size:.76rem;color:var(--teal);font-style:italic;flex:2;min-width:180px}
 
-/* ── INCOME TABLE ── */
+/* INCOME TABLE */
 .itbl{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:.8rem}
 .itbl th{background:var(--navy);color:rgba(255,255,255,.82);padding:9px 8px;text-align:left;font-size:.65rem;letter-spacing:.06em;text-transform:uppercase;font-weight:600}
 .itbl th.sub{background:#1a3a60;color:rgba(255,255,255,.5);font-size:.6rem;padding:5px 8px}
-.itbl td{padding:7px 5px;border-bottom:1px solid var(--gl);vertical-align:middle}
+.itbl td{padding:7px 5px;border-bottom:1px solid var(--gl);vertical-align:top}
 .itbl tbody tr:last-child td{border-bottom:none}
 .itbl input,.itbl select{padding:6px 7px;font-size:.8rem}
 .itbl .dbtn{background:none;border:none;color:var(--gm);cursor:pointer;font-size:.95rem;padding:3px 7px;border-radius:4px;transition:color .2s}
 .itbl .dbtn:hover{color:var(--red)}
-.sr{font-size:.75rem;font-weight:600;padding:3px 7px;background:var(--teal-pale);border-radius:5px;color:var(--teal);white-space:nowrap;display:inline-block}
+.sr{font-size:.75rem;font-weight:600;padding:3px 7px;background:var(--teal-pale);border-radius:5px;color:var(--teal);white-space:nowrap;display:inline-block;margin-top:2px}
 .sr.stop{color:var(--red);background:var(--red-pale)}
 .sr.unk{color:#8a6000;background:#fffbf0}
 .trow td{background:var(--teal-pale);font-weight:600;color:var(--navy);font-size:.82rem}
+.ss-flag{font-size:.7rem;color:var(--gold);font-style:italic;margin-top:3px;display:block}
 
-/* ── LIABILITY TABLE ── */
+/* LIABILITY TABLE */
 .ltbl{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:.8rem}
 .ltbl th{background:var(--navy);color:rgba(255,255,255,.82);padding:9px 8px;text-align:left;font-size:.65rem;letter-spacing:.06em;text-transform:uppercase;font-weight:600}
 .ltbl td{padding:7px 5px;border-bottom:1px solid var(--gl);vertical-align:middle}
@@ -116,7 +103,7 @@ textarea{resize:vertical;min-height:54px}
 .ppill{display:inline-block;font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:10px}
 .pb{background:#e8f5e9;color:#2e7d32}.pd{background:#fff3e0;color:#e65100}.pa{background:#fce4ec;color:#c62828}
 
-/* ── ACCOUNT CARDS ── */
+/* ACCOUNT CARDS */
 .acard{border:1.5px solid var(--gl);border-radius:10px;margin-bottom:12px;overflow:hidden}
 .ach{background:var(--navy);padding:9px 15px;display:flex;align-items:center;justify-content:space-between}
 .act{color:#fff;font-size:.82rem;font-weight:600}
@@ -125,22 +112,21 @@ textarea{resize:vertical;min-height:54px}
 .acb{padding:14px}
 .annuity-section{background:#f0f6ff;border:1px solid #c5d8f0;border-radius:8px;padding:13px;margin-top:10px}
 .annuity-title{font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#2c5282;margin-bottom:10px}
-
-/* ── ADD BUTTON ── */
 .abtn{display:flex;align-items:center;gap:7px;background:none;border:1.5px dashed var(--teal);color:var(--teal);border-radius:8px;padding:9px 14px;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:600;cursor:pointer;width:100%;justify-content:center;transition:all .2s;margin-top:3px}
 .abtn:hover{background:var(--teal-pale)}
 
-/* ── STAGE TABS ── */
+/* STAGE TABS */
 .stabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
 .stab{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.6);border-radius:20px;padding:5px 13px;font-family:'DM Sans',sans-serif;font-size:.75rem;font-weight:600;cursor:pointer;transition:all .2s}
 .stab:hover{background:rgba(255,255,255,.14);color:#fff}
 .stab.on{background:var(--teal);border-color:var(--teal);color:#fff}
 .stage-desc{color:rgba(255,255,255,.45);font-size:.75rem;font-style:italic;margin-bottom:14px;min-height:18px}
 
-/* ── CALCULATOR ── */
+/* CALCULATOR */
 .calc{background:var(--navy);border-radius:10px;padding:18px;margin-top:6px}
 .ctitle{color:var(--teal2);font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px}
 .sgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px}
+.sgrid.single-mode{grid-template-columns:1fr}
 .sc{border-radius:8px;padding:13px 14px}
 .sc.both{background:rgba(19,129,129,.15);border:1px solid rgba(19,129,129,.3)}
 .sc.c1d{background:rgba(192,57,43,.12);border:1px solid rgba(192,57,43,.25)}
@@ -149,50 +135,36 @@ textarea{resize:vertical;min-height:54px}
 .sc.both .sclbl{color:var(--teal2)}.sc.c1d .sclbl,.sc.c2d .sclbl{color:#ff8a80}
 .scrow{display:flex;justify-content:space-between;align-items:baseline;padding:3px 0;font-size:.76rem;border-bottom:1px solid rgba(255,255,255,.06)}
 .scrow:last-child{border-bottom:none}
-.scrow .sl{color:rgba(255,255,255,.5)}
-.scrow .sv{color:rgba(255,255,255,.9);font-weight:600}
+.scrow .sl{color:rgba(255,255,255,.5)}.scrow .sv{color:rgba(255,255,255,.9);font-weight:600}
 .scgap{margin-top:9px;padding-top:7px;border-top:1px solid rgba(255,255,255,.14);display:flex;justify-content:space-between;align-items:baseline}
 .scgl{font-size:.68rem;color:rgba(255,255,255,.55)}
 .scgv{font-family:'Playfair Display',serif;font-size:1.35rem;font-weight:700;color:#ff8a80}
 .scgv.ok{color:#4dd0c4;font-size:1rem}
-
-/* ── SAVINGS REALITY ── */
 .reality{background:rgba(19,129,129,.12);border:1px solid rgba(19,129,129,.25);border-radius:8px;padding:13px 15px;margin-top:11px}
 .rrow{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:.8rem;border-bottom:1px solid rgba(255,255,255,.07)}
 .rrow:last-child{border-bottom:none}
-.rl{color:rgba(255,255,255,.6)}.rv{color:#fff;font-weight:600}
-.rv.teal{color:var(--teal2)}
+.rl{color:rgba(255,255,255,.6)}.rv{color:#fff;font-weight:600}.rv.teal{color:var(--teal2)}
 .rdraw{font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--teal2);font-weight:700;margin-top:3px}
-
-/* ── STATED GAP IN CALC ── */
 .sgrow{display:none;padding:7px 0;border-top:1px solid rgba(255,255,255,.1);margin-top:6px}
 .sgrow.show{display:flex;justify-content:space-between}
-
-/* ── SAVE BTN / BADGE ── */
 .savebtn{background:var(--teal);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-family:'DM Sans',sans-serif;font-size:.855rem;font-weight:600;cursor:pointer;transition:background .2s}
 .savebtn:hover{background:var(--teal2)}
 .saved{display:none;align-items:center;gap:5px;background:#f0faf5;border:1px solid #b2dfca;border-radius:8px;padding:7px 13px;font-size:.78rem;color:#2e7d5a;font-weight:600}
 .saved.show{display:flex}
-
-/* ── CLOSE SCRIPT ── */
 .cscript{background:var(--teal-pale);border:1px solid rgba(19,129,129,.2);border-radius:10px;padding:16px;margin-top:14px}
 .cscript p{font-size:.855rem;line-height:1.7;color:var(--navy);font-style:italic}
 .cscript p+p{margin-top:9px}
 .cscript .slbl{color:var(--teal)}
-
-/* ── GOAL BAR ── */
 .gbar{background:var(--navy);border-radius:10px;padding:15px 18px;display:flex;align-items:center;gap:14px;margin-top:8px}
 .gico{width:38px;height:38px;border-radius:50%;background:var(--teal);display:flex;align-items:center;justify-content:center;font-size:1.15rem;flex-shrink:0}
 .gtxt{color:#fff}.gtxt strong{display:block;font-size:.9rem;margin-bottom:2px}
 .gtxt span{font-size:.77rem;color:rgba(255,255,255,.55)}
-
-/* ── CHECKLIST ── */
 .cl{list-style:none}
 .cl li{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--gl);font-size:.855rem}
 .cl li:last-child{border-bottom:none}
 input[type=checkbox]{width:17px;height:17px;accent-color:var(--teal);cursor:pointer;flex-shrink:0}
+.hidden{display:none!important}
 
-/* ── RESPONSIVE ── */
 @media(max-width:660px){
   .fg2,.fg3,.fg4{grid-template-columns:1fr}
   .bg,.sgrid{grid-template-columns:1fr}
@@ -208,12 +180,9 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--teal);cursor:poin
   <div class="badge">Meeting 1 of 3</div>
 </header>
 
-<!-- CLIENT BAR -->
 <div class="cbar">
   <span class="clbl">Client Record:</span>
-  <select id="clientSel" onchange="loadClient()">
-    <option value="">— Select saved client —</option>
-  </select>
+  <select id="clientSel" onchange="loadClient()"><option value="">— Select saved client —</option></select>
   <div class="cdiv"></div>
   <button class="cbtn save" onclick="saveClient()">💾 Save</button>
   <button class="cbtn new" onclick="newClient()">+ New Client</button>
@@ -229,9 +198,16 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--teal);cursor:poin
 <div class="sec">
   <div class="sh"><div class="sn">0</div><div class="st">Client Info</div></div>
   <div class="sb">
+    <div class="toggle-wrap">
+      <label>Client situation:</label>
+      <div class="tog">
+        <button id="tog-couple" class="on" onclick="setCouple(true)">Couple</button>
+        <button id="tog-single" onclick="setCouple(false)">Single</button>
+      </div>
+    </div>
     <div class="fg fg4">
       <div class="f"><label>Client 1 Name</label><input type="text" id="c1name" placeholder="Full name" oninput="refreshNames()"></div>
-      <div class="f"><label>Client 2 Name</label><input type="text" id="c2name" placeholder="Full name (if applicable)" oninput="refreshNames()"></div>
+      <div class="f c2field"><label>Client 2 Name</label><input type="text" id="c2name" placeholder="Full name" oninput="refreshNames()"></div>
       <div class="f"><label>Date</label><input type="text" id="mdate"></div>
       <div class="f"><label>Referred By</label><input type="text" id="refby" placeholder="Optional"></div>
     </div>
@@ -244,7 +220,7 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--teal);cursor:poin
   <div class="sb">
     <div class="script">
       <div class="slbl">Say this</div>
-      <p>"Here's what we're doing today. We're going to map out what your retirement actually looks like — income now, income when you stop working, and what that picture looks like if one of you passes away first. If I see anything worth flagging I'll mention it, but what you do with any of this is completely up to you. Today is just about making sure you actually know where you stand."</p>
+      <p>"Here's what we're doing today. We're going to map out what your retirement actually looks like — income now, income when you stop working, and what that picture looks like <span class="couple-txt">if one of you passes away first</span><span class="single-txt hidden">going forward</span>. If I see anything worth flagging I'll mention it, but what you do with any of this is completely up to you. Today is just about making sure you actually know where you stand."</p>
     </div>
     <div class="script">
       <div class="slbl">The gateway question</div>
@@ -295,19 +271,8 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--teal);cursor:poin
   <div class="sh"><div class="sn">3</div><div class="st">Income at Retirement — Source by Source</div><div class="stm">~5 min</div></div>
   <div class="sb">
     <ul class="qs" style="margin-bottom:18px">
-      <li>
-        <div class="qb"></div>
-        <div>When are you thinking about retiring?
-          <div class="fu">"How did you land on that age?"</div>
-          <div class="fu">"Has anyone shown you what your income looks like on paper at that age?"</div>
-        </div>
-      </li>
-      <li>
-        <div class="qb"></div>
-        <div>Do you know what Social Security will pay you at that age?
-          <div class="fu">"Do you know the difference between taking it at 62 versus 67? Has anyone walked you through that math?"</div>
-        </div>
-      </li>
+      <li><div class="qb"></div><div>When are you thinking about retiring?<div class="fu">"How did you land on that age?"</div><div class="fu">"Has anyone shown you what your income looks like on paper at that age?"</div></div></li>
+      <li><div class="qb"></div><div>Do you know what Social Security will pay you at that age?<div class="fu">"Do you know the difference between taking it at 62 versus 67? Has anyone walked you through that math?"</div></div></li>
       <li><div class="qb"></div><div>Any real estate beyond your primary home generating income? Any inheritance in the picture?</div></li>
       <li><div class="qb"></div><div>Are you currently drawing from any retirement accounts — annuities, IRAs, anything like that?</div></li>
     </ul>
@@ -315,8 +280,8 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--teal);cursor:poin
     <div class="fg fg4" style="margin-bottom:18px">
       <div class="f"><label>Client 1 Current Age</label><input type="number" id="c1age" placeholder="e.g. 58" oninput="calculate()"></div>
       <div class="f"><label>Client 1 Retirement Age</label><input type="number" id="c1ret" placeholder="e.g. 65" oninput="calculate()"></div>
-      <div class="f"><label>Client 2 Current Age</label><input type="number" id="c2age" placeholder="e.g. 55" oninput="calculate()"></div>
-      <div class="f"><label>Client 2 Retirement Age</label><input type="number" id="c2ret" placeholder="e.g. 62" oninput="calculate()"></div>
+      <div class="f c2field"><label>Client 2 Current Age</label><input type="number" id="c2age" placeholder="e.g. 55" oninput="calculate()"></div>
+      <div class="f c2field"><label>Client 2 Retirement Age</label><input type="number" id="c2ret" placeholder="e.g. 62" oninput="calculate()"></div>
     </div>
     <div class="fg fg2" style="margin-bottom:18px">
       <div class="f"><label>Desired Monthly Income in Retirement</label><input type="number" id="desired" placeholder="What do they want to live on?" oninput="calculate()"></div>
@@ -324,21 +289,21 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--teal);cursor:poin
     </div>
 
     <div style="overflow-x:auto">
-      <table class="itbl">
+      <table class="itbl" id="incomeTable">
         <thead>
           <tr>
             <th rowspan="2">Source</th>
             <th rowspan="2">Owner</th>
             <th rowspan="2">Amount / mo</th>
             <th rowspan="2">When active?</th>
-            <th colspan="2" style="text-align:center;background:#1a3a60;border-bottom:1px solid rgba(255,255,255,.1)">At Death of Owner</th>
+            <th class="couple-th" colspan="2" style="text-align:center;background:#1a3a60;border-bottom:1px solid rgba(255,255,255,.1)">At Death of Owner</th>
             <th rowspan="2" style="text-align:center">Already in<br>Current Income?</th>
             <th rowspan="2">Notes</th>
             <th rowspan="2"></th>
           </tr>
           <tr>
-            <th class="sub">What happens?</th>
-            <th class="sub">Survivor receives</th>
+            <th class="sub couple-th">What happens?</th>
+            <th class="sub couple-th">Survivor receives</th>
           </tr>
         </thead>
         <tbody id="irows"></tbody>
@@ -346,8 +311,9 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--teal);cursor:poin
           <tr class="trow">
             <td colspan="2"><strong>Total / mo at Retirement</strong></td>
             <td id="itotal">$0</td>
-            <td colspan="2"></td>
-            <td id="isurtotal">—</td>
+            <td class="couple-th"></td>
+            <td class="couple-th"></td>
+            <td id="isurtotal" class="couple-th">—</td>
             <td colspan="3"></td>
           </tr>
         </tfoot>
@@ -362,29 +328,13 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--teal);cursor:poin
   <div class="sh"><div class="sn">4</div><div class="st">Liabilities</div><div class="stm">~2 min</div></div>
   <div class="sb">
     <ul class="qs" style="margin-bottom:14px">
-      <li>
-        <div class="qb"></div>
-        <div>Walk me through your debts — mortgage, investment property, cards, car, anything significant.
-          <div class="fu">"Is it your intention to stay in this home?"</div>
-          <div class="fu">"If something happened to one of you, could the other carry this on one income?"</div>
-        </div>
-      </li>
+      <li><div class="qb"></div><div>Walk me through your debts — mortgage, investment property, cards, car, anything significant.<div class="fu">"Is it your intention to stay in this home?"</div><div class="fu couple-txt">"If something happened to one of you, could the other carry this on one income?"</div></div></li>
     </ul>
     <div style="overflow-x:auto">
       <table class="ltbl">
-        <thead>
-          <tr>
-            <th>Description</th><th>Balance Owed</th><th>Monthly Payment</th><th>Years Left</th><th>Paid off when?</th><th>Notes</th><th></th>
-          </tr>
-        </thead>
+        <thead><tr><th>Description</th><th>Balance Owed</th><th>Monthly Payment</th><th>Years Left</th><th>Paid off when?</th><th>Notes</th><th></th></tr></thead>
         <tbody id="lrows"></tbody>
-        <tfoot>
-          <tr class="ltr">
-            <td colspan="2"><strong>Total Monthly Debt</strong></td>
-            <td id="ltotal">$0</td>
-            <td colspan="4"></td>
-          </tr>
-        </tfoot>
+        <tfoot><tr class="ltr"><td colspan="2"><strong>Total Monthly Debt</strong></td><td id="ltotal">$0</td><td colspan="4"></td></tr></tfoot>
       </table>
     </div>
     <button class="abtn" onclick="addLRow()">+ Add Liability</button>
@@ -396,44 +346,37 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--teal);cursor:poin
   <div class="sh teal"><div class="sn">5</div><div class="st">Show Them Something Real</div><div class="stm">~4 min</div></div>
   <div class="sb">
     <div class="calc">
-      <!-- STAGE TABS -->
       <div class="stabs">
         <button class="stab on" id="tab-now" onclick="setStage('now')">Now</button>
         <button class="stab" id="tab-c1ret" onclick="setStage('c1ret')">After <span id="tn-c1">Client 1</span> Retires</button>
-        <button class="stab" id="tab-c2ret" onclick="setStage('c2ret')">After <span id="tn-c2">Client 2</span> Retires</button>
+        <button class="stab c2field" id="tab-c2ret" onclick="setStage('c2ret')">After <span id="tn-c2">Client 2</span> Retires</button>
         <button class="stab" id="tab-both" onclick="setStage('both')">Both Retired</button>
       </div>
       <div class="stage-desc" id="sdesc"></div>
-
-      <!-- THREE SCENARIO CARDS -->
-      <div class="sgrid">
+      <div class="sgrid" id="scenarioGrid">
         <div class="sc both">
           <div class="sclbl">Both Living</div>
           <div class="scrow"><span class="sl">Total income</span><span class="sv" id="sc-both-inc">$0</span></div>
           <div class="scrow"><span class="sl">Desired income</span><span class="sv" id="sc-both-des">$0</span></div>
           <div class="scgap"><span class="scgl">Monthly Gap</span><span class="scgv" id="sc-both-gap">—</span></div>
         </div>
-        <div class="sc c1d">
+        <div class="sc c1d couple-sc">
           <div class="sclbl" id="sc-c1-lbl">If Client 1 Passes</div>
           <div class="scrow"><span class="sl">Survivor income</span><span class="sv" id="sc-c1-inc">$0</span></div>
           <div class="scrow"><span class="sl">Desired income</span><span class="sv" id="sc-c1-des">$0</span></div>
           <div class="scgap"><span class="scgl">Monthly Gap</span><span class="scgv" id="sc-c1-gap">—</span></div>
         </div>
-        <div class="sc c2d">
+        <div class="sc c2d couple-sc">
           <div class="sclbl" id="sc-c2-lbl">If Client 2 Passes</div>
           <div class="scrow"><span class="sl">Survivor income</span><span class="sv" id="sc-c2-inc">$0</span></div>
           <div class="scrow"><span class="sl">Desired income</span><span class="sv" id="sc-c2-des">$0</span></div>
           <div class="scgap"><span class="scgl">Monthly Gap</span><span class="scgv" id="sc-c2-gap">—</span></div>
         </div>
       </div>
-
-      <!-- STATED GAP -->
       <div class="sgrow" id="sgrow">
         <span style="color:rgba(255,255,255,.4);font-size:.73rem;font-style:italic">Their stated gap</span>
         <span style="color:rgba(255,255,255,.55);font-weight:600" id="sgdisp">—</span>
       </div>
-
-      <!-- SAVINGS REALITY CHECK -->
       <div class="reality" id="reality" style="display:none">
         <div class="ctitle" style="margin-bottom:10px">Savings Reality Check</div>
         <div class="rrow"><span class="rl">Total account balances</span><span class="rv teal" id="r-bal">$0</span></div>
@@ -442,14 +385,12 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--teal);cursor:poin
         <div class="rdraw" id="r-draw">—</div>
       </div>
     </div>
-
     <div class="script" style="margin-top:14px">
       <div class="slbl">After the gap lands</div>
       <p>"So that gap — is that what your retirement accounts are designed to cover?"</p>
       <p>[They say yes.]</p>
       <p>"That's what most of my clients plan on — 401ks, IRAs, 403bs, that kind of thing."</p>
     </div>
-
     <div style="margin-top:14px;display:flex;align-items:center;gap:11px;flex-wrap:wrap">
       <button class="savebtn" onclick="saveClient()">💾 Save to Client Record</button>
       <div class="saved" id="savedbadge">✓ Saved for Meeting 2</div>
@@ -461,10 +402,7 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--teal);cursor:poin
 <div class="sec">
   <div class="sh teal"><div class="sn">6</div><div class="st">Retirement Accounts — Under the Hood</div><div class="stm">~2 min</div></div>
   <div class="sb">
-    <div class="script">
-      <div class="slbl">Say this</div>
-      <p>"What retirement accounts do you have that we'd be drawing from to fill that gap?"</p>
-    </div>
+    <div class="script"><div class="slbl">Say this</div><p>"What retirement accounts do you have that we'd be drawing from to fill that gap?"</p></div>
     <div id="acards"></div>
     <button class="abtn" onclick="addACard()">+ Add Account</button>
     <div class="cscript">
@@ -483,7 +421,7 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--teal);cursor:poin
       <li><input type="checkbox"> Statements collected (or agreed to send)</li>
       <li><input type="checkbox"> Second appointment scheduled</li>
       <li><input type="checkbox"> All account types and balances noted</li>
-      <li><input type="checkbox"> Income gap calculated and saved — all three scenarios</li>
+      <li><input type="checkbox"> Income gap calculated and saved</li>
       <li><input type="checkbox"> They confirmed accounts are designed to cover the gap</li>
     </ul>
     <div class="gbar">
@@ -496,27 +434,32 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--teal);cursor:poin
     </div>
   </div>
 </div>
-
-</div><!-- /wrap -->
+</div>
 
 <script>
-// ── UTILS ──────────────────────────────────────────────────
-const $ = id => document.getElementById(id);
-function fmt(n){if(!n||isNaN(n))return '$0';return '$'+Math.round(n).toLocaleString()}
-function fmtGap(gap,des){
-  if(!des)return{t:'—',ok:false};
-  if(gap<=0)return{t:'Covered ✓',ok:true};
-  return{t:fmt(gap),ok:false};
+const $=id=>document.getElementById(id);
+function fmt(n){if(!n||isNaN(n))return'$0';return'$'+Math.round(n).toLocaleString()}
+function fmtGap(gap,des){if(!des)return{t:'—',ok:false};if(gap<=0)return{t:'Covered ✓',ok:true};return{t:fmt(gap),ok:false}}
+
+// ── COUPLE/SINGLE MODE ─────────────────────────────────────
+let isCouple=true;
+function setCouple(val){
+  isCouple=val;
+  $('tog-couple').className=val?'on':'';
+  $('tog-single').className=val?'':'on';
+  document.querySelectorAll('.c2field').forEach(el=>el.classList.toggle('hidden',!val));
+  document.querySelectorAll('.couple-sc').forEach(el=>el.classList.toggle('hidden',!val));
+  document.querySelectorAll('.couple-th').forEach(el=>el.classList.toggle('hidden',!val));
+  document.querySelectorAll('.couple-txt').forEach(el=>el.classList.toggle('hidden',!val));
+  document.querySelectorAll('.single-txt').forEach(el=>el.classList.toggle('hidden',val));
+  $('tab-c2ret').classList.toggle('hidden',!val);
+  if(!val&&stage==='c2ret')setStage('now');
+  refreshNames();
+  calculate();
 }
 
-// ── STAGE ──────────────────────────────────────────────────
+// ── STAGE ─────────────────────────────────────────────────
 let stage='now';
-const stageDescs={
-  now:'Current picture — both clients working',
-  c1ret:'<span id="tn-c1-d">Client 1</span> has retired — Client 2 still working',
-  c2ret:'<span id="tn-c2-d">Client 2</span> has retired — Client 1 still working',
-  both:'Both retired — all earned income gone'
-};
 function setStage(s){
   stage=s;
   document.querySelectorAll('.stab').forEach(t=>t.classList.remove('on'));
@@ -535,154 +478,180 @@ function isActive(timing){
   }
 }
 
-// ── NAMES ──────────────────────────────────────────────────
+// ── NAMES ─────────────────────────────────────────────────
 function refreshNames(){
   const c1=$('c1name').value||'Client 1';
   const c2=$('c2name').value||'Client 2';
-  ['sc-c1-lbl'].forEach(id=>{const el=$(id);if(el)el.textContent='If '+c1+' Passes'});
-  ['sc-c2-lbl'].forEach(id=>{const el=$(id);if(el)el.textContent='If '+c2+' Passes'});
-  document.querySelectorAll('.tn-c1').forEach(el=>el.textContent=c1);
-  document.querySelectorAll('.tn-c2').forEach(el=>el.textContent=c2);
-  $('tn-c1').textContent=c1;$('tn-c2').textContent=c2;
+  $('sc-c1-lbl').textContent='If '+c1+' Passes';
+  $('sc-c2-lbl').textContent='If '+c2+' Passes';
+  $('tn-c1').textContent=c1;
+  $('tn-c2').textContent=c2;
   calculate();
 }
 
-// ── CURRENT INCOME ROWS ────────────────────────────────────
+// ── CURRENT INCOME ROWS ───────────────────────────────────
 let circ=0;
-const defCI=[
-  {src:'',who:'c1',type:'ft',amt:'',stopAge:'',note:''},
-  {src:'',who:'c2',type:'ft',amt:'',stopAge:'',note:''},
-];
+const defCI=[{who:'c1'},{who:'c2'}];
 function addCIRow(d={}){
   const id=circ++;
-  const tb=$('cirows');
   const tr=document.createElement('tr');
   tr.id='ci'+id;
   tr.innerHTML=`
-    <td><input type="text" value="${d.src||''}" placeholder="Employer / source..." style="min-width:130px"></td>
-    <td><select class="ci-who" onchange="calculate()" style="min-width:90px">
+    <td><input type="text" value="${d.src||''}" placeholder="Employer / source..." style="min-width:120px"></td>
+    <td><select class="ci-who" onchange="calculate()" style="min-width:80px">
       <option value="">Who?</option>
       <option value="c1" ${d.who==='c1'?'selected':''}>Client 1</option>
       <option value="c2" ${d.who==='c2'?'selected':''}>Client 2</option>
     </select></td>
-    <td><select class="ci-type" style="min-width:110px">
+    <td><select class="ci-type" style="min-width:100px">
       <option value="ft" ${(d.type||'ft')==='ft'?'selected':''}>Full-time</option>
       <option value="pt" ${d.type==='pt'?'selected':''}>Part-time</option>
       <option value="self" ${d.type==='self'?'selected':''}>Self-employed</option>
       <option value="other" ${d.type==='other'?'selected':''}>Other</option>
     </select></td>
-    <td><input type="number" value="${d.amt||''}" placeholder="0" oninput="calculate()" style="min-width:90px" class="ci-amt"></td>
-    <td><input type="number" value="${d.stopAge||''}" placeholder="age" oninput="calculate()" style="min-width:70px" class="ci-stop"></td>
-    <td><input type="text" value="${d.note||''}" placeholder="Notes..." style="min-width:100px"></td>
+    <td><input type="number" value="${d.amt||''}" placeholder="0" oninput="calculate()" style="min-width:80px" class="ci-amt"></td>
+    <td><input type="number" value="${d.stopAge||''}" placeholder="age" style="min-width:60px" class="ci-stop"></td>
+    <td><input type="text" value="${d.note||''}" placeholder="Notes..." style="min-width:90px"></td>
     <td><button class="dbtn" onclick="rmCIRow('ci${id}')">✕</button></td>`;
-  tb.appendChild(tr);
+  $('cirows').appendChild(tr);
   calculate();
 }
 function rmCIRow(id){const r=$(id);if(r){r.remove();calculate();}}
-
-// Helper: get job income for a client in a given stage
-function getJobIncome(clientKey){
+function getJobIncome(who){
   let total=0;
-  const c1RetAge=parseFloat($('c1ret').value)||0;
-  const c1CurAge=parseFloat($('c1age').value)||0;
-  const c2RetAge=parseFloat($('c2ret').value)||0;
-  const c2CurAge=parseFloat($('c2age').value)||0;
+  const c1Working=stage==='now'||stage==='c2ret';
+  const c2Working=stage==='now'||stage==='c1ret';
+  if(who==='c1'&&!c1Working)return 0;
+  if(who==='c2'&&!c2Working)return 0;
   document.querySelectorAll('#cirows tr').forEach(row=>{
-    const who=row.querySelector('.ci-who')?.value||'';
-    if(who!==clientKey)return;
-    const amt=parseFloat(row.querySelector('.ci-amt')?.value)||0;
-    const stopAge=parseFloat(row.querySelector('.ci-stop')?.value)||0;
-    // Check if still working in this stage
-    const retAge=clientKey==='c1'?c1RetAge:c2RetAge;
-    const curAge=clientKey==='c1'?c1CurAge:c2CurAge;
-    // If stop age is set and they'd have stopped by now in this stage, skip
-    if(stopAge&&retAge&&stopAge<=retAge&&(stage==='both'||(stage==='c1ret'&&clientKey==='c1')||(stage==='c2ret'&&clientKey==='c2')))return;
-    // Is this client still working in the current stage?
-    const c1Working=stage==='now'||stage==='c2ret';
-    const c2Working=stage==='now'||stage==='c1ret';
-    if(clientKey==='c1'&&!c1Working)return;
-    if(clientKey==='c2'&&!c2Working)return;
-    total+=amt;
+    if((row.querySelector('.ci-who')?.value||'')!==who)return;
+    total+=parseFloat(row.querySelector('.ci-amt')?.value)||0;
   });
   return total;
 }
 
-
+// ── INCOME ROWS ───────────────────────────────────────────
 let irc=0;
 const defIncome=[
-  {src:'Social Security',own:'c1',timing:'c1ret'},
-  {src:'Social Security',own:'c2',timing:'c2ret'},
-  {src:'Pension',own:'c1',timing:'c1ret'},
-  {src:'Rental Income',own:'joint',timing:'always'},
+  {src:'Social Security',own:'c1',timing:'c1ret',dtype:'ss'},
+  {src:'Social Security',own:'c2',timing:'c2ret',dtype:'ss'},
+  {src:'Pension',own:'c1',timing:'c1ret',dtype:'pension'},
+  {src:'Rental Income',own:'joint',timing:'always',dtype:'other'},
 ];
 
 function addIRow(d={}){
   const id=irc++;
-  const tb=$('irows');
   const tr=document.createElement('tr');
   tr.id='ir'+id;
+  const dtype=d.dtype||'other';
   tr.innerHTML=`
-    <td><input type="text" value="${d.src||''}" placeholder="Social Security, Pension, Rental..." oninput="calculate()" style="min-width:120px"></td>
-    <td><select class="own-sel" onchange="calculate()" style="min-width:90px">
+    <td><input type="text" value="${d.src||''}" placeholder="SS, Pension, Rental..." oninput="calculate()" style="min-width:110px"></td>
+    <td><select class="own-sel" onchange="calculate()" style="min-width:85px">
       <option value="">Owner?</option>
       <option value="c1" ${d.own==='c1'?'selected':''}>Client 1</option>
       <option value="c2" ${d.own==='c2'?'selected':''}>Client 2</option>
       <option value="joint" ${d.own==='joint'?'selected':''}>Joint</option>
     </select></td>
-    <td><input type="number" placeholder="0" oninput="refreshSurvivor(${id});calculate()" style="min-width:80px" class="iamt"></td>
-    <td><select class="itiming" onchange="calculate()" style="min-width:150px">
+    <td><input type="number" placeholder="0" oninput="refreshSurvivor(${id});calculate()" style="min-width:75px" class="iamt"></td>
+    <td><select class="itiming" onchange="calculate()" style="min-width:140px">
       <option value="always" ${(d.timing||'always')==='always'?'selected':''}>Now &amp; always</option>
-      <option value="c1ret" ${d.timing==='c1ret'?'selected':''}>Starts when Client 1 retires</option>
-      <option value="c2ret" ${d.timing==='c2ret'?'selected':''}>Starts when Client 2 retires</option>
-      <option value="both" ${d.timing==='both'?'selected':''}>Starts when both retire</option>
-      <option value="stop_c1" ${d.timing==='stop_c1'?'selected':''}>Stops when Client 1 retires</option>
-      <option value="stop_c2" ${d.timing==='stop_c2'?'selected':''}>Stops when Client 2 retires</option>
+      <option value="c1ret" ${d.timing==='c1ret'?'selected':''}>Starts: Client 1 retires</option>
+      <option value="c2ret" ${d.timing==='c2ret'?'selected':''}>Starts: Client 2 retires</option>
+      <option value="both" ${d.timing==='both'?'selected':''}>Starts: both retire</option>
+      <option value="stop_c1" ${d.timing==='stop_c1'?'selected':''}>Stops: Client 1 retires</option>
+      <option value="stop_c2" ${d.timing==='stop_c2'?'selected':''}>Stops: Client 2 retires</option>
     </select></td>
-    <td><select class="ideath" onchange="onDeathChange(this,${id})" style="min-width:145px">
-      <option value="">Not sure yet</option>
-      <option value="cont">Continues in full</option>
-      <option value="reduced">Reduced — enter amount</option>
-      <option value="stops">Stops entirely</option>
-      <option value="higher_ss">Higher SS payment kept</option>
-      <option value="tbd">Need to find out</option>
-    </select></td>
-    <td id="sur${id}"><span class="sr unk">—</span></td>
-    <td style="text-align:center"><input type="checkbox" class="idup" onchange="calculate()" title="Check if this income is already counted in Current Income above — prevents double-counting in the gap calculator" style="width:17px;height:17px;accent-color:var(--teal);cursor:pointer" ${d.dup?'checked':''}></td>
+    <td class="couple-th"><select class="ideath" onchange="onDeathChange(this,${id})" style="min-width:170px" data-dtype="${dtype}">
+      ${deathOptions(dtype)}
+    </select>
+    <div class="red-wrap-${id}"></div></td>
+    <td class="couple-th" id="sur${id}"><span class="sr unk">—</span></td>
+    <td style="text-align:center"><input type="checkbox" class="idup" onchange="calculate()" style="width:17px;height:17px;accent-color:var(--teal);cursor:pointer" ${d.dup?'checked':''}></td>
     <td><input type="text" placeholder="Notes..." style="min-width:90px"></td>
     <td><button class="dbtn" onclick="rmIRow('ir${id}')">✕</button></td>`;
-  tb.appendChild(tr);
+  $('irows').appendChild(tr);
   tr.querySelector('.ideath').addEventListener('change',function(){onDeathChange(this,id);calculate();});
   calculate();
 }
+
+function deathOptions(dtype){
+  if(dtype==='ss'){
+    return`<option value="">Not sure yet</option>
+      <option value="ss_higher">Survivor keeps higher of the two SS amounts</option>
+      <option value="ss_claim">Survivor may claim on deceased's record</option>
+      <option value="ss_none">Survivor gets nothing from SS</option>
+      <option value="tbd">Need to find out</option>`;
+  } else if(dtype==='pension'){
+    return`<option value="">Not sure yet</option>
+      <option value="cont">Joint &amp; Survivor 100% — continues in full</option>
+      <option value="js50">Joint &amp; Survivor 50% — enters reduced amount</option>
+      <option value="reduced">Joint &amp; Survivor other % — enter amount</option>
+      <option value="stops">Life only — stops entirely</option>
+      <option value="tbd">Don't know which option was elected</option>`;
+  } else {
+    return`<option value="">Not sure yet</option>
+      <option value="cont">Continues in full</option>
+      <option value="reduced">Reduces — enter survivor amount</option>
+      <option value="stops">Stops entirely</option>
+      <option value="tbd">Need to find out</option>`;
+  }
+}
+
 function refreshSurvivor(id){
   const row=$('ir'+id);
   if(!row)return;
   const sel=row.querySelector('.ideath');
   if(sel)onDeathChange(sel,id);
 }
+
 function onDeathChange(sel,id){
   const val=sel.value;
   const row=$('ir'+id);
   const amt=parseFloat(row.querySelector('.iamt')?.value)||0;
   const cell=$('sur'+id);
-  // Remove any existing reduced input
-  row.querySelectorAll('.red-inp').forEach(e=>e.remove());
-  if(val==='cont'){
+  const wrap=row.querySelector('.red-wrap-'+id);
+  if(wrap)wrap.innerHTML='';
+
+  // SS special: auto-calc higher amount
+  if(val==='ss_higher'){
+    // Collect both SS amounts
+    let ssC1=0,ssC2=0;
+    document.querySelectorAll('#irows tr').forEach(r=>{
+      const src=(r.querySelector('input[type=text]')?.value||'').toLowerCase();
+      const own=r.querySelector('.own-sel')?.value||'';
+      const a=parseFloat(r.querySelector('.iamt')?.value)||0;
+      if(src.includes('social security')||r.querySelector('.ideath')?.dataset.dtype==='ss'){
+        if(own==='c1')ssC1=a;
+        if(own==='c2')ssC2=a;
+      }
+    });
+    const own=row.querySelector('.own-sel')?.value||'';
+    const higher=Math.max(ssC1,ssC2);
+    const lower=Math.min(ssC1,ssC2);
+    const survivorGets=higher;
+    const flag=(ssC1===0||ssC2===0)?'<span class="ss-flag">⚠ Only one SS amount entered — verify survivorship</span>':'';
+    cell.innerHTML=`<span class="sr">${fmt(survivorGets)}/mo</span>${flag}`;
+  } else if(val==='ss_claim'){
+    cell.innerHTML=`<span class="sr unk">May claim — verify eligibility</span>`;
+  } else if(val==='ss_none'){
+    cell.innerHTML=`<span class="sr stop">$0 — none</span>`;
+  } else if(val==='cont'){
     cell.innerHTML=`<span class="sr">${fmt(amt)}/mo</span>`;
   } else if(val==='stops'){
     cell.innerHTML=`<span class="sr stop">$0 — stops</span>`;
+  } else if(val==='js50'){
+    const surAmt=Math.round(amt*0.5);
+    cell.innerHTML=`<span class="sr">${fmt(surAmt)}/mo (50%)</span>`;
   } else if(val==='reduced'){
     const inp=document.createElement('input');
-    inp.type='number';inp.className='red-inp';inp.placeholder='Survivor amt';
-    inp.style.cssText='min-width:85px;padding:5px 7px;font-size:.78rem;margin-top:3px;display:block';
+    inp.type='number';inp.className='red-inp';inp.placeholder='Survivor amt/mo';
+    inp.style.cssText='min-width:100px;padding:5px 7px;font-size:.78rem;margin-top:4px;display:block';
     inp.oninput=function(){
       cell.innerHTML=`<span class="sr">${fmt(parseFloat(this.value)||0)}/mo</span>`;
       calculate();
     };
-    sel.parentElement.appendChild(inp);
+    if(wrap)wrap.appendChild(inp);
     cell.innerHTML=`<span class="sr unk">Enter amt →</span>`;
-  } else if(val==='higher_ss'){
-    cell.innerHTML=`<span class="sr">Higher SS kept</span>`;
   } else if(val==='tbd'){
     cell.innerHTML=`<span class="sr unk">TBD</span>`;
   } else {
@@ -690,14 +659,14 @@ function onDeathChange(sel,id){
   }
   calculate();
 }
+
 function rmIRow(id){const r=$(id);if(r){r.remove();calculate();}}
 
-// ── LIABILITY ROWS ─────────────────────────────────────────
+// ── LIABILITY ROWS ────────────────────────────────────────
 let lrc=0;
 const defLiab=[{desc:'Primary Mortgage'},{desc:'Credit Cards / Other Debt'}];
 function addLRow(d={}){
   const id=lrc++;
-  const tb=$('lrows');
   const tr=document.createElement('tr');
   tr.id='lr'+id;
   tr.innerHTML=`
@@ -708,13 +677,12 @@ function addLRow(d={}){
     <td id="lpoff${id}">—</td>
     <td><input type="text" placeholder="Notes..." style="min-width:90px"></td>
     <td><button class="dbtn" onclick="rmLRow('lr${id}')">✕</button></td>`;
-  tb.appendChild(tr);calculate();
+  $('lrows').appendChild(tr);calculate();
 }
 function rmLRow(id){const r=$(id);if(r){r.remove();calculate();}}
 function updPayoff(inp,id){
   const yrs=parseFloat(inp.value);
-  const c1a=parseFloat($('c1age').value)||0;
-  const c1r=parseFloat($('c1ret').value)||0;
+  const c1a=parseFloat($('c1age').value)||0,c1r=parseFloat($('c1ret').value)||0;
   const cell=$('lpoff'+id);
   if(!yrs||!c1r||!c1a){cell.innerHTML='—';return;}
   const ytr=c1r-c1a;
@@ -723,150 +691,93 @@ function updPayoff(inp,id){
   else cell.innerHTML='<span class="ppill pa">Well into retirement</span>';
 }
 
-// ── ACCOUNT CARDS ──────────────────────────────────────────
+// ── ACCOUNT CARDS ─────────────────────────────────────────
 let acc=0;
 function addACard(d={}){
   const id=acc++;
-  const con=$('acards');
   const card=document.createElement('div');
   card.className='acard';card.id='ac'+id;
-  const typeVal=d.type||'';
+  const tv=d.type||'';
   card.innerHTML=`
-    <div class="ach">
-      <div class="act">Account ${id+1}</div>
-      <button class="adel" onclick="rmACard('ac${id}')">✕</button>
-    </div>
+    <div class="ach"><div class="act">Account ${id+1}</div><button class="adel" onclick="rmACard('ac${id}')">✕</button></div>
     <div class="acb">
       <div class="fg fg4">
-        <div class="f"><label>Owner</label>
-          <select><option value="">Not sure</option><option ${d.owner==='c1'?'selected':''}>Client 1</option><option ${d.owner==='c2'?'selected':''}>Client 2</option><option ${d.owner==='joint'?'selected':''}>Joint</option></select></div>
+        <div class="f"><label>Owner</label><select><option value="">Not sure</option><option>Client 1</option><option>Client 2</option><option>Joint</option></select></div>
         <div class="f"><label>Account Type</label>
           <select class="atype-sel" onchange="toggleAnnuity(this,'ann${id}')" id="atype${id}">
-            <option value="">Not sure</option>
-            <option value="401k" ${typeVal==='401k'?'selected':''}>401(k)</option>
-            <option value="ira" ${typeVal==='ira'?'selected':''}>IRA (Traditional)</option>
-            <option value="roth" ${typeVal==='roth'?'selected':''}>Roth IRA</option>
-            <option value="403b" ${typeVal==='403b'?'selected':''}>403(b)</option>
-            <option value="457" ${typeVal==='457'?'selected':''}>457</option>
-            <option value="tsp" ${typeVal==='tsp'?'selected':''}>TSP</option>
-            <option value="fia" ${typeVal==='fia'?'selected':''}>FIA</option>
-            <option value="annuity" ${typeVal==='annuity'?'selected':''}>Annuity</option>
-            <option value="brokerage" ${typeVal==='brokerage'?'selected':''}>Brokerage</option>
-            <option value="pension" ${typeVal==='pension'?'selected':''}>Pension</option>
-            <option value="other" ${typeVal==='other'?'selected':''}>Other</option>
+            <option value="">Not sure</option><option value="401k">401(k)</option><option value="ira">IRA (Traditional)</option>
+            <option value="roth">Roth IRA</option><option value="403b">403(b)</option><option value="457">457</option>
+            <option value="tsp">TSP</option><option value="fia">FIA</option><option value="annuity">Annuity</option>
+            <option value="brokerage">Brokerage</option><option value="pension">Pension</option><option value="other">Other</option>
           </select></div>
-        <div class="f"><label>Approximate Balance</label>
-          <input type="number" placeholder="0" class="abal" oninput="calculate()"></div>
-        <div class="f"><label>Tax Status</label>
-          <select><option value="">Not sure</option><option>Pre-tax</option><option>Roth / After-tax</option><option>Mixed</option></select></div>
+        <div class="f"><label>Approximate Balance</label><input type="number" placeholder="0" class="abal" oninput="calculate()"></div>
+        <div class="f"><label>Tax Status</label><select><option value="">Not sure</option><option>Pre-tax</option><option>Roth / After-tax</option><option>Mixed</option></select></div>
       </div>
       <div class="fg fg4">
-        <div class="f"><label>Know avg rate of return (last 5 yrs)?</label>
-          <select><option value="idk">No / Not sure</option><option value="yes">Yes</option><option value="approx">Rough idea</option></select></div>
-        <div class="f"><label>Know what fees they're paying?</label>
-          <select><option value="idk">No / Not sure</option><option value="yes">Yes</option><option value="approx">Rough idea</option></select></div>
-        <div class="f"><label>Know how much income it will generate?</label>
-          <select><option value="idk">No / Not sure</option><option value="yes">Yes</option><option value="approx">Rough idea</option></select></div>
-        <div class="f"><label>Statements — collected?</label>
-          <select><option value="no">Not yet</option><option value="yes">Yes — in hand</option><option value="sending">They're sending</option><option value="online">Online access only</option></select></div>
+        <div class="f"><label>Know avg rate of return (last 5 yrs)?</label><select><option value="idk">No / Not sure</option><option value="yes">Yes</option><option value="approx">Rough idea</option></select></div>
+        <div class="f"><label>Know what fees they're paying?</label><select><option value="idk">No / Not sure</option><option value="yes">Yes</option><option value="approx">Rough idea</option></select></div>
+        <div class="f"><label>Know how much income it generates?</label><select><option value="idk">No / Not sure</option><option value="yes">Yes</option><option value="approx">Rough idea</option></select></div>
+        <div class="f"><label>Statements — collected?</label><select><option value="no">Not yet</option><option value="yes">Yes — in hand</option><option value="sending">They're sending</option><option value="online">Online access only</option></select></div>
       </div>
-
-      <!-- ANNUITY SECTION — shown only for FIA/Annuity -->
-      <div class="annuity-section" id="ann${id}" style="display:none">
+      <div id="ann${id}" style="display:none" class="annuity-section">
         <div class="annuity-title">🔵 Annuity / FIA Details</div>
         <div class="fg fg3">
           <div class="f"><label>Current Phase</label>
-            <select class="aphase" onchange="toggleAnnuityPhase(this,'${id}')" id="aphase${id}">
+            <select class="aphase" onchange="togglePhase(this,'${id}')" id="aphase${id}">
               <option value="">Not sure</option>
-              <option value="accum">Accumulation only — not drawing yet</option>
-              <option value="draw">Draw phase — taking income, GIR not yet on</option>
-              <option value="gir">GIR active — guaranteed income flowing</option>
+              <option value="accum">Accumulation — not drawing yet</option>
+              <option value="draw">Draw phase — GIR not yet on</option>
+              <option value="gir">GIR active — income flowing</option>
             </select></div>
-          <div class="f"><label>Notes on this annuity</label>
-            <input type="text" placeholder="Carrier, product name, anything notable..."></div>
+          <div class="f"><label>Notes on this annuity</label><input type="text" placeholder="Carrier, product, anything notable..."></div>
           <div class="f"></div>
         </div>
-        <!-- ACCUMULATION PHASE -->
         <div id="ph-accum-${id}" style="display:none">
           <div class="fg fg3">
-            <div class="f"><label>Death Benefit Type</label>
-              <select><option value="">Not sure</option><option>Account value</option><option>Return of premium</option><option>Stepped-up / highest anniversary value</option><option>Enhanced death benefit rider</option></select></div>
-            <div class="f"><label>Death benefit goes to survivor as...</label>
-              <select><option value="">Not sure</option><option>Lump sum</option><option>Continued income</option><option>Don't know</option></select></div>
-            <div class="f"><label>Planned income start age</label>
-              <input type="number" placeholder="e.g. 70"></div>
+            <div class="f"><label>Death Benefit Type</label><select><option value="">Not sure</option><option>Account value</option><option>Return of premium</option><option>Stepped-up / highest anniversary value</option><option>Enhanced death benefit rider</option></select></div>
+            <div class="f"><label>Death benefit to survivor as...</label><select><option value="">Not sure</option><option>Lump sum</option><option>Continued income</option><option>Don't know</option></select></div>
+            <div class="f"><label>Planned income start age</label><input type="number" placeholder="e.g. 70"></div>
           </div>
         </div>
-        <!-- DRAW PHASE -->
         <div id="ph-draw-${id}" style="display:none">
           <div class="fg fg4">
-            <div class="f"><label>Current monthly draw</label>
-              <input type="number" placeholder="0" oninput="calculate()"></div>
-            <div class="f"><label>Planned GIR start age</label>
-              <input type="number" placeholder="e.g. 72"></div>
-            <div class="f"><label>Projected GIR income / mo</label>
-              <input type="number" placeholder="0"></div>
-            <div class="f"><label>GIR survivorship</label>
-              <select><option value="">Not sure</option><option>Continues in full</option><option>Reduced amount</option><option>Stops entirely</option><option>Don't know</option></select></div>
+            <div class="f"><label>Current monthly draw</label><input type="number" placeholder="0"></div>
+            <div class="f"><label>Planned GIR start age</label><input type="number" placeholder="e.g. 72"></div>
+            <div class="f"><label>Projected GIR income / mo</label><input type="number" placeholder="0"></div>
+            <div class="f"><label>GIR survivorship</label><select><option value="">Not sure</option><option>Continues in full</option><option>Reduced amount</option><option>Stops entirely</option><option>Don't know</option></select></div>
           </div>
           <div class="fg fg2">
-            <div class="f"><label>Any remaining death benefit / account value to survivor?</label>
-              <select><option value="">Not sure</option><option>Yes — account value passes</option><option>Yes — return of premium</option><option>No — income only, nothing passes</option><option>Don't know</option></select></div>
-            <div class="f"><label>Notes</label><input type="text" placeholder="Anything else about the draw phase..."></div>
+            <div class="f"><label>Remaining death benefit / account value to survivor?</label><select><option value="">Not sure</option><option>Yes — account value passes</option><option>Yes — return of premium</option><option>No — income only, nothing passes</option><option>Don't know</option></select></div>
+            <div class="f"><label>Notes</label><input type="text" placeholder="Anything else..."></div>
           </div>
         </div>
-        <!-- GIR ACTIVE -->
         <div id="ph-gir-${id}" style="display:none">
           <div class="fg fg4">
-            <div class="f"><label>GIR monthly income</label>
-              <input type="number" placeholder="0" oninput="calculate()"></div>
-            <div class="f"><label>GIR survivorship</label>
-              <select><option value="">Not sure</option><option>Continues in full</option><option>Reduced amount</option><option>Stops entirely</option><option>Don't know</option></select></div>
-            <div class="f"><label>Reduced survivorship amount / mo</label>
-              <input type="number" placeholder="0 if N/A"></div>
-            <div class="f"><label>Any remaining account value to survivor?</label>
-              <select><option value="">Not sure</option><option>Yes</option><option>No — income exhausted principal</option><option>Don't know</option></select></div>
+            <div class="f"><label>GIR monthly income</label><input type="number" placeholder="0"></div>
+            <div class="f"><label>GIR survivorship</label><select><option value="">Not sure</option><option>Continues in full</option><option>Reduced amount</option><option>Stops entirely</option><option>Don't know</option></select></div>
+            <div class="f"><label>Reduced survivorship amount / mo</label><input type="number" placeholder="0 if N/A"></div>
+            <div class="f"><label>Remaining account value to survivor?</label><select><option value="">Not sure</option><option>Yes</option><option>No — income exhausted principal</option><option>Don't know</option></select></div>
           </div>
         </div>
       </div>
-
-      <div style="margin-top:10px">
-        <label>Account Notes / Things to look into</label>
-        <input type="text" placeholder="Flag anything unclear or TBD...">
-      </div>
+      <div style="margin-top:10px"><label>Account Notes / Things to look into</label><input type="text" placeholder="Flag anything unclear or TBD..."></div>
     </div>`;
-  con.appendChild(card);
-  // If restoring saved data with FIA/annuity type, show the section
-  if(typeVal==='fia'||typeVal==='annuity'){
-    const annSec=$('ann'+id);
-    if(annSec)annSec.style.display='block';
-  }
+  $('acards').appendChild(card);
+  if(tv==='fia'||tv==='annuity'){const s=$('ann'+id);if(s)s.style.display='block';}
   calculate();
 }
 function rmACard(id){const c=$(id);if(c){c.remove();calculate();}}
-function toggleAnnuity(sel,annId){
-  const sec=$(annId);
-  if(!sec)return;
-  sec.style.display=(sel.value==='fia'||sel.value==='annuity')?'block':'none';
-}
-function toggleAnnuityPhase(sel,id){
-  ['accum','draw','gir'].forEach(p=>{
-    const el=$('ph-'+p+'-'+id);
-    if(el)el.style.display=sel.value===p?'block':'none';
-  });
-}
+function toggleAnnuity(sel,annId){const sec=$(annId);if(!sec)return;sec.style.display=(sel.value==='fia'||sel.value==='annuity')?'block':'none';}
+function togglePhase(sel,id){['accum','draw','gir'].forEach(p=>{const el=$('ph-'+p+'-'+id);if(el)el.style.display=sel.value===p?'block':'none';});}
 
-// ── CALCULATE ──────────────────────────────────────────────
+// ── CALCULATE ─────────────────────────────────────────────
 function calculate(){
   const des=parseFloat($('desired').value)||0;
-  const stated=parseFloat($('statedGap').value)||0;
   const hc=parseFloat($('healthcare').value)||0;
+  const stated=parseFloat($('statedGap').value)||0;
   const c1=($('c1name').value)||'Client 1';
   const c2=($('c2name').value)||'Client 2';
   const c1RetAge=parseFloat($('c1ret').value)||0;
-  const c1CurAge=parseFloat($('c1age').value)||0;
-  const c1Job=getJobIncome('c1');
-  const c2Job=getJobIncome('c2');
 
   // Stage description
   const sdescs={
@@ -876,142 +787,117 @@ function calculate(){
     both:`Both retired — all earned income gone`
   };
   $('sdesc').textContent=sdescs[stage]||'';
-
-  // Tab name spans
   $('tn-c1').textContent=c1;$('tn-c2').textContent=c2;
   $('sc-c1-lbl').textContent='If '+c1+' Passes';
   $('sc-c2-lbl').textContent='If '+c2+' Passes';
 
-  // Build income totals for this stage
-  let bothInc=c1Job+c2Job;
-  let c1SurInc=c1Job; // c1 survives (c2 died): c1 keeps job if active
-  let c2SurInc=c2Job; // c2 survives (c1 died): c2 keeps job if active
+  // Job income
+  const c1Job=getJobIncome('c1');
+  const c2Job=getJobIncome('c2');
 
   // Collect SS amounts for higher_ss logic
   let ssC1=0,ssC2=0;
   document.querySelectorAll('#irows tr').forEach(row=>{
-    const src=(row.querySelector('input[type=text]')?.value||'').toLowerCase();
     const own=row.querySelector('.own-sel')?.value||'';
     const amt=parseFloat(row.querySelector('.iamt')?.value)||0;
     const timing=row.querySelector('.itiming')?.value||'always';
+    const dtype=row.querySelector('.ideath')?.dataset?.dtype||'';
     if(!isActive(timing))return;
-    if(src.includes('social security')){
-      if(own==='c1')ssC1=amt;
-      if(own==='c2')ssC2=amt;
-    }
+    if(dtype==='ss'){if(own==='c1')ssC1=amt;if(own==='c2')ssC2=amt;}
   });
+
+  // Build incomes
+  let bothInc=c1Job+c2Job;
+  let c1SurInc=c1Job; // c1 survives (c2 died)
+  let c2SurInc=c2Job; // c2 survives (c1 died)
 
   document.querySelectorAll('#irows tr').forEach(row=>{
     const own=row.querySelector('.own-sel')?.value||'';
     const amt=parseFloat(row.querySelector('.iamt')?.value)||0;
     const timing=row.querySelector('.itiming')?.value||'always';
     const death=row.querySelector('.ideath')?.value||'';
+    const dtype=row.querySelector('.ideath')?.dataset?.dtype||'';
     const redInp=row.querySelector('.red-inp');
     const redAmt=redInp?(parseFloat(redInp.value)||0):0;
     const isDup=row.querySelector('.idup')?.checked||false;
     if(!isActive(timing))return;
-    // If marked as already in current income AND we're in the Now stage, skip to avoid double-counting
     if(isDup&&stage==='now')return;
 
-    // Survivor amount when this owner dies
-    let surAmt=amt; // default: assume continues
+    // Calculate survivor amount for this row
+    let surAmt=amt; // default assume continues
     if(death==='stops')surAmt=0;
-    else if(death==='reduced')surAmt=redAmt;
+    else if(death==='reduced'||death==='js50')surAmt=redAmt;
     else if(death==='cont')surAmt=amt;
-    else if(death==='higher_ss'){
-      // Survivor keeps the higher of the two SS payments
-      surAmt=Math.max(ssC1,ssC2);
-    }
+    else if(death==='ss_higher'){surAmt=Math.max(ssC1,ssC2);}
+    else if(death==='ss_claim')surAmt=0; // unknown - conservative
+    else if(death==='ss_none')surAmt=0;
+    else if(death==='js50')surAmt=Math.round(amt*0.5);
 
     if(own==='c1'){
       bothInc+=amt;
-      c1SurInc+=amt;   // c1 alive: keeps own
-      c2SurInc+=surAmt; // c1 dies: c2 gets surAmt
-      // But if higher_ss: c2 already has their own SS — replace with max
-      if(death==='higher_ss'){
+      c1SurInc+=amt;    // c1 alive
+      c2SurInc+=surAmt; // c1 dies, c2 gets surAmt
+      // SS higher: c2 survivor gets max(ssC1,ssC2) but we need to handle c2's own SS
+      if(death==='ss_higher'){
+        // c2SurInc already includes c2's own SS from c2's row
+        // We added surAmt=max(ssC1,ssC2) which could double-count c2's SS
+        // Correction: only add the difference if c1 had the higher SS
         c2SurInc-=surAmt; // undo
-        // c2 survivor SS = max(ssC1,ssC2) minus whatever c2 already has in their own row
-        // We'll handle this in a post-pass
+        if(ssC1>ssC2){c2SurInc+=ssC1;} // c2 steps up to c1's amount, loses own
+        else{c2SurInc+=ssC2;} // c2 keeps own (already counted in c2 row)
       }
-    }else if(own==='c2'){
+    } else if(own==='c2'){
       bothInc+=amt;
-      c2SurInc+=amt;
-      c1SurInc+=surAmt;
-      if(death==='higher_ss'){
+      c2SurInc+=amt;    // c2 alive
+      c1SurInc+=surAmt; // c2 dies, c1 gets surAmt
+      if(death==='ss_higher'){
         c1SurInc-=surAmt;
+        if(ssC2>ssC1){c1SurInc+=ssC2;}
+        else{c1SurInc+=ssC1;}
       }
-    }else if(own==='joint'){
+    } else if(own==='joint'){
       bothInc+=amt;
       c1SurInc+=surAmt;
       c2SurInc+=surAmt;
     }
   });
 
-  // SS higher_ss post-pass: recalculate survivor SS correctly
-  document.querySelectorAll('#irows tr').forEach(row=>{
-    const src=(row.querySelector('input[type=text]')?.value||'').toLowerCase();
-    if(!src.includes('social security'))return;
-    const own=row.querySelector('.own-sel')?.value||'';
-    const amt=parseFloat(row.querySelector('.iamt')?.value)||0;
-    const timing=row.querySelector('.itiming')?.value||'always';
-    const death=row.querySelector('.ideath')?.value||'';
-    if(!isActive(timing)||death!=='higher_ss')return;
-    const higherSS=Math.max(ssC1,ssC2);
-    if(own==='c1'){
-      // c1 dies: c2 survivor should have the higher SS amount
-      // c2SurInc currently has c2's own SS (from c2 row) + 0 from this row (we undid it)
-      // We need to replace c2's SS with higherSS
-      c2SurInc-=ssC2; // remove c2's own SS
-      c2SurInc+=higherSS; // add the higher one
-    }else if(own==='c2'){
-      c1SurInc-=ssC1;
-      c1SurInc+=higherSS;
-    }
-  });
-
-  // Add healthcare cost to desired if applicable
-  const totalDesired=des+hc;
-
-  // Income table totals
-  // itotal = pure retirement income (exclude job income from stage)
-  let retIncomeOnly=0;
+  // Income table total
+  let retOnly=0;
   document.querySelectorAll('#irows tr').forEach(row=>{
     const amt=parseFloat(row.querySelector('.iamt')?.value)||0;
     const timing=row.querySelector('.itiming')?.value||'always';
     const isDup=row.querySelector('.idup')?.checked||false;
     if(!isActive(timing))return;
     if(isDup&&stage==='now')return;
-    retIncomeOnly+=amt;
+    retOnly+=amt;
   });
-  $('itotal').textContent=fmt(retIncomeOnly);
-  const c1Name=($('c1name').value)||'C1';
-  const c2Name=($('c2name').value)||'C2';
-  $('isurtotal').innerHTML=
-    `<span style="font-size:.72rem;opacity:.7">If ${c1Name} passes: </span>${fmt(c1SurInc)}<br>`+
-    `<span style="font-size:.72rem;opacity:.7">If ${c2Name} passes: </span>${fmt(c2SurInc)}`;
+  $('itotal').textContent=fmt(retOnly);
+  if(isCouple){
+    $('isurtotal').innerHTML=
+      `<span style="font-size:.7rem;opacity:.7">If ${c1} passes: </span><strong>${fmt(c2SurInc)}</strong><br>`+
+      `<span style="font-size:.7rem;opacity:.7">If ${c2} passes: </span><strong>${fmt(c1SurInc)}</strong>`;
+  } else {
+    $('isurtotal').textContent='—';
+  }
+
+  const totalDesired=des+hc;
 
   // Gap cards
   const bothGap=Math.max(0,totalDesired-bothInc);
-  const c1Gap=Math.max(0,totalDesired-c1SurInc);
-  const c2Gap=Math.max(0,totalDesired-c2SurInc);
-
   $('sc-both-inc').textContent=fmt(bothInc);
   $('sc-both-des').textContent=fmt(totalDesired);
   const bg=fmtGap(bothGap,totalDesired);
-  $('sc-both-gap').textContent=bg.t;
-  $('sc-both-gap').className='scgv'+(bg.ok?' ok':'');
+  $('sc-both-gap').textContent=bg.t;$('sc-both-gap').className='scgv'+(bg.ok?' ok':'');
 
-  $('sc-c1-inc').textContent=fmt(c1SurInc);
-  $('sc-c1-des').textContent=fmt(totalDesired);
-  const c1g=fmtGap(c1Gap,totalDesired);
-  $('sc-c1-gap').textContent=c1g.t;
-  $('sc-c1-gap').className='scgv'+(c1g.ok?' ok':'');
-
-  $('sc-c2-inc').textContent=fmt(c2SurInc);
-  $('sc-c2-des').textContent=fmt(totalDesired);
-  const c2g=fmtGap(c2Gap,totalDesired);
-  $('sc-c2-gap').textContent=c2g.t;
-  $('sc-c2-gap').className='scgv'+(c2g.ok?' ok':'');
+  if(isCouple){
+    const c1Gap=Math.max(0,totalDesired-c1SurInc);
+    const c2Gap=Math.max(0,totalDesired-c2SurInc);
+    $('sc-c1-inc').textContent=fmt(c1SurInc);$('sc-c1-des').textContent=fmt(totalDesired);
+    const c1g=fmtGap(c1Gap,totalDesired);$('sc-c1-gap').textContent=c1g.t;$('sc-c1-gap').className='scgv'+(c1g.ok?' ok':'');
+    $('sc-c2-inc').textContent=fmt(c2SurInc);$('sc-c2-des').textContent=fmt(totalDesired);
+    const c2g=fmtGap(c2Gap,totalDesired);$('sc-c2-gap').textContent=c2g.t;$('sc-c2-gap').className='scgv'+(c2g.ok?' ok':'');
+  }
 
   // Stated gap
   const sgrow=$('sgrow');
@@ -1019,25 +905,20 @@ function calculate(){
   else sgrow.classList.remove('show');
 
   // Liabilities
-  let lt=0;
-  document.querySelectorAll('.lpay').forEach(el=>{lt+=parseFloat(el.value)||0;});
-  $('ltotal').textContent=fmt(lt);
+  let lt=0;document.querySelectorAll('.lpay').forEach(el=>{lt+=parseFloat(el.value)||0;});$('ltotal').textContent=fmt(lt);
 
   // Savings reality check
-  let totBal=0;
-  document.querySelectorAll('.abal').forEach(el=>{totBal+=parseFloat(el.value)||0;});
+  let totBal=0;document.querySelectorAll('.abal').forEach(el=>{totBal+=parseFloat(el.value)||0;});
   const rea=$('reality');
   if(totBal>0&&c1RetAge>0){
     rea.style.display='block';
     const yrs=Math.max(0,90-c1RetAge);
     const draw=yrs>0?totBal/(yrs*12):0;
-    $('r-bal').textContent=fmt(totBal);
-    $('r-yrs').textContent=yrs+' years';
-    $('r-draw').textContent=fmt(draw)+'/mo';
-  }else{rea.style.display='none';}
+    $('r-bal').textContent=fmt(totBal);$('r-yrs').textContent=yrs+' years';$('r-draw').textContent=fmt(draw)+'/mo';
+  } else {rea.style.display='none';}
 }
 
-// ── CLIENT MANAGER ─────────────────────────────────────────
+// ── CLIENT MANAGER ────────────────────────────────────────
 let curKey=null;
 function allClients(){try{return JSON.parse(localStorage.getItem('ba_m1_clients')||'{}')}catch(e){return{}}}
 function saveAllClients(c){try{localStorage.setItem('ba_m1_clients',JSON.stringify(c))}catch(e){}}
@@ -1045,178 +926,99 @@ function saveAllClients(c){try{localStorage.setItem('ba_m1_clients',JSON.stringi
 function snap(){
   const ci=[];
   document.querySelectorAll('#cirows tr').forEach(row=>{
-    ci.push({
-      src:row.querySelector('input[type=text]')?.value||'',
-      who:row.querySelector('.ci-who')?.value||'',
-      type:row.querySelector('.ci-type')?.value||'',
-      amt:row.querySelector('.ci-amt')?.value||'',
-      stopAge:row.querySelector('.ci-stop')?.value||'',
-      note:row.querySelectorAll('input[type=text]')[1]?.value||''
-    });
+    ci.push({src:row.querySelector('input[type=text]')?.value||'',who:row.querySelector('.ci-who')?.value||'',type:row.querySelector('.ci-type')?.value||'',amt:row.querySelector('.ci-amt')?.value||'',stopAge:row.querySelector('.ci-stop')?.value||'',note:row.querySelectorAll('input[type=text]')[1]?.value||''});
   });
   const income=[];
   document.querySelectorAll('#irows tr').forEach(row=>{
-    income.push({
-      src:row.querySelector('input[type=text]')?.value||'',
-      own:row.querySelector('.own-sel')?.value||'',
-      amt:row.querySelector('.iamt')?.value||'',
-      timing:row.querySelector('.itiming')?.value||'',
-      death:row.querySelector('.ideath')?.value||'',
-      red:row.querySelector('.red-inp')?.value||'',
-      dup:row.querySelector('.idup')?.checked||false,
-      note:row.querySelectorAll('input[type=text]')[1]?.value||''
-    });
+    income.push({src:row.querySelector('input[type=text]')?.value||'',own:row.querySelector('.own-sel')?.value||'',amt:row.querySelector('.iamt')?.value||'',timing:row.querySelector('.itiming')?.value||'',death:row.querySelector('.ideath')?.value||'',dtype:row.querySelector('.ideath')?.dataset?.dtype||'other',red:row.querySelector('.red-inp')?.value||'',dup:row.querySelector('.idup')?.checked||false,note:row.querySelectorAll('input[type=text]')[1]?.value||''});
   });
   const liabs=[];
   document.querySelectorAll('#lrows tr').forEach(row=>{
     const ins=row.querySelectorAll('input');
     liabs.push({desc:ins[0]?.value||'',bal:ins[1]?.value||'',pay:ins[2]?.value||'',yrs:ins[3]?.value||'',note:ins[4]?.value||''});
   });
-  return{
-    c1name:$('c1name').value,c2name:$('c2name').value,
-    mdate:$('mdate').value,refby:$('refby').value,
-    c1age:$('c1age').value,c1ret:$('c1ret').value,
-    c2age:$('c2age').value,c2ret:$('c2ret').value,
-    desired:$('desired').value,healthcare:$('healthcare').value,
-    statedGap:$('statedGap').value,
-    mnotes:$('mnotes').value,
-    ci,income,liabs,
-    savedAt:new Date().toLocaleString()
-  };
+  return{isCouple,c1name:$('c1name').value,c2name:$('c2name').value,mdate:$('mdate').value,refby:$('refby').value,c1age:$('c1age').value,c1ret:$('c1ret').value,c2age:$('c2age').value,c2ret:$('c2ret').value,desired:$('desired').value,healthcare:$('healthcare').value,statedGap:$('statedGap').value,mnotes:$('mnotes').value,ci,income,liabs,savedAt:new Date().toLocaleString()};
 }
 
 function saveClient(){
-  const c1=$('c1name').value.trim();
-  if(!c1){setStatus('Add a client name first',false);return;}
-  const c2=$('c2name').value.trim();
-  const lbl=c2?c1+' & '+c2:c1;
-  const key=curKey||('c_'+Date.now());
-  curKey=key;
-  const clients=allClients();
-  clients[key]={lbl,data:snap()};
-  saveAllClients(clients);
-  refreshSel(key);
-  $('delBtn').style.display='inline-block';
-  setStatus('Saved — '+lbl,true);
-  $('savedbadge').classList.add('show');
-  setTimeout(()=>$('savedbadge').classList.remove('show'),3000);
+  const c1=$('c1name').value.trim();if(!c1){setStatus('Add a client name first',false);return;}
+  const c2=$('c2name').value.trim();const lbl=isCouple&&c2?c1+' & '+c2:c1;
+  const key=curKey||('c_'+Date.now());curKey=key;
+  const clients=allClients();clients[key]={lbl,data:snap()};saveAllClients(clients);
+  refreshSel(key);$('delBtn').style.display='inline-block';setStatus('Saved — '+lbl,true);
+  $('savedbadge').classList.add('show');setTimeout(()=>$('savedbadge').classList.remove('show'),3000);
 }
 
 function loadClient(){
-  const key=$('clientSel').value;
-  if(!key)return;
-  const clients=allClients();
-  const rec=clients[key];
-  if(!rec)return;
-  curKey=key;
-  restore(rec.data);
-  $('delBtn').style.display='inline-block';
-  setStatus('Loaded — '+rec.lbl,true);
+  const key=$('clientSel').value;if(!key)return;
+  const rec=allClients()[key];if(!rec)return;
+  curKey=key;restore(rec.data);$('delBtn').style.display='inline-block';setStatus('Loaded — '+rec.lbl,true);
 }
 
 function newClient(){
   if(!confirm('Start a fresh form? Unsaved changes will be lost.'))return;
-  curKey=null;
-  clearForm();
-  $('clientSel').value='';
-  $('delBtn').style.display='none';
-  setStatus('New client — form cleared',false);
+  curKey=null;clearForm();$('clientSel').value='';$('delBtn').style.display='none';setStatus('New client — form cleared',false);
 }
 
 function deleteClient(){
   if(!curKey)return;
-  const clients=allClients();
-  const lbl=clients[curKey]?.lbl||'this client';
+  const clients=allClients();const lbl=clients[curKey]?.lbl||'this client';
   if(!confirm('Delete record for '+lbl+'? Cannot be undone.'))return;
-  delete clients[curKey];
-  saveAllClients(clients);
-  curKey=null;
-  refreshSel(null);
-  clearForm();
-  $('delBtn').style.display='none';
-  setStatus('Record deleted',false);
+  delete clients[curKey];saveAllClients(clients);curKey=null;refreshSel(null);clearForm();$('delBtn').style.display='none';setStatus('Record deleted',false);
 }
 
 function refreshSel(selKey){
-  const sel=$('clientSel');
-  const clients=allClients();
+  const sel=$('clientSel');const clients=allClients();
   sel.innerHTML='<option value="">— Select saved client —</option>';
-  Object.entries(clients)
-    .sort((a,b)=>(b[1].data?.savedAt||'').localeCompare(a[1].data?.savedAt||''))
-    .forEach(([key,rec])=>{
-      const opt=document.createElement('option');
-      opt.value=key;
-      opt.textContent=rec.lbl+(rec.data?.savedAt?' ('+rec.data.savedAt+')':'');
-      if(key===selKey)opt.selected=true;
-      sel.appendChild(opt);
-    });
+  Object.entries(clients).sort((a,b)=>(b[1].data?.savedAt||'').localeCompare(a[1].data?.savedAt||'')).forEach(([key,rec])=>{
+    const opt=document.createElement('option');opt.value=key;
+    opt.textContent=rec.lbl+(rec.data?.savedAt?' ('+rec.data.savedAt+')':'');
+    if(key===selKey)opt.selected=true;sel.appendChild(opt);
+  });
 }
 
 function setStatus(msg,ok){
-  const el=$('cstat');
-  el.textContent=msg;el.className='cstat'+(ok?' ok':'');
+  const el=$('cstat');el.textContent=msg;el.className='cstat'+(ok?' ok':'');
   setTimeout(()=>{el.textContent='';el.className='cstat';},4000);
 }
 
 function clearForm(){
-  ['c1name','c2name','mdate','refby',
-   'c1age','c1ret','c2age','c2ret','desired','healthcare','statedGap','mnotes']
-    .forEach(id=>{const el=$(id);if(el)el.value='';});
-  const today=new Date();
-  $('mdate').value=(today.getMonth()+1)+'/'+today.getDate()+'/'+today.getFullYear();
+  ['c1name','c2name','mdate','refby','c1age','c1ret','c2age','c2ret','desired','healthcare','statedGap','mnotes'].forEach(id=>{const el=$(id);if(el)el.value='';});
+  const today=new Date();$('mdate').value=(today.getMonth()+1)+'/'+today.getDate()+'/'+today.getFullYear();
   $('cirows').innerHTML='';$('irows').innerHTML='';$('lrows').innerHTML='';$('acards').innerHTML='';
   circ=0;irc=0;lrc=0;acc=0;
-  defCI.forEach(d=>addCIRow(d));
-  defIncome.forEach(d=>addIRow(d));
-  defLiab.forEach(d=>addLRow(d));
-  addACard();
-  refreshNames();
-  setStage('now');
+  defCI.forEach(d=>addCIRow(d));defIncome.forEach(d=>addIRow(d));defLiab.forEach(d=>addLRow(d));addACard();
+  setCouple(true);setStage('now');
 }
 
 function restore(d){
   if(!d)return;
-  ['c1name','c2name','mdate','refby',
-   'c1age','c1ret','c2age','c2ret','desired','healthcare','statedGap','mnotes']
-    .forEach(id=>{const el=$(id);if(el)el.value=d[id]||'';});
-  $('cirows').innerHTML='';circ=0;
-  (d.ci||defCI).forEach(row=>addCIRow(row));
+  ['c1name','c2name','mdate','refby','c1age','c1ret','c2age','c2ret','desired','healthcare','statedGap','mnotes'].forEach(id=>{const el=$(id);if(el)el.value=d[id]||'';});
+  setCouple(d.isCouple!==false);
+  $('cirows').innerHTML='';circ=0;(d.ci||defCI).forEach(r=>addCIRow(r));
   $('irows').innerHTML='';irc=0;
   (d.income||[]).forEach(row=>{
-    addIRow({src:row.src,own:row.own,timing:row.timing});
-    const id=irc-1;
-    const tr=$('ir'+id);
+    addIRow({src:row.src,own:row.own,timing:row.timing,dtype:row.dtype||'other',dup:row.dup});
+    const id=irc-1;const tr=$('ir'+id);
     if(tr){
       tr.querySelector('.iamt').value=row.amt||'';
       const ds=tr.querySelector('.ideath');
       if(ds){ds.value=row.death||'';onDeathChange(ds,id);
-        if(row.death==='reduced'&&row.red){const ri=tr.querySelector('.red-inp');if(ri)ri.value=row.red;}}
-      const dup=tr.querySelector('.idup');
-      if(dup)dup.checked=row.dup||false;
-      const notes=tr.querySelectorAll('input[type=text]');
-      if(notes[1])notes[1].value=row.note||'';
+        if((row.death==='reduced'||row.death==='js50')&&row.red){const ri=tr.querySelector('.red-inp');if(ri)ri.value=row.red;}}
+      const dup=tr.querySelector('.idup');if(dup)dup.checked=row.dup||false;
+      const notes=tr.querySelectorAll('input[type=text]');if(notes[1])notes[1].value=row.note||'';
     }
   });
   $('lrows').innerHTML='';lrc=0;
   (d.liabs||[]).forEach(row=>{
-    addLRow({desc:row.desc});
-    const id=lrc-1;
-    const tr=$('lr'+id);
-    if(tr){
-      const ins=tr.querySelectorAll('input');
-      if(ins[1])ins[1].value=row.bal||'';
-      if(ins[2])ins[2].value=row.pay||'';
-      if(ins[3]){ins[3].value=row.yrs||'';if(row.yrs)updPayoff(ins[3],id);}
-      if(ins[4])ins[4].value=row.note||'';
-    }
+    addLRow({desc:row.desc});const id=lrc-1;const tr=$('lr'+id);
+    if(tr){const ins=tr.querySelectorAll('input');if(ins[1])ins[1].value=row.bal||'';if(ins[2])ins[2].value=row.pay||'';if(ins[3]){ins[3].value=row.yrs||'';if(row.yrs)updPayoff(ins[3],id);}if(ins[4])ins[4].value=row.note||'';}
   });
-  $('acards').innerHTML='';acc=0;
-  addACard();
-  refreshNames();
-  calculate();
+  $('acards').innerHTML='';acc=0;addACard();
+  refreshNames();calculate();
 }
 
-// ── INIT ───────────────────────────────────────────────────
+// ── INIT ──────────────────────────────────────────────────
 window.onload=function(){
   const today=new Date();
   $('mdate').value=(today.getMonth()+1)+'/'+today.getDate()+'/'+today.getFullYear();
