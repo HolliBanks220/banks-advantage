@@ -301,10 +301,17 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const CARRIERS = {
   'American Amicable':['Home Certainty','Term Made Simple','Dignity Solutions','QSFP'],
   'Americo':['Term 100','Term 125','COB100','IUL','Eagle Select 1','Eagle Select 2','Eagle Select 3'],
-  'Gerber':['ADB','GIWL'],'Banner Life':['Beyond Term'],'SBLI':['Easy Trak'],
+  'Annuity':['Annuity — TBD'],
+  'Banner Life':['Beyond Term'],
+  'Corebridge':['SIWL','GIWL'],
+  'F&G':['IUL'],
+  'Foresters':['DFL','IBC'],
+  'Gerber':['ADB','GIWL'],
+  'InsureRealty':['Lending Product'],
   'Mutual of Omaha':['Living Promise','Term Express','IULE','Critical Advantage','Guaranteed Advantage','LTC'],
-  'TransAmerica':['FEX Ex','FEX Imm'],'UHL':['QSFC','Term'],
-  'Foresters':['DFL','IBC'],'F&G':['IUL'],'InsureRealty':['Lending Product'],'Annuity':['Annuity — TBD']
+  'SBLI':['Easy Trak'],
+  'TransAmerica':['FEX Ex','FEX Imm'],
+  'UHL':['QSFC','Term']
 };
 
 const SIT_REASONS = [
@@ -910,7 +917,7 @@ function openClient(id, keepDialCount) {
     const appsList = (s.apps||[]).map((ap,ai) => `
       <div class="app-card">
         <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div><div style="font-size:13px;font-weight:500;color:#1D3557;">${ap.carrier} — ${ap.product}</div>
+          <div><div style="font-size:13px;font-weight:500;color:#1D3557;">${ap.carrier} — ${ap.product}${ap.who?' <span style="font-size:11px;color:#5f7a99;">· '+ap.who+'</span>':''}</div>
           <div style="font-size:11px;color:#5f7a99;">$${(ap.faceAmount||0).toLocaleString()} face · $${(ap.premium||0).toLocaleString()}/yr APV${ap.notes?' · '+ap.notes:''}</div></div>
           <button class="upload-pill ${ap.uploaded?'up-yes':'up-no'}" onclick="toggleUpload('${id}',${si},${ai})">${ap.uploaded?'✓ Uploaded':'Not uploaded'}</button>
         </div>
@@ -1305,8 +1312,10 @@ function openEditSit(id, si) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const s = c.sits[si];
   const reasonOptions = SIT_REASONS.map(r=>`<option value="${r.value}"${r.value===s.reason?' selected':''}>${r.label}</option>`).join('');
+  const sitDt = new Date(s.datetime).toISOString().slice(0,16);
   showModal(`<button class="close-x" onclick="closeModal()">×</button>
   <div class="modal-title">Edit sit ${si+1} — ${c.name}</div>
+  <div class="field"><label>Date & time</label><input type="datetime-local" id="er-datetime" value="${sitDt}" style="font-size:15px;"></div>
   <div class="field"><label>Reason</label><select id="er-reason">${reasonOptions}</select></div>
   <div class="section-lbl" style="margin-top:4px;">Outcome</div>
   <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
@@ -1410,6 +1419,8 @@ async function toggleSitFlag(id, si, k) {
 
 async function saveEditSit(id, si) {
   const c = clients.find(x=>x.id===id); if (!c) return;
+  const newDt = document.getElementById('er-datetime').value;
+  if (newDt) c.sits[si].datetime = new Date(newDt).toISOString();
   c.sits[si].reason = document.getElementById('er-reason').value;
   c.sits[si].refs = parseInt(document.getElementById('er-refs').value)||0;
   c.sits[si].refsask = parseInt(document.getElementById('er-refsask').value)||0;
@@ -1434,6 +1445,7 @@ function openAddApp(id, si) {
     <div class="field"><label>Face amount ($)</label><input type="number" id="ap-face" min="0" placeholder="250000"></div>
     <div class="field"><label>Annual premium ($)</label><input type="number" id="ap-premium" min="0" placeholder="1200"></div>
   </div>
+  <div class="field"><label>Who is this for?</label><input type="text" id="ap-who" placeholder="e.g. Mary, John, both borrowers..."></div>
   <div class="field"><label>Notes</label><input type="text" id="ap-notes" placeholder="10yr term, preferred..."></div>
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
     <input type="checkbox" id="ap-uploaded" style="width:16px;height:16px;">
@@ -1450,7 +1462,8 @@ function updateProducts() {
 
 async function saveApp(id, si) {
   const c = clients.find(x=>x.id===id); if (!c) return;
-  const app = {carrier:document.getElementById('ap-carrier').value, product:document.getElementById('ap-product').value, faceAmount:parseInt(document.getElementById('ap-face').value)||0, premium:parseInt(document.getElementById('ap-premium').value)||0, notes:document.getElementById('ap-notes').value.trim(), uploaded:document.getElementById('ap-uploaded').checked, created:new Date().toISOString()};
+  const whoEl = document.getElementById('ap-who');
+  const app = {who:whoEl?whoEl.value.trim():'', carrier:document.getElementById('ap-carrier').value, product:document.getElementById('ap-product').value, faceAmount:parseInt(document.getElementById('ap-face').value)||0, premium:parseInt(document.getElementById('ap-premium').value)||0, notes:document.getElementById('ap-notes').value.trim(), uploaded:document.getElementById('ap-uploaded').checked, created:new Date().toISOString()};
   c.sits[si].apps = [...(c.sits[si].apps||[]), app];
   if (app.premium > 0) c.status = 'Closed';
   showSync('Saving...');
