@@ -523,32 +523,138 @@ function fmt(n) { return n >= 1000 ? '$' + Math.round(n/100)/10 + 'k' : '$' + n;
 function pct(n, d) { return d > 0 ? Math.round((n/d)*100) + '%' : '—'; }
 function todayStr() { return new Date().toISOString().slice(0,10); }
 
-function getPeriodBounds() {
+// ── CALENDAR HELPERS ─────────────────────────────────────────
+// Production week: Saturday → Friday
+// Dialing week:    Friday → Thursday (one day earlier)
+// Production month: starts the Saturday on/after the 1st of the calendar month
+//   (specifically: the Saturday after the last Friday of the prior calendar month)
+// Dialing month: one day earlier than production month
+
+function lastFridayOfMonth(year, month) {
+  // Find last Friday of calendar month (month is 0-indexed)
+  const lastDay = new Date(year, month + 1, 0); // last day of month
+  const dow = lastDay.getDay(); // 0=Sun,5=Fri,6=Sat
+  const diff = (dow >= 5) ? dow - 5 : dow + 2; // days back to Friday
+  const fri = new Date(year, month + 1, 0);
+  fri.setDate(lastDay.getDate() - diff);
+  return fri;
+}
+
+function getProductionMonthBounds(calYear, calMonth) {
+  // Production month starts the day after last Friday of prior calendar month
+  const prevLastFri = lastFridayOfMonth(calYear, calMonth - 1 < 0 ? 11 : calMonth - 1);
+  if (calMonth === 0) prevLastFri.setFullYear(calYear - 1);
+  const start = new Date(prevLastFri);
+  start.setDate(prevLastFri.getDate() + 1);
+  start.setHours(0, 0, 0, 0);
+  // Production month ends on last Friday of this calendar month
+  const end = lastFridayOfMonth(calYear, calMonth);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+}
+
+function getActivityMonthBounds(calYear, calMonth) {
+  // Dialing month is one day earlier than production month
+  const prod = getProductionMonthBounds(calYear, calMonth);
+  const start = new Date(prod.start);
+  start.setDate(prod.start.getDate() - 1);
+  const end = new Date(prod.end);
+  end.setDate(prod.end.getDate() - 1);
+  return { start, end };
+}
+
+function getCurrentProductionMonth(now) {
+  // Which calendar month's production period contains 'now'?
+  // Try current month first, then next month
+  for (let offset = 0; offset <= 1; offset++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+    const b = getProductionMonthBounds(d.getFullYear(), d.getMonth());
+    if (now >= b.start && now <= b.end) return { year: d.getFullYear(), month: d.getMonth() };
+  }
+  // fallback to current calendar month
+  return { year: now.getFullYear(), month: now.getMonth() };
+}
+
+function getCurrentActivityMonth(now) {
+  for (let offset = 0; offset <= 1; offset++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+    const b = getActivityMonthBounds(d.getFullYear(), d.getMonth());
+    if (now >= b.start && now <= b.end) return { year: d.getFullYear(), month: d.getMonth() };
+  }
+  return { year: now.getFullYear(), month: now.getMonth() };
+}
+
+function getPeriodBounds(type) {
+  // type: 'activity' or 'production'
   const now = new Date(); let start, end, label;
+  const isActivity = type === 'activity';
+
   if (view === 'day') {
     const d = new Date(now);
     d.setDate(now.getDate() + periodOffset);
     start = new Date(d); start.setHours(0,0,0,0);
     end = new Date(d); end.setHours(23,59,59,999);
-    const isToday = periodOffset === 0;
-    label = isToday ? 'Today' : d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+    label = periodOffset===0 ? 'Today' : d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+
   } else if (view === 'week') {
-    const day = now.getDay(); const diff = day === 6 ? 0 : day + 1;
-    const sat = new Date(now); sat.setDate(now.getDate() - diff + periodOffset*7); sat.setHours(0,0,0,0);
-    const fri = new Date(sat); fri.setDate(sat.getDate()+6); fri.setHours(23,59,59,999);
-    start = sat; end = fri;
-    label = periodOffset===0?'This week':periodOffset===-1?'Last week':sat.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+fri.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    if (isActivity) {
+      // Activity week: Friday → Thursday
+      const dow = now.getDay(); // 0=Sun,5=Fri
+      const diffToFri = (dow >= 5) ? dow - 5 : dow + 2;
+      const fri = new Date(now); fri.setDate(now.getDate() - diffToFri + periodOffset*7); fri.setHours(0,0,0,0);
+      const thu = new Date(fri); thu.setDate(fri.getDate()+6); thu.setHours(23,59,59,999);
+      start = fri; end = thu;
+      label = periodOffset===0?'This week':periodOffset===-1?'Last week':fri.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+thu.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    } else {
+      // Production week: Saturday → Friday
+      const dow = now.getDay();
+      const diffToSat = (dow === 6) ? 0 : dow + 1;
+      const sat = new Date(now); sat.setDate(now.getDate() - diffToSat + periodOffset*7); sat.setHours(0,0,0,0);
+      const fri = new Date(sat); fri.setDate(sat.getDate()+6); fri.setHours(23,59,59,999);
+      start = sat; end = fri;
+      label = periodOffset===0?'This week':periodOffset===-1?'Last week':sat.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+fri.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    }
+
   } else if (view === 'month') {
-    const d = new Date(now.getFullYear(), now.getMonth()+periodOffset, 1);
-    start = d; end = new Date(d.getFullYear(), d.getMonth()+1, 0, 23,59,59,999);
-    label = periodOffset===0?'This month':d.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+    if (isActivity) {
+      const base = getCurrentActivityMonth(now);
+      const cm = new Date(base.year, base.month + periodOffset, 1);
+      const b = getActivityMonthBounds(cm.getFullYear(), cm.getMonth());
+      start = b.start; end = b.end;
+      label = periodOffset===0?'This month':cm.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+    } else {
+      const base = getCurrentProductionMonth(now);
+      const cm = new Date(base.year, base.month + periodOffset, 1);
+      const b = getProductionMonthBounds(cm.getFullYear(), cm.getMonth());
+      start = b.start; end = b.end;
+      label = periodOffset===0?'This month':cm.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+    }
+
   } else if (view === 'quarter') {
-    const m = now.getMonth(); const qs = m-(m%3)+periodOffset*3;
-    start = new Date(now.getFullYear(),qs,1); end = new Date(now.getFullYear(),qs+3,0,23,59,59,999);
-    label = periodOffset===0?'This quarter':'Q'+(Math.floor(qs/3)+1)+' '+start.getFullYear();
+    // Quarter uses production calendar: find first Sat after last Fri of quarter-start month
+    const now2 = new Date(now.getFullYear(), now.getMonth() + periodOffset*3, 1);
+    const qMonth = Math.floor(now2.getMonth()/3)*3; // 0,3,6,9
+    const qStart = getProductionMonthBounds(now2.getFullYear(), qMonth).start;
+    const qEnd = getProductionMonthBounds(now2.getFullYear(), qMonth+2).end;
+    if (isActivity) {
+      start = new Date(qStart); start.setDate(qStart.getDate()-1);
+      end = new Date(qEnd); end.setDate(qEnd.getDate()-1);
+    } else {
+      start = qStart; end = qEnd;
+    }
+    label = periodOffset===0?'This quarter':'Q'+(Math.floor(qMonth/3)+1)+' '+now2.getFullYear();
+
   } else {
-    const yr = now.getFullYear()+periodOffset;
-    start = new Date(yr,0,1); end = new Date(yr,11,31,23,59,59,999);
+    // Year uses production calendar
+    const yr = now.getFullYear() + periodOffset;
+    const yStart = getProductionMonthBounds(yr, 0).start;
+    const yEnd = getProductionMonthBounds(yr, 11).end;
+    if (isActivity) {
+      start = new Date(yStart); start.setDate(yStart.getDate()-1);
+      end = new Date(yEnd); end.setDate(yEnd.getDate()-1);
+    } else {
+      start = yStart; end = yEnd;
+    }
     label = periodOffset===0?'This year':String(yr);
   }
   return {start, end, label};
@@ -573,7 +679,7 @@ function sumStat(key, start, end) {
 }
 
 async function setStat(key, total) {
-  const {start, end} = getPeriodBounds();
+  const {start, end} = getPeriodBounds('activity');
   const diff = total - sumStat(key, start, end);
   if (diff !== 0) await addStat(key, diff);
 }
@@ -593,13 +699,14 @@ function startEdit(key, theme) {
 
 // ── SCOREBOARD ───────────────────────────────────────────────
 function renderScore() {
-  const {start, end, label} = getPeriodBounds();
+  const {start: aStart, end: aEnd, label} = getPeriodBounds('activity');
+  const {start: pStart, end: pEnd} = getPeriodBounds('production');
   document.getElementById('period-label').textContent = label;
 
-  const dials=sumStat('dials',start,end), convos=sumStat('convos',start,end);
-  const appts=sumStat('appts',start,end), callbacks=sumStat('callbacks',start,end), dead=sumStat('dead',start,end);
+  // ── DIALING (activity calendar: Fri→Thu) ──
+  const dials=sumStat('dials',aStart,aEnd), convos=sumStat('convos',aStart,aEnd);
+  const appts=sumStat('appts',aStart,aEnd), callbacks=sumStat('callbacks',aStart,aEnd), dead=sumStat('dead',aStart,aEnd);
   const resolved = appts + dead;
-
   ['dials','convos','appts','callbacks','dead'].forEach((k,i) => {
     const el = document.getElementById('s-'+k);
     if (el && el.tagName !== 'INPUT') el.textContent = [dials,convos,appts,callbacks,dead][i];
@@ -607,33 +714,29 @@ function renderScore() {
   document.getElementById('s-resolved').textContent = resolved;
   const totalLeads = clients.length;
   document.getElementById('s-resolved-pct').textContent = pct(resolved,totalLeads) + ' of ' + totalLeads + ' leads';
-
   const freshRes = clients.filter(c => {
     const isRes = c.status==='Appointment set'||c.status==='Dead'||c.status==='Closed';
-    const callInP = (c.call_log||[]).some(cl => { const t=new Date(cl.ts); return t>=start&&t<=end; });
+    const callInP = (c.call_log||[]).some(cl => { const t=new Date(cl.ts); return t>=aStart&&t<=aEnd; });
     return isRes && callInP && isFresh(c);
   }).length;
   document.getElementById('s-resolved-fresh').textContent = freshRes + ' fresh (≤17d)';
 
-  // Count appts scheduled TO HAPPEN in this period (by appt_datetime)
+  // ── SITS & PRODUCTION (production calendar: Sat→Fri) ──
   const periodAppts = clients.filter(c => {
     if (!c.appt_datetime) return false;
     const d = new Date(c.appt_datetime);
-    return d >= start && d <= end;
+    return d >= pStart && d <= pEnd;
   }).length;
 
-  // Count sits that happened in this period (by sit datetime)
   const allSits = clients.flatMap(c => (c.sits||[]).filter(s => {
-    const d = new Date(s.datetime); return d >= start && d <= end;
+    const d = new Date(s.datetime); return d >= pStart && d <= pEnd;
   }));
   const totalShowed = allSits.filter(s => s.outcome==='showed').length;
   const totalCanceled = allSits.filter(s => s.outcome==='canceled').length;
-
-  // Count no-shows: from sit history + from No show disposition button
   const sitNoShows = allSits.filter(s => s.outcome==='noshow').length;
   const dispNoShows = clients.reduce((acc, c) => {
     return acc + (c.call_log||[]).filter(cl => {
-      const t = new Date(cl.ts); return cl.outcome==='No show' && t>=start && t<=end;
+      const t = new Date(cl.ts); return cl.outcome==='No show' && t>=pStart && t<=pEnd;
     }).length;
   }, 0);
   const totalNoShows = sitNoShows + dispNoShows;
@@ -658,7 +761,7 @@ function renderScore() {
   document.getElementById('p-apv-hh').textContent = fmt(apvPerHH);
   document.getElementById('p-apps-hh').textContent = appsPerHH + ' apps/HH';
 
-  // All-time APV (across all sits ever, not period-filtered)
+  // All-time APV
   const allTimeSits = clients.flatMap(c => (c.sits||[]).filter(s => s.outcome==='showed'));
   const allTimeAPV = allTimeSits.reduce((a,s) => a+(s.apps||[]).reduce((b,ap) => b+(ap.premium||0),0),0);
   const allTimeApps = allTimeSits.reduce((a,s) => a+(s.apps||[]).length,0);
@@ -687,7 +790,7 @@ function showTab(t, btn) {
 }
 
 function drillDown(type) {
-  const {start, end, label} = getPeriodBounds();
+  const {start, end, label} = getPeriodBounds('production');
   const now = new Date();
   let leads = [];
   let title = '';
