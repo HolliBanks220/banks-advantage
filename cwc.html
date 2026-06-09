@@ -92,20 +92,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .upload-pill{font-size:10px;padding:3px 9px;border-radius:10px;font-weight:500;cursor:pointer;border:none;}
 .up-yes{background:#EAF3DE;color:#27500A;} .up-no{background:#FCEBEB;color:#791F1F;}
 .sit-card{border:1px solid #e2eaf2;border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#fff;}
-.case-card{border-radius:10px;margin-bottom:10px;overflow:hidden;}
-.case-hdr{padding:10px 12px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;}
-.case-hdr-mp{background:#1D3557;color:#fff;}
-.case-hdr-ret{background:#138181;color:#fff;}
-.case-hdr-dfl{background:#534AB7;color:#fff;}
-.case-hdr-ib{background:#BA7517;color:#fff;}
-.case-body{border:1px solid #e2eaf2;border-top:none;border-radius:0 0 10px 10px;padding:10px 12px;}
-.case-status-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:rgba(255,255,255,0.2);color:#fff;}
-.tp-card{border:1px solid #e2eaf2;border-radius:8px;padding:8px 10px;margin-bottom:6px;background:#f8fafc;cursor:pointer;}
-.tp-card:last-child{margin-bottom:0;}
-.tp-outcome-sale{border-left:3px solid #3B6D11;}
-.tp-outcome-nosale{border-left:3px solid #A32D2D;}
-.tp-outcome-noshow{border-left:3px solid #BA7517;}
-.tp-outcome-pending{border-left:3px solid #d0dcea;}
 .journey-row{display:flex;gap:4px;align-items:center;margin-top:6px;flex-wrap:wrap;}
 .journey-dot{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;flex-shrink:0;}
 .jd-showed{background:#138181;} .jd-noshow{background:#E24B4A;} .jd-cancel{background:#BA7517;} .jd-pending{background:#c0cdd8;}
@@ -119,12 +105,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .dial-cnt-btn.on{background:#1D3557;color:#fff;border-color:#1D3557;}
 .page-layout{display:inline-flex;gap:8px;align-items:flex-start;padding:0 12px;min-width:0;}
 .app-main{width:420px;flex-shrink:0;}
-.appt-sidebar{width:220px;flex-shrink:0;background:#fff;border-radius:12px;border:1px solid #e2eaf2;padding:14px 12px;position:sticky;top:12px;display:none;}
-.appt-sidebar-title{font-size:10px;font-weight:600;color:#1D3557;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;}
-.appt-sidebar-item{padding:8px 10px;border-radius:8px;cursor:pointer;margin-bottom:4px;transition:background 0.15s;}
-.appt-sidebar-item:hover{background:#f5f8fb;}
-.appt-sidebar-item.passed{opacity:0.55;}
-.appt-sidebar-divider{font-size:9px;font-weight:600;color:#a0b8cc;text-transform:uppercase;letter-spacing:0.07em;margin:8px 0 4px;padding:0 2px;}
+.appt-sidebar{width:260px;flex-shrink:0;background:#fff;border-radius:10px;border:1px solid #e2eaf2;padding:14px;position:sticky;top:12px;display:none;}
+.appt-sidebar-title{font-size:10px;font-weight:600;color:#1D3557;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;}
+.appt-sidebar-item{padding:7px 0;border-bottom:1px solid #f0f4f8;cursor:pointer;}
+.appt-sidebar-item:last-child{border-bottom:none;}
 .appt-banner{background:#1D3557;color:#fff;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;cursor:pointer;display:none;}
 @media(min-width:720px){.appt-sidebar{display:block!important;}.appt-banner{display:none!important;}}
 @media(max-width:719px){.appt-sidebar{display:none!important;}.appt-banner{display:block;}}
@@ -306,7 +290,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div><!-- end wrap/app-main -->
 
 <div class="appt-sidebar" id="appt-sidebar">
-    <div class="appt-sidebar-title">📅 Today & upcoming</div>
+    <div class="appt-sidebar-title">📅 Upcoming</div>
     <div id="sidebar-appts"><div style="font-size:11px;color:#a0b8cc;">No appointments</div></div>
   </div>
 </div><!-- end page-layout -->
@@ -445,100 +429,62 @@ async function init() {
   startRealtimeSync();
 }
 
-// ── DEVICE ID ────────────────────────────────────────────────
-// Each tab gets a unique ID so we can ignore our own broadcasts
-const DEVICE_ID = Math.random().toString(36).slice(2);
-
-// ── DIAL DEDUP ───────────────────────────────────────────────
-// Prevent double-logging dials when both devices are open
-// Key: clientId, value: timestamp of last dial log
-const _recentDialLog = {};
-function wasRecentlyDialed(id) {
-  const t = _recentDialLog[id];
-  return t && (Date.now() - t) < 60000; // 60 second window
-}
-function markDialed(id) { _recentDialLog[id] = Date.now(); }
-
 function startRealtimeSync() {
-  // ── DATA SYNC: clients table ──
-  sb.channel('cwc-clients')
+  // Listen for changes to clients table
+  sb.channel('clients-sync')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, async (payload) => {
       if (payload.eventType === 'UPDATE') {
         const idx = clients.findIndex(c => c.id === payload.new.id);
-        if (idx > -1) Object.assign(clients[idx], payload.new);
-        else clients.unshift(payload.new);
+        if (idx > -1) {
+          // Merge updated fields into local client
+          Object.assign(clients[idx], payload.new);
+        } else {
+          clients.unshift(payload.new);
+        }
       } else if (payload.eventType === 'INSERT') {
         const exists = clients.find(c => c.id === payload.new.id);
         if (!exists) clients.unshift(payload.new);
       } else if (payload.eventType === 'DELETE') {
         clients = clients.filter(c => c.id !== payload.old.id);
       }
+      // Re-render everything
       renderScore();
       renderSidebar();
       if (document.getElementById('tab-clients').style.display !== 'none') {
         renderClients(document.getElementById('client-search') ? document.getElementById('client-search').value : '');
       }
       if (document.getElementById('tab-appts').style.display !== 'none') renderAppts();
-      // Refresh open modal if the changed lead is currently open
+      // If a lead modal is open and it's the one that changed, refresh it
       const modal = document.getElementById('modal-ov');
       if (modal && payload.new && payload.new.id) {
-        window._openLeadId = window._openLeadId || null;
-        if (window._openLeadId === payload.new.id) {
-          openClient(payload.new.id, true);
+        const openId = modal.querySelector('[id^="edit-name"]');
+        if (openId) {
+          // Find which lead is open by checking current name value
+          const currentName = openId.value;
+          const updatedClient = clients.find(c => c.id === payload.new.id);
+          if (updatedClient && updatedClient.name === currentName) {
+            openClient(payload.new.id, true);
+          }
         }
       }
     })
-    .subscribe((status) => {
-      if (status === 'SUBSCRIBED') console.log('CWC: clients realtime connected');
-    });
+    .subscribe();
 
-  // ── DATA SYNC: stats table ──
-  sb.channel('cwc-stats')
+  // Listen for stats changes
+  sb.channel('stats-sync')
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'stats' }, (payload) => {
       const exists = stats.find(s => s.id === payload.new.id);
-      if (!exists) { stats.push(payload.new); renderScore(); }
-    })
-    .subscribe();
-
-  // ── UI SYNC: focus + advance broadcasts ──
-  const uiChannel = sb.channel('cwc-ui')
-    .on('broadcast', { event: 'open_lead' }, ({ payload }) => {
-      if (payload.device === DEVICE_ID) return;
-      const c = clients.find(x => x.id === payload.id);
-      if (!c) return;
-      const clientsTab = document.querySelector('.tab:nth-child(2)');
-      if (document.getElementById('tab-clients').style.display === 'none') {
-        showTab('clients', clientsTab);
+      if (!exists) {
+        stats.push(payload.new);
+        renderScore();
       }
-      openClient(payload.id, true);
-    })
-    .on('broadcast', { event: 'advance' }, ({ payload }) => {
-      if (payload.device === DEVICE_ID) return;
-      closeModal();
-      if (payload.nextId) setTimeout(() => openClient(payload.nextId, false), 300);
     })
     .subscribe();
-  window._uiChannel = uiChannel;
-}
-
-// Broadcast that this device opened a lead
-function broadcastOpenLead(id) {
-  window._openLeadId = id;
-  if (window._uiChannel) {
-    window._uiChannel.send({ type: 'broadcast', event: 'open_lead', payload: { id, device: DEVICE_ID } });
-  }
-}
-
-// Broadcast that this device is advancing to next lead
-function broadcastAdvance(nextId) {
-  if (window._uiChannel) {
-    window._uiChannel.send({ type: 'broadcast', event: 'advance', payload: { nextId, device: DEVICE_ID } });
-  }
 }
 
 async function loadClients() {
   const { data, error } = await sb.from('clients').select('*').order('created_at', { ascending: false });
-  if (!error && data) clients = data.map(c => ({...c, cases: c.cases||[]}));
+  if (!error && data) clients = data;
 }
 
 async function loadStats() {
@@ -734,8 +680,7 @@ function sumStat(key, start, end) {
 
 async function setStat(key, total) {
   const {start, end} = getPeriodBounds('activity');
-  const current = sumStat(key, start, end);
-  const diff = Math.max(0, total) - current; // floor total at 0, never go negative
+  const diff = total - sumStat(key, start, end);
   if (diff !== 0) await addStat(key, diff);
 }
 
@@ -767,12 +712,14 @@ function renderScore() {
     if (el && el.tagName !== 'INPUT') el.textContent = [dials,convos,appts,callbacks,dead][i];
   });
   document.getElementById('s-resolved').textContent = resolved;
-  const assignedInPeriod = clients.filter(c => {
-    const d = new Date(c.assigned_date || c.created_at);
-    return d >= aStart && d <= aEnd;
+  const totalLeads = clients.length;
+  document.getElementById('s-resolved-pct').textContent = pct(resolved,totalLeads) + ' of ' + totalLeads + ' leads';
+  const freshRes = clients.filter(c => {
+    const isRes = c.status==='Appointment set'||c.status==='Dead'||c.status==='Closed';
+    const callInP = (c.call_log||[]).some(cl => { const t=new Date(cl.ts); return t>=aStart&&t<=aEnd; });
+    return isRes && callInP && isFresh(c);
   }).length;
-  document.getElementById('s-resolved-pct').textContent = resolved + ' resolved / ' + assignedInPeriod + ' assigned';
-  document.getElementById('s-resolved-fresh').textContent = assignedInPeriod > 0 ? pct(resolved, assignedInPeriod) + ' resolution rate' : '—';
+  document.getElementById('s-resolved-fresh').textContent = freshRes + ' fresh (≤17d)';
 
   // ── SITS & PRODUCTION (production calendar: Sat→Fri) ──
   const periodAppts = clients.filter(c => {
@@ -781,23 +728,18 @@ function renderScore() {
     return d >= pStart && d <= pEnd;
   }).length;
 
-  // Count touchpoints in period (new case system)
-  const allTouchpoints = clients.flatMap(c => (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).filter(tp => {
-    const d = new Date(tp.datetime); return d >= pStart && d <= pEnd;
-  })));
-  // Also count legacy sits for backward compatibility
   const allSits = clients.flatMap(c => (c.sits||[]).filter(s => {
     const d = new Date(s.datetime); return d >= pStart && d <= pEnd;
   }));
-
-  const totalShowed = allTouchpoints.filter(t => t.outcome==='sale'||t.outcome==='nosale').length
-    + allSits.filter(s => s.outcome==='showed').length;
-  const totalNoShows = allTouchpoints.filter(t => t.outcome==='noshow').length
-    + allSits.filter(s => s.outcome==='noshow').length
-    + clients.reduce((acc, c) => acc + (c.call_log||[]).filter(cl => {
-        const t = new Date(cl.ts); return cl.outcome==='No show' && t>=pStart && t<=pEnd;
-      }).length, 0);
+  const totalShowed = allSits.filter(s => s.outcome==='showed').length;
   const totalCanceled = allSits.filter(s => s.outcome==='canceled').length;
+  const sitNoShows = allSits.filter(s => s.outcome==='noshow').length;
+  const dispNoShows = clients.reduce((acc, c) => {
+    return acc + (c.call_log||[]).filter(cl => {
+      const t = new Date(cl.ts); return cl.outcome==='No show' && t>=pStart && t<=pEnd;
+    }).length;
+  }, 0);
+  const totalNoShows = sitNoShows + dispNoShows;
 
   document.getElementById('p-first').textContent = periodAppts;
   document.getElementById('p-first-rate').textContent = periodAppts > 0 ? pct(totalShowed, periodAppts) + ' sat' : '—';
@@ -806,22 +748,14 @@ function renderScore() {
   document.getElementById('p-noshow').textContent = totalNoShows;
   document.getElementById('p-cancel').textContent = totalCanceled + ' canceled';
 
-  // APV: from touchpoint apps + legacy sit apps
-  const saleTouchpoints = allTouchpoints.filter(t => t.outcome==='sale');
   const satSits = allSits.filter(s => s.outcome==='showed');
-  const tpAPV = saleTouchpoints.reduce((a,t) => a+(t.apps||[]).reduce((b,ap) => b+(ap.premium||0),0),0);
-  const sitAPV = satSits.reduce((a,s) => a+(s.apps||[]).reduce((b,ap) => b+(ap.premium||0),0),0);
-  const totalAPV = tpAPV + sitAPV;
-  const tpApps = saleTouchpoints.reduce((a,t) => a+(t.apps||[]).length,0);
-  const sitApps = satSits.reduce((a,s) => a+(s.apps||[]).length,0);
-  const totalApps = tpApps + sitApps;
-  const closedTp = saleTouchpoints.filter(t => (t.apps||[]).length>0);
-  const closedSits = satSits.filter(s => (s.apps||[]).length>0);
-  const totalClosed = closedTp.length + closedSits.length;
-  const apvPerHH = totalClosed>0 ? Math.round(totalAPV/totalClosed) : 0;
-  const appsPerHH = totalClosed>0 ? Math.round((totalApps/totalClosed)*10)/10 : 0;
-  document.getElementById('p-closed').textContent = totalClosed;
-  document.getElementById('p-close-rate').textContent = pct(totalClosed,totalShowed) + ' close rate';
+  const closedSits = satSits.filter(s => (s.apps||[]).length > 0);
+  const totalAPV = satSits.reduce((a,s) => a+(s.apps||[]).reduce((b,ap) => b+(ap.premium||0),0),0);
+  const totalApps = satSits.reduce((a,s) => a+(s.apps||[]).length,0);
+  const apvPerHH = closedSits.length>0 ? Math.round(closedSits.reduce((a,s)=>a+(s.apps||[]).reduce((b,ap)=>b+(ap.premium||0),0),0)/closedSits.length) : 0;
+  const appsPerHH = closedSits.length>0 ? Math.round((closedSits.reduce((a,s)=>a+(s.apps||[]).length,0)/closedSits.length)*10)/10 : 0;
+  document.getElementById('p-closed').textContent = closedSits.length;
+  document.getElementById('p-close-rate').textContent = pct(closedSits.length,totalShowed) + ' close rate';
   document.getElementById('p-apv').textContent = fmt(totalAPV);
   document.getElementById('p-apps').textContent = totalApps + ' applications';
   document.getElementById('p-apv-hh').textContent = fmt(apvPerHH);
@@ -918,63 +852,42 @@ function drillDown(type) {
 
 function renderSidebar() {
   const now = new Date();
-  const todayStr = now.toDateString();
-
-  // Split into: upcoming (future), today-passed, and future by date
-  const allAppts = clients.filter(c => c.appt_datetime);
-  const upcoming = allAppts
-    .filter(c => new Date(c.appt_datetime) >= now)
+  const upcoming = clients
+    .filter(c => c.appt_datetime && new Date(c.appt_datetime) >= now)
     .sort((a,b) => new Date(a.appt_datetime)-new Date(b.appt_datetime))
-    .slice(0,10);
-  const todayPassed = allAppts
-    .filter(c => {
-      const dt = new Date(c.appt_datetime);
-      return dt < now && dt.toDateString() === todayStr;
-    })
-    .sort((a,b) => new Date(a.appt_datetime)-new Date(b.appt_datetime));
+    .slice(0,8);
 
-  function apptCard(c, passed) {
-    const dt = new Date(c.appt_datetime);
-    const isToday = dt.toDateString() === todayStr;
-    const dateStr = isToday ? '' : dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' · ';
-    const timeStr = dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-    const timeColor = passed ? '#A32D2D' : isToday ? '#138181' : '#5f7a99';
-    const bg = passed ? '#FFF5F5' : isToday ? '#F0FBF7' : '#F8FAFB';
-    const border = passed ? '#F7C1C1' : isToday ? '#9FE1CB' : '#e2eaf2';
-    return `<div class="appt-sidebar-item${passed?' passed':''}" style="background:${bg};border:1px solid ${border};" onclick="openClient('${c.id}')">
-      <div style="font-size:12px;font-weight:500;color:#1D3557;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.name}</div>
-      <div style="font-size:11px;color:${timeColor};font-weight:500;margin-top:1px;">${dateStr}${timeStr}${passed?' · past':''}</div>
-      ${c.appt_notes?`<div style="font-size:10px;color:#8fa8c0;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.appt_notes}</div>`:''}
-    </div>`;
-  }
-
+  // Desktop sidebar
   const sidebar = document.getElementById('sidebar-appts');
   if (sidebar) {
-    if (!upcoming.length && !todayPassed.length) {
-      sidebar.innerHTML = '<div style="font-size:11px;color:#a0b8cc;padding:4px 2px;">No appointments today</div>';
+    if (!upcoming.length) {
+      sidebar.innerHTML = '<div style="font-size:11px;color:#a0b8cc;">No upcoming appointments</div>';
     } else {
-      let html = '';
-      if (upcoming.length) html += upcoming.map(c => apptCard(c, false)).join('');
-      if (todayPassed.length) {
-        html += `<div class="appt-sidebar-divider">Earlier today</div>`;
-        html += todayPassed.map(c => apptCard(c, true)).join('');
-      }
-      sidebar.innerHTML = html;
+      sidebar.innerHTML = upcoming.map(c => {
+        const dt = new Date(c.appt_datetime);
+        const isToday = dt.toDateString() === now.toDateString();
+        const dateStr = isToday ? 'Today' : dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+        const timeStr = dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+        const isPast = dt < now;
+        return `<div class="appt-sidebar-item" onclick="openClient('${c.id}')">
+          <div style="font-size:12px;font-weight:500;color:#1D3557;">${c.name}</div>
+          <div style="font-size:11px;color:${isPast?'#A32D2D':'#138181'};font-weight:500;">${dateStr} · ${timeStr}</div>
+          ${c.appt_notes?`<div style="font-size:10px;color:#8fa8c0;">${c.appt_notes}</div>`:''}
+        </div>`;
+      }).join('');
     }
   }
 
-  // Mobile banner
+  // Mobile banner - show next appt
   const banner = document.getElementById('appt-banner');
   const bannerText = document.getElementById('next-appt-text');
   if (banner && bannerText) {
-    const next = upcoming[0];
-    if (next) {
+    if (upcoming.length) {
+      const next = upcoming[0];
       const dt = new Date(next.appt_datetime);
+      const isToday = dt.toDateString() === now.toDateString();
       const timeStr = dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-      bannerText.textContent = `Next: ${next.name} · ${timeStr}`;
-      banner.style.display = 'block';
-    } else if (todayPassed.length) {
-      bannerText.textContent = `${todayPassed.length} appt${todayPassed.length>1?'s':''} passed today`;
+      bannerText.textContent = `Next: ${next.name} · ${isToday?'Today':''}  ${timeStr}`;
       banner.style.display = 'block';
     } else {
       banner.style.display = 'none';
@@ -1091,10 +1004,6 @@ function closeModal() { const m=document.getElementById('modal-ov'); if(m) m.rem
 function openClient(id, keepDialCount) {
   const c = clients.find(x => x.id === id);
   if (!c) return;
-  // Track which lead is open for realtime refresh
-  window._openLeadId = id;
-  // Broadcast to other devices (only when user actively opens, not on refresh)
-  if (!keepDialCount) broadcastOpenLead(id);
   // Only reset dial count when opening a NEW lead, not when refreshing same lead
   if (!keepDialCount) { window._dialCount = 1; window._dialCountSet = false; }
   const sits = c.sits || [];
@@ -1157,6 +1066,7 @@ function openClient(id, keepDialCount) {
     <a href="tel:${(c.phone||'').replace(/[^0-9+]/g,'')}" onclick="autoIncrementDial();setTimeout(()=>window.focus(),3000)" style="font-size:13px;color:#138181;font-weight:500;text-decoration:none;margin-right:4px;">📞 ${c.phone||''}</a>
     <input id="edit-phone" value="${c.phone||''}" style="font-size:11px;color:#5f7a99;border:none;border-bottom:1px solid transparent;outline:none;background:transparent;font-family:inherit;width:120px;padding:0;" onfocus="this.style.borderBottomColor='#138181'" onblur="this.style.borderBottomColor='transparent'" placeholder="edit number">
     <span style="color:#5f7a99;font-size:13px;">· ${c.state||''} · <span class="${badgeClass(c.source)}">${c.source||''}</span></span>
+    <span style="font-size:12px;color:#5f7a99;">· Age: <input id="edit-age" value="${c.age||''}" type="number" min="0" max="120" style="width:40px;font-size:12px;color:#1D3557;border:none;border-bottom:1px solid #d0dcea;outline:none;background:transparent;font-family:inherit;padding:0;" onchange="autoSaveField('${id}','age',parseInt(this.value)||null)"></span>
   </div>
   ${c.address?`<div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">📍 ${c.address}</div>`:''}
   ${c.appt_datetime?`<div style="font-size:12px;font-weight:600;color:#138181;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:6px;padding:5px 10px;margin-bottom:8px;display:inline-block;">📅 Appt: ${new Date(c.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(c.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}${c.appt_notes?' · '+c.appt_notes:''}</div>`:''}
@@ -1187,13 +1097,42 @@ function openClient(id, keepDialCount) {
     <div class="field"><label>Status</label><select id="cn-status">${statuses.map(s=>`<option${c.status===s?' selected':''}>${s}</option>`).join('')}</select></div>
     <div class="field"><label>HQ assigned</label><input type="date" id="cn-assigned" value="${c.assigned_date||todayStr()}"></div>
   </div>
-  <div class="section-lbl" style="margin-top:4px;">Cases</div>
-  ${renderCasesHtml(c)}
-  <button class="sec-btn" onclick="openNewCase('${id}')">+ New case</button>`);
-}
+  <div class="section-lbl" style="margin-top:4px;">Sit history</div>
+  ${sitsHtml||'<div style="font-size:12px;color:#a0b8cc;margin-bottom:8px;">No sits logged yet.</div>'}
+  <button class="sec-btn" onclick="openAddSit('${id}','${suggestedReason}')">+ Log sit ${sits.length+1}</button>`);
 }
 
 // ── APPT PICKER ──────────────────────────────────────────────
+function buildWeekGrid(excludeId) {
+  const now = new Date();
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(now); d.setDate(now.getDate() + i); d.setHours(0,0,0,0);
+    days.push(d);
+  }
+  const booked = clients
+    .filter(c => c.appt_datetime && c.id !== excludeId)
+    .map(c => ({name: c.name, dt: new Date(c.appt_datetime)}))
+    .filter(a => a.dt >= now);
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const cols = days.map(d => {
+    const dayBooked = booked.filter(a => a.dt.toDateString() === d.toDateString()).sort((a,b) => a.dt - b.dt);
+    const isToday = d.toDateString() === now.toDateString();
+    const dateLabel = `<div style="font-size:9px;font-weight:600;color:${isToday?'#138181':'#1D3557'};text-align:center;margin-bottom:4px;">${dayNames[d.getDay()]}<br>${d.getMonth()+1}/${d.getDate()}</div>`;
+    const slots = dayBooked.length
+      ? dayBooked.map(a => {
+          const t = a.dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+          return `<div style="background:#FAEEDA;border:1px solid #FAC775;border-radius:4px;padding:2px 4px;margin-bottom:2px;font-size:9px;color:#633806;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${a.name} · ${t}">${t}<br><span style="opacity:0.8;">${a.name.split(' ')[0]}</span></div>`;
+        }).join('')
+      : `<div style="font-size:9px;color:#9FE1CB;text-align:center;padding:4px 0;">free</div>`;
+    return `<div style="flex:1;min-width:0;border-right:1px solid #f0f4f8;padding:0 3px;${isToday?'background:#f0fbf7;border-radius:6px;':''}">${dateLabel}${slots}</div>`;
+  }).join('');
+  return `<div style="margin-bottom:12px;">
+    <div style="font-size:9px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Next 7 days — booked slots</div>
+    <div style="display:flex;gap:2px;border:1px solid #e2eaf2;border-radius:8px;padding:6px;background:#fff;overflow-x:auto;">${cols}</div>
+  </div>`;
+}
+
 function openReschedulePicker(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const d = new Date(); d.setDate(d.getDate()+1); d.setHours(10,0,0,0);
@@ -1226,49 +1165,12 @@ async function confirmReschedule(id) {
   const allActive = clients.filter(cl => cl.status === 'New' || cl.status === 'Working');
   const currentIdx = allActive.findIndex(cl => cl.id === id);
   const nextLead = allActive[currentIdx + 1] || allActive[currentIdx - 1];
-  broadcastAdvance(nextLead ? nextLead.id : null);
   if (nextLead) setTimeout(() => openClient(nextLead.id), 300);
-}
-
-function buildWeekGrid(excludeId) {
-  // Build a 7-day visual grid of booked slots
-  const now = new Date();
-  const days = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(now);
-    d.setDate(now.getDate() + i);
-    d.setHours(0,0,0,0);
-    days.push(d);
-  }
-  // Gather all booked appointments (excluding current client being rescheduled)
-  const booked = clients
-    .filter(c => c.appt_datetime && c.id !== excludeId)
-    .map(c => ({name: c.name, dt: new Date(c.appt_datetime)}))
-    .filter(a => a.dt >= now);
-
-  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const cols = days.map(d => {
-    const dayBooked = booked.filter(a => a.dt.toDateString() === d.toDateString())
-      .sort((a,b) => a.dt - b.dt);
-    const isToday = d.toDateString() === now.toDateString();
-    const dateLabel = `<div style="font-size:9px;font-weight:600;color:${isToday?'#138181':'#1D3557'};text-align:center;margin-bottom:4px;">${dayNames[d.getDay()]}<br>${d.getMonth()+1}/${d.getDate()}</div>`;
-    const slots = dayBooked.length
-      ? dayBooked.map(a => {
-          const t = a.dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-          return `<div style="background:#FAEEDA;border:1px solid #FAC775;border-radius:4px;padding:2px 4px;margin-bottom:2px;font-size:9px;color:#633806;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${a.name} · ${t}">${t}<br><span style="opacity:0.8;">${a.name.split(' ')[0]}</span></div>`;
-        }).join('')
-      : `<div style="font-size:9px;color:#9FE1CB;text-align:center;padding:4px 0;">free</div>`;
-    return `<div style="flex:1;min-width:0;border-right:1px solid #f0f4f8;padding:0 3px;${isToday?'background:#f0fbf7;border-radius:6px;':''}">${dateLabel}${slots}</div>`;
-  }).join('');
-
-  return `<div style="margin-bottom:12px;">
-    <div style="font-size:9px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Next 7 days — booked slots</div>
-    <div style="display:flex;gap:2px;border:1px solid #e2eaf2;border-radius:8px;padding:6px;background:#fff;overflow-x:auto;">${cols}</div>
-  </div>`;
 }
 
 function openApptPicker(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
+  // Default to next business day at 10am
   const d = new Date(); d.setDate(d.getDate()+1); d.setHours(10,0,0,0);
   const dt = d.toISOString().slice(0,16);
   showModal(`<button class="close-x" onclick="closeModal()">×</button>
@@ -1318,7 +1220,6 @@ async function confirmAppt(id) {
   const list = clients.filter(cl => cl.status === 'New' || cl.status === 'Working');
   const idx = list.findIndex(cl => cl.id === id);
   const next = list[idx + 1] || list[idx - 1];
-  broadcastAdvance(next ? next.id : null);
   if (next) setTimeout(() => openClient(next.id), 300);
 }
 
@@ -1375,9 +1276,6 @@ async function silentSave(id) {
   const policyEl = document.getElementById('cn-policy');
   const ppuEl = document.getElementById('cn-ppu');
   const addrEl = document.getElementById('cn-address');
-  const mortgageEl = document.getElementById('cn-mortgage');
-  const smokerEl = document.getElementById('cn-smoker');
-  const ageEl = document.getElementById('cn-age');
   if (!notesEl) return; // modal no longer open
   const updates = {};
   if (notesEl) updates.notes = notesEl.value.trim();
@@ -1385,9 +1283,6 @@ async function silentSave(id) {
   if (policyEl) updates.policy_notes = policyEl.value.trim();
   if (ppuEl) updates.ppu_notes = ppuEl.value.trim();
   if (addrEl) updates.address = addrEl.value.trim();
-  if (mortgageEl) updates.mortgage_amount = mortgageEl.value.trim();
-  if (smokerEl) updates.smoker = smokerEl.value;
-  if (ageEl) updates.age = parseInt(ageEl.value) || null;
   await sb.from('clients').update(updates).eq('id', id);
   Object.assign(c, updates);
 }
@@ -1403,6 +1298,7 @@ async function autoSaveField(id, field, value) {
 async function quickLog(id, outcome, statKey) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const dialCount = window._dialCount || 1;
+  // For no-shows, use the appointment datetime as the timestamp so it counts in the right period
   const ts = (outcome === 'No show' && c.appt_datetime) ? c.appt_datetime : new Date().toISOString();
   const callLog = [...(c.call_log||[]), {ts, outcome, dials:dialCount}];
   let newStatus = c.status;
@@ -1410,28 +1306,28 @@ async function quickLog(id, outcome, statKey) {
   else if (outcome==='Appt set') newStatus='Appointment set';
   else if (outcome==='No show') newStatus='No show';
   else if (outcome==='Conversation'||outcome==='Callback') newStatus='Working';
+  // Update memory first so renderScore reflects immediately
   c.call_log = callLog; c.status = newStatus;
   showSync('Saving...');
   await sb.from('clients').update({call_log:callLog, status:newStatus}).eq('id',id);
-  // Only count dials if not recently logged from another device
-  if (!wasRecentlyDialed(id)) {
-    markDialed(id);
-    await addStat('dials', dialCount);
-  }
+  // Log actual dial count to stats
+  await addStat('dials', dialCount);
   if (statKey !== 'dials') {
     await addStat(statKey, 1);
-    await addStat('convos', 1);
+    await addStat('convos', 1); // any outcome other than no answer = conversation
   }
+  // Capture next lead BEFORE status changes take effect
   const allActive = clients.filter(cl => cl.status === 'New' || cl.status === 'Working');
   const currentIdx = allActive.findIndex(cl => cl.id === id);
   const nextLead = allActive[currentIdx + 1] || allActive[currentIdx - 1];
+
+  // Reset dial count to 1 after logging
   window._dialCount = 1;
   hideSync();
   renderScore();
   if (outcome === 'No answer') {
     openClient(id, true);
   } else {
-    broadcastAdvance(nextLead ? nextLead.id : null);
     closeModal();
     renderClients(document.getElementById('client-search') ? document.getElementById('client-search').value : '');
     if (nextLead) setTimeout(() => openClient(nextLead.id), 300);
@@ -1464,9 +1360,8 @@ async function updateClient(id) {
     status: document.getElementById('cn-status').value,
     assigned_date: document.getElementById('cn-assigned').value
   };
-  // Only log dials if user explicitly tapped a dial count button AND not recently logged from another device
-  if (window._dialCountSet && !wasRecentlyDialed(id)) {
-    markDialed(id);
+  // Only log dials if user explicitly tapped a dial count button
+  if (window._dialCountSet) {
     const dialCount = window._dialCount || 1;
     const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(), outcome:'No answer', dials:dialCount}];
     updates.call_log = callLog;
@@ -1485,7 +1380,6 @@ async function updateClient(id) {
   const list = clients.filter(cl => cl.status === 'New' || cl.status === 'Working');
   const idx = list.findIndex(cl => cl.id === id);
   const next = list[idx + 1] || list[idx - 1];
-  broadcastAdvance(next ? next.id : null);
   if (next) setTimeout(() => openClient(next.id), 300);
 }
 
@@ -1685,325 +1579,7 @@ async function saveEditSit(id, si) {
   renderScore();
 }
 
-// ── CASE SYSTEM ──────────────────────────────────────────────
-const CASE_TYPES = ['Mortgage Protection','Retirement','Debt Free Life','Infinite Banking'];
-const CASE_TYPE_CLASS = {'Mortgage Protection':'mp','Retirement':'ret','Debt Free Life':'dfl','Infinite Banking':'ib'};
-const CASE_STATUSES = ['Open','Closed Won','Closed Lost','Reset'];
-const TP_TYPES = ['Initial','PPU / Policy Pickup','Follow-up','Policy Review'];
-
-function caseStatusColor(s) {
-  if (s==='Closed Won') return '#3B6D11';
-  if (s==='Closed Lost') return '#A32D2D';
-  if (s==='Reset') return '#534AB7';
-  return 'rgba(255,255,255,0.7)';
-}
-
-function renderCasesHtml(c) {
-  const cases = c.cases || [];
-  if (!cases.length) return '<div style="font-size:12px;color:#a0b8cc;margin-bottom:8px;">No cases yet.</div>';
-  return cases.map((cs, ci) => {
-    const cls = CASE_TYPE_CLASS[cs.type] || 'mp';
-    const tps = cs.touchpoints || [];
-    const lastTp = tps[tps.length-1];
-    const nextDt = tps.find(t => !t.outcome || t.outcome==='pending');
-    const tpHtml = tps.map((tp, ti) => {
-      const dt = new Date(tp.datetime);
-      const dtStr = dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' + dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-      const outcomeColor = tp.outcome==='sale'?'#3B6D11':tp.outcome==='nosale'?'#A32D2D':tp.outcome==='noshow'?'#BA7517':'#8fa8c0';
-      const outcomeLabel = tp.outcome==='sale'?'Sale':tp.outcome==='nosale'?'No Sale':tp.outcome==='noshow'?'No Show':tp.outcome==='pending'||!tp.outcome?'Pending':'';
-      const flags = [];
-      if (tp.resetSelf) flags.push('↩ Reset→me');
-      if (tp.resetSME) flags.push(`↩ Reset→${tp.resetSMEName||'SME'}`);
-      if (tp.incomeOffered) flags.push('💼 Income offered');
-      if (tp.asrs) flags.push(`📋 ASRs: ${tp.asrs}`);
-      return `<div class="tp-card tp-outcome-${tp.outcome||'pending'}" onclick="openEditTouchpoint('${c.id}',${ci},${ti})">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-size:11px;font-weight:500;color:#1D3557;">${tp.type||'Initial'}</span>
-          <span style="font-size:11px;font-weight:600;color:${outcomeColor};">${outcomeLabel}</span>
-        </div>
-        <div style="font-size:10px;color:#8fa8c0;margin-top:2px;">${dtStr}</div>
-        ${flags.length?`<div style="font-size:10px;color:#5f7a99;margin-top:3px;">${flags.join(' · ')}</div>`:''}
-        ${tp.notes?`<div style="font-size:10px;color:#8fa8c0;margin-top:2px;">${tp.notes}</div>`:''}
-      </div>`;
-    }).join('');
-    return `<div class="case-card">
-      <div class="case-hdr case-hdr-${cls}" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
-        <div>
-          <div style="font-size:12px;font-weight:600;">${cs.type}</div>
-          <div style="font-size:10px;opacity:0.7;">${tps.length} touchpoint${tps.length!==1?'s':''}</div>
-        </div>
-        <span class="case-status-badge" style="background:${caseStatusColor(cs.status)}20;color:${cs.status==='Open'?'#fff':caseStatusColor(cs.status)};border:1px solid ${caseStatusColor(cs.status)}40;">${cs.status||'Open'}</span>
-      </div>
-      <div class="case-body">
-        ${tpHtml||'<div style="font-size:11px;color:#a0b8cc;margin-bottom:6px;">No touchpoints yet.</div>'}
-        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
-          <button class="sec-btn" style="margin:0;" onclick="openAddTouchpoint('${c.id}',${ci})">+ Add touchpoint</button>
-          <button class="sec-btn" style="margin:0;background:#f0f4f8;color:#5f7a99;" onclick="openEditCase('${c.id}',${ci})">Edit case</button>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function openNewCase(id) {
-  const c = clients.find(x=>x.id===id); if (!c) return;
-  showModal(`<button class="close-x" onclick="closeModal()">×</button>
-  <div class="modal-title">New case — ${c.name}</div>
-  <div class="field"><label>Case type</label><select id="nc-type">${CASE_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></div>
-  <div class="field"><label>Notes (optional)</label><input type="text" id="nc-notes" placeholder="e.g. Referred by spouse, existing MP client..."></div>
-  <button class="save-btn" onclick="saveNewCase('${id}')">Create case</button>
-  <button class="save-btn" style="background:#138181;margin-top:6px;" onclick="saveNewCaseWithTouchpoint('${id}')">Create & add first touchpoint</button>`);
-}
-
-async function saveNewCase(id) {
-  const c = clients.find(x=>x.id===id); if (!c) return;
-  const newCase = {type:document.getElementById('nc-type').value, status:'Open', notes:document.getElementById('nc-notes').value.trim(), touchpoints:[], created:new Date().toISOString()};
-  const cases = [...(c.cases||[]), newCase];
-  showSync('Saving...');
-  await sb.from('clients').update({cases}).eq('id',id);
-  c.cases = cases;
-  hideSync(); closeModal(); openClient(id);
-}
-
-async function saveNewCaseWithTouchpoint(id) {
-  const c = clients.find(x=>x.id===id); if (!c) return;
-  const newCase = {type:document.getElementById('nc-type').value, status:'Open', notes:document.getElementById('nc-notes').value.trim(), touchpoints:[], created:new Date().toISOString()};
-  const cases = [...(c.cases||[]), newCase];
-  showSync('Saving...');
-  await sb.from('clients').update({cases}).eq('id',id);
-  c.cases = cases;
-  hideSync(); closeModal();
-  openAddTouchpoint(id, cases.length-1);
-}
-
-function openEditCase(id, ci) {
-  const c = clients.find(x=>x.id===id); if (!c) return;
-  const cs = c.cases[ci];
-  showModal(`<button class="close-x" onclick="closeModal()">×</button>
-  <div class="modal-title">Edit case — ${c.name}</div>
-  <div class="field"><label>Case type</label><select id="ec-type">${CASE_TYPES.map(t=>`<option${cs.type===t?' selected':''}>${t}</option>`).join('')}</select></div>
-  <div class="field"><label>Status</label><select id="ec-status">${CASE_STATUSES.map(s=>`<option${cs.status===s?' selected':''}>${s}</option>`).join('')}</select></div>
-  <div class="field"><label>Notes</label><input type="text" id="ec-notes" value="${cs.notes||''}"></div>
-  <button class="save-btn" onclick="saveEditCase('${id}',${ci})">Save</button>`);
-}
-
-async function saveEditCase(id, ci) {
-  const c = clients.find(x=>x.id===id); if (!c) return;
-  c.cases[ci].type = document.getElementById('ec-type').value;
-  c.cases[ci].status = document.getElementById('ec-status').value;
-  c.cases[ci].notes = document.getElementById('ec-notes').value.trim();
-  showSync('Saving...');
-  await sb.from('clients').update({cases:c.cases}).eq('id',id);
-  hideSync(); closeModal(); openClient(id); renderScore();
-}
-
-function openAddTouchpoint(id, ci) {
-  const c = clients.find(x=>x.id===id); if (!c) return;
-  const cs = c.cases[ci];
-  const now = new Date(); now.setMinutes(0,0,0); now.setHours(now.getHours()+1);
-  showModal(`<button class="close-x" onclick="closeModal()">×</button>
-  <div class="modal-title">Add touchpoint</div>
-  <div class="modal-sub">${c.name} · ${cs.type}</div>
-  <div class="field"><label>Type</label><select id="tp-type">${TP_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></div>
-  <div class="field"><label>Date & time</label><input type="datetime-local" id="tp-dt" value="${now.toISOString().slice(0,16)}" style="font-size:16px;"></div>
-  <div class="section-lbl">Outcome</div>
-  <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
-    <button class="call-btn cb-teal" id="tpo-pending" onclick="setTpOutcome('pending')">Pending</button>
-    <button class="call-btn cb-green" id="tpo-sale" onclick="setTpOutcome('sale')">Sale</button>
-    <button class="call-btn cb-red" id="tpo-nosale" onclick="setTpOutcome('nosale')">No Sale</button>
-    <button class="call-btn cb-amber" id="tpo-noshow" onclick="setTpOutcome('noshow')">No Show</button>
-  </div>
-  <div id="tp-addons" style="display:none;">
-    <div class="section-lbl">Add-ons</div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
-      <button class="flag-btn" id="tpa-income" onclick="toggleTpAddon('income')">💼 Income offered</button>
-      <button class="flag-btn" id="tpa-resetself" onclick="toggleTpAddon('resetself')">↩ Reset→me</button>
-      <button class="flag-btn" id="tpa-resetsme" onclick="toggleTpAddon('resetsme')">↩ Reset→SME</button>
-    </div>
-    <div id="tp-resetsme-detail" style="display:none;">
-      <div class="field"><label>SME name</label><input type="text" id="tp-sme-name" placeholder="Who are you resetting to?"></div>
-      <div class="field"><label>Reset case type</label><select id="tp-reset-type">${CASE_TYPES.filter(t=>t!=='Mortgage Protection').map(t=>`<option>${t}</option>`).join('')}</select></div>
-      <div class="field"><label>Reset date & time</label><input type="datetime-local" id="tp-reset-dt" value="${new Date(now.getTime()+7*24*60*60*1000).toISOString().slice(0,16)}"></div>
-    </div>
-    <div id="tp-resetself-detail" style="display:none;">
-      <div class="field"><label>Reset case type</label><select id="tp-resetself-type">${CASE_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></div>
-      <div class="field"><label>Reset date & time</label><input type="datetime-local" id="tp-resetself-dt" value="${new Date(now.getTime()+7*24*60*60*1000).toISOString().slice(0,16)}"></div>
-    </div>
-    <div class="field"><label>ASRs (after sale referrals)</label><input type="text" id="tp-asrs" placeholder="Names / numbers collected..."></div>
-  </div>
-  <div class="field"><label>Notes</label><textarea id="tp-notes" placeholder="Notes..."></textarea></div>
-  <button class="save-btn" onclick="saveTouchpoint('${id}',${ci})">Save touchpoint</button>`);
-  window._tpOutcome = 'pending';
-  window._tpAddons = {income:false, resetself:false, resetsme:false};
-  highlightTpOutcome('pending');
-}
-
-function setTpOutcome(val) {
-  window._tpOutcome = val;
-  highlightTpOutcome(val);
-  const addons = document.getElementById('tp-addons');
-  if (addons) addons.style.display = (val==='sale'||val==='nosale') ? 'block' : 'none';
-}
-
-function highlightTpOutcome(val) {
-  ['pending','sale','nosale','noshow'].forEach(v => {
-    const btn = document.getElementById('tpo-'+v);
-    if (btn) btn.style.opacity = v===val ? '1' : '0.4';
-  });
-}
-
-function toggleTpAddon(key) {
-  window._tpAddons[key] = !window._tpAddons[key];
-  const btn = document.getElementById('tpa-'+key);
-  if (btn) btn.classList.toggle('on-teal', window._tpAddons[key]);
-  if (key==='resetsme') {
-    const el = document.getElementById('tp-resetsme-detail');
-    if (el) el.style.display = window._tpAddons.resetsme ? 'block' : 'none';
-  }
-  if (key==='resetself') {
-    const el = document.getElementById('tp-resetself-detail');
-    if (el) el.style.display = window._tpAddons.resetself ? 'block' : 'none';
-  }
-}
-
-async function saveTouchpoint(id, ci) {
-  const c = clients.find(x=>x.id===id); if (!c) return;
-  const dt = document.getElementById('tp-dt').value; if (!dt) return;
-  const outcome = window._tpOutcome || 'pending';
-  const addons = window._tpAddons || {};
-  const tp = {
-    type: document.getElementById('tp-type').value,
-    datetime: new Date(dt).toISOString(),
-    outcome,
-    incomeOffered: addons.income || false,
-    resetSelf: addons.resetself || false,
-    resetSME: addons.resetsme || false,
-    resetSMEName: addons.resetsme ? (document.getElementById('tp-sme-name')||{value:''}).value.trim() : '',
-    resetSelfType: addons.resetself ? (document.getElementById('tp-resetself-type')||{value:''}).value : '',
-    resetSMEType: addons.resetsme ? (document.getElementById('tp-reset-type')||{value:''}).value : '',
-    resetSelfDt: addons.resetself ? (document.getElementById('tp-resetself-dt')||{value:''}).value : '',
-    resetSMEDt: addons.resetsme ? (document.getElementById('tp-reset-dt')||{value:''}).value : '',
-    asrs: (document.getElementById('tp-asrs')||{value:''}).value.trim(),
-    notes: document.getElementById('tp-notes').value.trim(),
-    apps: [],
-    created: new Date().toISOString()
-  };
-
-  // Update case status based on outcome
-  if (outcome==='sale') c.cases[ci].status = 'Closed Won';
-  else if (outcome==='nosale') c.cases[ci].status = 'Closed Lost';
-
-  // If reset, also update case status and create new case
-  if (addons.resetself || addons.resetsme) {
-    c.cases[ci].status = (outcome==='sale'||outcome==='nosale') ? c.cases[ci].status + ' + Reset' : 'Reset';
-    // Spawn new case
-    const newCaseType = addons.resetself
-      ? (document.getElementById('tp-resetself-type')||{value:'Mortgage Protection'}).value
-      : (document.getElementById('tp-reset-type')||{value:'Retirement'}).value;
-    const resetDtVal = addons.resetself
-      ? (document.getElementById('tp-resetself-dt')||{value:''}).value
-      : (document.getElementById('tp-reset-dt')||{value:''}).value;
-    const resetDt = resetDtVal ? new Date(resetDtVal).toISOString() : null;
-    const newCase = {
-      type: newCaseType,
-      status: 'Open',
-      notes: `Reset from ${c.cases[ci].type}${addons.resetsme ? ' — SME: ' + tp.resetSMEName : ''}`,
-      touchpoints: resetDt ? [{type:'Initial', datetime:resetDt, outcome:'pending', notes:'', apps:[], created:new Date().toISOString()}] : [],
-      created: new Date().toISOString()
-    };
-    c.cases.push(newCase);
-    // Update appt_datetime for sidebar
-    if (resetDt) {
-      await sb.from('clients').update({appt_datetime: resetDt, appt_notes: `Reset — ${newCaseType}`}).eq('id',id);
-      c.appt_datetime = resetDt;
-    }
-  } else if (outcome==='pending' || outcome==='noshow') {
-    // Keep appointment date if scheduling next touchpoint
-  }
-
-  c.cases[ci].touchpoints = [...(c.cases[ci].touchpoints||[]), tp];
-
-  // Update lead status
-  let newLeadStatus = c.status;
-  if (outcome==='sale') newLeadStatus = 'Closed';
-  else if (outcome==='nosale' && !addons.resetself && !addons.resetsme) newLeadStatus = 'No sale';
-  else if (outcome==='noshow') newLeadStatus = 'No show';
-  else if (outcome==='pending') newLeadStatus = 'Appointment set';
-
-  showSync('Saving...');
-  await sb.from('clients').update({cases:c.cases, status:newLeadStatus}).eq('id',id);
-  c.status = newLeadStatus;
-  hideSync(); closeModal(); openClient(id); renderScore(); renderSidebar();
-}
-
-function openEditTouchpoint(id, ci, ti) {
-  const c = clients.find(x=>x.id===id); if (!c) return;
-  const tp = c.cases[ci].touchpoints[ti];
-  const dtVal = new Date(tp.datetime).toISOString().slice(0,16);
-  const outcomeLabel = tp.outcome==='sale'?'Sale':tp.outcome==='nosale'?'No Sale':tp.outcome==='noshow'?'No Show':'Pending';
-  const outcomeColor = tp.outcome==='sale'?'#3B6D11':tp.outcome==='nosale'?'#A32D2D':tp.outcome==='noshow'?'#BA7517':'#8fa8c0';
-  showModal(`<button class="close-x" onclick="closeModal()">×</button>
-  <div class="modal-title">${tp.type||'Touchpoint'} — ${c.name}</div>
-  <div class="modal-sub">${c.cases[ci].type} · <span style="color:${outcomeColor};font-weight:600;">${outcomeLabel}</span></div>
-  <div class="field"><label>Type</label><select id="etp-type">${TP_TYPES.map(t=>`<option${tp.type===t?' selected':''}>${t}</option>`).join('')}</select></div>
-  <div class="field"><label>Date & time</label><input type="datetime-local" id="etp-dt" value="${dtVal}" style="font-size:16px;"></div>
-  <div class="section-lbl">Outcome</div>
-  <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
-    <button class="call-btn" style="background:${tp.outcome==='pending'||!tp.outcome?'#138181':'#f0f4f8'};color:${tp.outcome==='pending'||!tp.outcome?'#fff':'#5f7a99'};" onclick="updateTpOutcome('${id}',${ci},${ti},'pending')">Pending</button>
-    <button class="call-btn" style="background:${tp.outcome==='sale'?'#3B6D11':'#f0f4f8'};color:${tp.outcome==='sale'?'#fff':'#5f7a99'};" onclick="updateTpOutcome('${id}',${ci},${ti},'sale')">Sale</button>
-    <button class="call-btn" style="background:${tp.outcome==='nosale'?'#A32D2D':'#f0f4f8'};color:${tp.outcome==='nosale'?'#fff':'#5f7a99'};" onclick="updateTpOutcome('${id}',${ci},${ti},'nosale')">No Sale</button>
-    <button class="call-btn" style="background:${tp.outcome==='noshow'?'#BA7517':'#f0f4f8'};color:${tp.outcome==='noshow'?'#fff':'#5f7a99'};" onclick="updateTpOutcome('${id}',${ci},${ti},'noshow')">No Show</button>
-  </div>
-  <div class="field"><label>ASRs</label><input type="text" id="etp-asrs" value="${tp.asrs||''}" placeholder="Names / numbers..."></div>
-  <div class="field"><label>Notes</label><textarea id="etp-notes">${tp.notes||''}</textarea></div>
-  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
-    <button class="flag-btn${tp.incomeOffered?' on-teal':''}" onclick="toggleTpFlag('${id}',${ci},${ti},'incomeOffered')">💼 Income offered${tp.incomeOffered?' ✓':''}</button>
-    <button class="flag-btn${tp.resetSelf?' on-navy':''}" onclick="toggleTpFlag('${id}',${ci},${ti},'resetSelf')">↩ Reset→me${tp.resetSelf?' ✓':''}</button>
-    <button class="flag-btn${tp.resetSME?' on-purple':''}" onclick="toggleTpFlag('${id}',${ci},${ti},'resetSME')">↩ Reset→SME${tp.resetSME?' ✓':''}</button>
-  </div>
-  <button class="save-btn" onclick="saveEditTouchpoint('${id}',${ci},${ti})">Save</button>`);
-}
-
-async function updateTpOutcome(id, ci, ti, val) {
-  const c = clients.find(x=>x.id===id); if (!c) return;
-  c.cases[ci].touchpoints[ti].outcome = val;
-  if (val==='sale') c.cases[ci].status = 'Closed Won';
-  else if (val==='nosale') c.cases[ci].status = 'Closed Lost';
-  else if (val==='pending'||val==='noshow') c.cases[ci].status = 'Open';
-  let newLeadStatus = c.status;
-  if (val==='sale') newLeadStatus='Closed';
-  else if (val==='nosale') newLeadStatus='No sale';
-  else if (val==='noshow') newLeadStatus='No show';
-  showSync('Saving...');
-  await sb.from('clients').update({cases:c.cases, status:newLeadStatus}).eq('id',id);
-  c.status = newLeadStatus;
-  hideSync(); renderScore();
-  openEditTouchpoint(id, ci, ti);
-}
-
-async function toggleTpFlag(id, ci, ti, key) {
-  const c = clients.find(x=>x.id===id); if (!c) return;
-  c.cases[ci].touchpoints[ti][key] = !c.cases[ci].touchpoints[ti][key];
-  showSync('Saving...');
-  await sb.from('clients').update({cases:c.cases}).eq('id',id);
-  hideSync();
-  openEditTouchpoint(id, ci, ti);
-}
-
-async function saveEditTouchpoint(id, ci, ti) {
-  const c = clients.find(x=>x.id===id); if (!c) return;
-  const newDt = document.getElementById('etp-dt').value;
-  if (newDt) c.cases[ci].touchpoints[ti].datetime = new Date(newDt).toISOString();
-  c.cases[ci].touchpoints[ti].type = document.getElementById('etp-type').value;
-  c.cases[ci].touchpoints[ti].asrs = (document.getElementById('etp-asrs')||{value:''}).value.trim();
-  c.cases[ci].touchpoints[ti].notes = document.getElementById('etp-notes').value.trim();
-  showSync('Saving...');
-  await sb.from('clients').update({cases:c.cases}).eq('id',id);
-  hideSync(); closeModal(); openClient(id); renderScore();
-}
-
-// ── LEGACY SIT SYSTEM (preserved for existing data) ──────────
-
+// ── APPLICATIONS ─────────────────────────────────────────────
 function openAddApp(id, si) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const carriers = Object.keys(CARRIERS);
@@ -2055,24 +1631,24 @@ async function toggleUpload(id, si, ai) {
 
 // ── BULK IMPORT ──────────────────────────────────────────────
 const IMPORT_BATCH_20260609 = [
-  {name:'Brett Jennings',phone:'540-661-8161',state:'VA',age:24,source:'CIA',address:'61 Oakland Pl, Louisa, VA 23093',mortgage_amount:'$343,660',smoker:'N',notes:'Age: 24 · Mortgage: $343,660 · Tobacco: N · Co-borrower: Y · Lender: Capital Center LLC'},
-  {name:'Clark Gesen',phone:'603-724-0297',state:'NH',age:32,source:'CIA',address:'100 Main St Apt 203, Pembroke, NH 03275',mortgage_amount:'$193,500',smoker:'N',notes:'Age: 32 · Mortgage: $193,500 · Tobacco: N · Co-borrower: N'},
-  {name:'Freddie Light',phone:'419-626-8659',state:'OH',age:81,source:'CIA',address:'2905 W Perkins Ave, Sandusky, OH 44870',mortgage_amount:'$55,000',smoker:'N',notes:'Age: 81 · Mortgage: $55,000 · Tobacco: N · Co-borrower: N'},
-  {name:'Phillip Salas',phone:'832-244-4408',state:'TX',age:null,source:'CIA',address:'1155 Beals Creek St, Conroe, TX 77304',mortgage_amount:'$569,000',smoker:'Y',notes:'Age: — · Mortgage: $569,000 · Tobacco: Y · Co-borrower: N · Lender: Village Capital & Investment LLC'},
-  {name:'Steven Swanson',phone:'508-776-7505',state:'MA',age:73,source:'CIA',address:'650 Old Barnstable Rd, Mashpee, MA 02649',mortgage_amount:'$250,000',smoker:'Y',notes:'Age: 73 · Mortgage: $250,000 · Tobacco: Y · Co-borrower: Y'},
-  {name:'Steve Dostie',phone:'603-530-2977',state:'NH',age:54,source:'CIA',address:'131 Birch Hill Rd, Bristol, NH 03222',mortgage_amount:'$100,000',smoker:'N',notes:'Age: 54 · Mortgage: $100,000 · Tobacco: N · Co-borrower: Y'},
-  {name:'Skyler Foote',phone:'217-407-9216',state:'NC',age:20,source:'CIA',address:'116 W Bayshore Blvd, Jacksonville, NC 28540',mortgage_amount:'$244,138',smoker:'N',notes:'Age: 20 · Mortgage: $244,138 · Tobacco: N · Co-borrower: N · Lender: Alpha Mortgage Corporation'},
-  {name:'Richard Love',phone:'276-492-9224',state:'TN',age:82,source:'CIA',address:'11336 Woodcliff Dr, Farragut, TN 37934',mortgage_amount:'$395,000',smoker:'N',notes:'Age: 82 · Mortgage: $395,000 · Tobacco: N · Co-borrower: N'},
-  {name:'Richard Fitzpatrick',phone:'413-537-0827',state:'MA',age:65,source:'CIA',address:'54 Atlantic St, Ludlow, MA 01056',mortgage_amount:'$173,675',smoker:'N',notes:'Age: 65 · Mortgage: $173,675 · Tobacco: N · Co-borrower: Y'},
-  {name:'Ruben Espinosa',phone:'860-893-4870',state:'CT',age:58,source:'CIA',address:'298 Murray St, Meriden, CT 06450',mortgage_amount:'$294,566',smoker:'Y',notes:'Age: 58 · Mortgage: $294,566 · Tobacco: Y · Co-borrower: N'},
-  {name:'Philadelpo Guevarra',phone:'203-264-9855',state:'CT',age:null,source:'CIA',address:'133 Old Woodbury Rd, Southbury, CT 06488',mortgage_amount:'$311,200',smoker:'N',notes:'Age: — · Mortgage: $311,200 · Tobacco: N · Co-borrower: Y'},
-  {name:'Nicholas Ricciardi',phone:'774-479-2636',state:'NH',age:20,source:'CIA',address:'67 Linden Rd, North Conway, NH 03860',mortgage_amount:'$240,000',smoker:'N',notes:'Age: 20 · Mortgage: $240,000 · Tobacco: N · Co-borrower: Y'},
-  {name:'Melissa Mincey',phone:'865-607-8477',state:'TN',age:null,source:'CIA',address:'4901 Salem Church Rd, Knoxville, TN 37938',mortgage_amount:'$92,800',smoker:'N',notes:'Age: — · Mortgage: $92,800 · Tobacco: N · Co-borrower: N · Lender: ORNL FCU'},
-  {name:'Matthew Meyers',phone:'320-630-1910',state:'TX',age:null,source:'CIA',address:'601 Harris St, Kilgore, TX 75662',mortgage_amount:'$225,342',smoker:'N',notes:'Age: — · Mortgage: $225,342 · Tobacco: N · Co-borrower: N · Lender: Guaranteed Rate Inc'},
-  {name:'Marvin Washington',phone:'757-751-7546',state:'VA',age:62,source:'CIA',address:'6686 Wharfview Ct, Hayes, VA 23072',mortgage_amount:'$45,000',smoker:'N',notes:'Age: 62 · Mortgage: $45,000 · Tobacco: N · Co-borrower: N · Lender: Langley Federal Credit Union'},
-  {name:'Mark Bish',phone:'413-219-9617',state:'MA',age:61,source:'CIA',address:'17 Tall Timber Dr, Wilbraham, MA 01095',mortgage_amount:'$293,243',smoker:'N',notes:'Age: 61 · Mortgage: $293,243 · Tobacco: N · Co-borrower: Y'},
-  {name:'Kenneth Ayers',phone:'603-352-0697',state:'NH',age:71,source:'CIA',address:'3 Freedom Ln, Rindge, NH 03461',mortgage_amount:'$33,408',smoker:'N',notes:'Age: 71 · Mortgage: $33,408 · Tobacco: N · Co-borrower: N'},
-  {name:'John Soares',phone:'401-663-3670',state:'RI',age:52,source:'CIA',address:'93 Manton St, Pawtucket, RI 02861',mortgage_amount:'$30,130',smoker:'Y',notes:'Age: 52 · Mortgage: $30,130 · Tobacco: Y · Co-borrower: N · Lender: Mutual of Omaha Mortgage'}
+  {name:'Brett Jennings',phone:'540-661-8161',state:'VA',age:24,source:'CIA',address:'61 Oakland Pl, Louisa, VA 23093',notes:'Mortgage: $343,660 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Capital Center LLC'},
+  {name:'Clark Gesen',phone:'603-724-0297',state:'NH',age:32,source:'CIA',address:'100 Main St Apt 203, Pembroke, NH 03275',notes:'Mortgage: $193,500 · Gender: Male · Tobacco: N · Co-borrower: N'},
+  {name:'Freddie Light',phone:'419-626-8659',state:'OH',age:81,source:'CIA',address:'2905 W Perkins Ave, Sandusky, OH 44870',notes:'Mortgage: $55,000 · Gender: Male · Tobacco: N · Co-borrower: N'},
+  {name:'Phillip Salas',phone:'832-244-4408',state:'TX',age:null,source:'CIA',address:'1155 Beals Creek St, Conroe, TX 77304',notes:'Mortgage: $569,000 · Gender: Male · Tobacco: Y · Co-borrower: N · Lender: Village Capital & Investment LLC'},
+  {name:'Steven Swanson',phone:'508-776-7505',state:'MA',age:73,source:'CIA',address:'650 Old Barnstable Rd, Mashpee, MA 02649',notes:'Mortgage: $250,000 · Gender: Male · Tobacco: Y · Co-borrower: Y'},
+  {name:'Steve Dostie',phone:'603-530-2977',state:'NH',age:54,source:'CIA',address:'131 Birch Hill Rd, Bristol, NH 03222',notes:'Mortgage: $100,000 · Gender: Male · Tobacco: N · Co-borrower: Y'},
+  {name:'Skyler Foote',phone:'217-407-9216',state:'NC',age:20,source:'CIA',address:'116 W Bayshore Blvd, Jacksonville, NC 28540',notes:'Mortgage: $244,138 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Alpha Mortgage Corporation'},
+  {name:'Richard Love',phone:'276-492-9224',state:'TN',age:82,source:'CIA',address:'11336 Woodcliff Dr, Farragut, TN 37934',notes:'Mortgage: $395,000 · Gender: Male · Tobacco: N · Co-borrower: N'},
+  {name:'Richard Fitzpatrick',phone:'413-537-0827',state:'MA',age:65,source:'CIA',address:'54 Atlantic St, Ludlow, MA 01056',notes:'Mortgage: $173,675 · Gender: Male · Tobacco: N · Co-borrower: Y'},
+  {name:'Ruben Espinosa',phone:'860-893-4870',state:'CT',age:58,source:'CIA',address:'298 Murray St, Meriden, CT 06450',notes:'Mortgage: $294,566 · Gender: Male · Tobacco: Y · Co-borrower: N'},
+  {name:'Philadelpo Guevarra',phone:'203-264-9855',state:'CT',age:null,source:'CIA',address:'133 Old Woodbury Rd, Southbury, CT 06488',notes:'Mortgage: $311,200 · Gender: Male · Tobacco: N · Co-borrower: Y'},
+  {name:'Nicholas Ricciardi',phone:'774-479-2636',state:'NH',age:20,source:'CIA',address:'67 Linden Rd, North Conway, NH 03860',notes:'Mortgage: $240,000 · Gender: Male · Tobacco: N · Co-borrower: Y'},
+  {name:'Melissa Mincey',phone:'865-607-8477',state:'TN',age:null,source:'CIA',address:'4901 Salem Church Rd, Knoxville, TN 37938',notes:'Mortgage: $92,800 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: ORNL FCU'},
+  {name:'Matthew Meyers',phone:'320-630-1910',state:'TX',age:null,source:'CIA',address:'601 Harris St, Kilgore, TX 75662',notes:'Mortgage: $225,342 · Gender: Male · Tobacco: N · Co-borrower: N · Lender: Guaranteed Rate Inc'},
+  {name:'Marvin Washington',phone:'757-751-7546',state:'VA',age:62,source:'CIA',address:'6686 Wharfview Ct, Hayes, VA 23072',notes:'Mortgage: $45,000 · Gender: Male · Tobacco: N · Co-borrower: N · Lender: Langley Federal Credit Union'},
+  {name:'Mark Bish',phone:'413-219-9617',state:'MA',age:61,source:'CIA',address:'17 Tall Timber Dr, Wilbraham, MA 01095',notes:'Mortgage: $293,243 · Gender: Male · Tobacco: N · Co-borrower: Y'},
+  {name:'Kenneth Ayers',phone:'603-352-0697',state:'NH',age:71,source:'CIA',address:'3 Freedom Ln, Rindge, NH 03461',notes:'Mortgage: $33,408 · Gender: Male · Tobacco: N · Co-borrower: N'},
+  {name:'John Soares',phone:'401-663-3670',state:'RI',age:52,source:'CIA',address:'93 Manton St, Pawtucket, RI 02861',notes:'Mortgage: $30,130 · Gender: Male · Tobacco: Y · Co-borrower: N · Lender: Mutual of Omaha Mortgage'}
 ];
 
 async function importBatch(batch, batchLabel) {
@@ -2093,7 +1669,6 @@ async function importBatch(batch, batchLabel) {
   const rows = toInsert.map(l => ({
     name: l.name, phone: l.phone, address: l.address||'', age: l.age||null,
     state: l.state, source: l.source, status: 'New', assigned_date: today,
-    mortgage_amount: l.mortgage_amount||'', smoker: l.smoker||'',
     notes: l.notes, health_notes: '', policy_notes: '', ppu_notes: '', call_log: [], sits: []
   }));
   const { error } = await sb.from('clients').insert(rows);
