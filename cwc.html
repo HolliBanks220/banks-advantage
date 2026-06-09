@@ -234,6 +234,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-lbl lbl-white">Written APV</div>
         <div class="stat-val val-white" id="p-apv">$0</div>
         <div class="stat-sub sub-white" id="p-apps">0 applications</div>
+        <div class="stat-sub" style="color:rgba(255,255,255,0.45);font-size:9px;" id="p-apv-alltime"></div>
       </div>
       <div class="stat stat-navy-lt">
         <div class="stat-lbl lbl-navy">APV / HH</div>
@@ -260,7 +261,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div id="tab-clients" style="display:none;">
     <div class="leads-hdr">
       <div style="font-size:13px;font-weight:500;color:#1D3557;" id="client-count">Loading...</div>
-      <button class="add-btn" onclick="openAddClient()">+ Add lead</button>
+      <div style="display:flex;gap:6px;">
+        <button class="add-btn" style="background:#138181;" onclick="openImportModal()">📥 Import</button>
+        <button class="add-btn" onclick="openAddClient()">+ Add lead</button>
+      </div>
     </div>
     <input class="search" placeholder="Search by name or phone..." oninput="renderClients(this.value)" id="client-search">
     <div class="filter-row">
@@ -653,6 +657,13 @@ function renderScore() {
   document.getElementById('p-apps').textContent = totalApps + ' applications';
   document.getElementById('p-apv-hh').textContent = fmt(apvPerHH);
   document.getElementById('p-apps-hh').textContent = appsPerHH + ' apps/HH';
+
+  // All-time APV (across all sits ever, not period-filtered)
+  const allTimeSits = clients.flatMap(c => (c.sits||[]).filter(s => s.outcome==='showed'));
+  const allTimeAPV = allTimeSits.reduce((a,s) => a+(s.apps||[]).reduce((b,ap) => b+(ap.premium||0),0),0);
+  const allTimeApps = allTimeSits.reduce((a,s) => a+(s.apps||[]).length,0);
+  const allTimeEl = document.getElementById('p-apv-alltime');
+  if (allTimeEl) allTimeEl.textContent = fmt(allTimeAPV) + ' total · ' + allTimeApps + ' apps (all time)';
 
   document.getElementById('pip-new').textContent = clients.filter(c=>c.status==='New').length;
   document.getElementById('pip-fresh').textContent = clients.filter(c=>c.status==='New'&&isFresh(c)).length + ' fresh';
@@ -1480,6 +1491,77 @@ async function toggleUpload(id, si, ai) {
   await sb.from('clients').update({sits:c.sits}).eq('id',id);
   hideSync();
   openClient(id);
+}
+
+// ── BULK IMPORT ──────────────────────────────────────────────
+const IMPORT_BATCH_20260609 = [
+  {name:'Brett Jennings',phone:'540-661-8161',state:'VA',age:24,source:'CIA',address:'61 Oakland Pl, Louisa, VA 23093',notes:'Mortgage: $343,660 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Capital Center LLC'},
+  {name:'Clark Gesen',phone:'603-724-0297',state:'NH',age:32,source:'CIA',address:'100 Main St Apt 203, Pembroke, NH 03275',notes:'Mortgage: $193,500 · Gender: Male · Tobacco: N · Co-borrower: N'},
+  {name:'Freddie Light',phone:'419-626-8659',state:'OH',age:81,source:'CIA',address:'2905 W Perkins Ave, Sandusky, OH 44870',notes:'Mortgage: $55,000 · Gender: Male · Tobacco: N · Co-borrower: N'},
+  {name:'Phillip Salas',phone:'832-244-4408',state:'TX',age:null,source:'CIA',address:'1155 Beals Creek St, Conroe, TX 77304',notes:'Mortgage: $569,000 · Gender: Male · Tobacco: Y · Co-borrower: N · Lender: Village Capital & Investment LLC'},
+  {name:'Steven Swanson',phone:'508-776-7505',state:'MA',age:73,source:'CIA',address:'650 Old Barnstable Rd, Mashpee, MA 02649',notes:'Mortgage: $250,000 · Gender: Male · Tobacco: Y · Co-borrower: Y'},
+  {name:'Steve Dostie',phone:'603-530-2977',state:'NH',age:54,source:'CIA',address:'131 Birch Hill Rd, Bristol, NH 03222',notes:'Mortgage: $100,000 · Gender: Male · Tobacco: N · Co-borrower: Y'},
+  {name:'Skyler Foote',phone:'217-407-9216',state:'NC',age:20,source:'CIA',address:'116 W Bayshore Blvd, Jacksonville, NC 28540',notes:'Mortgage: $244,138 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Alpha Mortgage Corporation'},
+  {name:'Richard Love',phone:'276-492-9224',state:'TN',age:82,source:'CIA',address:'11336 Woodcliff Dr, Farragut, TN 37934',notes:'Mortgage: $395,000 · Gender: Male · Tobacco: N · Co-borrower: N'},
+  {name:'Richard Fitzpatrick',phone:'413-537-0827',state:'MA',age:65,source:'CIA',address:'54 Atlantic St, Ludlow, MA 01056',notes:'Mortgage: $173,675 · Gender: Male · Tobacco: N · Co-borrower: Y'},
+  {name:'Ruben Espinosa',phone:'860-893-4870',state:'CT',age:58,source:'CIA',address:'298 Murray St, Meriden, CT 06450',notes:'Mortgage: $294,566 · Gender: Male · Tobacco: Y · Co-borrower: N'},
+  {name:'Philadelpo Guevarra',phone:'203-264-9855',state:'CT',age:null,source:'CIA',address:'133 Old Woodbury Rd, Southbury, CT 06488',notes:'Mortgage: $311,200 · Gender: Male · Tobacco: N · Co-borrower: Y'},
+  {name:'Nicholas Ricciardi',phone:'774-479-2636',state:'NH',age:20,source:'CIA',address:'67 Linden Rd, North Conway, NH 03860',notes:'Mortgage: $240,000 · Gender: Male · Tobacco: N · Co-borrower: Y'},
+  {name:'Melissa Mincey',phone:'865-607-8477',state:'TN',age:null,source:'CIA',address:'4901 Salem Church Rd, Knoxville, TN 37938',notes:'Mortgage: $92,800 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: ORNL FCU'},
+  {name:'Matthew Meyers',phone:'320-630-1910',state:'TX',age:null,source:'CIA',address:'601 Harris St, Kilgore, TX 75662',notes:'Mortgage: $225,342 · Gender: Male · Tobacco: N · Co-borrower: N · Lender: Guaranteed Rate Inc'},
+  {name:'Marvin Washington',phone:'757-751-7546',state:'VA',age:62,source:'CIA',address:'6686 Wharfview Ct, Hayes, VA 23072',notes:'Mortgage: $45,000 · Gender: Male · Tobacco: N · Co-borrower: N · Lender: Langley Federal Credit Union'},
+  {name:'Mark Bish',phone:'413-219-9617',state:'MA',age:61,source:'CIA',address:'17 Tall Timber Dr, Wilbraham, MA 01095',notes:'Mortgage: $293,243 · Gender: Male · Tobacco: N · Co-borrower: Y'},
+  {name:'Kenneth Ayers',phone:'603-352-0697',state:'NH',age:71,source:'CIA',address:'3 Freedom Ln, Rindge, NH 03461',notes:'Mortgage: $33,408 · Gender: Male · Tobacco: N · Co-borrower: N'},
+  {name:'John Soares',phone:'401-663-3670',state:'RI',age:52,source:'CIA',address:'93 Manton St, Pawtucket, RI 02861',notes:'Mortgage: $30,130 · Gender: Male · Tobacco: Y · Co-borrower: N · Lender: Mutual of Omaha Mortgage'}
+];
+
+async function importBatch(batch, batchLabel) {
+  const today = new Date().toISOString().slice(0,10);
+  // Check existing phones to avoid duplicates
+  const existingPhones = new Set(clients.map(c => (c.phone||'').replace(/[^0-9]/g,'')));
+  const toInsert = batch.filter(l => {
+    const ph = (l.phone||'').replace(/[^0-9]/g,'');
+    return !existingPhones.has(ph);
+  });
+  if (!toInsert.length) {
+    showModal(`<button class="close-x" onclick="closeModal()">×</button>
+    <div class="modal-title">Already imported</div>
+    <div style="font-size:13px;color:#5f7a99;margin-top:8px;">All leads in the ${batchLabel} batch are already in your tracker (matched by phone number).</div>`);
+    return;
+  }
+  showSync(`Importing ${toInsert.length} leads...`);
+  const rows = toInsert.map(l => ({
+    name: l.name, phone: l.phone, address: l.address||'', age: l.age||null,
+    state: l.state, source: l.source, status: 'New', assigned_date: today,
+    notes: l.notes, health_notes: '', policy_notes: '', ppu_notes: '', call_log: [], sits: []
+  }));
+  const { error } = await sb.from('clients').insert(rows);
+  if (error) { hideSync(); alert('Import error: ' + error.message); return; }
+  await loadClients();
+  hideSync();
+  closeModal();
+  renderScore();
+  renderSidebar();
+  renderClients(document.getElementById('client-search') ? document.getElementById('client-search').value : '');
+  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+  <div class="modal-title">✅ Import complete</div>
+  <div style="font-size:13px;color:#5f7a99;margin-top:4px;">${batchLabel}</div>
+  <div style="font-size:28px;font-weight:500;color:#138181;margin:12px 0;">${toInsert.length} leads added</div>
+  ${batch.length - toInsert.length > 0 ? `<div style="font-size:12px;color:#a0b8cc;">${batch.length - toInsert.length} skipped (already exist)</div>` : ''}
+  <div style="margin-top:12px;">
+    ${toInsert.map(l=>`<div style="font-size:12px;color:#1D3557;padding:3px 0;border-top:1px solid #f0f4f8;">${l.name} · ${l.state}</div>`).join('')}
+  </div>`);
+}
+
+function openImportModal() {
+  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+  <div class="modal-title">📥 Import leads</div>
+  <div style="font-size:12px;color:#5f7a99;margin-bottom:14px;">Available batches — duplicates skipped automatically by phone number.</div>
+  <div style="background:#E1F5EE;border:1px solid #9FE1CB;border-radius:8px;padding:12px;margin-bottom:8px;">
+    <div style="font-size:13px;font-weight:500;color:#1D3557;">June 9, 2026 — CIA batch</div>
+    <div style="font-size:11px;color:#5f7a99;margin-top:2px;">18 leads · All CIA · VA, NH, OH, TX, MA, NC, TN, CT, RI</div>
+    <button class="save-btn" style="margin-top:10px;" onclick="importBatch(IMPORT_BATCH_20260609,'June 9 2026 — CIA batch')">Import 18 leads</button>
+  </div>`);
 }
 
 // ── GO ───────────────────────────────────────────────────────
