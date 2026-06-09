@@ -429,57 +429,95 @@ async function init() {
   startRealtimeSync();
 }
 
+// ── DEVICE ID ────────────────────────────────────────────────
+// Each tab gets a unique ID so we can ignore our own broadcasts
+const DEVICE_ID = Math.random().toString(36).slice(2);
+
+// ── DIAL DEDUP ───────────────────────────────────────────────
+// Prevent double-logging dials when both devices are open
+// Key: clientId, value: timestamp of last dial log
+const _recentDialLog = {};
+function wasRecentlyDialed(id) {
+  const t = _recentDialLog[id];
+  return t && (Date.now() - t) < 60000; // 60 second window
+}
+function markDialed(id) { _recentDialLog[id] = Date.now(); }
+
 function startRealtimeSync() {
-  // Listen for changes to clients table
-  sb.channel('clients-sync')
+  // ── DATA SYNC: clients table ──
+  sb.channel('cwc-clients')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, async (payload) => {
       if (payload.eventType === 'UPDATE') {
         const idx = clients.findIndex(c => c.id === payload.new.id);
-        if (idx > -1) {
-          // Merge updated fields into local client
-          Object.assign(clients[idx], payload.new);
-        } else {
-          clients.unshift(payload.new);
-        }
+        if (idx > -1) Object.assign(clients[idx], payload.new);
+        else clients.unshift(payload.new);
       } else if (payload.eventType === 'INSERT') {
         const exists = clients.find(c => c.id === payload.new.id);
         if (!exists) clients.unshift(payload.new);
       } else if (payload.eventType === 'DELETE') {
         clients = clients.filter(c => c.id !== payload.old.id);
       }
-      // Re-render everything
       renderScore();
       renderSidebar();
       if (document.getElementById('tab-clients').style.display !== 'none') {
         renderClients(document.getElementById('client-search') ? document.getElementById('client-search').value : '');
       }
       if (document.getElementById('tab-appts').style.display !== 'none') renderAppts();
-      // If a lead modal is open and it's the one that changed, refresh it
+      // Refresh open modal if the changed lead is currently open
       const modal = document.getElementById('modal-ov');
       if (modal && payload.new && payload.new.id) {
-        const openId = modal.querySelector('[id^="edit-name"]');
-        if (openId) {
-          // Find which lead is open by checking current name value
-          const currentName = openId.value;
-          const updatedClient = clients.find(c => c.id === payload.new.id);
-          if (updatedClient && updatedClient.name === currentName) {
-            openClient(payload.new.id, true);
-          }
+        window._openLeadId = window._openLeadId || null;
+        if (window._openLeadId === payload.new.id) {
+          openClient(payload.new.id, true);
         }
       }
     })
-    .subscribe();
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') console.log('CWC: clients realtime connected');
+    });
 
-  // Listen for stats changes
-  sb.channel('stats-sync')
+  // ── DATA SYNC: stats table ──
+  sb.channel('cwc-stats')
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'stats' }, (payload) => {
       const exists = stats.find(s => s.id === payload.new.id);
-      if (!exists) {
-        stats.push(payload.new);
-        renderScore();
-      }
+      if (!exists) { stats.push(payload.new); renderScore(); }
     })
     .subscribe();
+
+  // ── UI SYNC: focus + advance broadcasts ──
+  const uiChannel = sb.channel('cwc-ui')
+    .on('broadcast', { event: 'open_lead' }, ({ payload }) => {
+      if (payload.device === DEVICE_ID) return;
+      const c = clients.find(x => x.id === payload.id);
+      if (!c) return;
+      const clientsTab = document.querySelector('.tab:nth-child(2)');
+      if (document.getElementById('tab-clients').style.display === 'none') {
+        showTab('clients', clientsTab);
+      }
+      openClient(payload.id, true);
+    })
+    .on('broadcast', { event: 'advance' }, ({ payload }) => {
+      if (payload.device === DEVICE_ID) return;
+      closeModal();
+      if (payload.nextId) setTimeout(() => openClient(payload.nextId, false), 300);
+    })
+    .subscribe();
+  window._uiChannel = uiChannel;
+}
+
+// Broadcast that this device opened a lead
+function broadcastOpenLead(id) {
+  window._openLeadId = id;
+  if (window._uiChannel) {
+    window._uiChannel.send({ type: 'broadcast', event: 'open_lead', payload: { id, device: DEVICE_ID } });
+  }
+}
+
+// Broadcast that this device is advancing to next lead
+function broadcastAdvance(nextId) {
+  if (window._uiChannel) {
+    window._uiChannel.send({ type: 'broadcast', event: 'advance', payload: { nextId, device: DEVICE_ID } });
+  }
 }
 
 async function loadClients() {
@@ -1004,6 +1042,10 @@ function closeModal() { const m=document.getElementById('modal-ov'); if(m) m.rem
 function openClient(id, keepDialCount) {
   const c = clients.find(x => x.id === id);
   if (!c) return;
+  // Track which lead is open for realtime refresh
+  window._openLeadId = id;
+  // Broadcast to other devices (only when user actively opens, not on refresh)
+  if (!keepDialCount) broadcastOpenLead(id);
   // Only reset dial count when opening a NEW lead, not when refreshing same lead
   if (!keepDialCount) { window._dialCount = 1; window._dialCountSet = false; }
   const sits = c.sits || [];
@@ -1134,6 +1176,7 @@ async function confirmReschedule(id) {
   const allActive = clients.filter(cl => cl.status === 'New' || cl.status === 'Working');
   const currentIdx = allActive.findIndex(cl => cl.id === id);
   const nextLead = allActive[currentIdx + 1] || allActive[currentIdx - 1];
+  broadcastAdvance(nextLead ? nextLead.id : null);
   if (nextLead) setTimeout(() => openClient(nextLead.id), 300);
 }
 
@@ -1188,6 +1231,7 @@ async function confirmAppt(id) {
   const list = clients.filter(cl => cl.status === 'New' || cl.status === 'Working');
   const idx = list.findIndex(cl => cl.id === id);
   const next = list[idx + 1] || list[idx - 1];
+  broadcastAdvance(next ? next.id : null);
   if (next) setTimeout(() => openClient(next.id), 300);
 }
 
@@ -1266,7 +1310,6 @@ async function autoSaveField(id, field, value) {
 async function quickLog(id, outcome, statKey) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const dialCount = window._dialCount || 1;
-  // For no-shows, use the appointment datetime as the timestamp so it counts in the right period
   const ts = (outcome === 'No show' && c.appt_datetime) ? c.appt_datetime : new Date().toISOString();
   const callLog = [...(c.call_log||[]), {ts, outcome, dials:dialCount}];
   let newStatus = c.status;
@@ -1274,28 +1317,28 @@ async function quickLog(id, outcome, statKey) {
   else if (outcome==='Appt set') newStatus='Appointment set';
   else if (outcome==='No show') newStatus='No show';
   else if (outcome==='Conversation'||outcome==='Callback') newStatus='Working';
-  // Update memory first so renderScore reflects immediately
   c.call_log = callLog; c.status = newStatus;
   showSync('Saving...');
   await sb.from('clients').update({call_log:callLog, status:newStatus}).eq('id',id);
-  // Log actual dial count to stats
-  await addStat('dials', dialCount);
+  // Only count dials if not recently logged from another device
+  if (!wasRecentlyDialed(id)) {
+    markDialed(id);
+    await addStat('dials', dialCount);
+  }
   if (statKey !== 'dials') {
     await addStat(statKey, 1);
-    await addStat('convos', 1); // any outcome other than no answer = conversation
+    await addStat('convos', 1);
   }
-  // Capture next lead BEFORE status changes take effect
   const allActive = clients.filter(cl => cl.status === 'New' || cl.status === 'Working');
   const currentIdx = allActive.findIndex(cl => cl.id === id);
   const nextLead = allActive[currentIdx + 1] || allActive[currentIdx - 1];
-
-  // Reset dial count to 1 after logging
   window._dialCount = 1;
   hideSync();
   renderScore();
   if (outcome === 'No answer') {
     openClient(id, true);
   } else {
+    broadcastAdvance(nextLead ? nextLead.id : null);
     closeModal();
     renderClients(document.getElementById('client-search') ? document.getElementById('client-search').value : '');
     if (nextLead) setTimeout(() => openClient(nextLead.id), 300);
@@ -1328,8 +1371,9 @@ async function updateClient(id) {
     status: document.getElementById('cn-status').value,
     assigned_date: document.getElementById('cn-assigned').value
   };
-  // Only log dials if user explicitly tapped a dial count button
-  if (window._dialCountSet) {
+  // Only log dials if user explicitly tapped a dial count button AND not recently logged from another device
+  if (window._dialCountSet && !wasRecentlyDialed(id)) {
+    markDialed(id);
     const dialCount = window._dialCount || 1;
     const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(), outcome:'No answer', dials:dialCount}];
     updates.call_log = callLog;
@@ -1348,6 +1392,7 @@ async function updateClient(id) {
   const list = clients.filter(cl => cl.status === 'New' || cl.status === 'Working');
   const idx = list.findIndex(cl => cl.id === id);
   const next = list[idx + 1] || list[idx - 1];
+  broadcastAdvance(next ? next.id : null);
   if (next) setTimeout(() => openClient(next.id), 300);
 }
 
