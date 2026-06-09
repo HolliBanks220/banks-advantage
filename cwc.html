@@ -775,16 +775,20 @@ function openClient(id, keepDialCount) {
   const statuses = ['New','Working','Appointment set','No show','Closed','No sale','Dead'];
   const suggestedReason = sits.length===0?'first':sits[sits.length-1].outcome==='noshow'?'resched-noshow':sits[sits.length-1].ppu?'cont-ppu':'cont-followup';
 
-  const callHistory = callLog.slice().reverse().slice(0,6).map(cl => `
+  const callHistory = callLog.slice().reverse().slice(0,6).map((cl, ri) => {
+  const realIdx = callLog.length - 1 - ri;
+  return `
     <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:5px;">
-      <div style="width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0;background:${cl.outcome==='Appt set'?'#138181':cl.outcome==='Not interested'?'#E24B4A':cl.outcome==='Callback'?'#BA7517':'#1D3557'};"></div>
-      <div>
+      <div style="width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0;background:${cl.outcome==='Appt set'?'#138181':cl.outcome==='No show'?'#E24B4A':cl.outcome==='Not interested'?'#E24B4A':cl.outcome==='Callback'?'#BA7517':'#1D3557'};"></div>
+      <div style="flex:1;">
         <div style="font-size:12px;color:#1a2e44;font-weight:500;">${cl.outcome}${cl.dials>1?' <span style="font-size:10px;color:#5f7a99;">('+cl.dials+'× dialed)</span>':''}</div>
         ${cl.appt_datetime?`<div style="font-size:11px;font-weight:600;color:#138181;">📅 ${new Date(cl.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(cl.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>`:''}
         ${cl.appt_notes?`<div style="font-size:10px;color:#5f7a99;font-style:italic;">${cl.appt_notes}</div>`:''}
         <div style="font-size:10px;color:#a0b8cc;">${new Date(cl.ts).toLocaleDateString('en-US',{month:'short',day:'numeric'})} ${new Date(cl.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
       </div>
-    </div>`).join('');
+      <button onclick="deleteCallLogEntry('${id}',${realIdx})" style="background:none;border:none;color:#d0dcea;font-size:14px;cursor:pointer;padding:0 2px;flex-shrink:0;" title="Delete this entry">×</button>
+    </div>`;
+}).join('');
 
   const sitsHtml = sits.map((s,si) => {
     const reason = SIT_REASONS.find(r=>r.value===s.reason)||SIT_REASONS[0];
@@ -974,6 +978,20 @@ function setDialCount(n) {
     const btn = document.getElementById('dcb-'+i);
     if (btn) btn.classList.toggle('on', i===n);
   });
+}
+
+// ── DELETE CALL LOG ENTRY ────────────────────────────────────
+async function deleteCallLogEntry(id, idx) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  if (!confirm('Delete this call log entry?')) return;
+  const newLog = [...(c.call_log||[])];
+  newLog.splice(idx, 1);
+  showSync('Saving...');
+  await sb.from('clients').update({call_log: newLog}).eq('id', id);
+  c.call_log = newLog;
+  hideSync();
+  openClient(id);
+  renderScore();
 }
 
 // ── AUTO SAVE ────────────────────────────────────────────────
