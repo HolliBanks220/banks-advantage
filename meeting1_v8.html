@@ -614,9 +614,9 @@ function onDeathChange(sel,id){
     if(rw)rw.appendChild(inp);
     cell.innerHTML=`<span class="sr unk">Enter amt →</span>`;
   } else if(val==='tbd'){
-    cell.innerHTML=`<span class="sr unk">TBD</span>`;
+    cell.innerHTML=`<span class="sr stop">$0 (assumed — verify)</span>`;
   } else {
-    cell.innerHTML=`<span class="sr unk">—</span>`;
+    cell.innerHTML=`<span class="sr stop">$0 (assumed)</span>`;
   }
   calculate();
 }
@@ -740,7 +740,8 @@ function calculate(){
 
   // Build income totals — only "active now" rows count
   let bothInc=0,c1SurInc=0,c2SurInc=0;
-  let retOnly=0; // for table footer
+  let retOnly=0;
+  let c1HasSS=false,c2HasSS=false; // track whether SS is using ss_higher
 
   document.querySelectorAll('#irows tr').forEach(row=>{
     const own=row.querySelector('.own-sel')?.value||'';
@@ -752,47 +753,55 @@ function calculate(){
     const isDup=row.querySelector('.idup')?.checked||false;
     const active=isRowActive(row);
     if(!active)return;
-    if(isDup)return; // already counted in current income
+    if(isDup)return;
 
     retOnly+=amt;
+    bothInc+=amt;
 
-    // Survivor amount
-    let surAmt=amt; // default
+    // Skip SS rows from per-row survivor calc — handled separately below
+    if(dtype==='ss'&&death==='ss_higher'){
+      if(own==='c1')c1HasSS=true;
+      if(own==='c2')c2HasSS=true;
+      // Add to both living income already done above
+      // Survivor income handled after loop
+      c1SurInc+=amt; // c1 alive: keeps own SS
+      c2SurInc+=amt; // c2 alive: keeps own SS
+      return;
+    }
+
+    // Survivor amount — default to 0 if unknown (conservative)
+    let surAmt=0;
     if(death==='stops')surAmt=0;
     else if(death==='cont')surAmt=amt;
     else if(death==='reduced')surAmt=redAmt;
     else if(death==='js50')surAmt=Math.round(amt*.5);
-    else if(death==='ss_higher')surAmt=Math.max(ssC1,ssC2);
-    else if(death==='ss_claim'||death==='ss_none')surAmt=0;
-    else if(death==='tbd')surAmt=amt; // conservative — assume continues
+    else if(death==='ss_claim')surAmt=0;
+    else if(death==='ss_none')surAmt=0;
+    else surAmt=0; // tbd, not sure yet — assume 0 (conservative)
 
     if(own==='c1'){
-      bothInc+=amt;
-      c1SurInc+=amt; // c1 alive
-      // c1 dies: c2 gets surAmt from c1's sources
-      // SS special: c2 survivor SS = max(ssC1,ssC2), but c2's own SS already counted in c2's row
-      if(death==='ss_higher'){
-        // c2 survivor gets the higher SS amount
-        // c2's own SS will be added when we process c2's row
-        // We need to add the NET: if c1 had higher SS, c2 steps up; if c2 had higher, c2 keeps own (0 added here)
-        c2SurInc+=(ssC1>ssC2?ssC1:0); // only add c1's SS if it's higher; c2's own SS handled in c2 row
-      } else {
-        c2SurInc+=surAmt;
-      }
+      c1SurInc+=amt;   // c1 alive: keeps own
+      c2SurInc+=surAmt; // c1 dies: c2 gets surAmt
     } else if(own==='c2'){
-      bothInc+=amt;
-      c2SurInc+=amt; // c2 alive
-      if(death==='ss_higher'){
-        c1SurInc+=(ssC2>ssC1?ssC2:0);
-      } else {
-        c1SurInc+=surAmt;
-      }
+      c2SurInc+=amt;   // c2 alive: keeps own
+      c1SurInc+=surAmt; // c2 dies: c1 gets surAmt
     } else if(own==='joint'){
-      bothInc+=amt;
       c1SurInc+=surAmt;
       c2SurInc+=surAmt;
     }
   });
+
+  // SS survivor correction: when one person dies, survivor keeps the HIGHER of the two SS amounts
+  // Remove each person's own SS from survivor totals, then add max(ssC1,ssC2) once
+  if(c1HasSS||c2HasSS){
+    const higherSS=Math.max(ssC1,ssC2);
+    // If c1 dies: c2 survivor SS = max(ssC1,ssC2), replace c2's own SS already added
+    c2SurInc-=ssC2; // remove c2's own SS (added above)
+    c2SurInc+=higherSS; // add the higher of the two
+    // If c2 dies: c1 survivor SS = max(ssC1,ssC2), replace c1's own SS already added
+    c1SurInc-=ssC1; // remove c1's own SS (added above)
+    c1SurInc+=higherSS; // add the higher of the two
+  }
 
   // Income table footer
   $('itotal').textContent=fmt(retOnly);
