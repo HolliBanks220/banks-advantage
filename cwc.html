@@ -208,17 +208,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="stat-row">
       <div class="stat stat-navy">
         <div class="stat-lbl lbl-white">Appts</div>
-        <div class="stat-val val-white" id="p-first">0</div>
+        <div class="stat-val val-white" id="p-first" onclick="drillDown('appts')" style="cursor:pointer;">0</div>
         <div class="stat-sub sub-white" id="p-first-rate">0% showed</div>
       </div>
       <div class="stat stat-teal">
         <div class="stat-lbl lbl-white">Sits</div>
-        <div class="stat-val val-white" id="p-showed">0</div>
+        <div class="stat-val val-white" id="p-showed" onclick="drillDown('showed')" style="cursor:pointer;">0</div>
         <div class="stat-sub sub-white" id="p-sit-rate">0% sit rate</div>
       </div>
       <div class="stat stat-amber">
         <div class="stat-lbl lbl-amber">No shows</div>
-        <div class="stat-val val-amber" id="p-noshow">0</div>
+        <div class="stat-val val-amber" id="p-noshow" onclick="drillDown('noshow')" style="cursor:pointer;">0</div>
         <div class="stat-sub" style="color:#854F0B;" id="p-cancel">0 canceled</div>
       </div>
     </div>
@@ -612,6 +612,67 @@ function showTab(t, btn) {
   document.getElementById('tab-appts').style.display = t==='appts'?'block':'none';
   if (t==='clients') renderClients();
   if (t==='appts') renderAppts();
+}
+
+function drillDown(type) {
+  const {start, end, label} = getPeriodBounds();
+  const now = new Date();
+  let leads = [];
+  let title = '';
+
+  if (type === 'appts') {
+    title = 'Appointments — ' + label;
+    leads = clients.filter(c => {
+      if (!c.appt_datetime) return false;
+      const d = new Date(c.appt_datetime);
+      return d >= start && d <= end;
+    }).sort((a,b) => new Date(a.appt_datetime) - new Date(b.appt_datetime));
+  } else if (type === 'showed') {
+    title = 'Sits — ' + label;
+    const sitClients = clients.filter(c =>
+      (c.sits||[]).some(s => {
+        const d = new Date(s.datetime);
+        return d >= start && d <= end && s.outcome === 'showed';
+      })
+    );
+    leads = sitClients;
+  } else if (type === 'noshow') {
+    title = 'No shows — ' + label;
+    // Leads with no-show in call log within period
+    leads = clients.filter(c =>
+      (c.call_log||[]).some(cl => {
+        const t = new Date(cl.ts);
+        return cl.outcome === 'No show' && t >= start && t <= end;
+      })
+    );
+  }
+
+  if (!leads.length) {
+    showModal(`<button class="close-x" onclick="closeModal()">×</button>
+    <div class="modal-title">${title}</div>
+    <div style="font-size:13px;color:#a0b8cc;padding:1rem 0;">None for this period.</div>`);
+    return;
+  }
+
+  const rows = leads.map(c => {
+    const apptStr = c.appt_datetime ? 
+      `<div style="font-size:11px;color:#138181;font-weight:500;">📅 ${new Date(c.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(c.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>` : '';
+    return `<div class="client-card" onclick="closeModal();setTimeout(()=>openClient('${c.id}'),100)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <div class="client-name">${c.name||'Unknown'}</div>
+          <div class="client-meta">${c.phone||''} · ${c.state||''}</div>
+          ${apptStr}
+        </div>
+        <span class="${statusBadge(c.status)}">${c.status}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+    <div class="modal-title">${title}</div>
+    <div style="font-size:12px;color:#5f7a99;margin-bottom:12px;">${leads.length} lead${leads.length!==1?'s':''}</div>
+    ${rows}`);
 }
 
 function renderSidebar() {
