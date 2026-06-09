@@ -1030,7 +1030,9 @@ async function autoSaveField(id, field, value) {
 async function quickLog(id, outcome, statKey) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const dialCount = window._dialCount || 1;
-  const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(), outcome, dials:dialCount}];
+  // For no-shows, use the appointment datetime as the timestamp so it counts in the right period
+  const ts = (outcome === 'No show' && c.appt_datetime) ? c.appt_datetime : new Date().toISOString();
+  const callLog = [...(c.call_log||[]), {ts, outcome, dials:dialCount}];
   let newStatus = c.status;
   if (outcome==='Not interested') newStatus='Dead';
   else if (outcome==='Appt set') newStatus='Appointment set';
