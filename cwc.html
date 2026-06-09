@@ -550,25 +550,34 @@ function renderScore() {
   }).length;
   document.getElementById('s-resolved-fresh').textContent = freshRes + ' fresh (≤17d)';
 
-  const allSits = clients.flatMap(c => (c.sits||[]).filter(s => { const d=new Date(s.datetime); return d>=start&&d<=end; }));
-  const firstSits = allSits.filter(s => s.reason==='first'||!s.reason);
-  const firstShowed = firstSits.filter(s => s.outcome==='showed').length;
+  // Count appts scheduled TO HAPPEN in this period (by appt_datetime)
+  const periodAppts = clients.filter(c => {
+    if (!c.appt_datetime) return false;
+    const d = new Date(c.appt_datetime);
+    return d >= start && d <= end;
+  }).length;
+
+  // Count sits that happened in this period (by sit datetime)
+  const allSits = clients.flatMap(c => (c.sits||[]).filter(s => {
+    const d = new Date(s.datetime); return d >= start && d <= end;
+  }));
   const totalShowed = allSits.filter(s => s.outcome==='showed').length;
-  const totalNoshow = allSits.filter(s => s.outcome==='noshow').length;
   const totalCanceled = allSits.filter(s => s.outcome==='canceled').length;
-  // Also count no-shows logged via disposition button (not sit history)
+
+  // Count no-shows: from sit history + from No show disposition button
+  const sitNoShows = allSits.filter(s => s.outcome==='noshow').length;
   const dispNoShows = clients.reduce((acc, c) => {
     return acc + (c.call_log||[]).filter(cl => {
       const t = new Date(cl.ts); return cl.outcome==='No show' && t>=start && t<=end;
     }).length;
   }, 0);
-  // Count appts scheduled in period from appts stat
-  const periodAppts = sumStat('appts', start, end);
+  const totalNoShows = sitNoShows + dispNoShows;
+
   document.getElementById('p-first').textContent = periodAppts;
-  document.getElementById('p-first-rate').textContent = pct(totalShowed, periodAppts) + ' sat';
+  document.getElementById('p-first-rate').textContent = periodAppts > 0 ? pct(totalShowed, periodAppts) + ' sat' : '—';
   document.getElementById('p-showed').textContent = totalShowed;
-  document.getElementById('p-sit-rate').textContent = pct(totalShowed,allSits.length) + ' sit rate';
-  document.getElementById('p-noshow').textContent = totalNoshow + dispNoShows;
+  document.getElementById('p-sit-rate').textContent = pct(totalShowed, periodAppts) + ' show rate';
+  document.getElementById('p-noshow').textContent = totalNoShows;
   document.getElementById('p-cancel').textContent = totalCanceled + ' canceled';
 
   const satSits = allSits.filter(s => s.outcome==='showed');
