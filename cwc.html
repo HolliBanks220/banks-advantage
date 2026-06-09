@@ -718,7 +718,8 @@ function sumStat(key, start, end) {
 
 async function setStat(key, total) {
   const {start, end} = getPeriodBounds('activity');
-  const diff = total - sumStat(key, start, end);
+  const current = sumStat(key, start, end);
+  const diff = Math.max(0, total) - current; // floor total at 0, never go negative
   if (diff !== 0) await addStat(key, diff);
 }
 
@@ -750,14 +751,12 @@ function renderScore() {
     if (el && el.tagName !== 'INPUT') el.textContent = [dials,convos,appts,callbacks,dead][i];
   });
   document.getElementById('s-resolved').textContent = resolved;
-  const totalLeads = clients.length;
-  document.getElementById('s-resolved-pct').textContent = pct(resolved,totalLeads) + ' of ' + totalLeads + ' leads';
-  const freshRes = clients.filter(c => {
-    const isRes = c.status==='Appointment set'||c.status==='Dead'||c.status==='Closed';
-    const callInP = (c.call_log||[]).some(cl => { const t=new Date(cl.ts); return t>=aStart&&t<=aEnd; });
-    return isRes && callInP && isFresh(c);
+  const assignedInPeriod = clients.filter(c => {
+    const d = new Date(c.assigned_date || c.created_at);
+    return d >= aStart && d <= aEnd;
   }).length;
-  document.getElementById('s-resolved-fresh').textContent = freshRes + ' fresh (≤17d)';
+  document.getElementById('s-resolved-pct').textContent = resolved + ' resolved / ' + assignedInPeriod + ' assigned';
+  document.getElementById('s-resolved-fresh').textContent = assignedInPeriod > 0 ? pct(resolved, assignedInPeriod) + ' resolution rate' : '—';
 
   // ── SITS & PRODUCTION (production calendar: Sat→Fri) ──
   const periodAppts = clients.filter(c => {
@@ -1108,7 +1107,7 @@ function openClient(id, keepDialCount) {
     <a href="tel:${(c.phone||'').replace(/[^0-9+]/g,'')}" onclick="autoIncrementDial();setTimeout(()=>window.focus(),3000)" style="font-size:13px;color:#138181;font-weight:500;text-decoration:none;margin-right:4px;">📞 ${c.phone||''}</a>
     <input id="edit-phone" value="${c.phone||''}" style="font-size:11px;color:#5f7a99;border:none;border-bottom:1px solid transparent;outline:none;background:transparent;font-family:inherit;width:120px;padding:0;" onfocus="this.style.borderBottomColor='#138181'" onblur="this.style.borderBottomColor='transparent'" placeholder="edit number">
     <span style="color:#5f7a99;font-size:13px;">· ${c.state||''} · <span class="${badgeClass(c.source)}">${c.source||''}</span></span>
-    <span style="font-size:12px;color:#5f7a99;">· Age: <input id="edit-age" value="${c.age||''}" type="number" min="0" max="120" style="width:40px;font-size:12px;color:#1D3557;border:none;border-bottom:1px solid #d0dcea;outline:none;background:transparent;font-family:inherit;padding:0;" onchange="autoSaveField('${id}','age',parseInt(this.value)||null)"></span>
+    <span style="font-size:12px;color:#5f7a99;">· ${c.age ? c.age + ' yrs' : 'Age N/A'}</span>
   </div>
   ${c.address?`<div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">📍 ${c.address}</div>`:''}
   ${c.appt_datetime?`<div style="font-size:12px;font-weight:600;color:#138181;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:6px;padding:5px 10px;margin-bottom:8px;display:inline-block;">📅 Appt: ${new Date(c.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(c.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}${c.appt_notes?' · '+c.appt_notes:''}</div>`:''}
