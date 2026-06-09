@@ -92,6 +92,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .upload-pill{font-size:10px;padding:3px 9px;border-radius:10px;font-weight:500;cursor:pointer;border:none;}
 .up-yes{background:#EAF3DE;color:#27500A;} .up-no{background:#FCEBEB;color:#791F1F;}
 .sit-card{border:1px solid #e2eaf2;border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#fff;}
+.case-card{border-radius:10px;margin-bottom:10px;overflow:hidden;}
+.case-hdr{padding:10px 12px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;}
+.case-hdr-mp{background:#1D3557;color:#fff;}
+.case-hdr-ret{background:#138181;color:#fff;}
+.case-hdr-dfl{background:#534AB7;color:#fff;}
+.case-hdr-ib{background:#BA7517;color:#fff;}
+.case-body{border:1px solid #e2eaf2;border-top:none;border-radius:0 0 10px 10px;padding:10px 12px;}
+.case-status-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:rgba(255,255,255,0.2);color:#fff;}
+.tp-card{border:1px solid #e2eaf2;border-radius:8px;padding:8px 10px;margin-bottom:6px;background:#f8fafc;cursor:pointer;}
+.tp-card:last-child{margin-bottom:0;}
+.tp-outcome-sale{border-left:3px solid #3B6D11;}
+.tp-outcome-nosale{border-left:3px solid #A32D2D;}
+.tp-outcome-noshow{border-left:3px solid #BA7517;}
+.tp-outcome-pending{border-left:3px solid #d0dcea;}
 .journey-row{display:flex;gap:4px;align-items:center;margin-top:6px;flex-wrap:wrap;}
 .journey-dot{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;flex-shrink:0;}
 .jd-showed{background:#138181;} .jd-noshow{background:#E24B4A;} .jd-cancel{background:#BA7517;} .jd-pending{background:#c0cdd8;}
@@ -524,7 +538,7 @@ function broadcastAdvance(nextId) {
 
 async function loadClients() {
   const { data, error } = await sb.from('clients').select('*').order('created_at', { ascending: false });
-  if (!error && data) clients = data;
+  if (!error && data) clients = data.map(c => ({...c, cases: c.cases||[]}));
 }
 
 async function loadStats() {
@@ -767,18 +781,23 @@ function renderScore() {
     return d >= pStart && d <= pEnd;
   }).length;
 
+  // Count touchpoints in period (new case system)
+  const allTouchpoints = clients.flatMap(c => (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).filter(tp => {
+    const d = new Date(tp.datetime); return d >= pStart && d <= pEnd;
+  })));
+  // Also count legacy sits for backward compatibility
   const allSits = clients.flatMap(c => (c.sits||[]).filter(s => {
     const d = new Date(s.datetime); return d >= pStart && d <= pEnd;
   }));
-  const totalShowed = allSits.filter(s => s.outcome==='showed').length;
+
+  const totalShowed = allTouchpoints.filter(t => t.outcome==='sale'||t.outcome==='nosale').length
+    + allSits.filter(s => s.outcome==='showed').length;
+  const totalNoShows = allTouchpoints.filter(t => t.outcome==='noshow').length
+    + allSits.filter(s => s.outcome==='noshow').length
+    + clients.reduce((acc, c) => acc + (c.call_log||[]).filter(cl => {
+        const t = new Date(cl.ts); return cl.outcome==='No show' && t>=pStart && t<=pEnd;
+      }).length, 0);
   const totalCanceled = allSits.filter(s => s.outcome==='canceled').length;
-  const sitNoShows = allSits.filter(s => s.outcome==='noshow').length;
-  const dispNoShows = clients.reduce((acc, c) => {
-    return acc + (c.call_log||[]).filter(cl => {
-      const t = new Date(cl.ts); return cl.outcome==='No show' && t>=pStart && t<=pEnd;
-    }).length;
-  }, 0);
-  const totalNoShows = sitNoShows + dispNoShows;
 
   document.getElementById('p-first').textContent = periodAppts;
   document.getElementById('p-first-rate').textContent = periodAppts > 0 ? pct(totalShowed, periodAppts) + ' sat' : '—';
@@ -787,14 +806,22 @@ function renderScore() {
   document.getElementById('p-noshow').textContent = totalNoShows;
   document.getElementById('p-cancel').textContent = totalCanceled + ' canceled';
 
+  // APV: from touchpoint apps + legacy sit apps
+  const saleTouchpoints = allTouchpoints.filter(t => t.outcome==='sale');
   const satSits = allSits.filter(s => s.outcome==='showed');
-  const closedSits = satSits.filter(s => (s.apps||[]).length > 0);
-  const totalAPV = satSits.reduce((a,s) => a+(s.apps||[]).reduce((b,ap) => b+(ap.premium||0),0),0);
-  const totalApps = satSits.reduce((a,s) => a+(s.apps||[]).length,0);
-  const apvPerHH = closedSits.length>0 ? Math.round(closedSits.reduce((a,s)=>a+(s.apps||[]).reduce((b,ap)=>b+(ap.premium||0),0),0)/closedSits.length) : 0;
-  const appsPerHH = closedSits.length>0 ? Math.round((closedSits.reduce((a,s)=>a+(s.apps||[]).length,0)/closedSits.length)*10)/10 : 0;
-  document.getElementById('p-closed').textContent = closedSits.length;
-  document.getElementById('p-close-rate').textContent = pct(closedSits.length,totalShowed) + ' close rate';
+  const tpAPV = saleTouchpoints.reduce((a,t) => a+(t.apps||[]).reduce((b,ap) => b+(ap.premium||0),0),0);
+  const sitAPV = satSits.reduce((a,s) => a+(s.apps||[]).reduce((b,ap) => b+(ap.premium||0),0),0);
+  const totalAPV = tpAPV + sitAPV;
+  const tpApps = saleTouchpoints.reduce((a,t) => a+(t.apps||[]).length,0);
+  const sitApps = satSits.reduce((a,s) => a+(s.apps||[]).length,0);
+  const totalApps = tpApps + sitApps;
+  const closedTp = saleTouchpoints.filter(t => (t.apps||[]).length>0);
+  const closedSits = satSits.filter(s => (s.apps||[]).length>0);
+  const totalClosed = closedTp.length + closedSits.length;
+  const apvPerHH = totalClosed>0 ? Math.round(totalAPV/totalClosed) : 0;
+  const appsPerHH = totalClosed>0 ? Math.round((totalApps/totalClosed)*10)/10 : 0;
+  document.getElementById('p-closed').textContent = totalClosed;
+  document.getElementById('p-close-rate').textContent = pct(totalClosed,totalShowed) + ' close rate';
   document.getElementById('p-apv').textContent = fmt(totalAPV);
   document.getElementById('p-apps').textContent = totalApps + ' applications';
   document.getElementById('p-apv-hh').textContent = fmt(apvPerHH);
@@ -1160,9 +1187,10 @@ function openClient(id, keepDialCount) {
     <div class="field"><label>Status</label><select id="cn-status">${statuses.map(s=>`<option${c.status===s?' selected':''}>${s}</option>`).join('')}</select></div>
     <div class="field"><label>HQ assigned</label><input type="date" id="cn-assigned" value="${c.assigned_date||todayStr()}"></div>
   </div>
-  <div class="section-lbl" style="margin-top:4px;">Sit history</div>
-  ${sitsHtml||'<div style="font-size:12px;color:#a0b8cc;margin-bottom:8px;">No sits logged yet.</div>'}
-  <button class="sec-btn" onclick="openAddSit('${id}','${suggestedReason}')">+ Log sit ${sits.length+1}</button>`);
+  <div class="section-lbl" style="margin-top:4px;">Cases</div>
+  ${renderCasesHtml(c)}
+  <button class="sec-btn" onclick="openNewCase('${id}')">+ New case</button>`);
+}
 }
 
 // ── APPT PICKER ──────────────────────────────────────────────
@@ -1173,6 +1201,7 @@ function openReschedulePicker(id) {
   showModal(`<button class="close-x" onclick="closeModal()">×</button>
   <div class="modal-title">Reschedule appointment</div>
   <div class="modal-sub">${c.name}</div>
+  ${buildWeekGrid(id)}
   <div class="field"><label>New date & time</label><input type="datetime-local" id="appt-dt" value="${dt}" style="font-size:16px;"></div>
   <div class="field"><label>Notes (optional)</label><input type="text" id="appt-note-field" placeholder="e.g. No show — rescheduled, confirmed via text..."></div>
   <button class="save-btn" style="background:#534AB7;" onclick="confirmReschedule('${id}')">Confirm reschedule</button>`);
@@ -1201,14 +1230,51 @@ async function confirmReschedule(id) {
   if (nextLead) setTimeout(() => openClient(nextLead.id), 300);
 }
 
+function buildWeekGrid(excludeId) {
+  // Build a 7-day visual grid of booked slots
+  const now = new Date();
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() + i);
+    d.setHours(0,0,0,0);
+    days.push(d);
+  }
+  // Gather all booked appointments (excluding current client being rescheduled)
+  const booked = clients
+    .filter(c => c.appt_datetime && c.id !== excludeId)
+    .map(c => ({name: c.name, dt: new Date(c.appt_datetime)}))
+    .filter(a => a.dt >= now);
+
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const cols = days.map(d => {
+    const dayBooked = booked.filter(a => a.dt.toDateString() === d.toDateString())
+      .sort((a,b) => a.dt - b.dt);
+    const isToday = d.toDateString() === now.toDateString();
+    const dateLabel = `<div style="font-size:9px;font-weight:600;color:${isToday?'#138181':'#1D3557'};text-align:center;margin-bottom:4px;">${dayNames[d.getDay()]}<br>${d.getMonth()+1}/${d.getDate()}</div>`;
+    const slots = dayBooked.length
+      ? dayBooked.map(a => {
+          const t = a.dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+          return `<div style="background:#FAEEDA;border:1px solid #FAC775;border-radius:4px;padding:2px 4px;margin-bottom:2px;font-size:9px;color:#633806;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${a.name} · ${t}">${t}<br><span style="opacity:0.8;">${a.name.split(' ')[0]}</span></div>`;
+        }).join('')
+      : `<div style="font-size:9px;color:#9FE1CB;text-align:center;padding:4px 0;">free</div>`;
+    return `<div style="flex:1;min-width:0;border-right:1px solid #f0f4f8;padding:0 3px;${isToday?'background:#f0fbf7;border-radius:6px;':''}">${dateLabel}${slots}</div>`;
+  }).join('');
+
+  return `<div style="margin-bottom:12px;">
+    <div style="font-size:9px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Next 7 days — booked slots</div>
+    <div style="display:flex;gap:2px;border:1px solid #e2eaf2;border-radius:8px;padding:6px;background:#fff;overflow-x:auto;">${cols}</div>
+  </div>`;
+}
+
 function openApptPicker(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
-  // Default to next business day at 10am
   const d = new Date(); d.setDate(d.getDate()+1); d.setHours(10,0,0,0);
   const dt = d.toISOString().slice(0,16);
   showModal(`<button class="close-x" onclick="closeModal()">×</button>
   <div class="modal-title">Set appointment</div>
   <div class="modal-sub">${c.name}</div>
+  ${buildWeekGrid(id)}
   <div class="field"><label>Date & time</label><input type="datetime-local" id="appt-dt" value="${dt}" style="font-size:16px;"></div>
   <div class="field"><label>Notes (optional)</label><input type="text" id="appt-note-field" placeholder="e.g. Call back on cell, spouse available..."></div>
   <button class="save-btn" onclick="confirmAppt('${id}')">Confirm appointment</button>`);
@@ -1559,6 +1625,7 @@ function openResetPicker(id) {
   showModal(`<button class="close-x" onclick="closeModal()">×</button>
   <div class="modal-title">Schedule reset</div>
   <div class="modal-sub">${c.name}</div>
+  ${buildWeekGrid(id)}
   <div class="field"><label>Date & time</label><input type="datetime-local" id="reset-dt" value="${dt}" style="font-size:16px;"></div>
   <div class="field"><label>Notes (optional)</label><input type="text" id="reset-note-field" placeholder="e.g. Call to confirm, bring spouse..."></div>
   <button class="save-btn" onclick="confirmReset('${id}')">Confirm reset</button>`);
@@ -1618,7 +1685,325 @@ async function saveEditSit(id, si) {
   renderScore();
 }
 
-// ── APPLICATIONS ─────────────────────────────────────────────
+// ── CASE SYSTEM ──────────────────────────────────────────────
+const CASE_TYPES = ['Mortgage Protection','Retirement','Debt Free Life','Infinite Banking'];
+const CASE_TYPE_CLASS = {'Mortgage Protection':'mp','Retirement':'ret','Debt Free Life':'dfl','Infinite Banking':'ib'};
+const CASE_STATUSES = ['Open','Closed Won','Closed Lost','Reset'];
+const TP_TYPES = ['Initial','PPU / Policy Pickup','Follow-up','Policy Review'];
+
+function caseStatusColor(s) {
+  if (s==='Closed Won') return '#3B6D11';
+  if (s==='Closed Lost') return '#A32D2D';
+  if (s==='Reset') return '#534AB7';
+  return 'rgba(255,255,255,0.7)';
+}
+
+function renderCasesHtml(c) {
+  const cases = c.cases || [];
+  if (!cases.length) return '<div style="font-size:12px;color:#a0b8cc;margin-bottom:8px;">No cases yet.</div>';
+  return cases.map((cs, ci) => {
+    const cls = CASE_TYPE_CLASS[cs.type] || 'mp';
+    const tps = cs.touchpoints || [];
+    const lastTp = tps[tps.length-1];
+    const nextDt = tps.find(t => !t.outcome || t.outcome==='pending');
+    const tpHtml = tps.map((tp, ti) => {
+      const dt = new Date(tp.datetime);
+      const dtStr = dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' + dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+      const outcomeColor = tp.outcome==='sale'?'#3B6D11':tp.outcome==='nosale'?'#A32D2D':tp.outcome==='noshow'?'#BA7517':'#8fa8c0';
+      const outcomeLabel = tp.outcome==='sale'?'Sale':tp.outcome==='nosale'?'No Sale':tp.outcome==='noshow'?'No Show':tp.outcome==='pending'||!tp.outcome?'Pending':'';
+      const flags = [];
+      if (tp.resetSelf) flags.push('↩ Reset→me');
+      if (tp.resetSME) flags.push(`↩ Reset→${tp.resetSMEName||'SME'}`);
+      if (tp.incomeOffered) flags.push('💼 Income offered');
+      if (tp.asrs) flags.push(`📋 ASRs: ${tp.asrs}`);
+      return `<div class="tp-card tp-outcome-${tp.outcome||'pending'}" onclick="openEditTouchpoint('${c.id}',${ci},${ti})">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:11px;font-weight:500;color:#1D3557;">${tp.type||'Initial'}</span>
+          <span style="font-size:11px;font-weight:600;color:${outcomeColor};">${outcomeLabel}</span>
+        </div>
+        <div style="font-size:10px;color:#8fa8c0;margin-top:2px;">${dtStr}</div>
+        ${flags.length?`<div style="font-size:10px;color:#5f7a99;margin-top:3px;">${flags.join(' · ')}</div>`:''}
+        ${tp.notes?`<div style="font-size:10px;color:#8fa8c0;margin-top:2px;">${tp.notes}</div>`:''}
+      </div>`;
+    }).join('');
+    return `<div class="case-card">
+      <div class="case-hdr case-hdr-${cls}" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+        <div>
+          <div style="font-size:12px;font-weight:600;">${cs.type}</div>
+          <div style="font-size:10px;opacity:0.7;">${tps.length} touchpoint${tps.length!==1?'s':''}</div>
+        </div>
+        <span class="case-status-badge" style="background:${caseStatusColor(cs.status)}20;color:${cs.status==='Open'?'#fff':caseStatusColor(cs.status)};border:1px solid ${caseStatusColor(cs.status)}40;">${cs.status||'Open'}</span>
+      </div>
+      <div class="case-body">
+        ${tpHtml||'<div style="font-size:11px;color:#a0b8cc;margin-bottom:6px;">No touchpoints yet.</div>'}
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+          <button class="sec-btn" style="margin:0;" onclick="openAddTouchpoint('${c.id}',${ci})">+ Add touchpoint</button>
+          <button class="sec-btn" style="margin:0;background:#f0f4f8;color:#5f7a99;" onclick="openEditCase('${c.id}',${ci})">Edit case</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openNewCase(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+  <div class="modal-title">New case — ${c.name}</div>
+  <div class="field"><label>Case type</label><select id="nc-type">${CASE_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></div>
+  <div class="field"><label>Notes (optional)</label><input type="text" id="nc-notes" placeholder="e.g. Referred by spouse, existing MP client..."></div>
+  <button class="save-btn" onclick="saveNewCase('${id}')">Create case</button>
+  <button class="save-btn" style="background:#138181;margin-top:6px;" onclick="saveNewCaseWithTouchpoint('${id}')">Create & add first touchpoint</button>`);
+}
+
+async function saveNewCase(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const newCase = {type:document.getElementById('nc-type').value, status:'Open', notes:document.getElementById('nc-notes').value.trim(), touchpoints:[], created:new Date().toISOString()};
+  const cases = [...(c.cases||[]), newCase];
+  showSync('Saving...');
+  await sb.from('clients').update({cases}).eq('id',id);
+  c.cases = cases;
+  hideSync(); closeModal(); openClient(id);
+}
+
+async function saveNewCaseWithTouchpoint(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const newCase = {type:document.getElementById('nc-type').value, status:'Open', notes:document.getElementById('nc-notes').value.trim(), touchpoints:[], created:new Date().toISOString()};
+  const cases = [...(c.cases||[]), newCase];
+  showSync('Saving...');
+  await sb.from('clients').update({cases}).eq('id',id);
+  c.cases = cases;
+  hideSync(); closeModal();
+  openAddTouchpoint(id, cases.length-1);
+}
+
+function openEditCase(id, ci) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const cs = c.cases[ci];
+  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+  <div class="modal-title">Edit case — ${c.name}</div>
+  <div class="field"><label>Case type</label><select id="ec-type">${CASE_TYPES.map(t=>`<option${cs.type===t?' selected':''}>${t}</option>`).join('')}</select></div>
+  <div class="field"><label>Status</label><select id="ec-status">${CASE_STATUSES.map(s=>`<option${cs.status===s?' selected':''}>${s}</option>`).join('')}</select></div>
+  <div class="field"><label>Notes</label><input type="text" id="ec-notes" value="${cs.notes||''}"></div>
+  <button class="save-btn" onclick="saveEditCase('${id}',${ci})">Save</button>`);
+}
+
+async function saveEditCase(id, ci) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  c.cases[ci].type = document.getElementById('ec-type').value;
+  c.cases[ci].status = document.getElementById('ec-status').value;
+  c.cases[ci].notes = document.getElementById('ec-notes').value.trim();
+  showSync('Saving...');
+  await sb.from('clients').update({cases:c.cases}).eq('id',id);
+  hideSync(); closeModal(); openClient(id); renderScore();
+}
+
+function openAddTouchpoint(id, ci) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const cs = c.cases[ci];
+  const now = new Date(); now.setMinutes(0,0,0); now.setHours(now.getHours()+1);
+  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+  <div class="modal-title">Add touchpoint</div>
+  <div class="modal-sub">${c.name} · ${cs.type}</div>
+  <div class="field"><label>Type</label><select id="tp-type">${TP_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></div>
+  <div class="field"><label>Date & time</label><input type="datetime-local" id="tp-dt" value="${now.toISOString().slice(0,16)}" style="font-size:16px;"></div>
+  <div class="section-lbl">Outcome</div>
+  <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+    <button class="call-btn cb-teal" id="tpo-pending" onclick="setTpOutcome('pending')">Pending</button>
+    <button class="call-btn cb-green" id="tpo-sale" onclick="setTpOutcome('sale')">Sale</button>
+    <button class="call-btn cb-red" id="tpo-nosale" onclick="setTpOutcome('nosale')">No Sale</button>
+    <button class="call-btn cb-amber" id="tpo-noshow" onclick="setTpOutcome('noshow')">No Show</button>
+  </div>
+  <div id="tp-addons" style="display:none;">
+    <div class="section-lbl">Add-ons</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
+      <button class="flag-btn" id="tpa-income" onclick="toggleTpAddon('income')">💼 Income offered</button>
+      <button class="flag-btn" id="tpa-resetself" onclick="toggleTpAddon('resetself')">↩ Reset→me</button>
+      <button class="flag-btn" id="tpa-resetsme" onclick="toggleTpAddon('resetsme')">↩ Reset→SME</button>
+    </div>
+    <div id="tp-resetsme-detail" style="display:none;">
+      <div class="field"><label>SME name</label><input type="text" id="tp-sme-name" placeholder="Who are you resetting to?"></div>
+      <div class="field"><label>Reset case type</label><select id="tp-reset-type">${CASE_TYPES.filter(t=>t!=='Mortgage Protection').map(t=>`<option>${t}</option>`).join('')}</select></div>
+      <div class="field"><label>Reset date & time</label><input type="datetime-local" id="tp-reset-dt" value="${new Date(now.getTime()+7*24*60*60*1000).toISOString().slice(0,16)}"></div>
+    </div>
+    <div id="tp-resetself-detail" style="display:none;">
+      <div class="field"><label>Reset case type</label><select id="tp-resetself-type">${CASE_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></div>
+      <div class="field"><label>Reset date & time</label><input type="datetime-local" id="tp-resetself-dt" value="${new Date(now.getTime()+7*24*60*60*1000).toISOString().slice(0,16)}"></div>
+    </div>
+    <div class="field"><label>ASRs (after sale referrals)</label><input type="text" id="tp-asrs" placeholder="Names / numbers collected..."></div>
+  </div>
+  <div class="field"><label>Notes</label><textarea id="tp-notes" placeholder="Notes..."></textarea></div>
+  <button class="save-btn" onclick="saveTouchpoint('${id}',${ci})">Save touchpoint</button>`);
+  window._tpOutcome = 'pending';
+  window._tpAddons = {income:false, resetself:false, resetsme:false};
+  highlightTpOutcome('pending');
+}
+
+function setTpOutcome(val) {
+  window._tpOutcome = val;
+  highlightTpOutcome(val);
+  const addons = document.getElementById('tp-addons');
+  if (addons) addons.style.display = (val==='sale'||val==='nosale') ? 'block' : 'none';
+}
+
+function highlightTpOutcome(val) {
+  ['pending','sale','nosale','noshow'].forEach(v => {
+    const btn = document.getElementById('tpo-'+v);
+    if (btn) btn.style.opacity = v===val ? '1' : '0.4';
+  });
+}
+
+function toggleTpAddon(key) {
+  window._tpAddons[key] = !window._tpAddons[key];
+  const btn = document.getElementById('tpa-'+key);
+  if (btn) btn.classList.toggle('on-teal', window._tpAddons[key]);
+  if (key==='resetsme') {
+    const el = document.getElementById('tp-resetsme-detail');
+    if (el) el.style.display = window._tpAddons.resetsme ? 'block' : 'none';
+  }
+  if (key==='resetself') {
+    const el = document.getElementById('tp-resetself-detail');
+    if (el) el.style.display = window._tpAddons.resetself ? 'block' : 'none';
+  }
+}
+
+async function saveTouchpoint(id, ci) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const dt = document.getElementById('tp-dt').value; if (!dt) return;
+  const outcome = window._tpOutcome || 'pending';
+  const addons = window._tpAddons || {};
+  const tp = {
+    type: document.getElementById('tp-type').value,
+    datetime: new Date(dt).toISOString(),
+    outcome,
+    incomeOffered: addons.income || false,
+    resetSelf: addons.resetself || false,
+    resetSME: addons.resetsme || false,
+    resetSMEName: addons.resetsme ? (document.getElementById('tp-sme-name')||{value:''}).value.trim() : '',
+    resetSelfType: addons.resetself ? (document.getElementById('tp-resetself-type')||{value:''}).value : '',
+    resetSMEType: addons.resetsme ? (document.getElementById('tp-reset-type')||{value:''}).value : '',
+    resetSelfDt: addons.resetself ? (document.getElementById('tp-resetself-dt')||{value:''}).value : '',
+    resetSMEDt: addons.resetsme ? (document.getElementById('tp-reset-dt')||{value:''}).value : '',
+    asrs: (document.getElementById('tp-asrs')||{value:''}).value.trim(),
+    notes: document.getElementById('tp-notes').value.trim(),
+    apps: [],
+    created: new Date().toISOString()
+  };
+
+  // Update case status based on outcome
+  if (outcome==='sale') c.cases[ci].status = 'Closed Won';
+  else if (outcome==='nosale') c.cases[ci].status = 'Closed Lost';
+
+  // If reset, also update case status and create new case
+  if (addons.resetself || addons.resetsme) {
+    c.cases[ci].status = (outcome==='sale'||outcome==='nosale') ? c.cases[ci].status + ' + Reset' : 'Reset';
+    // Spawn new case
+    const newCaseType = addons.resetself
+      ? (document.getElementById('tp-resetself-type')||{value:'Mortgage Protection'}).value
+      : (document.getElementById('tp-reset-type')||{value:'Retirement'}).value;
+    const resetDtVal = addons.resetself
+      ? (document.getElementById('tp-resetself-dt')||{value:''}).value
+      : (document.getElementById('tp-reset-dt')||{value:''}).value;
+    const resetDt = resetDtVal ? new Date(resetDtVal).toISOString() : null;
+    const newCase = {
+      type: newCaseType,
+      status: 'Open',
+      notes: `Reset from ${c.cases[ci].type}${addons.resetsme ? ' — SME: ' + tp.resetSMEName : ''}`,
+      touchpoints: resetDt ? [{type:'Initial', datetime:resetDt, outcome:'pending', notes:'', apps:[], created:new Date().toISOString()}] : [],
+      created: new Date().toISOString()
+    };
+    c.cases.push(newCase);
+    // Update appt_datetime for sidebar
+    if (resetDt) {
+      await sb.from('clients').update({appt_datetime: resetDt, appt_notes: `Reset — ${newCaseType}`}).eq('id',id);
+      c.appt_datetime = resetDt;
+    }
+  } else if (outcome==='pending' || outcome==='noshow') {
+    // Keep appointment date if scheduling next touchpoint
+  }
+
+  c.cases[ci].touchpoints = [...(c.cases[ci].touchpoints||[]), tp];
+
+  // Update lead status
+  let newLeadStatus = c.status;
+  if (outcome==='sale') newLeadStatus = 'Closed';
+  else if (outcome==='nosale' && !addons.resetself && !addons.resetsme) newLeadStatus = 'No sale';
+  else if (outcome==='noshow') newLeadStatus = 'No show';
+  else if (outcome==='pending') newLeadStatus = 'Appointment set';
+
+  showSync('Saving...');
+  await sb.from('clients').update({cases:c.cases, status:newLeadStatus}).eq('id',id);
+  c.status = newLeadStatus;
+  hideSync(); closeModal(); openClient(id); renderScore(); renderSidebar();
+}
+
+function openEditTouchpoint(id, ci, ti) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const tp = c.cases[ci].touchpoints[ti];
+  const dtVal = new Date(tp.datetime).toISOString().slice(0,16);
+  const outcomeLabel = tp.outcome==='sale'?'Sale':tp.outcome==='nosale'?'No Sale':tp.outcome==='noshow'?'No Show':'Pending';
+  const outcomeColor = tp.outcome==='sale'?'#3B6D11':tp.outcome==='nosale'?'#A32D2D':tp.outcome==='noshow'?'#BA7517':'#8fa8c0';
+  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+  <div class="modal-title">${tp.type||'Touchpoint'} — ${c.name}</div>
+  <div class="modal-sub">${c.cases[ci].type} · <span style="color:${outcomeColor};font-weight:600;">${outcomeLabel}</span></div>
+  <div class="field"><label>Type</label><select id="etp-type">${TP_TYPES.map(t=>`<option${tp.type===t?' selected':''}>${t}</option>`).join('')}</select></div>
+  <div class="field"><label>Date & time</label><input type="datetime-local" id="etp-dt" value="${dtVal}" style="font-size:16px;"></div>
+  <div class="section-lbl">Outcome</div>
+  <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+    <button class="call-btn" style="background:${tp.outcome==='pending'||!tp.outcome?'#138181':'#f0f4f8'};color:${tp.outcome==='pending'||!tp.outcome?'#fff':'#5f7a99'};" onclick="updateTpOutcome('${id}',${ci},${ti},'pending')">Pending</button>
+    <button class="call-btn" style="background:${tp.outcome==='sale'?'#3B6D11':'#f0f4f8'};color:${tp.outcome==='sale'?'#fff':'#5f7a99'};" onclick="updateTpOutcome('${id}',${ci},${ti},'sale')">Sale</button>
+    <button class="call-btn" style="background:${tp.outcome==='nosale'?'#A32D2D':'#f0f4f8'};color:${tp.outcome==='nosale'?'#fff':'#5f7a99'};" onclick="updateTpOutcome('${id}',${ci},${ti},'nosale')">No Sale</button>
+    <button class="call-btn" style="background:${tp.outcome==='noshow'?'#BA7517':'#f0f4f8'};color:${tp.outcome==='noshow'?'#fff':'#5f7a99'};" onclick="updateTpOutcome('${id}',${ci},${ti},'noshow')">No Show</button>
+  </div>
+  <div class="field"><label>ASRs</label><input type="text" id="etp-asrs" value="${tp.asrs||''}" placeholder="Names / numbers..."></div>
+  <div class="field"><label>Notes</label><textarea id="etp-notes">${tp.notes||''}</textarea></div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+    <button class="flag-btn${tp.incomeOffered?' on-teal':''}" onclick="toggleTpFlag('${id}',${ci},${ti},'incomeOffered')">💼 Income offered${tp.incomeOffered?' ✓':''}</button>
+    <button class="flag-btn${tp.resetSelf?' on-navy':''}" onclick="toggleTpFlag('${id}',${ci},${ti},'resetSelf')">↩ Reset→me${tp.resetSelf?' ✓':''}</button>
+    <button class="flag-btn${tp.resetSME?' on-purple':''}" onclick="toggleTpFlag('${id}',${ci},${ti},'resetSME')">↩ Reset→SME${tp.resetSME?' ✓':''}</button>
+  </div>
+  <button class="save-btn" onclick="saveEditTouchpoint('${id}',${ci},${ti})">Save</button>`);
+}
+
+async function updateTpOutcome(id, ci, ti, val) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  c.cases[ci].touchpoints[ti].outcome = val;
+  if (val==='sale') c.cases[ci].status = 'Closed Won';
+  else if (val==='nosale') c.cases[ci].status = 'Closed Lost';
+  else if (val==='pending'||val==='noshow') c.cases[ci].status = 'Open';
+  let newLeadStatus = c.status;
+  if (val==='sale') newLeadStatus='Closed';
+  else if (val==='nosale') newLeadStatus='No sale';
+  else if (val==='noshow') newLeadStatus='No show';
+  showSync('Saving...');
+  await sb.from('clients').update({cases:c.cases, status:newLeadStatus}).eq('id',id);
+  c.status = newLeadStatus;
+  hideSync(); renderScore();
+  openEditTouchpoint(id, ci, ti);
+}
+
+async function toggleTpFlag(id, ci, ti, key) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  c.cases[ci].touchpoints[ti][key] = !c.cases[ci].touchpoints[ti][key];
+  showSync('Saving...');
+  await sb.from('clients').update({cases:c.cases}).eq('id',id);
+  hideSync();
+  openEditTouchpoint(id, ci, ti);
+}
+
+async function saveEditTouchpoint(id, ci, ti) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const newDt = document.getElementById('etp-dt').value;
+  if (newDt) c.cases[ci].touchpoints[ti].datetime = new Date(newDt).toISOString();
+  c.cases[ci].touchpoints[ti].type = document.getElementById('etp-type').value;
+  c.cases[ci].touchpoints[ti].asrs = (document.getElementById('etp-asrs')||{value:''}).value.trim();
+  c.cases[ci].touchpoints[ti].notes = document.getElementById('etp-notes').value.trim();
+  showSync('Saving...');
+  await sb.from('clients').update({cases:c.cases}).eq('id',id);
+  hideSync(); closeModal(); openClient(id); renderScore();
+}
+
+// ── LEGACY SIT SYSTEM (preserved for existing data) ──────────
+
 function openAddApp(id, si) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const carriers = Object.keys(CARRIERS);
