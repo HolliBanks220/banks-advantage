@@ -415,6 +415,60 @@ async function init() {
   renderScore();
   renderSidebar();
   if (document.getElementById('tab-clients').style.display !== 'none') renderClients();
+  startRealtimeSync();
+}
+
+function startRealtimeSync() {
+  // Listen for changes to clients table
+  sb.channel('clients-sync')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, async (payload) => {
+      if (payload.eventType === 'UPDATE') {
+        const idx = clients.findIndex(c => c.id === payload.new.id);
+        if (idx > -1) {
+          // Merge updated fields into local client
+          Object.assign(clients[idx], payload.new);
+        } else {
+          clients.unshift(payload.new);
+        }
+      } else if (payload.eventType === 'INSERT') {
+        const exists = clients.find(c => c.id === payload.new.id);
+        if (!exists) clients.unshift(payload.new);
+      } else if (payload.eventType === 'DELETE') {
+        clients = clients.filter(c => c.id !== payload.old.id);
+      }
+      // Re-render everything
+      renderScore();
+      renderSidebar();
+      if (document.getElementById('tab-clients').style.display !== 'none') {
+        renderClients(document.getElementById('client-search') ? document.getElementById('client-search').value : '');
+      }
+      if (document.getElementById('tab-appts').style.display !== 'none') renderAppts();
+      // If a lead modal is open and it's the one that changed, refresh it
+      const modal = document.getElementById('modal-ov');
+      if (modal && payload.new && payload.new.id) {
+        const openId = modal.querySelector('[id^="edit-name"]');
+        if (openId) {
+          // Find which lead is open by checking current name value
+          const currentName = openId.value;
+          const updatedClient = clients.find(c => c.id === payload.new.id);
+          if (updatedClient && updatedClient.name === currentName) {
+            openClient(payload.new.id, true);
+          }
+        }
+      }
+    })
+    .subscribe();
+
+  // Listen for stats changes
+  sb.channel('stats-sync')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'stats' }, (payload) => {
+      const exists = stats.find(s => s.id === payload.new.id);
+      if (!exists) {
+        stats.push(payload.new);
+        renderScore();
+      }
+    })
+    .subscribe();
 }
 
 async function loadClients() {
