@@ -1127,19 +1127,6 @@ function openClient(id, keepDialCount) {
   <button class="save-btn" onclick="updateClient('${id}')" style="margin-bottom:12px;">Save & next</button>
   <div class="section-lbl">Call log</div>
   <div style="padding-left:4px;margin-bottom:12px;">${callHistory||'<div style="font-size:12px;color:#a0b8cc;">No calls yet.</div>'}</div>
-  <div class="section-lbl">Lead info</div>
-  <div class="row2" style="margin-bottom:4px;">
-    <div class="field"><label>Age</label><input type="number" id="cn-age" min="0" max="120" value="${c.age||''}" placeholder="—" onchange="autoSaveField('${id}','age',parseInt(this.value)||null)"></div>
-    <div class="field"><label>Mortgage amount</label><input type="text" id="cn-mortgage" value="${c.mortgage_amount||''}" placeholder="$0.00" onchange="autoSaveField('${id}','mortgage_amount',this.value.trim())"></div>
-  </div>
-  <div class="field" style="margin-bottom:12px;">
-    <label>Smoker?</label>
-    <select id="cn-smoker" onchange="autoSaveField('${id}','smoker',this.value)">
-      <option value="">Unknown</option>
-      <option value="N"${(c.smoker==='N'||c.smoker===false||c.smoker==='false')?' selected':''}>No</option>
-      <option value="Y"${(c.smoker==='Y'||c.smoker===true||c.smoker==='true')?' selected':''}>Yes</option>
-    </select>
-  </div>
   <div class="section-lbl">Notes</div>
   <div class="field"><label>Property address</label><input type="text" id="cn-address" value="${c.address||''}" placeholder="123 Main St, City, ST 00000" onchange="autoSaveField('${id}','address',this.value)"></div>
   <div class="field"><textarea id="cn-notes" style="min-height:120px;" oninput="scheduleAutoSave('${id}')">${c.notes||''}</textarea></div>
@@ -1660,24 +1647,24 @@ async function toggleUpload(id, si, ai) {
 
 // ── BULK IMPORT ──────────────────────────────────────────────
 const IMPORT_BATCH_20260609 = [
-  {name:'Brett Jennings',phone:'540-661-8161',state:'VA',age:24,source:'CIA',address:'61 Oakland Pl, Louisa, VA 23093',mortgage_amount:'$343,660',smoker:'N',notes:'Co-borrower: Y · Lender: Capital Center LLC'},
-  {name:'Clark Gesen',phone:'603-724-0297',state:'NH',age:32,source:'CIA',address:'100 Main St Apt 203, Pembroke, NH 03275',mortgage_amount:'$193,500',smoker:'N',notes:'Co-borrower: N'},
-  {name:'Freddie Light',phone:'419-626-8659',state:'OH',age:81,source:'CIA',address:'2905 W Perkins Ave, Sandusky, OH 44870',mortgage_amount:'$55,000',smoker:'N',notes:'Co-borrower: N'},
-  {name:'Phillip Salas',phone:'832-244-4408',state:'TX',age:null,source:'CIA',address:'1155 Beals Creek St, Conroe, TX 77304',mortgage_amount:'$569,000',smoker:'Y',notes:'Co-borrower: N · Lender: Village Capital & Investment LLC'},
-  {name:'Steven Swanson',phone:'508-776-7505',state:'MA',age:73,source:'CIA',address:'650 Old Barnstable Rd, Mashpee, MA 02649',mortgage_amount:'$250,000',smoker:'Y',notes:'Co-borrower: Y'},
-  {name:'Steve Dostie',phone:'603-530-2977',state:'NH',age:54,source:'CIA',address:'131 Birch Hill Rd, Bristol, NH 03222',mortgage_amount:'$100,000',smoker:'N',notes:'Co-borrower: Y'},
-  {name:'Skyler Foote',phone:'217-407-9216',state:'NC',age:20,source:'CIA',address:'116 W Bayshore Blvd, Jacksonville, NC 28540',mortgage_amount:'$244,138',smoker:'N',notes:'Co-borrower: N · Lender: Alpha Mortgage Corporation'},
-  {name:'Richard Love',phone:'276-492-9224',state:'TN',age:82,source:'CIA',address:'11336 Woodcliff Dr, Farragut, TN 37934',mortgage_amount:'$395,000',smoker:'N',notes:'Co-borrower: N'},
-  {name:'Richard Fitzpatrick',phone:'413-537-0827',state:'MA',age:65,source:'CIA',address:'54 Atlantic St, Ludlow, MA 01056',mortgage_amount:'$173,675',smoker:'N',notes:'Co-borrower: Y'},
-  {name:'Ruben Espinosa',phone:'860-893-4870',state:'CT',age:58,source:'CIA',address:'298 Murray St, Meriden, CT 06450',mortgage_amount:'$294,566',smoker:'Y',notes:'Co-borrower: N'},
-  {name:'Philadelpo Guevarra',phone:'203-264-9855',state:'CT',age:null,source:'CIA',address:'133 Old Woodbury Rd, Southbury, CT 06488',mortgage_amount:'$311,200',smoker:'N',notes:'Co-borrower: Y'},
-  {name:'Nicholas Ricciardi',phone:'774-479-2636',state:'NH',age:20,source:'CIA',address:'67 Linden Rd, North Conway, NH 03860',mortgage_amount:'$240,000',smoker:'N',notes:'Co-borrower: Y'},
-  {name:'Melissa Mincey',phone:'865-607-8477',state:'TN',age:null,source:'CIA',address:'4901 Salem Church Rd, Knoxville, TN 37938',mortgage_amount:'$92,800',smoker:'N',notes:'Co-borrower: N · Lender: ORNL FCU'},
-  {name:'Matthew Meyers',phone:'320-630-1910',state:'TX',age:null,source:'CIA',address:'601 Harris St, Kilgore, TX 75662',mortgage_amount:'$225,342',smoker:'N',notes:'Co-borrower: N · Lender: Guaranteed Rate Inc'},
-  {name:'Marvin Washington',phone:'757-751-7546',state:'VA',age:62,source:'CIA',address:'6686 Wharfview Ct, Hayes, VA 23072',mortgage_amount:'$45,000',smoker:'N',notes:'Co-borrower: N · Lender: Langley Federal Credit Union'},
-  {name:'Mark Bish',phone:'413-219-9617',state:'MA',age:61,source:'CIA',address:'17 Tall Timber Dr, Wilbraham, MA 01095',mortgage_amount:'$293,243',smoker:'N',notes:'Co-borrower: Y'},
-  {name:'Kenneth Ayers',phone:'603-352-0697',state:'NH',age:71,source:'CIA',address:'3 Freedom Ln, Rindge, NH 03461',mortgage_amount:'$33,408',smoker:'N',notes:'Co-borrower: N'},
-  {name:'John Soares',phone:'401-663-3670',state:'RI',age:52,source:'CIA',address:'93 Manton St, Pawtucket, RI 02861',mortgage_amount:'$30,130',smoker:'Y',notes:'Co-borrower: N · Lender: Mutual of Omaha Mortgage'}
+  {name:'Brett Jennings',phone:'540-661-8161',state:'VA',age:24,source:'CIA',address:'61 Oakland Pl, Louisa, VA 23093',mortgage_amount:'$343,660',smoker:'N',notes:'Age: 24 · Mortgage: $343,660 · Tobacco: N · Co-borrower: Y · Lender: Capital Center LLC'},
+  {name:'Clark Gesen',phone:'603-724-0297',state:'NH',age:32,source:'CIA',address:'100 Main St Apt 203, Pembroke, NH 03275',mortgage_amount:'$193,500',smoker:'N',notes:'Age: 32 · Mortgage: $193,500 · Tobacco: N · Co-borrower: N'},
+  {name:'Freddie Light',phone:'419-626-8659',state:'OH',age:81,source:'CIA',address:'2905 W Perkins Ave, Sandusky, OH 44870',mortgage_amount:'$55,000',smoker:'N',notes:'Age: 81 · Mortgage: $55,000 · Tobacco: N · Co-borrower: N'},
+  {name:'Phillip Salas',phone:'832-244-4408',state:'TX',age:null,source:'CIA',address:'1155 Beals Creek St, Conroe, TX 77304',mortgage_amount:'$569,000',smoker:'Y',notes:'Age: — · Mortgage: $569,000 · Tobacco: Y · Co-borrower: N · Lender: Village Capital & Investment LLC'},
+  {name:'Steven Swanson',phone:'508-776-7505',state:'MA',age:73,source:'CIA',address:'650 Old Barnstable Rd, Mashpee, MA 02649',mortgage_amount:'$250,000',smoker:'Y',notes:'Age: 73 · Mortgage: $250,000 · Tobacco: Y · Co-borrower: Y'},
+  {name:'Steve Dostie',phone:'603-530-2977',state:'NH',age:54,source:'CIA',address:'131 Birch Hill Rd, Bristol, NH 03222',mortgage_amount:'$100,000',smoker:'N',notes:'Age: 54 · Mortgage: $100,000 · Tobacco: N · Co-borrower: Y'},
+  {name:'Skyler Foote',phone:'217-407-9216',state:'NC',age:20,source:'CIA',address:'116 W Bayshore Blvd, Jacksonville, NC 28540',mortgage_amount:'$244,138',smoker:'N',notes:'Age: 20 · Mortgage: $244,138 · Tobacco: N · Co-borrower: N · Lender: Alpha Mortgage Corporation'},
+  {name:'Richard Love',phone:'276-492-9224',state:'TN',age:82,source:'CIA',address:'11336 Woodcliff Dr, Farragut, TN 37934',mortgage_amount:'$395,000',smoker:'N',notes:'Age: 82 · Mortgage: $395,000 · Tobacco: N · Co-borrower: N'},
+  {name:'Richard Fitzpatrick',phone:'413-537-0827',state:'MA',age:65,source:'CIA',address:'54 Atlantic St, Ludlow, MA 01056',mortgage_amount:'$173,675',smoker:'N',notes:'Age: 65 · Mortgage: $173,675 · Tobacco: N · Co-borrower: Y'},
+  {name:'Ruben Espinosa',phone:'860-893-4870',state:'CT',age:58,source:'CIA',address:'298 Murray St, Meriden, CT 06450',mortgage_amount:'$294,566',smoker:'Y',notes:'Age: 58 · Mortgage: $294,566 · Tobacco: Y · Co-borrower: N'},
+  {name:'Philadelpo Guevarra',phone:'203-264-9855',state:'CT',age:null,source:'CIA',address:'133 Old Woodbury Rd, Southbury, CT 06488',mortgage_amount:'$311,200',smoker:'N',notes:'Age: — · Mortgage: $311,200 · Tobacco: N · Co-borrower: Y'},
+  {name:'Nicholas Ricciardi',phone:'774-479-2636',state:'NH',age:20,source:'CIA',address:'67 Linden Rd, North Conway, NH 03860',mortgage_amount:'$240,000',smoker:'N',notes:'Age: 20 · Mortgage: $240,000 · Tobacco: N · Co-borrower: Y'},
+  {name:'Melissa Mincey',phone:'865-607-8477',state:'TN',age:null,source:'CIA',address:'4901 Salem Church Rd, Knoxville, TN 37938',mortgage_amount:'$92,800',smoker:'N',notes:'Age: — · Mortgage: $92,800 · Tobacco: N · Co-borrower: N · Lender: ORNL FCU'},
+  {name:'Matthew Meyers',phone:'320-630-1910',state:'TX',age:null,source:'CIA',address:'601 Harris St, Kilgore, TX 75662',mortgage_amount:'$225,342',smoker:'N',notes:'Age: — · Mortgage: $225,342 · Tobacco: N · Co-borrower: N · Lender: Guaranteed Rate Inc'},
+  {name:'Marvin Washington',phone:'757-751-7546',state:'VA',age:62,source:'CIA',address:'6686 Wharfview Ct, Hayes, VA 23072',mortgage_amount:'$45,000',smoker:'N',notes:'Age: 62 · Mortgage: $45,000 · Tobacco: N · Co-borrower: N · Lender: Langley Federal Credit Union'},
+  {name:'Mark Bish',phone:'413-219-9617',state:'MA',age:61,source:'CIA',address:'17 Tall Timber Dr, Wilbraham, MA 01095',mortgage_amount:'$293,243',smoker:'N',notes:'Age: 61 · Mortgage: $293,243 · Tobacco: N · Co-borrower: Y'},
+  {name:'Kenneth Ayers',phone:'603-352-0697',state:'NH',age:71,source:'CIA',address:'3 Freedom Ln, Rindge, NH 03461',mortgage_amount:'$33,408',smoker:'N',notes:'Age: 71 · Mortgage: $33,408 · Tobacco: N · Co-borrower: N'},
+  {name:'John Soares',phone:'401-663-3670',state:'RI',age:52,source:'CIA',address:'93 Manton St, Pawtucket, RI 02861',mortgage_amount:'$30,130',smoker:'Y',notes:'Age: 52 · Mortgage: $30,130 · Tobacco: Y · Co-borrower: N · Lender: Mutual of Omaha Mortgage'}
 ];
 
 async function importBatch(batch, batchLabel) {
