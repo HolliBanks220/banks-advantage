@@ -105,10 +105,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .dial-cnt-btn.on{background:#1D3557;color:#fff;border-color:#1D3557;}
 .page-layout{display:inline-flex;gap:8px;align-items:flex-start;padding:0 12px;min-width:0;}
 .app-main{width:420px;flex-shrink:0;}
-.appt-sidebar{width:260px;flex-shrink:0;background:#fff;border-radius:10px;border:1px solid #e2eaf2;padding:14px;position:sticky;top:12px;display:none;}
-.appt-sidebar-title{font-size:10px;font-weight:600;color:#1D3557;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;}
-.appt-sidebar-item{padding:7px 0;border-bottom:1px solid #f0f4f8;cursor:pointer;}
-.appt-sidebar-item:last-child{border-bottom:none;}
+.appt-sidebar{width:220px;flex-shrink:0;background:#fff;border-radius:12px;border:1px solid #e2eaf2;padding:14px 12px;position:sticky;top:12px;display:none;}
+.appt-sidebar-title{font-size:10px;font-weight:600;color:#1D3557;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;}
+.appt-sidebar-item{padding:8px 10px;border-radius:8px;cursor:pointer;margin-bottom:4px;transition:background 0.15s;}
+.appt-sidebar-item:hover{background:#f5f8fb;}
+.appt-sidebar-item.passed{opacity:0.55;}
+.appt-sidebar-divider{font-size:9px;font-weight:600;color:#a0b8cc;text-transform:uppercase;letter-spacing:0.07em;margin:8px 0 4px;padding:0 2px;}
 .appt-banner{background:#1D3557;color:#fff;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;cursor:pointer;display:none;}
 @media(min-width:720px){.appt-sidebar{display:block!important;}.appt-banner{display:none!important;}}
 @media(max-width:719px){.appt-sidebar{display:none!important;}.appt-banner{display:block;}}
@@ -290,7 +292,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div><!-- end wrap/app-main -->
 
 <div class="appt-sidebar" id="appt-sidebar">
-    <div class="appt-sidebar-title">📅 Upcoming</div>
+    <div class="appt-sidebar-title">📅 Today & upcoming</div>
     <div id="sidebar-appts"><div style="font-size:11px;color:#a0b8cc;">No appointments</div></div>
   </div>
 </div><!-- end page-layout -->
@@ -889,42 +891,63 @@ function drillDown(type) {
 
 function renderSidebar() {
   const now = new Date();
-  const upcoming = clients
-    .filter(c => c.appt_datetime && new Date(c.appt_datetime) >= now)
-    .sort((a,b) => new Date(a.appt_datetime)-new Date(b.appt_datetime))
-    .slice(0,8);
+  const todayStr = now.toDateString();
 
-  // Desktop sidebar
+  // Split into: upcoming (future), today-passed, and future by date
+  const allAppts = clients.filter(c => c.appt_datetime);
+  const upcoming = allAppts
+    .filter(c => new Date(c.appt_datetime) >= now)
+    .sort((a,b) => new Date(a.appt_datetime)-new Date(b.appt_datetime))
+    .slice(0,10);
+  const todayPassed = allAppts
+    .filter(c => {
+      const dt = new Date(c.appt_datetime);
+      return dt < now && dt.toDateString() === todayStr;
+    })
+    .sort((a,b) => new Date(a.appt_datetime)-new Date(b.appt_datetime));
+
+  function apptCard(c, passed) {
+    const dt = new Date(c.appt_datetime);
+    const isToday = dt.toDateString() === todayStr;
+    const dateStr = isToday ? '' : dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' · ';
+    const timeStr = dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    const timeColor = passed ? '#A32D2D' : isToday ? '#138181' : '#5f7a99';
+    const bg = passed ? '#FFF5F5' : isToday ? '#F0FBF7' : '#F8FAFB';
+    const border = passed ? '#F7C1C1' : isToday ? '#9FE1CB' : '#e2eaf2';
+    return `<div class="appt-sidebar-item${passed?' passed':''}" style="background:${bg};border:1px solid ${border};" onclick="openClient('${c.id}')">
+      <div style="font-size:12px;font-weight:500;color:#1D3557;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.name}</div>
+      <div style="font-size:11px;color:${timeColor};font-weight:500;margin-top:1px;">${dateStr}${timeStr}${passed?' · past':''}</div>
+      ${c.appt_notes?`<div style="font-size:10px;color:#8fa8c0;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.appt_notes}</div>`:''}
+    </div>`;
+  }
+
   const sidebar = document.getElementById('sidebar-appts');
   if (sidebar) {
-    if (!upcoming.length) {
-      sidebar.innerHTML = '<div style="font-size:11px;color:#a0b8cc;">No upcoming appointments</div>';
+    if (!upcoming.length && !todayPassed.length) {
+      sidebar.innerHTML = '<div style="font-size:11px;color:#a0b8cc;padding:4px 2px;">No appointments today</div>';
     } else {
-      sidebar.innerHTML = upcoming.map(c => {
-        const dt = new Date(c.appt_datetime);
-        const isToday = dt.toDateString() === now.toDateString();
-        const dateStr = isToday ? 'Today' : dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});
-        const timeStr = dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-        const isPast = dt < now;
-        return `<div class="appt-sidebar-item" onclick="openClient('${c.id}')">
-          <div style="font-size:12px;font-weight:500;color:#1D3557;">${c.name}</div>
-          <div style="font-size:11px;color:${isPast?'#A32D2D':'#138181'};font-weight:500;">${dateStr} · ${timeStr}</div>
-          ${c.appt_notes?`<div style="font-size:10px;color:#8fa8c0;">${c.appt_notes}</div>`:''}
-        </div>`;
-      }).join('');
+      let html = '';
+      if (upcoming.length) html += upcoming.map(c => apptCard(c, false)).join('');
+      if (todayPassed.length) {
+        html += `<div class="appt-sidebar-divider">Earlier today</div>`;
+        html += todayPassed.map(c => apptCard(c, true)).join('');
+      }
+      sidebar.innerHTML = html;
     }
   }
 
-  // Mobile banner - show next appt
+  // Mobile banner
   const banner = document.getElementById('appt-banner');
   const bannerText = document.getElementById('next-appt-text');
   if (banner && bannerText) {
-    if (upcoming.length) {
-      const next = upcoming[0];
+    const next = upcoming[0];
+    if (next) {
       const dt = new Date(next.appt_datetime);
-      const isToday = dt.toDateString() === now.toDateString();
       const timeStr = dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-      bannerText.textContent = `Next: ${next.name} · ${isToday?'Today':''}  ${timeStr}`;
+      bannerText.textContent = `Next: ${next.name} · ${timeStr}`;
+      banner.style.display = 'block';
+    } else if (todayPassed.length) {
+      bannerText.textContent = `${todayPassed.length} appt${todayPassed.length>1?'s':''} passed today`;
       banner.style.display = 'block';
     } else {
       banner.style.display = 'none';
