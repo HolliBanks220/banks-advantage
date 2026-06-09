@@ -344,12 +344,11 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--teal);cursor:poin
         <tbody id="irows"></tbody>
         <tfoot>
           <tr class="trow">
-            <td colspan="2"><strong>Total / mo</strong></td>
+            <td colspan="2"><strong>Total / mo at Retirement</strong></td>
             <td id="itotal">$0</td>
-            <td></td>
-            <td></td>
-            <td id="isurtotal">$0 <span style="font-size:.68rem;font-weight:400;opacity:.6">(avg survivor)</span></td>
             <td colspan="2"></td>
+            <td id="isurtotal">—</td>
+            <td colspan="3"></td>
           </tr>
         </tfoot>
       </table>
@@ -630,7 +629,7 @@ function addIRow(d={}){
       <option value="c2" ${d.own==='c2'?'selected':''}>Client 2</option>
       <option value="joint" ${d.own==='joint'?'selected':''}>Joint</option>
     </select></td>
-    <td><input type="number" placeholder="0" oninput="calculate()" style="min-width:80px" class="iamt"></td>
+    <td><input type="number" placeholder="0" oninput="refreshSurvivor(${id});calculate()" style="min-width:80px" class="iamt"></td>
     <td><select class="itiming" onchange="calculate()" style="min-width:150px">
       <option value="always" ${(d.timing||'always')==='always'?'selected':''}>Now &amp; always</option>
       <option value="c1ret" ${d.timing==='c1ret'?'selected':''}>Starts when Client 1 retires</option>
@@ -655,24 +654,40 @@ function addIRow(d={}){
   tr.querySelector('.ideath').addEventListener('change',function(){onDeathChange(this,id);calculate();});
   calculate();
 }
+function refreshSurvivor(id){
+  const row=$('ir'+id);
+  if(!row)return;
+  const sel=row.querySelector('.ideath');
+  if(sel)onDeathChange(sel,id);
+}
 function onDeathChange(sel,id){
   const val=sel.value;
   const row=$('ir'+id);
   const amt=parseFloat(row.querySelector('.iamt')?.value)||0;
   const cell=$('sur'+id);
+  // Remove any existing reduced input
   row.querySelectorAll('.red-inp').forEach(e=>e.remove());
-  if(val==='cont'){cell.innerHTML=`<span class="sr">${fmt(amt)}</span>`;}
-  else if(val==='stops'){cell.innerHTML=`<span class="sr stop">$0 — stops</span>`;}
-  else if(val==='reduced'){
+  if(val==='cont'){
+    cell.innerHTML=`<span class="sr">${fmt(amt)}/mo</span>`;
+  } else if(val==='stops'){
+    cell.innerHTML=`<span class="sr stop">$0 — stops</span>`;
+  } else if(val==='reduced'){
     const inp=document.createElement('input');
     inp.type='number';inp.className='red-inp';inp.placeholder='Survivor amt';
-    inp.style.cssText='min-width:85px;padding:5px 7px;font-size:.78rem;margin-top:3px';
-    inp.oninput=function(){cell.innerHTML=`<span class="sr">${fmt(parseFloat(this.value)||0)}/mo</span>`;calculate();};
+    inp.style.cssText='min-width:85px;padding:5px 7px;font-size:.78rem;margin-top:3px;display:block';
+    inp.oninput=function(){
+      cell.innerHTML=`<span class="sr">${fmt(parseFloat(this.value)||0)}/mo</span>`;
+      calculate();
+    };
     sel.parentElement.appendChild(inp);
     cell.innerHTML=`<span class="sr unk">Enter amt →</span>`;
-  }else if(val==='higher_ss'){cell.innerHTML=`<span class="sr">Higher SS kept</span>`;}
-  else if(val==='tbd'){cell.innerHTML=`<span class="sr unk">TBD</span>`;}
-  else{cell.innerHTML=`<span class="sr unk">—</span>`;}
+  } else if(val==='higher_ss'){
+    cell.innerHTML=`<span class="sr">Higher SS kept</span>`;
+  } else if(val==='tbd'){
+    cell.innerHTML=`<span class="sr unk">TBD</span>`;
+  } else {
+    cell.innerHTML=`<span class="sr unk">—</span>`;
+  }
   calculate();
 }
 function rmIRow(id){const r=$(id);if(r){r.remove();calculate();}}
@@ -958,8 +973,22 @@ function calculate(){
   const totalDesired=des+hc;
 
   // Income table totals
-  $('itotal').textContent=fmt(bothInc);
-  $('isurtotal').innerHTML=fmt(Math.round((c1SurInc+c2SurInc)/2))+' <span style="font-size:.68rem;font-weight:400;opacity:.6">(avg survivor)</span>';
+  // itotal = pure retirement income (exclude job income from stage)
+  let retIncomeOnly=0;
+  document.querySelectorAll('#irows tr').forEach(row=>{
+    const amt=parseFloat(row.querySelector('.iamt')?.value)||0;
+    const timing=row.querySelector('.itiming')?.value||'always';
+    const isDup=row.querySelector('.idup')?.checked||false;
+    if(!isActive(timing))return;
+    if(isDup&&stage==='now')return;
+    retIncomeOnly+=amt;
+  });
+  $('itotal').textContent=fmt(retIncomeOnly);
+  const c1Name=($('c1name').value)||'C1';
+  const c2Name=($('c2name').value)||'C2';
+  $('isurtotal').innerHTML=
+    `<span style="font-size:.72rem;opacity:.7">If ${c1Name} passes: </span>${fmt(c1SurInc)}<br>`+
+    `<span style="font-size:.72rem;opacity:.7">If ${c2Name} passes: </span>${fmt(c2SurInc)}`;
 
   // Gap cards
   const bothGap=Math.max(0,totalDesired-bothInc);
