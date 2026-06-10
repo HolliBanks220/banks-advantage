@@ -2013,7 +2013,7 @@ function openImportModal() {
   renderScore();
   renderSidebar();
   renderClients(document.getElementById('client-search') ? document.getElementById('client-search').value : '');
-  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  showModal(`<button class="close-x" onclick="closeModal()">x</button> 
   <div class="modal-title"> Import complete</div>
   <div style="font-size:13px;color:#5f7a99;margin-top:4px;">${batchLabel}</div>
   <div style="font-size:28px;font-weight:500;color:#138181;margin:12px 0;">${toInsert.length} leads added</div>
