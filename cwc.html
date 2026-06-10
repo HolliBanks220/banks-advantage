@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>CWC Tracker · Banks Advantage</title>
+<title>CWC Tracker - Banks Advantage</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -133,7 +133,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="wrap app-main" id="app">
   <div class="hdr">
     <div>
-      <div class="hdr-title">Banks Advantage · CWC</div>
+      <div class="hdr-title">Banks Advantage - CWC</div>
       <div class="hdr-sub" id="hdr-date"></div>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
@@ -155,7 +155,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div id="sync-bar" class="sync-bar" style="display:none;">Syncing...</div>
 
   <div id="appt-banner" class="appt-banner" onclick="showTab('appts',document.querySelector('.tab:nth-child(3)'))">
-    📅 <span id="next-appt-text">Loading...</span>
+    [Cal] <span id="next-appt-text">Loading...</span>
   </div>
 
   <div class="tab-bar">
@@ -223,51 +223,51 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="stat stat-navy">
         <div class="stat-lbl lbl-white">Appts</div>
         <div class="stat-val val-white" id="p-first" style="cursor:pointer;" onclick="drillDown('appts')">0</div>
-        <div class="stat-sub sub-white" id="p-first-rate">— show rate</div>
+        <div class="stat-sub sub-white" id="p-first-rate">- show rate</div>
       </div>
       <div class="stat stat-teal">
         <div class="stat-lbl lbl-white">Sits</div>
         <div class="stat-val val-white" id="p-showed">0</div>
-        <div class="stat-sub sub-white" id="p-sit-rate">— close rate</div>
+        <div class="stat-sub sub-white" id="p-sit-rate">- close rate</div>
       </div>
       <div class="stat stat-amber">
         <div class="stat-lbl lbl-amber">No Shows</div>
         <div class="stat-val val-amber" id="p-noshow">0</div>
-        <div class="stat-sub" style="color:#854F0B;" id="p-cancel">—</div>
+        <div class="stat-sub" style="color:#854F0B;" id="p-cancel">-</div>
       </div>
     </div>
     <div class="stat-row">
       <div class="stat stat-teal">
         <div class="stat-lbl lbl-white">Sales</div>
         <div class="stat-val val-white" id="p-sales">0</div>
-        <div class="stat-sub sub-white" id="p-sales-sub">— of sits</div>
+        <div class="stat-sub sub-white" id="p-sales-sub">- of sits</div>
       </div>
       <div class="stat stat-red">
         <div class="stat-lbl lbl-red">No Sales</div>
         <div class="stat-val val-red" id="p-nosales">0</div>
-        <div class="stat-sub" style="color:#791F1F;" id="p-nosales-sub">—</div>
+        <div class="stat-sub" style="color:#791F1F;" id="p-nosales-sub">-</div>
       </div>
       <div class="stat stat-navy-lt">
         <div class="stat-lbl lbl-navy">Continuations</div>
         <div class="stat-val val-navy" id="p-cont">0</div>
-        <div class="stat-sub sub-navy" id="p-cont-sub">—</div>
+        <div class="stat-sub sub-navy" id="p-cont-sub">-</div>
       </div>
     </div>
     <div class="stat-row">
       <div class="stat stat-amber">
         <div class="stat-lbl lbl-amber">PPUs</div>
         <div class="stat-val val-amber" id="p-ppu">0</div>
-        <div class="stat-sub" style="color:#854F0B;" id="p-ppu-sub">— sold</div>
+        <div class="stat-sub" style="color:#854F0B;" id="p-ppu-sub">- sold</div>
       </div>
       <div class="stat stat-purple">
         <div class="stat-lbl lbl-purple">Resets</div>
         <div class="stat-val val-purple" id="p-resets">0</div>
-        <div class="stat-sub" style="color:#3C3489;" id="p-resets-sub">—</div>
+        <div class="stat-sub" style="color:#3C3489;" id="p-resets-sub">-</div>
       </div>
       <div class="stat stat-green">
         <div class="stat-lbl lbl-green">Apps written</div>
         <div class="stat-val val-green" id="p-closed">0</div>
-        <div class="stat-sub sub-green" id="p-close-rate">—</div>
+        <div class="stat-sub sub-green" id="p-close-rate">-</div>
       </div>
     </div>
     <div class="stat-row2">
@@ -289,16 +289,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="leads-hdr">
       <div style="font-size:13px;font-weight:500;color:#1D3557;" id="client-count">Loading...</div>
       <div style="display:flex;gap:6px;">
-        <button class="add-btn" style="background:#138181;" onclick="openImportModal()">📥 Import</button>
+        <button class="add-btn" style="background:#138181;" onclick="openImportModal()">[Import] Import</button>
         <button class="add-btn" onclick="openAddClient()">+ Add lead</button>
       </div>
     </div>
     <input class="search" placeholder="Search by name or phone..." oninput="renderClients(this.value)" id="client-search">
     <div class="filter-row">
       <button class="filter-btn on" onclick="setFilter('all',this)">All</button>
-      <button class="filter-btn" onclick="setFilter('fresh',this)">🟢 Fresh</button>
-      <button class="filter-btn" onclick="setFilter('warm',this)">🟡 Warm</button>
-      <button class="filter-btn" onclick="setFilter('open',this)">⚪ Open</button>
+      <button class="filter-btn" onclick="setFilter('fresh',this)"> Fresh</button>
+      <button class="filter-btn" onclick="setFilter('warm',this)"> Warm</button>
+      <button class="filter-btn" onclick="setFilter('open',this)"> Open</button>
       <button class="filter-btn" onclick="setFilter('none',this)">0 attempts</button>
       <button class="filter-btn" onclick="setFilter('noshow',this)">No show</button>
       <button class="filter-btn" onclick="setFilter('New',this)">New</button>
@@ -317,22 +317,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div><!-- end wrap/app-main -->
 
 <div class="appt-sidebar" id="appt-sidebar">
-    <div class="appt-sidebar-title">📅 Today & upcoming</div>
+    <div class="appt-sidebar-title">[Cal] Today & upcoming</div>
     <div id="sidebar-appts"><div style="font-size:11px;color:#a0b8cc;">No appointments</div></div>
   </div>
 </div><!-- end page-layout -->
 
 <script>
-// ── SUPABASE CONFIG ──────────────────────────────────────────
+//  SUPABASE CONFIG 
 const SUPABASE_URL = 'https://mdsaqxbqmvmusdtwlgay.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_bIh3jnNzNjQ31D6KdDConw_cVJChb67';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// ── CARRIERS ─────────────────────────────────────────────────
+//  CARRIERS 
 const CARRIERS = {
   'American Amicable':['Home Certainty','Term Made Simple','Dignity Solutions','QSFP'],
   'Americo':['Term 100','Term 125','COB100','IUL','Eagle Select 1','Eagle Select 2','Eagle Select 3'],
-  'Annuity':['Annuity — TBD'],
+  'Annuity':['Annuity - TBD'],
   'Banner Life':['Beyond Term'],
   'Corebridge':['SIWL','GIWL'],
   'F&G':['IUL'],
@@ -347,87 +347,87 @@ const CARRIERS = {
 
 const SIT_REASONS = [
   {value:'first',label:'First sit'},
-  {value:'resched-noshow',label:'Reschedule — no show'},
-  {value:'resched-cancel',label:'Reschedule — client canceled'},
-  {value:'cont-ppu',label:'Continuation — PPU'},
-  {value:'cont-followup',label:'Continuation — follow up'},
-  {value:'reset',label:'Reset — new product'}
+  {value:'resched-noshow',label:'Reschedule - no show'},
+  {value:'resched-cancel',label:'Reschedule - client canceled'},
+  {value:'cont-ppu',label:'Continuation - PPU'},
+  {value:'cont-followup',label:'Continuation - follow up'},
+  {value:'reset',label:'Reset - new product'}
 ];
 
 const SEED_LEADS = [
-  {name:'Austin Maynard',phone:'614-562-5130',state:'OH',source:'CIA',address:'464 Yarmouth Ln, Columbus, OH 43228',notes:'Mortgage: $232,800 · Gender: Male · Tobacco: Y · Co-borrower: N'},
-  {name:'Candice Pennick',age:45,phone:'253-286-8078',state:'WA',source:'CIA',address:'2021 E Sherman St, Tacoma, WA 98404',notes:'Mortgage: $356,125 · Age: 45 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Movement Mortgage'},
-  {name:'Thaddeus Carney',age:74,phone:'757-254-6025',state:'VA',source:'CIA',address:'2049 Richard Ave, Hampton, VA 23664',notes:'Mortgage: $285,000 · Age: 74 · Gender: Female · Tobacco: N · Co-borrower: Y · Lender: Mutual of Omaha Mortgage'},
-  {name:'Sonia Treece',age:50,phone:'713-894-8160',state:'VA',source:'MIA',address:'708 Pile Ave, Chesapeake, VA 23320',notes:'Mortgage: $441,750 · Age: 50 · Lender: Movement Mortgage'},
-  {name:'Sahana Epari',age:27,phone:'703-628-3138',state:'VA',source:'CIA',address:'43047 Stuarts Glen Ter Unit 106, Ashburn, VA 20148',notes:'Mortgage: $413,600 · Age: 27 · Gender: Female · Tobacco: N · Co-borrower: Y · Lender: United Nations FCU'},
-  {name:'Nancy Monahan',age:81,phone:'860-930-0678',state:'CT',source:'CIA',address:'15 W Pine Way Unit 10, Plainville, CT 06062',notes:'Mortgage: $365,750 · Age: 81 · Gender: Female · Tobacco: N · Co-borrower: N'},
-  {name:'Kierra Moore',age:30,phone:'832-412-5950',state:'TX',source:'MIA',address:'17133 Pinewood Branch Dr, New Caney, TX 77357',notes:'Mortgage: $304,832 · Age: 30 · Lender: M & I Financial'},
-  {name:'Benjamin Leyk',age:38,phone:'509-724-6487',state:'WA',source:'CIA',address:'1215 S Van Marter Ln, Spokane Valley, WA 99206',notes:'Mortgage: $392,755 · Age: 38 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Canopy Mortgage'},
-  {name:'Winiford Sullivan',age:85,phone:'360-473-8054',state:'WA',source:'CIA',address:'3419 NE Cromwell St, Bremerton, WA 98311',notes:'Mortgage: $63,830 · Age: 85 · Gender: Male · Tobacco: N · Co-borrower: N · Lender: AmeriSave'},
-  {name:'Thomas Duffy',age:78,phone:'603-303-3039',state:'NH',source:'CIA',address:'28 Tuckaway Shores Rd, Nottingham, NH 03290',notes:'Mortgage: $300,000 · Age: 78 · Gender: Male · Tobacco: N · Co-borrower: N'},
-  {name:'Stacey Hairston',age:69,phone:'276-632-6241',state:'VA',source:'CIA',address:'183 Stockton Rd, Martinsville, VA 24112',notes:'Mortgage: $55,000 · Age: 69 · Gender: Male · Tobacco: N · Co-borrower: Y'},
-  {name:'Monica Farmer & Austin Farmer',phone:'980-285-0914',state:'NC',source:'MIA',address:'908 Woodside Dr, Kings Mountain, NC 28086',notes:'Mortgage: $340,714 · DOB: 1/14/2004 · Best time: Morning · Lender: Evergreen Moneysource'},
-  {name:'Lindsey King',age:35,phone:'253-880-5742',state:'WA',source:'CIA',address:'6834 20th St E Unit 4, Fife, WA 98424',notes:'Mortgage: $426,800 · Age: 35 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Cornerstone Home Lending'},
-  {name:'Karen Hapgood',age:62,phone:'603-312-3179',state:'NH',source:'CIA',address:'14 Richardson Dr, Dover, NH 03820',notes:'Mortgage: $169,000 · Age: 62 · Gender: Female · Tobacco: N · Co-borrower: Y'},
-  {name:'Joshua Henderson',age:51,phone:'757-373-2276',state:'VA',source:'CIA',address:'724 W Riverview Dr, Suffolk, VA 23434',notes:'Mortgage: $488,420 · Age: 51 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Atlantic Bay Mortgage'},
-  {name:'John Veillon',age:42,phone:'865-585-2338',state:'TN',source:'CIA',address:'123 Clare Bon Rd, Harrogate, TN 37752',notes:'Mortgage: $32,200 · Age: 42 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Lendage LLC'},
-  {name:'Jody Kittell',age:61,phone:'802-673-0718',state:'VA',source:'CIA',address:'174 Developmental Rd, Stuart, VA 24171',notes:'Mortgage: $64,000 · Age: 61 · Gender: Male · Tobacco: Y · Co-borrower: N · Lender: CF Mortgage'},
-  {name:'Joann Securo',age:72,phone:'401-575-7569',state:'RI',source:'CIA',address:'70 Stowe Ave, Riverside, RI 02915',notes:'Mortgage: $171,000 · Age: 72 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Banknewport'},
-  {name:'Jeanne Balcom',age:65,phone:'202-441-5370',state:'VA',source:'CIA',address:'2610 Midway St, Falls Church, VA 22046',notes:'Mortgage: $224,894 · Age: 65 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Rocket Mortgage'},
-  {name:'James Reavis',age:63,phone:'401-272-5504',state:'RI',source:'CIA',address:'83 Arlington Ave, Providence, RI 02906',notes:'Mortgage: $542,000 · Age: 63 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Washington Trust'},
-  {name:'Haroun Suliman',age:40,phone:'423-615-2153',state:'TN',source:'CIA',address:'3619 Gleason Dr, Chattanooga, TN 37412',notes:'Mortgage: $220,000 · Age: 40 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: American Pacific Mortgage'},
-  {name:'Gary Ball',age:81,phone:'931-854-7264',state:'TN',source:'CIA',address:'3491 Bald Knob Mountain Rd, Doyle, TN 38559',notes:'Mortgage: $56,354 · Age: 81 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Freedom Mortgage'},
-  {name:'Elizabeth Pena',age:54,phone:'956-645-5471',state:'TX',source:'MIA',address:'402 Dutour Ct, Laredo, TX 78045',notes:'Mortgage: $204,000 · DOB: 1/23/1972 · Best time: Evening · Lender: Carrington Mortgage'},
-  {name:'Dimitry Paskar',age:21,phone:'971-229-9194',state:'WA',source:'CIA',address:'513 NW 30th Ave, Battle Ground, WA 98604',notes:'Mortgage: $411,283 · Age: 21 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Intelliloan'},
-  {name:'David Tucker',age:70,phone:'253-315-1345',state:'WA',source:'CIA',address:'4308 S J St, Tacoma, WA 98418',notes:'Mortgage: $286,500 · Age: 70 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Rocket Mortgage'},
-  {name:'Daniel Aisenberg',age:33,phone:'857-615-7456',state:'NH',source:'CIA',address:'51 Riddle St, Manchester, NH 03102',notes:'Mortgage: $471,145 · Age: 33 · Gender: Male · Tobacco: Y · Co-borrower: N'},
-  {name:'Carol Nelson',age:64,phone:'401-376-3225',state:'RI',source:'CIA',address:'56 Coyle Ave, Rumford, RI 02916',notes:'Mortgage: $100,000 · Age: 64 · Gender: Female · Tobacco: Y · Co-borrower: N'},
-  {name:'Briana Gooding & Lawrence Ricci',age:31,phone:'401-465-4324',state:'RI',source:'MIA',address:'638 Plainfield Pike, Scituate, RI 02857',notes:'Mortgage: $379,990 · DOB: 10/22/1994 · Gender: M · Best time: Evening · Lender: Paramount Residential'},
-  {name:'Bebe Serrenco',age:62,phone:'310-710-2278',state:'NC',source:'MIA',address:'503 Cedar St, Eden, NC 27288',notes:'Mortgage: $136,300 · Age: 62 · Gender: Female · DOB: 8/27/1957'},
-  {name:'Andrew Lufkin',age:45,phone:'207-441-1111',state:'ME',source:'MIA',address:'4 Beacon St, Livermore Falls, ME 04254',notes:'Mortgage: $298,493 · Age: 45 · Lender: CMG HM LNS'},
-  {name:'Tryce Nunnelly',age:68,phone:'774-510-8450',state:'MA',source:'CIA',address:'298 Grinnell St, Fall River, MA 02721',notes:'Mortgage: $188,000 · Age: 68 · Gender: Male · Tobacco: Y · Co-borrower: N'},
-  {name:'Paul Mcdonough',age:65,phone:'617-592-1020',state:'MA',source:'CIA',address:'798 Ware St, Mansfield, MA 02048',notes:'Mortgage: $499,000 · Age: 65 · Gender: Male · Tobacco: N · Co-borrower: Y'},
-  {name:'Kelhyn Pesantez',age:30,phone:'203-964-7116',state:'MA',source:'CIA',address:'31 Whiting St, North Attleboro, MA 02760',notes:'Mortgage: $555,038 · Age: 30 · Gender: Female · Tobacco: N · Co-borrower: N'},
-  {name:'James Lyons',age:55,phone:'757-813-3846',state:'VA',source:'CIA',address:'225 Hampton Roads Ave, Hampton, VA 23661',notes:'Mortgage: $123,000 · Age: 55 · Gender: Male · Tobacco: N · Co-borrower: N · Lender: Sun West Mortgage'},
-  {name:'Elyse Disciullo',age:69,phone:'781-718-5151',state:'MA',source:'CIA',address:'57 Seconsett Island Rd, Mashpee, MA 02649',notes:'Mortgage: $585,000 · Age: 69 · Gender: Female · Tobacco: N · Co-borrower: N'},
-  {name:'Dennis Emily',age:74,phone:'941-451-3894',state:'TN',source:'CIA',address:'210 Indian Rock Trl, Jamestown, TN 38556',notes:'Mortgage: $296,000 · Age: 74 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Nexa Mortgage'},
-  {name:'Quinton Owens',phone:'804-988-3159',state:'VA',source:'CIA',address:'4031 Sunny Creek Dr, Chesterfield, VA 23832',notes:'Mortgage: $378,026 · Gender: Male · Tobacco: N · Co-borrower: Y'},
-  {name:'Timothy Kaestner',age:63,phone:'817-938-3321',state:'TX',source:'MIA',address:'1055 Miller Rd, Azle, TX 76020',notes:'Mortgage: $467,032 · Age: 63 · Lender: Sfmc LP'},
-  {name:'Nathan Cavazos',age:38,phone:'361-207-0676',state:'TX',source:'MIA',address:'102 Saltillo Dr, Alice, TX 78332',notes:'Mortgage: $398,100 · Age: 38 · Lender: First Community Bank'},
-  {name:'Juan Sierra',phone:'425-787-0551',state:'WA',source:'CIA',address:'2118 143rd Pl SW, Lynnwood, WA 98087',notes:'Mortgage: $375,000 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Homebridge Financial'},
-  {name:'Billy Benavides',phone:'979-282-1136',state:'TX',source:'MIA',address:'2025 Fm 1157, Ganado, TX 77962',notes:'Mortgage: $61,500 · Gender: Male · Co-borrower: N · Lender: Capital Farm Credit'},
-  {name:'Angela Jones',age:56,phone:'760-420-2179',state:'TN',source:'MIA',address:'428 Ward Dr, Maryville, TN 37801',notes:'Mortgage: $75,000 · Age: 56'},
-  {name:'William Silva',phone:'603-809-8565',state:'NH',source:'CIA',address:'29 Hamburg St, Manchester, NH 03102',notes:'Mortgage: $387,000 · Gender: Male · Tobacco: N · Co-borrower: N'},
-  {name:'Thomas Dalton',phone:'425-387-7333',state:'WA',source:'CIA',address:'956 Rowe Rd, Camano Island, WA 98282',notes:'Mortgage: $125,000 · Gender: Female · Tobacco: N · Co-borrower: Y · Lender: Horizon Credit Union'},
-  {name:'Terry Saffioti',phone:'860-625-1559',state:'CT',source:'CIA',address:'60 Rogers Lake Trl, Old Lyme, CT 06371',notes:'Mortgage: $100,000 · Gender: Male · Tobacco: N · Co-borrower: Y'},
-  {name:'Terrence Troope',phone:'317-854-2300',state:'NC',source:'CIA',address:'3703 Cessna Way, Wilson, NC 27896',notes:'Mortgage: $386,024 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Freedom Mortgage'},
-  {name:'Susan Viens',phone:'508-309-5516',state:'MA',source:'CIA',address:'16 Sabbatt Rd, Pocasset, MA 02559',notes:'Mortgage: $362,738 · Gender: Female · Tobacco: N · Co-borrower: N'},
-  {name:'Sharonette Houchens',phone:'804-874-2839',state:'VA',source:'CIA',address:'3846 Dominion Townes Cir, Richmond, VA 23223',notes:'Mortgage: $240,089 · Gender: Female · Tobacco: N · Co-borrower: Y · Lender: PennyMac'},
-  {name:'Ryan Connarton',phone:'603-520-9036',state:'NH',source:'CIA',address:'5 Holly Ln, Meredith, NH 03253',notes:'Mortgage: $232,707 · Gender: Male · Tobacco: Y · Co-borrower: N'},
-  {name:'Peter Thompson',phone:'603-387-4269',state:'NH',source:'CIA',address:'47 Sage Dr, Tilton, NH 03276',notes:'Mortgage: $184,000 · Gender: Male · Tobacco: N · Co-borrower: Y'},
-  {name:'Nikolas Elevitch',phone:'959-229-8791',state:'CT',source:'CIA',address:'24 Calhoun St, Washington Depot, CT 06794',notes:'Mortgage: $247,000 · Gender: Male · Tobacco: N · Co-borrower: N'},
-  {name:'Michael Hussey',age:64,phone:'774-272-2152',state:'MA',source:'MIA',address:'39 Out of Bounds Dr, South Yarmouth, MA 02664',notes:'Mortgage: $750,000 · Age: 64 · Email: mjhuz@yahoo.com'},
-  {name:'Martin Gonzalez',phone:'210-316-3891',state:'TX',source:'CIA',address:'859 Via Alta Ln, El Paso, TX 79912',notes:'Mortgage: $575,000 · Gender: Male · Tobacco: Y · Co-borrower: Y · Lender: Paramount Residential'},
-  {name:'Jodi Kirk',phone:'781-558-0721',state:'MA',source:'MIA',address:'945 Riverside Dr Apt 3b, Methuen, MA 01844',notes:'Mortgage: $256,125 · Gender: Female · Co-borrower: N'},
-  {name:'Joan Liberto',phone:'832-240-8972',state:'TX',source:'MIA',address:'6433 Autumn Equinox Dr, Houston, TX 77048',notes:'Mortgage: $134,265 · Gender: Female · Co-borrower: Y · Co-borrower age: 70 · Lender: Loandepot'},
-  {name:'Ellen Matheson',phone:'603-244-8088',state:'NH',source:'CIA',address:'2 Vine St, Franklin, NH 03235',notes:'Mortgage: $95,500 · Gender: Female · Tobacco: N · Co-borrower: N'},
-  {name:'Donna Sormanti',phone:'401-944-4535',state:'RI',source:'CIA',address:'235 Morgan Ave Apt 12, Johnston, RI 02919',notes:'Mortgage: $157,100 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: PennyMac'},
-  {name:'Daniel Obrien',phone:'781-477-2922',state:'MA',source:'CIA',address:'57 Buckwood Dr, South Yarmouth, MA 02664',notes:'Mortgage: $400,000 · Gender: Male · Tobacco: N · Co-borrower: Y'},
-  {name:'Daniel Collette',phone:'401-500-5633',state:'RI',source:'CIA',address:'109 Hawksley Ave, Warwick, RI 02889',notes:'Mortgage: $364,200 · Gender: Male · Tobacco: N · Co-borrower: N · Lender: PennyMac'},
-  {name:'Craig Casano',phone:'774-269-2935',state:'MA',source:'CIA',address:'19 Glacier Way, Buzzards Bay, MA 02532',notes:'Mortgage: $500,000 · Gender: Male · Tobacco: N · Co-borrower: N'},
-  {name:'Corey Wilkerson',phone:'919-737-3800',state:'NH',source:'CIA',address:'162 Lakeside Oaks Dr, Barrington, NH 03825',notes:'Mortgage: $607,788 · Gender: Male · Tobacco: N · Co-borrower: N'},
-  {name:'Briana Gooding',age:31,phone:'401-465-4324',state:'RI',source:'CIA',address:'638 Plainfield Pike, Scituate, RI 02857',notes:'Mortgage: $379,990 · Gender: Female · Tobacco: N · Co-borrower: Y · Lender: Paramount Residential'},
-  {name:'Barbara Lemay',phone:'401-680-3421',state:'RI',source:'CIA',address:'51 Sibyl St, Providence, RI 02909',notes:'Mortgage: $277,800 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Rocket Mortgage'},
-  {name:'Austin Hooie',phone:'256-221-3470',state:'TN',source:'CIA',address:'150 Westwood Cir, Ripley, TN 38063',notes:'Mortgage: $254,308 · Gender: Male · Tobacco: Y · Co-borrower: N · Lender: Huntington National Bank'},
-  {name:'Andrew Pascual',age:22,phone:'864-684-7203',state:'SC',source:'MIA',address:'7 Townsend St, Laurens, SC 29360',notes:'Mortgage: $245,471 · Age: 22'},
-  {name:'Albert Nolli',phone:'508-681-0218',state:'MA',source:'CIA',address:'3 Widow Coombs Walk, Sandwich, MA 02563',notes:'Mortgage: $65,000 · Gender: Female · Tobacco: N · Co-borrower: N'},
-  {name:'Wilson Celestin',phone:'508-598-8081',state:'MA',source:'CIA',address:'36 Fordney St, Fall River, MA 02720',notes:'Mortgage: $484,070 · Gender: Male · Tobacco: N · Co-borrower: N'},
-  {name:'Kimberly Reid',phone:'702-250-2557',state:'TX',source:'CIA',address:'23817 Glowing Embers Dr, Elgin, TX 78621',notes:'Mortgage: $217,968 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Lennar Mortgage'},
-  {name:'William Sims',age:60,phone:'701-801-3797',state:'TN',source:'MIA',address:'537 King Ave, Memphis, TN 38109',notes:'Mortgage: $68,000 · DOB: 6/31/1965 · Gender: Male · Best time: Any'},
-  {name:'John Fernandes',phone:'203-888-8888',state:'CT',source:'CIA',address:'429 Quaker Farms Rd, Oxford, CT 06478',notes:'Mortgage: $600,000 · Gender: Female · Tobacco: Y · Co-borrower: N'}
+  {name:'Austin Maynard',phone:'614-562-5130',state:'OH',source:'CIA',address:'464 Yarmouth Ln, Columbus, OH 43228',notes:'Mortgage: $232,800 - Gender: Male - Tobacco: Y - Co-borrower: N'},
+  {name:'Candice Pennick',age:45,phone:'253-286-8078',state:'WA',source:'CIA',address:'2021 E Sherman St, Tacoma, WA 98404',notes:'Mortgage: $356,125 - Age: 45 - Gender: Female - Tobacco: N - Co-borrower: N - Lender: Movement Mortgage'},
+  {name:'Thaddeus Carney',age:74,phone:'757-254-6025',state:'VA',source:'CIA',address:'2049 Richard Ave, Hampton, VA 23664',notes:'Mortgage: $285,000 - Age: 74 - Gender: Female - Tobacco: N - Co-borrower: Y - Lender: Mutual of Omaha Mortgage'},
+  {name:'Sonia Treece',age:50,phone:'713-894-8160',state:'VA',source:'MIA',address:'708 Pile Ave, Chesapeake, VA 23320',notes:'Mortgage: $441,750 - Age: 50 - Lender: Movement Mortgage'},
+  {name:'Sahana Epari',age:27,phone:'703-628-3138',state:'VA',source:'CIA',address:'43047 Stuarts Glen Ter Unit 106, Ashburn, VA 20148',notes:'Mortgage: $413,600 - Age: 27 - Gender: Female - Tobacco: N - Co-borrower: Y - Lender: United Nations FCU'},
+  {name:'Nancy Monahan',age:81,phone:'860-930-0678',state:'CT',source:'CIA',address:'15 W Pine Way Unit 10, Plainville, CT 06062',notes:'Mortgage: $365,750 - Age: 81 - Gender: Female - Tobacco: N - Co-borrower: N'},
+  {name:'Kierra Moore',age:30,phone:'832-412-5950',state:'TX',source:'MIA',address:'17133 Pinewood Branch Dr, New Caney, TX 77357',notes:'Mortgage: $304,832 - Age: 30 - Lender: M & I Financial'},
+  {name:'Benjamin Leyk',age:38,phone:'509-724-6487',state:'WA',source:'CIA',address:'1215 S Van Marter Ln, Spokane Valley, WA 99206',notes:'Mortgage: $392,755 - Age: 38 - Gender: Male - Tobacco: N - Co-borrower: Y - Lender: Canopy Mortgage'},
+  {name:'Winiford Sullivan',age:85,phone:'360-473-8054',state:'WA',source:'CIA',address:'3419 NE Cromwell St, Bremerton, WA 98311',notes:'Mortgage: $63,830 - Age: 85 - Gender: Male - Tobacco: N - Co-borrower: N - Lender: AmeriSave'},
+  {name:'Thomas Duffy',age:78,phone:'603-303-3039',state:'NH',source:'CIA',address:'28 Tuckaway Shores Rd, Nottingham, NH 03290',notes:'Mortgage: $300,000 - Age: 78 - Gender: Male - Tobacco: N - Co-borrower: N'},
+  {name:'Stacey Hairston',age:69,phone:'276-632-6241',state:'VA',source:'CIA',address:'183 Stockton Rd, Martinsville, VA 24112',notes:'Mortgage: $55,000 - Age: 69 - Gender: Male - Tobacco: N - Co-borrower: Y'},
+  {name:'Monica Farmer & Austin Farmer',phone:'980-285-0914',state:'NC',source:'MIA',address:'908 Woodside Dr, Kings Mountain, NC 28086',notes:'Mortgage: $340,714 - DOB: 1/14/2004 - Best time: Morning - Lender: Evergreen Moneysource'},
+  {name:'Lindsey King',age:35,phone:'253-880-5742',state:'WA',source:'CIA',address:'6834 20th St E Unit 4, Fife, WA 98424',notes:'Mortgage: $426,800 - Age: 35 - Gender: Female - Tobacco: N - Co-borrower: N - Lender: Cornerstone Home Lending'},
+  {name:'Karen Hapgood',age:62,phone:'603-312-3179',state:'NH',source:'CIA',address:'14 Richardson Dr, Dover, NH 03820',notes:'Mortgage: $169,000 - Age: 62 - Gender: Female - Tobacco: N - Co-borrower: Y'},
+  {name:'Joshua Henderson',age:51,phone:'757-373-2276',state:'VA',source:'CIA',address:'724 W Riverview Dr, Suffolk, VA 23434',notes:'Mortgage: $488,420 - Age: 51 - Gender: Male - Tobacco: N - Co-borrower: Y - Lender: Atlantic Bay Mortgage'},
+  {name:'John Veillon',age:42,phone:'865-585-2338',state:'TN',source:'CIA',address:'123 Clare Bon Rd, Harrogate, TN 37752',notes:'Mortgage: $32,200 - Age: 42 - Gender: Male - Tobacco: N - Co-borrower: Y - Lender: Lendage LLC'},
+  {name:'Jody Kittell',age:61,phone:'802-673-0718',state:'VA',source:'CIA',address:'174 Developmental Rd, Stuart, VA 24171',notes:'Mortgage: $64,000 - Age: 61 - Gender: Male - Tobacco: Y - Co-borrower: N - Lender: CF Mortgage'},
+  {name:'Joann Securo',age:72,phone:'401-575-7569',state:'RI',source:'CIA',address:'70 Stowe Ave, Riverside, RI 02915',notes:'Mortgage: $171,000 - Age: 72 - Gender: Female - Tobacco: N - Co-borrower: N - Lender: Banknewport'},
+  {name:'Jeanne Balcom',age:65,phone:'202-441-5370',state:'VA',source:'CIA',address:'2610 Midway St, Falls Church, VA 22046',notes:'Mortgage: $224,894 - Age: 65 - Gender: Female - Tobacco: N - Co-borrower: N - Lender: Rocket Mortgage'},
+  {name:'James Reavis',age:63,phone:'401-272-5504',state:'RI',source:'CIA',address:'83 Arlington Ave, Providence, RI 02906',notes:'Mortgage: $542,000 - Age: 63 - Gender: Male - Tobacco: N - Co-borrower: Y - Lender: Washington Trust'},
+  {name:'Haroun Suliman',age:40,phone:'423-615-2153',state:'TN',source:'CIA',address:'3619 Gleason Dr, Chattanooga, TN 37412',notes:'Mortgage: $220,000 - Age: 40 - Gender: Male - Tobacco: N - Co-borrower: Y - Lender: American Pacific Mortgage'},
+  {name:'Gary Ball',age:81,phone:'931-854-7264',state:'TN',source:'CIA',address:'3491 Bald Knob Mountain Rd, Doyle, TN 38559',notes:'Mortgage: $56,354 - Age: 81 - Gender: Male - Tobacco: N - Co-borrower: Y - Lender: Freedom Mortgage'},
+  {name:'Elizabeth Pena',age:54,phone:'956-645-5471',state:'TX',source:'MIA',address:'402 Dutour Ct, Laredo, TX 78045',notes:'Mortgage: $204,000 - DOB: 1/23/1972 - Best time: Evening - Lender: Carrington Mortgage'},
+  {name:'Dimitry Paskar',age:21,phone:'971-229-9194',state:'WA',source:'CIA',address:'513 NW 30th Ave, Battle Ground, WA 98604',notes:'Mortgage: $411,283 - Age: 21 - Gender: Male - Tobacco: N - Co-borrower: Y - Lender: Intelliloan'},
+  {name:'David Tucker',age:70,phone:'253-315-1345',state:'WA',source:'CIA',address:'4308 S J St, Tacoma, WA 98418',notes:'Mortgage: $286,500 - Age: 70 - Gender: Male - Tobacco: N - Co-borrower: Y - Lender: Rocket Mortgage'},
+  {name:'Daniel Aisenberg',age:33,phone:'857-615-7456',state:'NH',source:'CIA',address:'51 Riddle St, Manchester, NH 03102',notes:'Mortgage: $471,145 - Age: 33 - Gender: Male - Tobacco: Y - Co-borrower: N'},
+  {name:'Carol Nelson',age:64,phone:'401-376-3225',state:'RI',source:'CIA',address:'56 Coyle Ave, Rumford, RI 02916',notes:'Mortgage: $100,000 - Age: 64 - Gender: Female - Tobacco: Y - Co-borrower: N'},
+  {name:'Briana Gooding & Lawrence Ricci',age:31,phone:'401-465-4324',state:'RI',source:'MIA',address:'638 Plainfield Pike, Scituate, RI 02857',notes:'Mortgage: $379,990 - DOB: 10/22/1994 - Gender: M - Best time: Evening - Lender: Paramount Residential'},
+  {name:'Bebe Serrenco',age:62,phone:'310-710-2278',state:'NC',source:'MIA',address:'503 Cedar St, Eden, NC 27288',notes:'Mortgage: $136,300 - Age: 62 - Gender: Female - DOB: 8/27/1957'},
+  {name:'Andrew Lufkin',age:45,phone:'207-441-1111',state:'ME',source:'MIA',address:'4 Beacon St, Livermore Falls, ME 04254',notes:'Mortgage: $298,493 - Age: 45 - Lender: CMG HM LNS'},
+  {name:'Tryce Nunnelly',age:68,phone:'774-510-8450',state:'MA',source:'CIA',address:'298 Grinnell St, Fall River, MA 02721',notes:'Mortgage: $188,000 - Age: 68 - Gender: Male - Tobacco: Y - Co-borrower: N'},
+  {name:'Paul Mcdonough',age:65,phone:'617-592-1020',state:'MA',source:'CIA',address:'798 Ware St, Mansfield, MA 02048',notes:'Mortgage: $499,000 - Age: 65 - Gender: Male - Tobacco: N - Co-borrower: Y'},
+  {name:'Kelhyn Pesantez',age:30,phone:'203-964-7116',state:'MA',source:'CIA',address:'31 Whiting St, North Attleboro, MA 02760',notes:'Mortgage: $555,038 - Age: 30 - Gender: Female - Tobacco: N - Co-borrower: N'},
+  {name:'James Lyons',age:55,phone:'757-813-3846',state:'VA',source:'CIA',address:'225 Hampton Roads Ave, Hampton, VA 23661',notes:'Mortgage: $123,000 - Age: 55 - Gender: Male - Tobacco: N - Co-borrower: N - Lender: Sun West Mortgage'},
+  {name:'Elyse Disciullo',age:69,phone:'781-718-5151',state:'MA',source:'CIA',address:'57 Seconsett Island Rd, Mashpee, MA 02649',notes:'Mortgage: $585,000 - Age: 69 - Gender: Female - Tobacco: N - Co-borrower: N'},
+  {name:'Dennis Emily',age:74,phone:'941-451-3894',state:'TN',source:'CIA',address:'210 Indian Rock Trl, Jamestown, TN 38556',notes:'Mortgage: $296,000 - Age: 74 - Gender: Male - Tobacco: N - Co-borrower: Y - Lender: Nexa Mortgage'},
+  {name:'Quinton Owens',phone:'804-988-3159',state:'VA',source:'CIA',address:'4031 Sunny Creek Dr, Chesterfield, VA 23832',notes:'Mortgage: $378,026 - Gender: Male - Tobacco: N - Co-borrower: Y'},
+  {name:'Timothy Kaestner',age:63,phone:'817-938-3321',state:'TX',source:'MIA',address:'1055 Miller Rd, Azle, TX 76020',notes:'Mortgage: $467,032 - Age: 63 - Lender: Sfmc LP'},
+  {name:'Nathan Cavazos',age:38,phone:'361-207-0676',state:'TX',source:'MIA',address:'102 Saltillo Dr, Alice, TX 78332',notes:'Mortgage: $398,100 - Age: 38 - Lender: First Community Bank'},
+  {name:'Juan Sierra',phone:'425-787-0551',state:'WA',source:'CIA',address:'2118 143rd Pl SW, Lynnwood, WA 98087',notes:'Mortgage: $375,000 - Gender: Female - Tobacco: N - Co-borrower: N - Lender: Homebridge Financial'},
+  {name:'Billy Benavides',phone:'979-282-1136',state:'TX',source:'MIA',address:'2025 Fm 1157, Ganado, TX 77962',notes:'Mortgage: $61,500 - Gender: Male - Co-borrower: N - Lender: Capital Farm Credit'},
+  {name:'Angela Jones',age:56,phone:'760-420-2179',state:'TN',source:'MIA',address:'428 Ward Dr, Maryville, TN 37801',notes:'Mortgage: $75,000 - Age: 56'},
+  {name:'William Silva',phone:'603-809-8565',state:'NH',source:'CIA',address:'29 Hamburg St, Manchester, NH 03102',notes:'Mortgage: $387,000 - Gender: Male - Tobacco: N - Co-borrower: N'},
+  {name:'Thomas Dalton',phone:'425-387-7333',state:'WA',source:'CIA',address:'956 Rowe Rd, Camano Island, WA 98282',notes:'Mortgage: $125,000 - Gender: Female - Tobacco: N - Co-borrower: Y - Lender: Horizon Credit Union'},
+  {name:'Terry Saffioti',phone:'860-625-1559',state:'CT',source:'CIA',address:'60 Rogers Lake Trl, Old Lyme, CT 06371',notes:'Mortgage: $100,000 - Gender: Male - Tobacco: N - Co-borrower: Y'},
+  {name:'Terrence Troope',phone:'317-854-2300',state:'NC',source:'CIA',address:'3703 Cessna Way, Wilson, NC 27896',notes:'Mortgage: $386,024 - Gender: Male - Tobacco: N - Co-borrower: Y - Lender: Freedom Mortgage'},
+  {name:'Susan Viens',phone:'508-309-5516',state:'MA',source:'CIA',address:'16 Sabbatt Rd, Pocasset, MA 02559',notes:'Mortgage: $362,738 - Gender: Female - Tobacco: N - Co-borrower: N'},
+  {name:'Sharonette Houchens',phone:'804-874-2839',state:'VA',source:'CIA',address:'3846 Dominion Townes Cir, Richmond, VA 23223',notes:'Mortgage: $240,089 - Gender: Female - Tobacco: N - Co-borrower: Y - Lender: PennyMac'},
+  {name:'Ryan Connarton',phone:'603-520-9036',state:'NH',source:'CIA',address:'5 Holly Ln, Meredith, NH 03253',notes:'Mortgage: $232,707 - Gender: Male - Tobacco: Y - Co-borrower: N'},
+  {name:'Peter Thompson',phone:'603-387-4269',state:'NH',source:'CIA',address:'47 Sage Dr, Tilton, NH 03276',notes:'Mortgage: $184,000 - Gender: Male - Tobacco: N - Co-borrower: Y'},
+  {name:'Nikolas Elevitch',phone:'959-229-8791',state:'CT',source:'CIA',address:'24 Calhoun St, Washington Depot, CT 06794',notes:'Mortgage: $247,000 - Gender: Male - Tobacco: N - Co-borrower: N'},
+  {name:'Michael Hussey',age:64,phone:'774-272-2152',state:'MA',source:'MIA',address:'39 Out of Bounds Dr, South Yarmouth, MA 02664',notes:'Mortgage: $750,000 - Age: 64 - Email: mjhuz@yahoo.com'},
+  {name:'Martin Gonzalez',phone:'210-316-3891',state:'TX',source:'CIA',address:'859 Via Alta Ln, El Paso, TX 79912',notes:'Mortgage: $575,000 - Gender: Male - Tobacco: Y - Co-borrower: Y - Lender: Paramount Residential'},
+  {name:'Jodi Kirk',phone:'781-558-0721',state:'MA',source:'MIA',address:'945 Riverside Dr Apt 3b, Methuen, MA 01844',notes:'Mortgage: $256,125 - Gender: Female - Co-borrower: N'},
+  {name:'Joan Liberto',phone:'832-240-8972',state:'TX',source:'MIA',address:'6433 Autumn Equinox Dr, Houston, TX 77048',notes:'Mortgage: $134,265 - Gender: Female - Co-borrower: Y - Co-borrower age: 70 - Lender: Loandepot'},
+  {name:'Ellen Matheson',phone:'603-244-8088',state:'NH',source:'CIA',address:'2 Vine St, Franklin, NH 03235',notes:'Mortgage: $95,500 - Gender: Female - Tobacco: N - Co-borrower: N'},
+  {name:'Donna Sormanti',phone:'401-944-4535',state:'RI',source:'CIA',address:'235 Morgan Ave Apt 12, Johnston, RI 02919',notes:'Mortgage: $157,100 - Gender: Female - Tobacco: N - Co-borrower: N - Lender: PennyMac'},
+  {name:'Daniel Obrien',phone:'781-477-2922',state:'MA',source:'CIA',address:'57 Buckwood Dr, South Yarmouth, MA 02664',notes:'Mortgage: $400,000 - Gender: Male - Tobacco: N - Co-borrower: Y'},
+  {name:'Daniel Collette',phone:'401-500-5633',state:'RI',source:'CIA',address:'109 Hawksley Ave, Warwick, RI 02889',notes:'Mortgage: $364,200 - Gender: Male - Tobacco: N - Co-borrower: N - Lender: PennyMac'},
+  {name:'Craig Casano',phone:'774-269-2935',state:'MA',source:'CIA',address:'19 Glacier Way, Buzzards Bay, MA 02532',notes:'Mortgage: $500,000 - Gender: Male - Tobacco: N - Co-borrower: N'},
+  {name:'Corey Wilkerson',phone:'919-737-3800',state:'NH',source:'CIA',address:'162 Lakeside Oaks Dr, Barrington, NH 03825',notes:'Mortgage: $607,788 - Gender: Male - Tobacco: N - Co-borrower: N'},
+  {name:'Briana Gooding',age:31,phone:'401-465-4324',state:'RI',source:'CIA',address:'638 Plainfield Pike, Scituate, RI 02857',notes:'Mortgage: $379,990 - Gender: Female - Tobacco: N - Co-borrower: Y - Lender: Paramount Residential'},
+  {name:'Barbara Lemay',phone:'401-680-3421',state:'RI',source:'CIA',address:'51 Sibyl St, Providence, RI 02909',notes:'Mortgage: $277,800 - Gender: Female - Tobacco: N - Co-borrower: N - Lender: Rocket Mortgage'},
+  {name:'Austin Hooie',phone:'256-221-3470',state:'TN',source:'CIA',address:'150 Westwood Cir, Ripley, TN 38063',notes:'Mortgage: $254,308 - Gender: Male - Tobacco: Y - Co-borrower: N - Lender: Huntington National Bank'},
+  {name:'Andrew Pascual',age:22,phone:'864-684-7203',state:'SC',source:'MIA',address:'7 Townsend St, Laurens, SC 29360',notes:'Mortgage: $245,471 - Age: 22'},
+  {name:'Albert Nolli',phone:'508-681-0218',state:'MA',source:'CIA',address:'3 Widow Coombs Walk, Sandwich, MA 02563',notes:'Mortgage: $65,000 - Gender: Female - Tobacco: N - Co-borrower: N'},
+  {name:'Wilson Celestin',phone:'508-598-8081',state:'MA',source:'CIA',address:'36 Fordney St, Fall River, MA 02720',notes:'Mortgage: $484,070 - Gender: Male - Tobacco: N - Co-borrower: N'},
+  {name:'Kimberly Reid',phone:'702-250-2557',state:'TX',source:'CIA',address:'23817 Glowing Embers Dr, Elgin, TX 78621',notes:'Mortgage: $217,968 - Gender: Female - Tobacco: N - Co-borrower: N - Lender: Lennar Mortgage'},
+  {name:'William Sims',age:60,phone:'701-801-3797',state:'TN',source:'MIA',address:'537 King Ave, Memphis, TN 38109',notes:'Mortgage: $68,000 - DOB: 6/31/1965 - Gender: Male - Best time: Any'},
+  {name:'John Fernandes',phone:'203-888-8888',state:'CT',source:'CIA',address:'429 Quaker Farms Rd, Oxford, CT 06478',notes:'Mortgage: $600,000 - Gender: Female - Tobacco: Y - Co-borrower: N'}
 ];
 
-// ── STATE ────────────────────────────────────────────────────
+//  STATE 
 let clients = [];
 let stats = [];
 let view = 'day';
@@ -437,7 +437,7 @@ let seeded = false;
 
 document.getElementById('hdr-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
 
-// ── INIT ─────────────────────────────────────────────────────
+//  INIT 
 async function init() {
   showSync('Loading your data...');
   await loadClients();
@@ -538,7 +538,7 @@ function hideSync() {
   document.getElementById('sync-bar').style.display = 'none';
 }
 
-// ── HELPERS ──────────────────────────────────────────────────
+//  HELPERS 
 const FRESH_DAYS = 17;
 function isFresh(c) {
   const d = c.assigned_date || c.created_at;
@@ -547,12 +547,12 @@ function isFresh(c) {
 }
 
 function fmt(n) { return n >= 1000 ? '$' + Math.round(n/100)/10 + 'k' : '$' + n; }
-function pct(n, d) { return d > 0 ? Math.round((n/d)*100) + '%' : '—'; }
+function pct(n, d) { return d > 0 ? Math.round((n/d)*100) + '%' : '-'; }
 function todayStr() { return new Date().toISOString().slice(0,10); }
 
-// ── CALENDAR HELPERS ─────────────────────────────────────────
-// Production week: Saturday → Friday
-// Dialing week:    Friday → Thursday (one day earlier)
+//  CALENDAR HELPERS 
+// Production week: Saturday -> Friday
+// Dialing week:    Friday -> Thursday (one day earlier)
 // Production month: starts the Saturday on/after the 1st of the calendar month
 //   (specifically: the Saturday after the last Friday of the prior calendar month)
 // Dialing month: one day earlier than production month
@@ -625,21 +625,21 @@ function getPeriodBounds(type) {
 
   } else if (view === 'week') {
     if (isActivity) {
-      // Activity week: Friday → Thursday
+      // Activity week: Friday -> Thursday
       const dow = now.getDay(); // 0=Sun,5=Fri
       const diffToFri = (dow >= 5) ? dow - 5 : dow + 2;
       const fri = new Date(now); fri.setDate(now.getDate() - diffToFri + periodOffset*7); fri.setHours(0,0,0,0);
       const thu = new Date(fri); thu.setDate(fri.getDate()+6); thu.setHours(23,59,59,999);
       start = fri; end = thu;
-      label = periodOffset===0?'This week':periodOffset===-1?'Last week':fri.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+thu.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+      label = periodOffset===0?'This week':periodOffset===-1?'Last week':fri.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' - '+thu.toLocaleDateString('en-US',{month:'short',day:'numeric'});
     } else {
-      // Production week: Saturday → Friday
+      // Production week: Saturday -> Friday
       const dow = now.getDay();
       const diffToSat = (dow === 6) ? 0 : dow + 1;
       const sat = new Date(now); sat.setDate(now.getDate() - diffToSat + periodOffset*7); sat.setHours(0,0,0,0);
       const fri = new Date(sat); fri.setDate(sat.getDate()+6); fri.setHours(23,59,59,999);
       start = sat; end = fri;
-      label = periodOffset===0?'This week':periodOffset===-1?'Last week':sat.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+fri.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+      label = periodOffset===0?'This week':periodOffset===-1?'Last week':sat.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' - '+fri.toLocaleDateString('en-US',{month:'short',day:'numeric'});
     }
 
   } else if (view === 'month') {
@@ -690,7 +690,7 @@ function getPeriodBounds(type) {
 function setView(v, btn) { view=v; periodOffset=0; document.querySelectorAll('.pill').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); renderScore(); }
 function shiftPeriod(d) { periodOffset+=d; renderScore(); }
 
-// ── STATS ────────────────────────────────────────────────────
+//  STATS 
 async function addStat(key, n) {
   const row = { stat_key: key, value: n, recorded_at: new Date().toISOString() };
   const { data } = await sb.from('stats').insert([row]).select();
@@ -725,13 +725,13 @@ function startEdit(key, theme) {
   inp.addEventListener('keydown', e => { if(e.key==='Enter') inp.blur(); if(e.key==='Escape'){inp.replaceWith(el);renderScore();} });
 }
 
-// ── SCOREBOARD ───────────────────────────────────────────────
+//  SCOREBOARD 
 function renderScore() {
   const {start: aStart, end: aEnd, label} = getPeriodBounds('activity');
   const {start: pStart, end: pEnd} = getPeriodBounds('production');
   document.getElementById('period-label').textContent = label;
 
-  // ── DIALING (activity calendar: Fri→Thu) ──
+  //  DIALING (activity calendar: Fri->Thu) 
   const dials=sumStat('dials',aStart,aEnd), convos=sumStat('convos',aStart,aEnd);
   const appts=sumStat('appts',aStart,aEnd), callbacks=sumStat('callbacks',aStart,aEnd), dead=sumStat('dead',aStart,aEnd);
   const resolved = appts + dead;
@@ -745,9 +745,9 @@ function renderScore() {
     return d >= aStart && d <= aEnd;
   }).length;
   document.getElementById('s-resolved-pct').textContent = resolved + ' resolved / ' + assignedInPeriod + ' assigned';
-  document.getElementById('s-resolved-fresh').textContent = assignedInPeriod > 0 ? pct(resolved, assignedInPeriod) + ' resolution rate' : '—';
+  document.getElementById('s-resolved-fresh').textContent = assignedInPeriod > 0 ? pct(resolved, assignedInPeriod) + ' resolution rate' : '-';
 
-  // ── PRODUCTION (production calendar: Sat→Fri) ──
+  //  PRODUCTION (production calendar: Sat->Fri) 
   const periodAppts = clients.filter(c => {
     if (!c.appt_datetime) return false;
     const d = new Date(c.appt_datetime);
@@ -788,7 +788,7 @@ function renderScore() {
   document.getElementById('p-showed').textContent = totalShowed;
   document.getElementById('p-sit-rate').textContent = pct(totalSales, totalShowed) + ' close rate';
   document.getElementById('p-noshow').textContent = totalNoShows;
-  document.getElementById('p-cancel').textContent = periodAppts>0 ? pct(totalNoShows,periodAppts)+' no-show rate' : '—';
+  document.getElementById('p-cancel').textContent = periodAppts>0 ? pct(totalNoShows,periodAppts)+' no-show rate' : '-';
   document.getElementById('p-sales').textContent = totalSales;
   document.getElementById('p-sales-sub').textContent = pct(totalSales,totalShowed)+' of sits';
   document.getElementById('p-nosales').textContent = totalNoSales;
@@ -813,10 +813,10 @@ function renderScore() {
   const allTimeApps = allTimeSits.reduce((a,s)=>a+(s.apps||[]).length,0)
     + allTimeTps.reduce((a,t)=>a+(t.apps||[]).length,0);
   const allTimeEl = document.getElementById('p-apv-alltime');
-  if (allTimeEl) allTimeEl.textContent = fmt(allTimeAPV) + ' total · ' + allTimeApps + ' apps (all time)';
+  if (allTimeEl) allTimeEl.textContent = fmt(allTimeAPV) + ' total - ' + allTimeApps + ' apps (all time)';
 }
 
-// ── TABS ─────────────────────────────────────────────────────
+//  TABS 
 function showTab(t, btn) {
   document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on')); btn.classList.add('on');
   document.getElementById('tab-score').style.display = t==='score'?'block':'none';
@@ -833,14 +833,14 @@ function drillDown(type) {
   let title = '';
 
   if (type === 'appts') {
-    title = 'Appointments — ' + label;
+    title = 'Appointments - ' + label;
     leads = clients.filter(c => {
       if (!c.appt_datetime) return false;
       const d = new Date(c.appt_datetime);
       return d >= start && d <= end;
     }).sort((a,b) => new Date(a.appt_datetime) - new Date(b.appt_datetime));
   } else if (type === 'showed') {
-    title = 'Sits — ' + label;
+    title = 'Sits - ' + label;
     const sitClients = clients.filter(c =>
       (c.sits||[]).some(s => {
         const d = new Date(s.datetime);
@@ -849,7 +849,7 @@ function drillDown(type) {
     );
     leads = sitClients;
   } else if (type === 'noshow') {
-    title = 'No shows — ' + label;
+    title = 'No shows - ' + label;
     // Leads with no-show in call log within period
     leads = clients.filter(c =>
       (c.call_log||[]).some(cl => {
@@ -860,7 +860,7 @@ function drillDown(type) {
   }
 
   if (!leads.length) {
-    showModal(`<button class="close-x" onclick="closeModal()">×</button>
+    showModal(`<button class="close-x" onclick="closeModal()">x</button>
     <div class="modal-title">${title}</div>
     <div style="font-size:13px;color:#a0b8cc;padding:1rem 0;">None for this period.</div>`);
     return;
@@ -868,12 +868,12 @@ function drillDown(type) {
 
   const rows = leads.map(c => {
     const apptStr = c.appt_datetime ? 
-      `<div style="font-size:11px;color:#138181;font-weight:500;">📅 ${new Date(c.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(c.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>` : '';
+      `<div style="font-size:11px;color:#138181;font-weight:500;">[Cal] ${new Date(c.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(c.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>` : '';
     return `<div class="client-card" onclick="closeModal();setTimeout(()=>openClient('${c.id}'),100)">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
         <div>
           <div class="client-name">${c.name||'Unknown'}</div>
-          <div class="client-meta">${c.phone||''} · ${c.state||''}</div>
+          <div class="client-meta">${c.phone||''} - ${c.state||''}</div>
           ${apptStr}
         </div>
         <span class="${statusBadge(c.status)}">${c.status}</span>
@@ -881,7 +881,7 @@ function drillDown(type) {
     </div>`;
   }).join('');
 
-  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+  showModal(`<button class="close-x" onclick="closeModal()">x</button>
     <div class="modal-title">${title}</div>
     <div style="font-size:12px;color:#5f7a99;margin-bottom:12px;">${leads.length} lead${leads.length!==1?'s':''}</div>
     ${rows}`);
@@ -902,14 +902,14 @@ function renderSidebar() {
   function apptCard(c, passed) {
     const dt = new Date(c.appt_datetime);
     const isToday = dt.toDateString() === todayStr;
-    const dateStr = isToday ? '' : dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' · ';
+    const dateStr = isToday ? '' : dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' - ';
     const timeStr = dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
     const timeColor = passed ? '#A32D2D' : isToday ? '#138181' : '#5f7a99';
     const bg = passed ? '#FFF5F5' : isToday ? '#F0FBF7' : '#F8FAFB';
     const border = passed ? '#F7C1C1' : isToday ? '#9FE1CB' : '#e2eaf2';
     return `<div class="appt-sidebar-item${passed?' passed':''}" style="background:${bg};border:1px solid ${border};" onclick="openClient('${c.id}')">
       <div style="font-size:12px;font-weight:500;color:#1D3557;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.name}</div>
-      <div style="font-size:11px;color:${timeColor};font-weight:500;margin-top:1px;">${dateStr}${timeStr}${passed?' · past':''}</div>
+      <div style="font-size:11px;color:${timeColor};font-weight:500;margin-top:1px;">${dateStr}${timeStr}${passed?' - past':''}</div>
       ${c.appt_notes?`<div style="font-size:10px;color:#8fa8c0;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.appt_notes}</div>`:''}
     </div>`;
   }
@@ -936,7 +936,7 @@ function renderSidebar() {
     if (next) {
       const dt = new Date(next.appt_datetime);
       const timeStr = dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-      bannerText.textContent = `Next: ${next.name} · ${timeStr}`;
+      bannerText.textContent = `Next: ${next.name} - ${timeStr}`;
       banner.style.display = 'block';
     } else if (todayPassed.length) {
       bannerText.textContent = `${todayPassed.length} appt${todayPassed.length>1?'s':''} passed today`;
@@ -963,8 +963,8 @@ function renderAppts() {
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
         <div>
           <div class="client-name">${c.name||'Unknown'}</div>
-          <div class="client-meta">${c.phone||''} · ${c.state||''}</div>
-          ${c.address?`<div style="font-size:10px;color:#8fa8c0;margin-top:2px;">📍 ${c.address}</div>`:''}
+          <div class="client-meta">${c.phone||''} - ${c.state||''}</div>
+          ${c.address?`<div style="font-size:10px;color:#8fa8c0;margin-top:2px;">[Addr] ${c.address}</div>`:''}
         </div>
         <div style="text-align:right;">
           <div style="font-size:13px;font-weight:600;color:${isPast?'#A32D2D':'#138181'};">${timeStr}</div>
@@ -997,7 +997,7 @@ function setFilter(f, btn) {
   renderClients(document.getElementById('client-search').value);
 }
 
-// ── CLIENT LIST ──────────────────────────────────────────────
+//  CLIENT LIST 
 function badgeClass(src) { return 'badge b-' + (src||'').split(' ')[0]; }
 function statusBadge(s) { const m={'New':'b-New','Working':'b-Working','Appointment set':'b-Appt','Closed':'b-Closed','No sale':'b-No','No show':'b-Noshow','Dead':'b-Dead'}; return 'badge '+(m[s]||'b-New'); }
 function dotClass(s) { if(s.outcome==='showed')return'jd-showed'; if(s.outcome==='noshow')return'jd-noshow'; if(s.outcome==='canceled')return'jd-cancel'; return'jd-pending'; }
@@ -1018,7 +1018,7 @@ function renderClients(q='') {
     else matchF = c.status===activeFilter;
     return matchQ && matchF;
   });
-  document.getElementById('client-count').textContent = clients.length + ' leads · ' + list.length + ' shown';
+  document.getElementById('client-count').textContent = clients.length + ' leads - ' + list.length + ' shown';
   if (!list.length) { el.innerHTML='<div class="empty">No leads match.</div>'; return; }
   el.innerHTML = list.map(c => {
     const fresh = isFresh(c);
@@ -1029,7 +1029,7 @@ function renderClients(q='') {
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
         <div>
           <div class="client-name">${c.name||'Unknown'}${fresh?'<span class="fresh-tag">fresh</span>':''}</div>
-          <div class="client-meta">${c.phone||''} · ${c.state||''}${c.age?' · <span style="color:#1D3557;font-weight:500;">'+c.age+'</span>':''} · <span style="color:#8fa8c0;">${Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24))}d</span> · <span style="color:#8fa8c0;">${(c.call_log||[]).length} att</span></div>
+          <div class="client-meta">${c.phone||''} - ${c.state||''}${c.age?' - <span style="color:#1D3557;font-weight:500;">'+c.age+'</span>':''} - <span style="color:#8fa8c0;">${Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24))}d</span> - <span style="color:#8fa8c0;">${(c.call_log||[]).length} att</span></div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
           <span class="${badgeClass(c.source)}">${c.source||''}</span>
@@ -1037,12 +1037,12 @@ function renderClients(q='') {
         </div>
       </div>
       ${sits.length?`<div class="journey-row">${journey}</div>`:''}
-      ${lastCall?`<div class="log-row"><span class="log-time">${new Date(lastCall.ts).toLocaleDateString('en-US',{month:'short',day:'numeric'})} ${new Date(lastCall.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</span> · ${lastCall.outcome}</div>`:''}
+      ${lastCall?`<div class="log-row"><span class="log-time">${new Date(lastCall.ts).toLocaleDateString('en-US',{month:'short',day:'numeric'})} ${new Date(lastCall.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</span> - ${lastCall.outcome}</div>`:''}
     </div>`;
   }).join('');
 }
 
-// ── MODAL ────────────────────────────────────────────────────
+//  MODAL 
 function showModal(html) {
   closeModal();
   const ov = document.createElement('div'); ov.className='modal-overlay'; ov.id='modal-ov';
@@ -1052,7 +1052,7 @@ function showModal(html) {
 }
 function closeModal() { const m=document.getElementById('modal-ov'); if(m) m.remove(); }
 
-// ── OPEN CLIENT ──────────────────────────────────────────────
+//  OPEN CLIENT 
 function openClient(id, keepDialCount) {
   const c = clients.find(x => x.id === id);
   if (!c) return;
@@ -1069,12 +1069,12 @@ function openClient(id, keepDialCount) {
     <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:5px;">
       <div style="width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0;background:${cl.outcome==='Appt set'?'#138181':cl.outcome==='No show'?'#E24B4A':cl.outcome==='Not interested'?'#E24B4A':cl.outcome==='Callback'?'#BA7517':'#1D3557'};"></div>
       <div style="flex:1;">
-        <div style="font-size:12px;color:#1a2e44;font-weight:500;">${cl.outcome}${cl.dials>1?' <span style="font-size:10px;color:#5f7a99;">('+cl.dials+'× dialed)</span>':''}</div>
-        ${cl.appt_datetime?`<div style="font-size:11px;font-weight:600;color:#138181;">📅 ${new Date(cl.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(cl.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>`:''}
+        <div style="font-size:12px;color:#1a2e44;font-weight:500;">${cl.outcome}${cl.dials>1?' <span style="font-size:10px;color:#5f7a99;">('+cl.dials+'x dialed)</span>':''}</div>
+        ${cl.appt_datetime?`<div style="font-size:11px;font-weight:600;color:#138181;">[Cal] ${new Date(cl.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(cl.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>`:''}
         ${cl.appt_notes?`<div style="font-size:10px;color:#5f7a99;font-style:italic;">${cl.appt_notes}</div>`:''}
         <div style="font-size:10px;color:#a0b8cc;">${new Date(cl.ts).toLocaleDateString('en-US',{month:'short',day:'numeric'})} ${new Date(cl.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
       </div>
-      <button onclick="deleteCallLogEntry('${id}',${realIdx})" style="background:none;border:none;color:#d0dcea;font-size:14px;cursor:pointer;padding:0 2px;flex-shrink:0;" title="Delete this entry">×</button>
+      <button onclick="deleteCallLogEntry('${id}',${realIdx})" style="background:none;border:none;color:#d0dcea;font-size:14px;cursor:pointer;padding:0 2px;flex-shrink:0;" title="Delete this entry">x</button>
     </div>`;
 }).join('');
 
@@ -1083,19 +1083,19 @@ function openClient(id, keepDialCount) {
     const appsList = (s.apps||[]).map((ap,ai) => `
       <div class="app-card">
         <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div><div style="font-size:13px;font-weight:500;color:#1D3557;">${ap.carrier} — ${ap.product}${ap.who?' <span style="font-size:11px;color:#5f7a99;">· '+ap.who+'</span>':''}</div>
-          <div style="font-size:11px;color:#5f7a99;">$${(ap.faceAmount||0).toLocaleString()} face · $${(ap.premium||0).toLocaleString()}/yr APV${ap.notes?' · '+ap.notes:''}</div></div>
-          <button class="upload-pill ${ap.uploaded?'up-yes':'up-no'}" onclick="toggleUpload('${id}',${si},${ai})">${ap.uploaded?'✓ Uploaded':'Not uploaded'}</button>
+          <div><div style="font-size:13px;font-weight:500;color:#1D3557;">${ap.carrier} - ${ap.product}${ap.who?' <span style="font-size:11px;color:#5f7a99;">- '+ap.who+'</span>':''}</div>
+          <div style="font-size:11px;color:#5f7a99;">$${(ap.faceAmount||0).toLocaleString()} face - $${(ap.premium||0).toLocaleString()}/yr APV${ap.notes?' - '+ap.notes:''}</div></div>
+          <button class="upload-pill ${ap.uploaded?'up-yes':'up-no'}" onclick="toggleUpload('${id}',${si},${ai})">${ap.uploaded?'v Uploaded':'Not uploaded'}</button>
         </div>
       </div>`).join('');
-    const flags = [s.ppu?'PPU':'',s.selfReset?'Reset→self':'',s.sme?'Reset→SME':'',s.recruitAsk?'Recruiting ask':''].filter(Boolean).join(' · ');
+    const flags = [s.ppu?'PPU':'',s.selfReset?'Reset->self':'',s.sme?'Reset->SME':'',s.recruitAsk?'Recruiting ask':''].filter(Boolean).join(' - ');
     const ol = s.outcome==='showed'?{t:'Showed',c:'#138181'}:s.outcome==='noshow'?{t:'No show',c:'#E24B4A'}:s.outcome==='canceled'?{t:'Canceled',c:'#BA7517'}:{t:'Pending',c:'#8fa8c0'};
     return `<div class="sit-card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
         <div>
           <div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;">Sit ${si+1}</div>
           <div style="font-size:13px;font-weight:500;color:#1D3557;">${new Date(s.datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'})}</div>
-          <div style="font-size:11px;color:#138181;">${reason.label}${flags?' · '+flags:''}</div>
+          <div style="font-size:11px;color:#138181;">${reason.label}${flags?' - '+flags:''}</div>
         </div>
         <span style="font-size:12px;font-weight:500;color:${ol.c};">${ol.t}</span>
       </div>
@@ -1107,7 +1107,7 @@ function openClient(id, keepDialCount) {
     </div>`;
   }).join('');
 
-  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+  showModal(`<button class="close-x" onclick="closeModal()">x</button>
   <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:2px;">
     <div style="flex:1;">
       <input id="edit-name" value="${c.name||''}" style="font-size:16px;font-weight:500;color:#1D3557;border:none;border-bottom:2px solid transparent;outline:none;background:transparent;width:100%;font-family:inherit;padding:0;" onfocus="this.style.borderBottomColor='#138181'" onblur="this.style.borderBottomColor='transparent'">
@@ -1115,17 +1115,17 @@ function openClient(id, keepDialCount) {
     <button onclick="saveNamePhone('${id}')" style="font-size:10px;background:#138181;color:#fff;border:none;border-radius:6px;padding:3px 8px;cursor:pointer;margin-left:6px;white-space:nowrap;">Save</button>
   </div>
   <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
-    <a href="tel:${(c.phone||'').replace(/[^0-9+]/g,'')}" onclick="autoIncrementDial();setTimeout(()=>window.focus(),3000)" style="font-size:13px;color:#138181;font-weight:500;text-decoration:none;margin-right:4px;">📞 ${c.phone||''}</a>
+    <a href="tel:${(c.phone||'').replace(/[^0-9+]/g,'')}" onclick="autoIncrementDial();setTimeout(()=>window.focus(),3000)" style="font-size:13px;color:#138181;font-weight:500;text-decoration:none;margin-right:4px;"> ${c.phone||''}</a>
     <input id="edit-phone" value="${c.phone||''}" style="font-size:11px;color:#5f7a99;border:none;border-bottom:1px solid transparent;outline:none;background:transparent;font-family:inherit;width:120px;padding:0;" onfocus="this.style.borderBottomColor='#138181'" onblur="this.style.borderBottomColor='transparent'" placeholder="edit number">
-    <span style="color:#5f7a99;font-size:13px;">· ${c.state||''} · <span class="${badgeClass(c.source)}">${c.source||''}</span></span>
+    <span style="color:#5f7a99;font-size:13px;">- ${c.state||''} - <span class="${badgeClass(c.source)}">${c.source||''}</span></span>
   </div>
-  ${c.address?`<div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">📍 ${c.address}</div>`:''}
-  ${c.appt_datetime?`<div style="font-size:12px;font-weight:600;color:#138181;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:6px;padding:5px 10px;margin-bottom:8px;display:inline-block;">📅 Appt: ${new Date(c.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(c.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}${c.appt_notes?' · '+c.appt_notes:''}</div>`:''}
+  ${c.address?`<div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">[Addr] ${c.address}</div>`:''}
+  ${c.appt_datetime?`<div style="font-size:12px;font-weight:600;color:#138181;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:6px;padding:5px 10px;margin-bottom:8px;display:inline-block;">[Cal] Appt: ${new Date(c.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(c.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}${c.appt_notes?' - '+c.appt_notes:''}</div>`:''}
   <div class="dial-row">
     <span class="dial-lbl">Dials:</span>
-    <button class="dial-cnt-btn on" id="dcb-1" onclick="setDialCount(1)">1×</button>
-    <button class="dial-cnt-btn" id="dcb-2" onclick="setDialCount(2)">2×</button>
-    <button class="dial-cnt-btn" id="dcb-3" onclick="setDialCount(3)">3×</button>
+    <button class="dial-cnt-btn on" id="dcb-1" onclick="setDialCount(1)">1x</button>
+    <button class="dial-cnt-btn" id="dcb-2" onclick="setDialCount(2)">2x</button>
+    <button class="dial-cnt-btn" id="dcb-3" onclick="setDialCount(3)">3x</button>
   </div>
   <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;">
     <button class="call-btn cb-navy" onclick="quickLog('${id}','No answer','dials')">No answer</button>
@@ -1153,7 +1153,7 @@ function openClient(id, keepDialCount) {
   <button class="sec-btn" onclick="openNewCase('${id}')">+ New case</button>`);
 }
 
-// ── APPT PICKER ──────────────────────────────────────────────
+//  APPT PICKER 
 function buildWeekGrid(excludeId) {
   const now = new Date();
   const days = [];
@@ -1173,13 +1173,13 @@ function buildWeekGrid(excludeId) {
     const slots = dayBooked.length
       ? dayBooked.map(a => {
           const t = a.dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-          return `<div style="background:#FAEEDA;border:1px solid #FAC775;border-radius:4px;padding:2px 4px;margin-bottom:2px;font-size:9px;color:#633806;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${a.name} · ${t}">${t}<br><span style="opacity:0.8;">${a.name.split(' ')[0]}</span></div>`;
+          return `<div style="background:#FAEEDA;border:1px solid #FAC775;border-radius:4px;padding:2px 4px;margin-bottom:2px;font-size:9px;color:#633806;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${a.name} - ${t}">${t}<br><span style="opacity:0.8;">${a.name.split(' ')[0]}</span></div>`;
         }).join('')
       : `<div style="font-size:9px;color:#9FE1CB;text-align:center;padding:4px 0;">free</div>`;
     return `<div style="flex:1;min-width:0;border-right:1px solid #f0f4f8;padding:0 3px;${isToday?'background:#f0fbf7;border-radius:6px;':''}">${dateLabel}${slots}</div>`;
   }).join('');
   return `<div style="margin-bottom:12px;">
-    <div style="font-size:9px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Next 7 days — booked slots</div>
+    <div style="font-size:9px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Next 7 days - booked slots</div>
     <div style="display:flex;gap:2px;border:1px solid #e2eaf2;border-radius:8px;padding:6px;background:#fff;overflow-x:auto;">${cols}</div>
   </div>`;
 }
@@ -1188,12 +1188,12 @@ function openReschedulePicker(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const d = new Date(); d.setDate(d.getDate()+1); d.setHours(10,0,0,0);
   const dt = d.toISOString().slice(0,16);
-  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+  showModal(`<button class="close-x" onclick="closeModal()">x</button>
   <div class="modal-title">Reschedule appointment</div>
   <div class="modal-sub">${c.name}</div>
   ${buildWeekGrid(id)}
   <div class="field"><label>New date & time</label><input type="datetime-local" id="appt-dt" value="${dt}" style="font-size:16px;"></div>
-  <div class="field"><label>Notes (optional)</label><input type="text" id="appt-note-field" placeholder="e.g. No show — rescheduled, confirmed via text..."></div>
+  <div class="field"><label>Notes (optional)</label><input type="text" id="appt-note-field" placeholder="e.g. No show - rescheduled, confirmed via text..."></div>
   <button class="save-btn" style="background:#534AB7;" onclick="confirmReschedule('${id}')">Confirm reschedule</button>`);
 }
 
@@ -1225,12 +1225,12 @@ function openApptPicker(id) {
   const dt = d.toISOString().slice(0,16);
   const caseOptions = [
     {value:'Mortgage Protection', label:'Mortgage Protection'},
-    {value:'Reset — Retirement', label:'Reset — Retirement'},
-    {value:'Reset — Debt Free Life', label:'Reset — Debt Free Life'},
-    {value:'Reset — Infinite Banking', label:'Reset — Infinite Banking'},
+    {value:'Reset - Retirement', label:'Reset - Retirement'},
+    {value:'Reset - Debt Free Life', label:'Reset - Debt Free Life'},
+    {value:'Reset - Infinite Banking', label:'Reset - Infinite Banking'},
     {value:'General Life', label:'General Life'}
   ].map(o=>`<option value="${o.value}">${o.label}</option>`).join('');
-  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+  showModal(`<button class="close-x" onclick="closeModal()">x</button>
   <div class="modal-title">Set appointment</div>
   <div class="modal-sub">${c.name}</div>
   ${buildWeekGrid(id)}
@@ -1252,9 +1252,9 @@ async function confirmAppt(id) {
   // Map selection to actual case type
   const caseTypeMap = {
     'Mortgage Protection': 'Mortgage Protection',
-    'Reset — Retirement': 'Retirement',
-    'Reset — Debt Free Life': 'Debt Free Life',
-    'Reset — Infinite Banking': 'Infinite Banking',
+    'Reset - Retirement': 'Retirement',
+    'Reset - Debt Free Life': 'Debt Free Life',
+    'Reset - Infinite Banking': 'Infinite Banking',
     'General Life': 'Mortgage Protection'
   };
   const caseType = caseTypeMap[selectedType] || 'Mortgage Protection';
@@ -1314,7 +1314,7 @@ async function confirmAppt(id) {
   if (next) setTimeout(() => openClient(next.id), 300);
 }
 
-// ── DIAL COUNT ───────────────────────────────────────────────
+//  DIAL COUNT 
 // window._dialCount is the source of truth. Dialers can write to it directly.
 // e.g. window.setDialCount(3) from an external dialer integration.
 window._dialCount = 1;
@@ -1339,7 +1339,7 @@ function setDialCount(n) {
   });
 }
 
-// ── DELETE CALL LOG ENTRY ────────────────────────────────────
+//  DELETE CALL LOG ENTRY 
 async function deleteCallLogEntry(id, idx) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   if (!confirm('Delete this call log entry?')) return;
@@ -1353,7 +1353,7 @@ async function deleteCallLogEntry(id, idx) {
   renderScore();
 }
 
-// ── AUTO SAVE ────────────────────────────────────────────────
+//  AUTO SAVE 
 let _autoSaveTimer = null;
 function scheduleAutoSave(id) {
   clearTimeout(_autoSaveTimer);
@@ -1385,7 +1385,7 @@ async function autoSaveField(id, field, value) {
   Object.assign(c, updates);
 }
 
-// ── QUICK LOG ────────────────────────────────────────────────
+//  QUICK LOG 
 async function quickLog(id, outcome, statKey) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const dialCount = window._dialCount || 1;
@@ -1425,7 +1425,7 @@ async function quickLog(id, outcome, statKey) {
   }
 }
 
-// ── SAVE NAME/PHONE INLINE ──────────────────────────────────
+//  SAVE NAME/PHONE INLINE 
 async function saveNamePhone(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const name = document.getElementById('edit-name').value.trim();
@@ -1439,7 +1439,7 @@ async function saveNamePhone(id) {
   renderClients(document.getElementById('client-search').value);
 }
 
-// ── UPDATE CLIENT ────────────────────────────────────────────
+//  UPDATE CLIENT 
 async function updateClient(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const updates = {
@@ -1474,9 +1474,9 @@ async function updateClient(id) {
   if (next) setTimeout(() => openClient(next.id), 300);
 }
 
-// ── ADD CLIENT ───────────────────────────────────────────────
+//  ADD CLIENT 
 function openAddClient() {
-  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+  showModal(`<button class="close-x" onclick="closeModal()">x</button>
   <div class="modal-title">Add lead</div>
   <div class="field"><label>Full name</label><input type="text" id="cl-name" placeholder="John & Mary Jones"></div>
   <div class="field"><label>Phone</label><input type="tel" id="cl-phone" placeholder="603-555-0100"></div>
@@ -1504,7 +1504,7 @@ async function saveClient() {
   renderScore();
 }
 
-// ── CASE SYSTEM ──────────────────────────────────────────────
+//  CASE SYSTEM 
 const CASE_TYPES = ['Mortgage Protection','Retirement','Debt Free Life','Infinite Banking'];
 const CASE_TYPE_CLASS = {'Mortgage Protection':'mp','Retirement':'ret','Debt Free Life':'dfl','Infinite Banking':'ib'};
 const CASE_STATUSES = ['Open','Closed Won','Closed Lost','Reset'];
@@ -1523,17 +1523,17 @@ function renderCasesHtml(c) {
       const outcomeLabel = tp.outcome==='sale'?'Sale':tp.outcome==='nosale'?'No Sale':tp.outcome==='noshow'?'No Show':tp.outcome==='cont'?'Continuation':'Pending';
       const outcomeColor = tp.outcome==='sale'?'#3B6D11':tp.outcome==='nosale'?'#A32D2D':tp.outcome==='noshow'?'#BA7517':tp.outcome==='cont'?'#534AB7':'#8fa8c0';
       const flags = [];
-      if (tp.resetSelf) flags.push('↩ Reset→me');
-      if (tp.resetSME) flags.push(`↩ Reset→${tp.resetSMEName||'SME'}`);
-      if (tp.incomeOffered) flags.push('💼 Income offered');
-      if (tp.asrs) flags.push(`📋 ASRs: ${tp.asrs}`);
+      if (tp.resetSelf) flags.push('Reset Reset->me');
+      if (tp.resetSME) flags.push(`Reset Reset->${tp.resetSMEName||'SME'}`);
+      if (tp.incomeOffered) flags.push('[Income] Income offered');
+      if (tp.asrs) flags.push(`[ASR] ASRs: ${tp.asrs}`);
       return `<div class="tp-card tp-outcome-${tp.outcome||'pending'}" onclick="openEditTouchpoint('${c.id}',${ci},${ti})">
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <span style="font-size:11px;font-weight:500;color:#1D3557;">${tp.type||'Initial'}</span>
           <span style="font-size:11px;font-weight:600;color:${outcomeColor};">${outcomeLabel}</span>
         </div>
         <div style="font-size:10px;color:#8fa8c0;margin-top:2px;">${dtStr}</div>
-        ${flags.length?`<div style="font-size:10px;color:#5f7a99;margin-top:3px;">${flags.join(' · ')}</div>`:''}
+        ${flags.length?`<div style="font-size:10px;color:#5f7a99;margin-top:3px;">${flags.join(' - ')}</div>`:''}
         ${tp.notes?`<div style="font-size:10px;color:#8fa8c0;margin-top:2px;">${tp.notes}</div>`:''}
       </div>`;
     }).join('');
@@ -1559,8 +1559,8 @@ function renderCasesHtml(c) {
 
 function openNewCase(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
-  showModal(`<button class="close-x" onclick="closeModal()">×</button>
-  <div class="modal-title">New case — ${c.name}</div>
+  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  <div class="modal-title">New case - ${c.name}</div>
   <div class="field"><label>Case type</label><select id="nc-type">${CASE_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></div>
   <div class="field"><label>Notes (optional)</label><input type="text" id="nc-notes" placeholder="e.g. Referred by spouse, existing MP client..."></div>
   <button class="save-btn" onclick="saveNewCase('${id}')">Create case</button>
@@ -1587,8 +1587,8 @@ async function saveNewCaseWithTouchpoint(id) {
 function openEditCase(id, ci) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const cs = c.cases[ci];
-  showModal(`<button class="close-x" onclick="closeModal()">×</button>
-  <div class="modal-title">Edit case — ${c.name}</div>
+  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  <div class="modal-title">Edit case - ${c.name}</div>
   <div class="field"><label>Case type</label><select id="ec-type">${CASE_TYPES.map(t=>`<option${cs.type===t?' selected':''}>${t}</option>`).join('')}</select></div>
   <div class="field"><label>Status</label><select id="ec-status">${CASE_STATUSES.map(s=>`<option${cs.status===s?' selected':''}>${s}</option>`).join('')}</select></div>
   <div class="field"><label>Notes</label><input type="text" id="ec-notes" value="${cs.notes||''}"></div>
@@ -1611,9 +1611,9 @@ function openAddTouchpoint(id, ci) {
   const resetDt = new Date(now.getTime()+7*24*60*60*1000).toISOString().slice(0,16);
   window._tpOutcome = 'pending';
   window._tpAddons = {income:false, resetself:false, resetsme:false};
-  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+  showModal(`<button class="close-x" onclick="closeModal()">x</button>
   <div class="modal-title">Add touchpoint</div>
-  <div class="modal-sub">${c.name} · ${cs.type}</div>
+  <div class="modal-sub">${c.name} - ${cs.type}</div>
   <div class="field"><label>Type</label><select id="tp-type">${TP_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></div>
   <div class="field"><label>Date & time</label><input type="datetime-local" id="tp-dt" value="${now.toISOString().slice(0,16)}" style="font-size:16px;"></div>
   <div class="section-lbl">Outcome</div>
@@ -1631,9 +1631,9 @@ function openAddTouchpoint(id, ci) {
   <div id="tp-addons" style="display:none;">
     <div class="section-lbl">Add-ons</div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
-      <button class="flag-btn" id="tpa-income" onclick="toggleTpAddon('income')">💼 Income offered</button>
-      <button class="flag-btn" id="tpa-resetself" onclick="toggleTpAddon('resetself')">↩ Reset→me</button>
-      <button class="flag-btn" id="tpa-resetsme" onclick="toggleTpAddon('resetsme')">↩ Reset→SME</button>
+      <button class="flag-btn" id="tpa-income" onclick="toggleTpAddon('income')">[Income] Income offered</button>
+      <button class="flag-btn" id="tpa-resetself" onclick="toggleTpAddon('resetself')">Reset Reset->me</button>
+      <button class="flag-btn" id="tpa-resetsme" onclick="toggleTpAddon('resetsme')">Reset Reset->SME</button>
     </div>
     <div id="tp-resetsme-detail" style="display:none;">
       <div class="field"><label>SME name</label><input type="text" id="tp-sme-name" placeholder="Who are you resetting to?"></div>
@@ -1698,7 +1698,7 @@ async function saveTouchpoint(id, ci) {
   else if (outcome==='cont') c.cases[ci].status='Open';
   else if (outcome==='noshow') c.cases[ci].status='Open';
 
-  // Handle continuation — create next pending touchpoint, update appt_datetime, NO stat
+  // Handle continuation - create next pending touchpoint, update appt_datetime, NO stat
   if (outcome==='cont') {
     const contDtVal = (document.getElementById('tp-cont-dt')||{value:''}).value;
     const contType = (document.getElementById('tp-cont-type')||{value:'Follow-up'}).value;
@@ -1724,17 +1724,17 @@ async function saveTouchpoint(id, ci) {
     const resetDtIso = resetDtVal ? new Date(resetDtVal).toISOString() : null;
     const newCase = {
       type: newCaseType, status: 'Open',
-      notes: `Reset from ${c.cases[ci].type}${addons.resetsme?' — SME: '+tp.resetSMEName:''}`,
+      notes: `Reset from ${c.cases[ci].type}${addons.resetsme?' - SME: '+tp.resetSMEName:''}`,
       touchpoints: resetDtIso ? [{type:'Initial',datetime:resetDtIso,outcome:'pending',notes:'',apps:[],created:new Date().toISOString()}] : [],
       created: new Date().toISOString()
     };
     c.cases.push(newCase);
-    if (resetDtIso) { c.appt_datetime=resetDtIso; c.appt_notes=`Reset — ${newCaseType}`; }
+    if (resetDtIso) { c.appt_datetime=resetDtIso; c.appt_notes=`Reset - ${newCaseType}`; }
   }
 
   c.cases[ci].touchpoints = [...(c.cases[ci].touchpoints||[]), tp];
 
-  // Update lead status — never touches dial stats
+  // Update lead status - never touches dial stats
   let newLeadStatus = c.status;
   if (outcome==='sale') newLeadStatus='Closed';
   else if (outcome==='nosale' && !addons.resetself && !addons.resetsme) newLeadStatus='No sale';
@@ -1757,9 +1757,9 @@ function openEditTouchpoint(id, ci, ti) {
   const dtVal = new Date(tp.datetime).toISOString().slice(0,16);
   const outcomeColor = tp.outcome==='sale'?'#3B6D11':tp.outcome==='nosale'?'#A32D2D':tp.outcome==='noshow'?'#BA7517':'#8fa8c0';
   const outcomeLabel = tp.outcome==='sale'?'Sale':tp.outcome==='nosale'?'No Sale':tp.outcome==='noshow'?'No Show':'Pending';
-  showModal(`<button class="close-x" onclick="closeModal()">×</button>
-  <div class="modal-title">${tp.type||'Touchpoint'} — ${c.name}</div>
-  <div class="modal-sub">${c.cases[ci].type} · <span style="color:${outcomeColor};font-weight:600;">${outcomeLabel}</span></div>
+  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  <div class="modal-title">${tp.type||'Touchpoint'} - ${c.name}</div>
+  <div class="modal-sub">${c.cases[ci].type} - <span style="color:${outcomeColor};font-weight:600;">${outcomeLabel}</span></div>
   <div class="field"><label>Type</label><select id="etp-type">${TP_TYPES.map(t=>`<option${tp.type===t?' selected':''}>${t}</option>`).join('')}</select></div>
   <div class="field"><label>Date & time</label><input type="datetime-local" id="etp-dt" value="${dtVal}" style="font-size:16px;"></div>
   <div class="section-lbl">Outcome</div>
@@ -1771,9 +1771,9 @@ function openEditTouchpoint(id, ci, ti) {
     <button class="call-btn" style="background:${tp.outcome==='noshow'?'#BA7517':'#f0f4f8'};color:${tp.outcome==='noshow'?'#fff':'#5f7a99'};" onclick="updateTpOutcome('${id}',${ci},${ti},'noshow')">No Show</button>
   </div>
   <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
-    <button class="flag-btn${tp.incomeOffered?' on-teal':''}" onclick="toggleTpFlag('${id}',${ci},${ti},'incomeOffered')">💼 Income offered${tp.incomeOffered?' ✓':''}</button>
-    <button class="flag-btn${tp.resetSelf?' on-navy':''}" onclick="toggleTpFlag('${id}',${ci},${ti},'resetSelf')">↩ Reset→me${tp.resetSelf?' ✓':''}</button>
-    <button class="flag-btn${tp.resetSME?' on-purple':''}" onclick="toggleTpFlag('${id}',${ci},${ti},'resetSME')">↩ Reset→SME${tp.resetSME?' ✓':''}</button>
+    <button class="flag-btn${tp.incomeOffered?' on-teal':''}" onclick="toggleTpFlag('${id}',${ci},${ti},'incomeOffered')">[Income] Income offered${tp.incomeOffered?' v':''}</button>
+    <button class="flag-btn${tp.resetSelf?' on-navy':''}" onclick="toggleTpFlag('${id}',${ci},${ti},'resetSelf')">Reset Reset->me${tp.resetSelf?' v':''}</button>
+    <button class="flag-btn${tp.resetSME?' on-purple':''}" onclick="toggleTpFlag('${id}',${ci},${ti},'resetSME')">Reset Reset->SME${tp.resetSME?' v':''}</button>
   </div>
   <div class="field"><label>ASRs</label><input type="text" id="etp-asrs" value="${tp.asrs||''}" placeholder="Names / numbers..."></div>
   <div class="field"><label>Notes</label><textarea id="etp-notes">${tp.notes||''}</textarea></div>
@@ -1815,16 +1815,16 @@ async function saveEditTouchpoint(id, ci, ti) {
   hideSync(); closeModal(); openClient(id); renderScore();
 }
 
-// ── SITS (legacy) ─────────────────────────────────────────────
+//  SITS (legacy) 
 function openAddSit(id, suggestedReason) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const now = new Date(); now.setMinutes(0,0,0); now.setHours(now.getHours()+1);
   const reasonOptions = SIT_REASONS.map(r=>`<option value="${r.value}"${r.value===suggestedReason?' selected':''}>${r.label}</option>`).join('');
-  showModal(`<button class="close-x" onclick="closeModal()">×</button>
-  <div class="modal-title">Log sit — ${c.name}</div>
+  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  <div class="modal-title">Log sit - ${c.name}</div>
   <div class="field"><label>Date & time</label><input type="datetime-local" id="sit-dt" value="${now.toISOString().slice(0,16)}"></div>
   <div class="field"><label>Reason</label><select id="sit-reason">${reasonOptions}</select></div>
-  <div class="field"><label>Type</label><select id="sit-type"><option>Mortgage protection</option><option>Continuation</option><option>Policy review / PPU</option><option>Retirement strategy</option><option>Existing client — additional coverage</option><option>Other</option></select></div>
+  <div class="field"><label>Type</label><select id="sit-type"><option>Mortgage protection</option><option>Continuation</option><option>Policy review / PPU</option><option>Retirement strategy</option><option>Existing client - additional coverage</option><option>Other</option></select></div>
   <div class="section-lbl">Outcome (if known)</div>
   <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
     <button class="call-btn cb-teal" onclick="setPendingOutcome('showed')">Sits</button>
@@ -1861,15 +1861,15 @@ function openEditSit(id, si) {
   const s = c.sits[si];
   const reasonOptions = SIT_REASONS.map(r=>`<option value="${r.value}"${r.value===s.reason?' selected':''}>${r.label}</option>`).join('');
   const sitDt = new Date(s.datetime).toISOString().slice(0,16);
-  showModal(`<button class="close-x" onclick="closeModal()">×</button>
-  <div class="modal-title">Edit sit ${si+1} — ${c.name}</div>
+  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  <div class="modal-title">Edit sit ${si+1} - ${c.name}</div>
   <div class="field"><label>Date & time</label><input type="datetime-local" id="er-datetime" value="${sitDt}" style="font-size:15px;"></div>
   <div class="field"><label>Reason</label><select id="er-reason">${reasonOptions}</select></div>
   <div class="section-lbl" style="margin-top:4px;">Outcome</div>
   <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
-    <button class="call-btn cb-teal" onclick="setSitOutcome('${id}',${si},'showed')">Showed${s.outcome==='showed'?' ✓':''}</button>
-    <button class="call-btn cb-red" onclick="setSitOutcome('${id}',${si},'noshow')">No show${s.outcome==='noshow'?' ✓':''}</button>
-    <button class="call-btn cb-amber" onclick="setSitOutcome('${id}',${si},'canceled')">Canceled${s.outcome==='canceled'?' ✓':''}</button>
+    <button class="call-btn cb-teal" onclick="setSitOutcome('${id}',${si},'showed')">Showed${s.outcome==='showed'?' v':''}</button>
+    <button class="call-btn cb-red" onclick="setSitOutcome('${id}',${si},'noshow')">No show${s.outcome==='noshow'?' v':''}</button>
+    <button class="call-btn cb-amber" onclick="setSitOutcome('${id}',${si},'canceled')">Canceled${s.outcome==='canceled'?' v':''}</button>
   </div>
   <div class="row2">
     <div class="field"><label>Refs asked</label><input type="number" id="er-refsask" min="0" value="${s.refsask||0}"></div>
@@ -1877,10 +1877,10 @@ function openEditSit(id, si) {
   </div>
   <div class="section-lbl">Flags</div>
   <div style="display:flex;flex-wrap:wrap;margin-bottom:10px;">
-    <button class="flag-btn${s.ppu?' on-teal':''}" onclick="toggleSitFlag('${id}',${si},'ppu')">PPU${s.ppu?' ✓':''}</button>
-    <button class="flag-btn${s.selfReset?' on-navy':''}" onclick="toggleSitFlag('${id}',${si},'selfReset')">Reset→self${s.selfReset?' ✓':''}</button>
-    <button class="flag-btn${s.sme?' on-purple':''}" onclick="toggleSitFlag('${id}',${si},'sme')">Reset→SME${s.sme?' ✓':''}</button>
-    <button class="flag-btn${s.recruitAsk?' on-navy':''}" onclick="toggleSitFlag('${id}',${si},'recruitAsk')">Recruiting ask${s.recruitAsk?' ✓':''}</button>
+    <button class="flag-btn${s.ppu?' on-teal':''}" onclick="toggleSitFlag('${id}',${si},'ppu')">PPU${s.ppu?' v':''}</button>
+    <button class="flag-btn${s.selfReset?' on-navy':''}" onclick="toggleSitFlag('${id}',${si},'selfReset')">Reset->self${s.selfReset?' v':''}</button>
+    <button class="flag-btn${s.sme?' on-purple':''}" onclick="toggleSitFlag('${id}',${si},'sme')">Reset->SME${s.sme?' v':''}</button>
+    <button class="flag-btn${s.recruitAsk?' on-navy':''}" onclick="toggleSitFlag('${id}',${si},'recruitAsk')">Recruiting ask${s.recruitAsk?' v':''}</button>
   </div>
   <div class="field"><label>Notes</label><textarea id="er-notes">${s.notes||''}</textarea></div>
   <button class="save-btn" onclick="saveEditSit('${id}',${si})">Save</button>`);
@@ -1904,13 +1904,13 @@ async function setSitOutcome(id, si, val) {
 
 function openResetPrompt(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
-  showModal(`<button class="close-x" onclick="closeModal()">×</button>
-  <div class="modal-title">Sit logged ✓</div>
+  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  <div class="modal-title">Sit logged v</div>
   <div class="modal-sub">${c.name}</div>
   <div style="margin-bottom:16px;font-size:13px;color:#1D3557;">Schedule a reset appointment?</div>
   <div style="display:flex;gap:8px;">
-    <button class="save-btn" style="background:#138181;" onclick="openResetPicker('${id}')">Yes — schedule reset</button>
-    <button class="save-btn" style="background:#5f7a99;" onclick="closeModal();openClient('${id}')">No — done</button>
+    <button class="save-btn" style="background:#138181;" onclick="openResetPicker('${id}')">Yes - schedule reset</button>
+    <button class="save-btn" style="background:#5f7a99;" onclick="closeModal();openClient('${id}')">No - done</button>
   </div>`);
 }
 
@@ -1918,7 +1918,7 @@ function openResetPicker(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const d = new Date(); d.setDate(d.getDate()+7); d.setHours(10,0,0,0);
   const dt = d.toISOString().slice(0,16);
-  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+  showModal(`<button class="close-x" onclick="closeModal()">x</button>
   <div class="modal-title">Schedule reset</div>
   <div class="modal-sub">${c.name}</div>
   ${buildWeekGrid(id)}
@@ -1981,13 +1981,13 @@ async function saveEditSit(id, si) {
   renderScore();
 }
 
-// ── APPLICATIONS ─────────────────────────────────────────────
+//  APPLICATIONS 
 function openAddApp(id, si) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const carriers = Object.keys(CARRIERS);
-  showModal(`<button class="close-x" onclick="closeModal()">×</button>
+  showModal(`<button class="close-x" onclick="closeModal()">x</button>
   <div class="modal-title">Log application</div>
-  <div class="modal-sub">${c.name} — Sit ${si+1}</div>
+  <div class="modal-sub">${c.name} - Sit ${si+1}</div>
   <div class="field"><label>Carrier</label><select id="ap-carrier" onchange="updateProducts()">${carriers.map(c=>`<option>${c}</option>`).join('')}</select></div>
   <div class="field"><label>Product</label><select id="ap-product"></select></div>
   <div class="row2">
@@ -2031,42 +2031,42 @@ async function toggleUpload(id, si, ai) {
   openClient(id);
 }
 
-// ── BULK IMPORT ──────────────────────────────────────────────
+//  BULK IMPORT 
 const IMPORT_BATCH_20260609 = [
-  {name:'Brett Jennings',phone:'540-661-8161',state:'VA',age:24,source:'CIA',address:'61 Oakland Pl, Louisa, VA 23093',notes:'Age: 24 · Mortgage: $343,660 · Gender: Male · Tobacco: N · Co-borrower: Y · Lender: Capital Center LLC'},
-  {name:'Clark Gesen',phone:'603-724-0297',state:'NH',age:32,source:'CIA',address:'100 Main St Apt 203, Pembroke, NH 03275',notes:'Age: 32 · Mortgage: $193,500 · Gender: Male · Tobacco: N · Co-borrower: N'},
-  {name:'Freddie Light',phone:'419-626-8659',state:'OH',age:81,source:'CIA',address:'2905 W Perkins Ave, Sandusky, OH 44870',notes:'Age: 81 · Mortgage: $55,000 · Gender: Male · Tobacco: N · Co-borrower: N'},
-  {name:'Phillip Salas',phone:'832-244-4408',state:'TX',age:null,source:'CIA',address:'1155 Beals Creek St, Conroe, TX 77304',notes:'Age: — · Mortgage: $569,000 · Gender: Male · Tobacco: Y · Co-borrower: N · Lender: Village Capital & Investment LLC'},
-  {name:'Steven Swanson',phone:'508-776-7505',state:'MA',age:73,source:'CIA',address:'650 Old Barnstable Rd, Mashpee, MA 02649',notes:'Age: 73 · Mortgage: $250,000 · Gender: Male · Tobacco: Y · Co-borrower: Y'},
-  {name:'Steve Dostie',phone:'603-530-2977',state:'NH',age:54,source:'CIA',address:'131 Birch Hill Rd, Bristol, NH 03222',notes:'Age: 54 · Mortgage: $100,000 · Gender: Male · Tobacco: N · Co-borrower: Y'},
-  {name:'Skyler Foote',phone:'217-407-9216',state:'NC',age:20,source:'CIA',address:'116 W Bayshore Blvd, Jacksonville, NC 28540',notes:'Age: 20 · Mortgage: $244,138 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Alpha Mortgage Corporation'},
-  {name:'Richard Love',phone:'276-492-9224',state:'TN',age:82,source:'CIA',address:'11336 Woodcliff Dr, Farragut, TN 37934',notes:'Age: 82 · Mortgage: $395,000 · Gender: Male · Tobacco: N · Co-borrower: N'},
-  {name:'Richard Fitzpatrick',phone:'413-537-0827',state:'MA',age:65,source:'CIA',address:'54 Atlantic St, Ludlow, MA 01056',notes:'Age: 65 · Mortgage: $173,675 · Gender: Male · Tobacco: N · Co-borrower: Y'},
-  {name:'Ruben Espinosa',phone:'860-893-4870',state:'CT',age:58,source:'CIA',address:'298 Murray St, Meriden, CT 06450',notes:'Age: 58 · Mortgage: $294,566 · Gender: Male · Tobacco: Y · Co-borrower: N'},
-  {name:'Philadelpo Guevarra',phone:'203-264-9855',state:'CT',age:null,source:'CIA',address:'133 Old Woodbury Rd, Southbury, CT 06488',notes:'Age: — · Mortgage: $311,200 · Gender: Male · Tobacco: N · Co-borrower: Y'},
-  {name:'Nicholas Ricciardi',phone:'774-479-2636',state:'NH',age:20,source:'CIA',address:'67 Linden Rd, North Conway, NH 03860',notes:'Age: 20 · Mortgage: $240,000 · Gender: Male · Tobacco: N · Co-borrower: Y'},
-  {name:'Melissa Mincey',phone:'865-607-8477',state:'TN',age:null,source:'CIA',address:'4901 Salem Church Rd, Knoxville, TN 37938',notes:'Age: — · Mortgage: $92,800 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: ORNL FCU'},
-  {name:'Matthew Meyers',phone:'320-630-1910',state:'TX',age:null,source:'CIA',address:'601 Harris St, Kilgore, TX 75662',notes:'Age: — · Mortgage: $225,342 · Gender: Male · Tobacco: N · Co-borrower: N · Lender: Guaranteed Rate Inc'},
-  {name:'Marvin Washington',phone:'757-751-7546',state:'VA',age:62,source:'CIA',address:'6686 Wharfview Ct, Hayes, VA 23072',notes:'Age: 62 · Mortgage: $45,000 · Gender: Male · Tobacco: N · Co-borrower: N · Lender: Langley Federal Credit Union'},
-  {name:'Mark Bish',phone:'413-219-9617',state:'MA',age:61,source:'CIA',address:'17 Tall Timber Dr, Wilbraham, MA 01095',notes:'Age: 61 · Mortgage: $293,243 · Gender: Male · Tobacco: N · Co-borrower: Y'},
-  {name:'Kenneth Ayers',phone:'603-352-0697',state:'NH',age:71,source:'CIA',address:'3 Freedom Ln, Rindge, NH 03461',notes:'Age: 71 · Mortgage: $33,408 · Gender: Male · Tobacco: N · Co-borrower: N'},
-  {name:'John Soares',phone:'401-663-3670',state:'RI',age:52,source:'CIA',address:'93 Manton St, Pawtucket, RI 02861',notes:'Age: 52 · Mortgage: $30,130 · Gender: Male · Tobacco: Y · Co-borrower: N · Lender: Mutual of Omaha Mortgage'}
+  {name:'Brett Jennings',phone:'540-661-8161',state:'VA',age:24,source:'CIA',address:'61 Oakland Pl, Louisa, VA 23093',notes:'Age: 24 - Mortgage: $343,660 - Gender: Male - Tobacco: N - Co-borrower: Y - Lender: Capital Center LLC'},
+  {name:'Clark Gesen',phone:'603-724-0297',state:'NH',age:32,source:'CIA',address:'100 Main St Apt 203, Pembroke, NH 03275',notes:'Age: 32 - Mortgage: $193,500 - Gender: Male - Tobacco: N - Co-borrower: N'},
+  {name:'Freddie Light',phone:'419-626-8659',state:'OH',age:81,source:'CIA',address:'2905 W Perkins Ave, Sandusky, OH 44870',notes:'Age: 81 - Mortgage: $55,000 - Gender: Male - Tobacco: N - Co-borrower: N'},
+  {name:'Phillip Salas',phone:'832-244-4408',state:'TX',age:null,source:'CIA',address:'1155 Beals Creek St, Conroe, TX 77304',notes:'Age: - - Mortgage: $569,000 - Gender: Male - Tobacco: Y - Co-borrower: N - Lender: Village Capital & Investment LLC'},
+  {name:'Steven Swanson',phone:'508-776-7505',state:'MA',age:73,source:'CIA',address:'650 Old Barnstable Rd, Mashpee, MA 02649',notes:'Age: 73 - Mortgage: $250,000 - Gender: Male - Tobacco: Y - Co-borrower: Y'},
+  {name:'Steve Dostie',phone:'603-530-2977',state:'NH',age:54,source:'CIA',address:'131 Birch Hill Rd, Bristol, NH 03222',notes:'Age: 54 - Mortgage: $100,000 - Gender: Male - Tobacco: N - Co-borrower: Y'},
+  {name:'Skyler Foote',phone:'217-407-9216',state:'NC',age:20,source:'CIA',address:'116 W Bayshore Blvd, Jacksonville, NC 28540',notes:'Age: 20 - Mortgage: $244,138 - Gender: Female - Tobacco: N - Co-borrower: N - Lender: Alpha Mortgage Corporation'},
+  {name:'Richard Love',phone:'276-492-9224',state:'TN',age:82,source:'CIA',address:'11336 Woodcliff Dr, Farragut, TN 37934',notes:'Age: 82 - Mortgage: $395,000 - Gender: Male - Tobacco: N - Co-borrower: N'},
+  {name:'Richard Fitzpatrick',phone:'413-537-0827',state:'MA',age:65,source:'CIA',address:'54 Atlantic St, Ludlow, MA 01056',notes:'Age: 65 - Mortgage: $173,675 - Gender: Male - Tobacco: N - Co-borrower: Y'},
+  {name:'Ruben Espinosa',phone:'860-893-4870',state:'CT',age:58,source:'CIA',address:'298 Murray St, Meriden, CT 06450',notes:'Age: 58 - Mortgage: $294,566 - Gender: Male - Tobacco: Y - Co-borrower: N'},
+  {name:'Philadelpo Guevarra',phone:'203-264-9855',state:'CT',age:null,source:'CIA',address:'133 Old Woodbury Rd, Southbury, CT 06488',notes:'Age: - - Mortgage: $311,200 - Gender: Male - Tobacco: N - Co-borrower: Y'},
+  {name:'Nicholas Ricciardi',phone:'774-479-2636',state:'NH',age:20,source:'CIA',address:'67 Linden Rd, North Conway, NH 03860',notes:'Age: 20 - Mortgage: $240,000 - Gender: Male - Tobacco: N - Co-borrower: Y'},
+  {name:'Melissa Mincey',phone:'865-607-8477',state:'TN',age:null,source:'CIA',address:'4901 Salem Church Rd, Knoxville, TN 37938',notes:'Age: - - Mortgage: $92,800 - Gender: Female - Tobacco: N - Co-borrower: N - Lender: ORNL FCU'},
+  {name:'Matthew Meyers',phone:'320-630-1910',state:'TX',age:null,source:'CIA',address:'601 Harris St, Kilgore, TX 75662',notes:'Age: - - Mortgage: $225,342 - Gender: Male - Tobacco: N - Co-borrower: N - Lender: Guaranteed Rate Inc'},
+  {name:'Marvin Washington',phone:'757-751-7546',state:'VA',age:62,source:'CIA',address:'6686 Wharfview Ct, Hayes, VA 23072',notes:'Age: 62 - Mortgage: $45,000 - Gender: Male - Tobacco: N - Co-borrower: N - Lender: Langley Federal Credit Union'},
+  {name:'Mark Bish',phone:'413-219-9617',state:'MA',age:61,source:'CIA',address:'17 Tall Timber Dr, Wilbraham, MA 01095',notes:'Age: 61 - Mortgage: $293,243 - Gender: Male - Tobacco: N - Co-borrower: Y'},
+  {name:'Kenneth Ayers',phone:'603-352-0697',state:'NH',age:71,source:'CIA',address:'3 Freedom Ln, Rindge, NH 03461',notes:'Age: 71 - Mortgage: $33,408 - Gender: Male - Tobacco: N - Co-borrower: N'},
+  {name:'John Soares',phone:'401-663-3670',state:'RI',age:52,source:'CIA',address:'93 Manton St, Pawtucket, RI 02861',notes:'Age: 52 - Mortgage: $30,130 - Gender: Male - Tobacco: Y - Co-borrower: N - Lender: Mutual of Omaha Mortgage'}
 ];
 
 const IMPORT_BATCH_20260610 = [
-  {name:'Christopher Martensen',phone:'774-280-8801',state:'MA',age:44,source:'CIA',address:'2 Northland Rd, Shrewsbury, MA 01545',notes:'Age: 44 · Mortgage: $420,000 · Gender: Male · Tobacco: N · Co-borrower: N · Lender: Your Lender'},
-  {name:'Laura Bales',phone:'423-877-7040',state:'TN',age:78,source:'CIA',address:'210 Vreeland St, Chattanooga, TN 37415',notes:'Age: 78 · Mortgage: $160,900 · Gender: Female · Tobacco: N · Co-borrower: N · Lender: Nations Lending Corp'},
-  {name:'Nora Iraheta',phone:'615-586-0462',state:'TN',age:44,source:'MIA',address:'1102 Tinnell Rd, Mt Juliet, TN 37122',notes:'Age: 44 · Mortgage: $382,410 · Lender: 5th Street Capital Inc'},
-  {name:'Nelly Vasquez',phone:'504-509-8635',state:'VA',age:40,source:'MIA',address:'2504 Harwood St, Richmond, VA 23224',notes:'Age: 40 · Mortgage: $246,050 · Lender: SWBC Mortgage Corp'},
-  {name:'Juan Hernandez',phone:'979-703-0878',state:'TX',age:43,source:'MIA',address:'2529 Maskavich Ct, Bryan, TX 77807',notes:'Age: 43 · Mortgage: $353,724 · Lender: Kangaroo Home Lending LLC'},
-  {name:'Joanne Wheeler',phone:'419-277-1921',state:'OH',age:67,source:'MIA',address:'3235 Maher St, Toledo, OH 43608',notes:'Age: 67 · Mortgage: $78,551 · Lender: Your Lender'},
-  {name:'Jerry Jennings',phone:'979-540-0306',state:'TX',age:70,source:'MIA',address:'1511 County Road 226, Giddings, TX 78942',notes:'Age: 70 · Spouse Christine age 58 · Mortgage: $355,000 · Lender: Ladera Lending Inc'},
-  {name:'Det Nguyen',phone:'281-386-9236',state:'TX',age:49,source:'MIA',address:'715 Umbrella Tree Dr, Magnolia, TX 77354',notes:'Age: 49 · Mortgage: $197,591 · Lender: Lennar Mortgage LLC'},
-  {name:'David Pace',phone:'901-486-6309',state:'TN',age:65,source:'MIA',address:'12165 Macon Rd, Collierville, TN 38017',notes:'Age: 65 · Mortgage: $536,000 · Lender: BankTennessee'},
-  {name:'Angel Medina',phone:'832-459-6130',state:'TX',age:32,source:'MIA',address:'800 S 1st St, La Porte, TX 77571',notes:'Age: 32 · Mortgage: $314,450 · Lender: MTL Mortgage LLC'},
-  {name:'Thomas Prior',phone:'860-266-3944',state:'CT',age:57,source:'MIA',address:'281 Quail Run Rd, Suffield, CT 06078',notes:'Age: 57 · Mortgage: $250,000 · Lender: Your Lender'},
-  {name:'Sylvia Bowman',phone:'956-358-3471',state:'TX',age:40,source:'MIA',address:'2317 Swallow Ave, McAllen, TX 78504',notes:'Age: 40 · Mortgage: $278,390 · Lender: LIRA Home Loans LLC'},
-  {name:'Jodi Harder',phone:'361-319-1111',state:'TX',age:50,source:'MIA',address:'2408 Avenue A, Ingleside, TX 78362',notes:'Age: 50 · Mortgage: $557,600 · Lender: Prosperity Bank'}
+  {name:'Christopher Martensen',phone:'774-280-8801',state:'MA',age:44,source:'CIA',address:'2 Northland Rd, Shrewsbury, MA 01545',notes:'Age: 44 - Mortgage: $420,000 - Gender: Male - Tobacco: N - Co-borrower: N - Lender: Your Lender'},
+  {name:'Laura Bales',phone:'423-877-7040',state:'TN',age:78,source:'CIA',address:'210 Vreeland St, Chattanooga, TN 37415',notes:'Age: 78 - Mortgage: $160,900 - Gender: Female - Tobacco: N - Co-borrower: N - Lender: Nations Lending Corp'},
+  {name:'Nora Iraheta',phone:'615-586-0462',state:'TN',age:44,source:'MIA',address:'1102 Tinnell Rd, Mt Juliet, TN 37122',notes:'Age: 44 - Mortgage: $382,410 - Lender: 5th Street Capital Inc'},
+  {name:'Nelly Vasquez',phone:'504-509-8635',state:'VA',age:40,source:'MIA',address:'2504 Harwood St, Richmond, VA 23224',notes:'Age: 40 - Mortgage: $246,050 - Lender: SWBC Mortgage Corp'},
+  {name:'Juan Hernandez',phone:'979-703-0878',state:'TX',age:43,source:'MIA',address:'2529 Maskavich Ct, Bryan, TX 77807',notes:'Age: 43 - Mortgage: $353,724 - Lender: Kangaroo Home Lending LLC'},
+  {name:'Joanne Wheeler',phone:'419-277-1921',state:'OH',age:67,source:'MIA',address:'3235 Maher St, Toledo, OH 43608',notes:'Age: 67 - Mortgage: $78,551 - Lender: Your Lender'},
+  {name:'Jerry Jennings',phone:'979-540-0306',state:'TX',age:70,source:'MIA',address:'1511 County Road 226, Giddings, TX 78942',notes:'Age: 70 - Spouse Christine age 58 - Mortgage: $355,000 - Lender: Ladera Lending Inc'},
+  {name:'Det Nguyen',phone:'281-386-9236',state:'TX',age:49,source:'MIA',address:'715 Umbrella Tree Dr, Magnolia, TX 77354',notes:'Age: 49 - Mortgage: $197,591 - Lender: Lennar Mortgage LLC'},
+  {name:'David Pace',phone:'901-486-6309',state:'TN',age:65,source:'MIA',address:'12165 Macon Rd, Collierville, TN 38017',notes:'Age: 65 - Mortgage: $536,000 - Lender: BankTennessee'},
+  {name:'Angel Medina',phone:'832-459-6130',state:'TX',age:32,source:'MIA',address:'800 S 1st St, La Porte, TX 77571',notes:'Age: 32 - Mortgage: $314,450 - Lender: MTL Mortgage LLC'},
+  {name:'Thomas Prior',phone:'860-266-3944',state:'CT',age:57,source:'MIA',address:'281 Quail Run Rd, Suffield, CT 06078',notes:'Age: 57 - Mortgage: $250,000 - Lender: Your Lender'},
+  {name:'Sylvia Bowman',phone:'956-358-3471',state:'TX',age:40,source:'MIA',address:'2317 Swallow Ave, McAllen, TX 78504',notes:'Age: 40 - Mortgage: $278,390 - Lender: LIRA Home Loans LLC'},
+  {name:'Jodi Harder',phone:'361-319-1111',state:'TX',age:50,source:'MIA',address:'2408 Avenue A, Ingleside, TX 78362',notes:'Age: 50 - Mortgage: $557,600 - Lender: Prosperity Bank'}
 ];
   const today = new Date().toISOString().slice(0,10);
   // Check existing phones to avoid duplicates
@@ -2076,7 +2076,7 @@ const IMPORT_BATCH_20260610 = [
     return !existingPhones.has(ph);
   });
   if (!toInsert.length) {
-    showModal(`<button class="close-x" onclick="closeModal()">×</button>
+    showModal(`<button class="close-x" onclick="closeModal()">x</button>
     <div class="modal-title">Already imported</div>
     <div style="font-size:13px;color:#5f7a99;margin-top:8px;">All leads in the ${batchLabel} batch are already in your tracker (matched by phone number).</div>`);
     return;
@@ -2095,35 +2095,34 @@ const IMPORT_BATCH_20260610 = [
   renderScore();
   renderSidebar();
   renderClients(document.getElementById('client-search') ? document.getElementById('client-search').value : '');
-  showModal(`<button class="close-x" onclick="closeModal()">×</button>
-  <div class="modal-title">✅ Import complete</div>
+  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  <div class="modal-title"> Import complete</div>
   <div style="font-size:13px;color:#5f7a99;margin-top:4px;">${batchLabel}</div>
   <div style="font-size:28px;font-weight:500;color:#138181;margin:12px 0;">${toInsert.length} leads added</div>
   ${batch.length - toInsert.length > 0 ? `<div style="font-size:12px;color:#a0b8cc;">${batch.length - toInsert.length} skipped (already exist)</div>` : ''}
   <div style="margin-top:12px;">
-    ${toInsert.map(l=>`<div style="font-size:12px;color:#1D3557;padding:3px 0;border-top:1px solid #f0f4f8;">${l.name} · ${l.state}</div>`).join('')}
+    ${toInsert.map(l=>`<div style="font-size:12px;color:#1D3557;padding:3px 0;border-top:1px solid #f0f4f8;">${l.name} - ${l.state}</div>`).join('')}
   </div>`);
 }
 
 function openImportModal() {
-  showModal(`<button class="close-x" onclick="closeModal()">×</button>
-  <div class="modal-title">📥 Import leads</div>
-  <div style="font-size:12px;color:#5f7a99;margin-bottom:14px;">Available batches — duplicates skipped automatically by phone number.</div>
+  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  <div class="modal-title">[Import] Import leads</div>
+  <div style="font-size:12px;color:#5f7a99;margin-bottom:14px;">Available batches - duplicates skipped automatically by phone number.</div>
   <div style="background:#E1F5EE;border:1px solid #9FE1CB;border-radius:8px;padding:12px;margin-bottom:8px;">
-    <div style="font-size:13px;font-weight:500;color:#1D3557;">June 10, 2026 — CIA/MIA batch</div>
-    <div style="font-size:11px;color:#5f7a99;margin-top:2px;">13 leads · 2 CIA, 11 MIA · MA, TN, VA, TX, OH, CT</div>
-    <button class="save-btn" style="margin-top:10px;" onclick="importBatch(IMPORT_BATCH_20260610,'June 10 2026 — CIA/MIA batch')">Import 13 leads</button>
+    <div style="font-size:13px;font-weight:500;color:#1D3557;">June 10, 2026 - CIA/MIA batch</div>
+    <div style="font-size:11px;color:#5f7a99;margin-top:2px;">13 leads - 2 CIA, 11 MIA - MA, TN, VA, TX, OH, CT</div>
+    <button class="save-btn" style="margin-top:10px;" onclick="importBatch(IMPORT_BATCH_20260610,'June 10 2026 - CIA/MIA batch')">Import 13 leads</button>
   </div>
   <div style="background:#E1F5EE;border:1px solid #9FE1CB;border-radius:8px;padding:12px;margin-bottom:8px;">
-    <div style="font-size:13px;font-weight:500;color:#1D3557;">June 9, 2026 — CIA batch</div>
-    <div style="font-size:11px;color:#5f7a99;margin-top:2px;">18 leads · All CIA · VA, NH, OH, TX, MA, NC, TN, CT, RI</div>
-    <button class="save-btn" style="margin-top:10px;" onclick="importBatch(IMPORT_BATCH_20260609,'June 9 2026 — CIA batch')">Import 18 leads</button>
+    <div style="font-size:13px;font-weight:500;color:#1D3557;">June 9, 2026 - CIA batch</div>
+    <div style="font-size:11px;color:#5f7a99;margin-top:2px;">18 leads - All CIA - VA, NH, OH, TX, MA, NC, TN, CT, RI</div>
+    <button class="save-btn" style="margin-top:10px;" onclick="importBatch(IMPORT_BATCH_20260609,'June 9 2026 - CIA batch')">Import 18 leads</button>
   </div>`);
 }
 
-// ── GO ───────────────────────────────────────────────────────
+//  GO 
 init();
 </script>
 </body>
 </html>
- 
