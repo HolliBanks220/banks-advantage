@@ -218,32 +218,59 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
     </div>
     <div class="divider"></div>
-    <div class="section-lbl">Sits this period</div>
-    <div class="stat-row">
-      <div class="stat stat-navy">
-        <div class="stat-lbl lbl-white">Appts</div>
-        <div class="stat-val val-white" id="p-first" onclick="drillDown('appts')" style="cursor:pointer;">0</div>
-        <div class="stat-sub sub-white" id="p-first-rate">0% showed</div>
-      </div>
-      <div class="stat stat-teal">
-        <div class="stat-lbl lbl-white">Sits</div>
-        <div class="stat-val val-white" id="p-showed" onclick="drillDown('showed')" style="cursor:pointer;">0</div>
-        <div class="stat-sub sub-white" id="p-sit-rate">0% sit rate</div>
-      </div>
-      <div class="stat stat-amber">
-        <div class="stat-lbl lbl-amber">No shows</div>
-        <div class="stat-val val-amber" id="p-noshow" onclick="drillDown('noshow')" style="cursor:pointer;">0</div>
-        <div class="stat-sub" style="color:#854F0B;" id="p-cancel">0 canceled</div>
-      </div>
-    </div>
-    <div class="divider"></div>
     <div class="section-lbl">Production</div>
     <div class="stat-row">
       <div class="stat stat-navy">
-        <div class="stat-lbl lbl-white">Closed HH</div>
-        <div class="stat-val val-white" id="p-closed">0</div>
-        <div class="stat-sub sub-white" id="p-close-rate">0% close rate</div>
+        <div class="stat-lbl lbl-white">Appts</div>
+        <div class="stat-val val-white" id="p-first" style="cursor:pointer;" onclick="drillDown('appts')">0</div>
+        <div class="stat-sub sub-white" id="p-first-rate">— show rate</div>
       </div>
+      <div class="stat stat-teal">
+        <div class="stat-lbl lbl-white">Sits</div>
+        <div class="stat-val val-white" id="p-showed">0</div>
+        <div class="stat-sub sub-white" id="p-sit-rate">— close rate</div>
+      </div>
+      <div class="stat stat-amber">
+        <div class="stat-lbl lbl-amber">No Shows</div>
+        <div class="stat-val val-amber" id="p-noshow">0</div>
+        <div class="stat-sub" style="color:#854F0B;" id="p-cancel">—</div>
+      </div>
+    </div>
+    <div class="stat-row">
+      <div class="stat stat-teal">
+        <div class="stat-lbl lbl-white">Sales</div>
+        <div class="stat-val val-white" id="p-sales">0</div>
+        <div class="stat-sub sub-white" id="p-sales-sub">— of sits</div>
+      </div>
+      <div class="stat stat-red">
+        <div class="stat-lbl lbl-red">No Sales</div>
+        <div class="stat-val val-red" id="p-nosales">0</div>
+        <div class="stat-sub" style="color:#791F1F;" id="p-nosales-sub">—</div>
+      </div>
+      <div class="stat stat-navy-lt">
+        <div class="stat-lbl lbl-navy">Continuations</div>
+        <div class="stat-val val-navy" id="p-cont">0</div>
+        <div class="stat-sub sub-navy" id="p-cont-sub">—</div>
+      </div>
+    </div>
+    <div class="stat-row">
+      <div class="stat stat-amber">
+        <div class="stat-lbl lbl-amber">PPUs</div>
+        <div class="stat-val val-amber" id="p-ppu">0</div>
+        <div class="stat-sub" style="color:#854F0B;" id="p-ppu-sub">— sold</div>
+      </div>
+      <div class="stat stat-purple">
+        <div class="stat-lbl lbl-purple">Resets</div>
+        <div class="stat-val val-purple" id="p-resets">0</div>
+        <div class="stat-sub" style="color:#3C3489;" id="p-resets-sub">—</div>
+      </div>
+      <div class="stat stat-green">
+        <div class="stat-lbl lbl-green">Apps written</div>
+        <div class="stat-val val-green" id="p-closed">0</div>
+        <div class="stat-sub sub-green" id="p-close-rate">—</div>
+      </div>
+    </div>
+    <div class="stat-row2">
       <div class="stat stat-teal">
         <div class="stat-lbl lbl-white">Written APV</div>
         <div class="stat-val val-white" id="p-apv">$0</div>
@@ -251,24 +278,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-sub" style="color:rgba(255,255,255,0.45);font-size:9px;" id="p-apv-alltime"></div>
       </div>
       <div class="stat stat-navy-lt">
-        <div class="stat-lbl lbl-navy">APV / HH</div>
+        <div class="stat-lbl lbl-navy">APV / Sale</div>
         <div class="stat-val val-navy" id="p-apv-hh">$0</div>
-        <div class="stat-sub sub-navy" id="p-apps-hh">0 apps/HH</div>
+        <div class="stat-sub sub-navy" id="p-apv-ppu">$0 / PPU sale</div>
       </div>
-    </div>
-    <div class="divider"></div>
-    <div class="section-lbl">Pipeline</div>
-    <div class="stat-row">
-      <div class="stat stat-navy-lt"><div class="stat-lbl lbl-navy">New</div><div class="stat-val val-navy" id="pip-new">0</div><div class="stat-sub sub-navy" id="pip-fresh">0 fresh</div></div>
-      <div class="stat stat-teal-lt"><div class="stat-lbl lbl-teal">Working</div><div class="stat-val val-teal" id="pip-work">0</div></div>
-      <div class="stat stat-amber"><div class="stat-lbl lbl-amber">Appt set</div><div class="stat-val val-amber" id="pip-appt">0</div></div>
-    </div>
-    <div class="stat-row">
-      <div class="stat stat-teal"><div class="stat-lbl lbl-white">Closed</div><div class="stat-val val-white" id="pip-closed">0</div></div>
-      <div class="stat stat-red"><div class="stat-lbl lbl-red">No show</div><div class="stat-val val-red" id="pip-noshow">0</div></div>
-      <div class="stat stat-red"><div class="stat-lbl lbl-red">Dead</div><div class="stat-val val-red" id="pip-dead">0</div></div>
-      <div class="stat stat-purple"><div class="stat-lbl lbl-purple">No sale</div><div class="stat-val val-purple" id="pip-nosale">0</div></div>
-      <div class="stat stat-navy-lt"><div class="stat-lbl lbl-navy">Total</div><div class="stat-val val-navy" id="pip-total">0</div></div>
     </div>
   </div>
 
@@ -734,53 +747,63 @@ function renderScore() {
   document.getElementById('s-resolved-pct').textContent = resolved + ' resolved / ' + assignedInPeriod + ' assigned';
   document.getElementById('s-resolved-fresh').textContent = assignedInPeriod > 0 ? pct(resolved, assignedInPeriod) + ' resolution rate' : '—';
 
-  // ── SITS & PRODUCTION (production calendar: Sat→Fri) ──
+  // ── PRODUCTION (production calendar: Sat→Fri) ──
   const periodAppts = clients.filter(c => {
     if (!c.appt_datetime) return false;
     const d = new Date(c.appt_datetime);
     return d >= pStart && d <= pEnd;
   }).length;
 
-  // New case system touchpoints in period
-  const allTouchpoints = clients.flatMap(c => (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).filter(tp => {
+  const allTPs = clients.flatMap(c => (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).filter(tp => {
     const d = new Date(tp.datetime); return d >= pStart && d <= pEnd;
   })));
-  // Legacy sits in period
   const allSits = clients.flatMap(c => (c.sits||[]).filter(s => {
     const d = new Date(s.datetime); return d >= pStart && d <= pEnd;
   }));
 
-  const tpShowed = allTouchpoints.filter(t => t.outcome==='sale'||t.outcome==='nosale').length;
-  const tpNoShows = allTouchpoints.filter(t => t.outcome==='noshow').length;
-  const legacyShowed = allSits.filter(s => s.outcome==='showed').length;
-  const legacyNoShows = allSits.filter(s => s.outcome==='noshow').length;
-  const totalShowed = tpShowed + legacyShowed;
-  const totalNoShows = tpNoShows + legacyNoShows;
-  const totalCanceled = allSits.filter(s => s.outcome==='canceled').length;
+  const tpSits = allTPs.filter(t => t.outcome==='sale'||t.outcome==='nosale'||t.outcome==='cont').length;
+  const legacySits = allSits.filter(s => s.outcome==='showed').length;
+  const totalShowed = tpSits + legacySits;
+  const totalNoShows = allTPs.filter(t=>t.outcome==='noshow').length + allSits.filter(s=>s.outcome==='noshow').length;
+  const totalSales = allTPs.filter(t=>t.outcome==='sale').length;
+  const totalNoSales = allTPs.filter(t=>t.outcome==='nosale').length;
+  const totalCont = allTPs.filter(t=>t.outcome==='cont').length;
+  const totalPPUs = allTPs.filter(t=>t.type==='PPU / Policy Pickup'&&(t.outcome==='sale'||t.outcome==='nosale'||t.outcome==='cont')).length;
+  const totalPPUSales = allTPs.filter(t=>t.type==='PPU / Policy Pickup'&&t.outcome==='sale').length;
+  const totalResets = allTPs.filter(t=>t.resetSelf||t.resetSME).length;
+
+  const saleTPs = allTPs.filter(t=>t.outcome==='sale');
+  const satSits = allSits.filter(s=>s.outcome==='showed');
+  const totalAPV = saleTPs.reduce((a,t)=>a+(t.apps||[]).reduce((b,ap)=>b+(ap.premium||0),0),0)
+    + satSits.reduce((a,s)=>a+(s.apps||[]).reduce((b,ap)=>b+(ap.premium||0),0),0);
+  const totalApps = saleTPs.reduce((a,t)=>a+(t.apps||[]).length,0)
+    + satSits.reduce((a,s)=>a+(s.apps||[]).length,0);
+  const closedCount = saleTPs.filter(t=>(t.apps||[]).length>0).length + satSits.filter(s=>(s.apps||[]).length>0).length;
+  const ppuSaleAPV = allTPs.filter(t=>t.type==='PPU / Policy Pickup'&&t.outcome==='sale').reduce((a,t)=>a+(t.apps||[]).reduce((b,ap)=>b+(ap.premium||0),0),0);
+  const apvPerSale = totalSales>0 ? Math.round(totalAPV/totalSales) : 0;
+  const apvPerPPUSale = totalPPUSales>0 ? Math.round(ppuSaleAPV/totalPPUSales) : 0;
 
   document.getElementById('p-first').textContent = periodAppts;
-  document.getElementById('p-first-rate').textContent = periodAppts > 0 ? pct(totalShowed, periodAppts) + ' sat' : '—';
+  document.getElementById('p-first-rate').textContent = pct(totalShowed, periodAppts) + ' show rate';
   document.getElementById('p-showed').textContent = totalShowed;
-  document.getElementById('p-sit-rate').textContent = pct(totalShowed, periodAppts) + ' show rate';
+  document.getElementById('p-sit-rate').textContent = pct(totalSales, totalShowed) + ' close rate';
   document.getElementById('p-noshow').textContent = totalNoShows;
-  document.getElementById('p-cancel').textContent = totalCanceled + ' canceled';
-
-  // APV from touchpoint apps + legacy sit apps
-  const saleTps = allTouchpoints.filter(t => t.outcome==='sale');
-  const satSits = allSits.filter(s => s.outcome==='showed');
-  const totalAPV = saleTps.reduce((a,t)=>a+(t.apps||[]).reduce((b,ap)=>b+(ap.premium||0),0),0)
-    + satSits.reduce((a,s)=>a+(s.apps||[]).reduce((b,ap)=>b+(ap.premium||0),0),0);
-  const totalApps = saleTps.reduce((a,t)=>a+(t.apps||[]).length,0)
-    + satSits.reduce((a,s)=>a+(s.apps||[]).length,0);
-  const closedCount = saleTps.filter(t=>(t.apps||[]).length>0).length + satSits.filter(s=>(s.apps||[]).length>0).length;
-  const apvPerHH = closedCount>0 ? Math.round(totalAPV/closedCount) : 0;
-  const appsPerHH = closedCount>0 ? Math.round((totalApps/closedCount)*10)/10 : 0;
+  document.getElementById('p-cancel').textContent = periodAppts>0 ? pct(totalNoShows,periodAppts)+' no-show rate' : '—';
+  document.getElementById('p-sales').textContent = totalSales;
+  document.getElementById('p-sales-sub').textContent = pct(totalSales,totalShowed)+' of sits';
+  document.getElementById('p-nosales').textContent = totalNoSales;
+  document.getElementById('p-nosales-sub').textContent = pct(totalNoSales,totalShowed)+' of sits';
+  document.getElementById('p-cont').textContent = totalCont;
+  document.getElementById('p-cont-sub').textContent = pct(totalCont,totalShowed)+' of sits';
+  document.getElementById('p-ppu').textContent = totalPPUs;
+  document.getElementById('p-ppu-sub').textContent = totalPPUSales+' sold ('+pct(totalPPUSales,totalPPUs)+')';
+  document.getElementById('p-resets').textContent = totalResets;
   document.getElementById('p-closed').textContent = closedCount;
-  document.getElementById('p-close-rate').textContent = pct(closedCount,totalShowed) + ' close rate';
+  document.getElementById('p-close-rate').textContent = pct(closedCount,totalShowed)+' close rate';
   document.getElementById('p-apv').textContent = fmt(totalAPV);
-  document.getElementById('p-apps').textContent = totalApps + ' applications';
-  document.getElementById('p-apv-hh').textContent = fmt(apvPerHH);
-  document.getElementById('p-apps-hh').textContent = appsPerHH + ' apps/HH';
+  document.getElementById('p-apps').textContent = totalApps+' applications';
+  document.getElementById('p-apv-hh').textContent = fmt(apvPerSale);
+  document.getElementById('p-apv-ppu').textContent = fmt(apvPerPPUSale)+' / PPU sale';
 
   // All-time APV
   const allTimeSits = clients.flatMap(c => (c.sits||[]).filter(s => s.outcome==='showed'));
@@ -791,16 +814,6 @@ function renderScore() {
     + allTimeTps.reduce((a,t)=>a+(t.apps||[]).length,0);
   const allTimeEl = document.getElementById('p-apv-alltime');
   if (allTimeEl) allTimeEl.textContent = fmt(allTimeAPV) + ' total · ' + allTimeApps + ' apps (all time)';
-
-  document.getElementById('pip-new').textContent = clients.filter(c=>c.status==='New').length;
-  document.getElementById('pip-fresh').textContent = clients.filter(c=>c.status==='New'&&isFresh(c)).length + ' fresh';
-  document.getElementById('pip-work').textContent = clients.filter(c=>c.status==='Working').length;
-  document.getElementById('pip-appt').textContent = clients.filter(c=>c.status==='Appointment set').length;
-  document.getElementById('pip-closed').textContent = clients.filter(c=>c.status==='Closed').length;
-  document.getElementById('pip-noshow').textContent = clients.filter(c=>c.status==='No show').length;
-  document.getElementById('pip-dead').textContent = clients.filter(c=>c.status==='Dead').length;
-  document.getElementById('pip-nosale').textContent = clients.filter(c=>c.status==='No sale').length;
-  document.getElementById('pip-total').textContent = clients.length;
 }
 
 // ── TABS ─────────────────────────────────────────────────────
@@ -1507,8 +1520,8 @@ function renderCasesHtml(c) {
     const tpHtml = tps.map((tp, ti) => {
       const dt = new Date(tp.datetime);
       const dtStr = dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' + dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-      const outcomeLabel = tp.outcome==='sale'?'Sale':tp.outcome==='nosale'?'No Sale':tp.outcome==='noshow'?'No Show':'Pending';
-      const outcomeColor = tp.outcome==='sale'?'#3B6D11':tp.outcome==='nosale'?'#A32D2D':tp.outcome==='noshow'?'#BA7517':'#8fa8c0';
+      const outcomeLabel = tp.outcome==='sale'?'Sale':tp.outcome==='nosale'?'No Sale':tp.outcome==='noshow'?'No Show':tp.outcome==='cont'?'Continuation':'Pending';
+      const outcomeColor = tp.outcome==='sale'?'#3B6D11':tp.outcome==='nosale'?'#A32D2D':tp.outcome==='noshow'?'#BA7517':tp.outcome==='cont'?'#534AB7':'#8fa8c0';
       const flags = [];
       if (tp.resetSelf) flags.push('↩ Reset→me');
       if (tp.resetSME) flags.push(`↩ Reset→${tp.resetSMEName||'SME'}`);
@@ -1608,7 +1621,12 @@ function openAddTouchpoint(id, ci) {
     <button class="call-btn" id="tpo-pending" style="background:#1D3557;color:#fff;" onclick="setTpOutcome('pending')">Pending</button>
     <button class="call-btn" id="tpo-sale" style="background:#f0f4f8;color:#5f7a99;" onclick="setTpOutcome('sale')">Sale</button>
     <button class="call-btn" id="tpo-nosale" style="background:#f0f4f8;color:#5f7a99;" onclick="setTpOutcome('nosale')">No Sale</button>
+    <button class="call-btn" id="tpo-cont" style="background:#f0f4f8;color:#5f7a99;" onclick="setTpOutcome('cont')">Continuation</button>
     <button class="call-btn" id="tpo-noshow" style="background:#f0f4f8;color:#5f7a99;" onclick="setTpOutcome('noshow')">No Show</button>
+  </div>
+  <div id="tp-cont-detail" style="display:none;">
+    <div class="field"><label>Next touchpoint date & time</label><input type="datetime-local" id="tp-cont-dt" value="${resetDt}" style="font-size:15px;"></div>
+    <div class="field"><label>Next touchpoint type</label><select id="tp-cont-type">${TP_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></div>
   </div>
   <div id="tp-addons" style="display:none;">
     <div class="section-lbl">Add-ons</div>
@@ -1634,12 +1652,14 @@ function openAddTouchpoint(id, ci) {
 
 function setTpOutcome(val) {
   window._tpOutcome = val;
-  ['pending','sale','nosale','noshow'].forEach(v => {
+  ['pending','sale','nosale','cont','noshow'].forEach(v => {
     const btn = document.getElementById('tpo-'+v);
     if (btn) { btn.style.background = v===val?'#1D3557':'#f0f4f8'; btn.style.color = v===val?'#fff':'#5f7a99'; }
   });
   const addons = document.getElementById('tp-addons');
-  if (addons) addons.style.display = (val==='sale'||val==='nosale') ? 'block' : 'none';
+  if (addons) addons.style.display = (val==='sale'||val==='nosale'||val==='cont') ? 'block' : 'none';
+  const contDetail = document.getElementById('tp-cont-detail');
+  if (contDetail) contDetail.style.display = val==='cont' ? 'block' : 'none';
 }
 
 function toggleTpAddon(key) {
@@ -1675,6 +1695,23 @@ async function saveTouchpoint(id, ci) {
   // Update case status
   if (outcome==='sale') c.cases[ci].status='Closed Won';
   else if (outcome==='nosale') c.cases[ci].status='Closed Lost';
+  else if (outcome==='cont') c.cases[ci].status='Open';
+  else if (outcome==='noshow') c.cases[ci].status='Open';
+
+  // Handle continuation — create next pending touchpoint, update appt_datetime, NO stat
+  if (outcome==='cont') {
+    const contDtVal = (document.getElementById('tp-cont-dt')||{value:''}).value;
+    const contType = (document.getElementById('tp-cont-type')||{value:'Follow-up'}).value;
+    if (contDtVal) {
+      const contDtIso = new Date(contDtVal).toISOString();
+      c.cases[ci].touchpoints.push({
+        type: contType, datetime: contDtIso, outcome: 'pending',
+        notes: '', apps: [], created: new Date().toISOString()
+      });
+      c.appt_datetime = contDtIso;
+      c.appt_notes = contType + ' (continuation)';
+    }
+  }
 
   // Spawn new case on reset
   if (addons.resetself || addons.resetsme) {
@@ -1701,6 +1738,7 @@ async function saveTouchpoint(id, ci) {
   let newLeadStatus = c.status;
   if (outcome==='sale') newLeadStatus='Closed';
   else if (outcome==='nosale' && !addons.resetself && !addons.resetsme) newLeadStatus='No sale';
+  else if (outcome==='cont') newLeadStatus='Appointment set';
   else if (outcome==='noshow') newLeadStatus='No show';
   else if (outcome==='pending') newLeadStatus='Appointment set';
 
@@ -1729,6 +1767,7 @@ function openEditTouchpoint(id, ci, ti) {
     <button class="call-btn" style="background:${!tp.outcome||tp.outcome==='pending'?'#1D3557':'#f0f4f8'};color:${!tp.outcome||tp.outcome==='pending'?'#fff':'#5f7a99'};" onclick="updateTpOutcome('${id}',${ci},${ti},'pending')">Pending</button>
     <button class="call-btn" style="background:${tp.outcome==='sale'?'#3B6D11':'#f0f4f8'};color:${tp.outcome==='sale'?'#fff':'#5f7a99'};" onclick="updateTpOutcome('${id}',${ci},${ti},'sale')">Sale</button>
     <button class="call-btn" style="background:${tp.outcome==='nosale'?'#A32D2D':'#f0f4f8'};color:${tp.outcome==='nosale'?'#fff':'#5f7a99'};" onclick="updateTpOutcome('${id}',${ci},${ti},'nosale')">No Sale</button>
+    <button class="call-btn" style="background:${tp.outcome==='cont'?'#534AB7':'#f0f4f8'};color:${tp.outcome==='cont'?'#fff':'#5f7a99'};" onclick="updateTpOutcome('${id}',${ci},${ti},'cont')">Continuation</button>
     <button class="call-btn" style="background:${tp.outcome==='noshow'?'#BA7517':'#f0f4f8'};color:${tp.outcome==='noshow'?'#fff':'#5f7a99'};" onclick="updateTpOutcome('${id}',${ci},${ti},'noshow')">No Show</button>
   </div>
   <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
@@ -1751,6 +1790,7 @@ async function updateTpOutcome(id, ci, ti, val) {
   if (val==='sale') newLeadStatus='Closed';
   else if (val==='nosale') newLeadStatus='No sale';
   else if (val==='noshow') newLeadStatus='No show';
+  else if (val==='cont') newLeadStatus='Appointment set';
   showSync('Saving...');
   await sb.from('clients').update({cases:c.cases, status:newLeadStatus}).eq('id',id);
   c.status = newLeadStatus; hideSync(); renderScore();
