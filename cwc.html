@@ -1972,59 +1972,6 @@ function openImportModal() {
   '<div style="font-size:12px;color:#5f7a99;margin-bottom:14px;">Upload a PDF to import new leads. PDF import coming soon!</div>' +
   '<div style="font-size:13px;color:#1D3557;padding:12px;background:#f0f4f8;border-radius:8px;">Previous batches (June 9 + June 10) already imported - 31 leads in your tracker.</div>');
 }
-  {name:'Christopher Martensen',phone:'774-280-8801',state:'MA',age:44,source:'CIA',address:'2 Northland Rd, Shrewsbury, MA 01545',notes:'Age: 44 - Mortgage: $420,000 - Gender: Male - Tobacco: N - Co-borrower: N - Lender: Your Lender'},
-  {name:'Laura Bales',phone:'423-877-7040',state:'TN',age:78,source:'CIA',address:'210 Vreeland St, Chattanooga, TN 37415',notes:'Age: 78 - Mortgage: $160,900 - Gender: Female - Tobacco: N - Co-borrower: N - Lender: Nations Lending Corp'},
-  {name:'Nora Iraheta',phone:'615-586-0462',state:'TN',age:44,source:'MIA',address:'1102 Tinnell Rd, Mt Juliet, TN 37122',notes:'Age: 44 - Mortgage: $382,410 - Lender: 5th Street Capital Inc'},
-  {name:'Nelly Vasquez',phone:'504-509-8635',state:'VA',age:40,source:'MIA',address:'2504 Harwood St, Richmond, VA 23224',notes:'Age: 40 - Mortgage: $246,050 - Lender: SWBC Mortgage Corp'},
-  {name:'Juan Hernandez',phone:'979-703-0878',state:'TX',age:43,source:'MIA',address:'2529 Maskavich Ct, Bryan, TX 77807',notes:'Age: 43 - Mortgage: $353,724 - Lender: Kangaroo Home Lending LLC'},
-  {name:'Joanne Wheeler',phone:'419-277-1921',state:'OH',age:67,source:'MIA',address:'3235 Maher St, Toledo, OH 43608',notes:'Age: 67 - Mortgage: $78,551 - Lender: Your Lender'},
-  {name:'Jerry Jennings',phone:'979-540-0306',state:'TX',age:70,source:'MIA',address:'1511 County Road 226, Giddings, TX 78942',notes:'Age: 70 - Spouse Christine age 58 - Mortgage: $355,000 - Lender: Ladera Lending Inc'},
-  {name:'Det Nguyen',phone:'281-386-9236',state:'TX',age:49,source:'MIA',address:'715 Umbrella Tree Dr, Magnolia, TX 77354',notes:'Age: 49 - Mortgage: $197,591 - Lender: Lennar Mortgage LLC'},
-  {name:'David Pace',phone:'901-486-6309',state:'TN',age:65,source:'MIA',address:'12165 Macon Rd, Collierville, TN 38017',notes:'Age: 65 - Mortgage: $536,000 - Lender: BankTennessee'},
-  {name:'Angel Medina',phone:'832-459-6130',state:'TX',age:32,source:'MIA',address:'800 S 1st St, La Porte, TX 77571',notes:'Age: 32 - Mortgage: $314,450 - Lender: MTL Mortgage LLC'},
-  {name:'Thomas Prior',phone:'860-266-3944',state:'CT',age:57,source:'MIA',address:'281 Quail Run Rd, Suffield, CT 06078',notes:'Age: 57 - Mortgage: $250,000 - Lender: Your Lender'},
-  {name:'Sylvia Bowman',phone:'956-358-3471',state:'TX',age:40,source:'MIA',address:'2317 Swallow Ave, McAllen, TX 78504',notes:'Age: 40 - Mortgage: $278,390 - Lender: LIRA Home Loans LLC'},
-  {name:'Jodi Harder',phone:'361-319-1111',state:'TX',age:50,source:'MIA',address:'2408 Avenue A, Ingleside, TX 78362',notes:'Age: 50 - Mortgage: $557,600 - Lender: Prosperity Bank'}
-];
-  const today = new Date().toISOString().slice(0,10);
-  // Check existing phones to avoid duplicates
-  const existingPhones = new Set(clients.map(c => (c.phone||'').replace(/[^0-9]/g,'')));
-  const toInsert = batch.filter(l => {
-    const ph = (l.phone||'').replace(/[^0-9]/g,'');
-    return !existingPhones.has(ph);
-  });
-  if (!toInsert.length) {
-    showModal('<button class="close-x" onclick="closeModal()">x</button>' +
-    '<div class="modal-title">Already imported</div>' +
-    '<div style="font-size:13px;color:#5f7a99;margin-top:8px;">All leads in the ' + batchLabel + ' batch are already in your tracker.</div>');
-    return;
-  }
-  showSync(`Importing ${toInsert.length} leads...`);
-  const rows = toInsert.map(l => ({
-    name: l.name, phone: l.phone, address: l.address||'', age: l.age||null,
-    state: l.state, source: l.source, status: 'New', assigned_date: today,
-    notes: l.notes, health_notes: '', policy_notes: '', ppu_notes: '', call_log: [], sits: []
-  }));
-  const { error } = await sb.from('clients').insert(rows);
-  if (error) { hideSync(); alert('Import error: ' + error.message); return; }
-  await loadClients();
-  hideSync();
-  closeModal();
-  renderScore();
-  renderSidebar();
-  renderClients(document.getElementById('client-search') ? document.getElementById('client-search').value : '');
-  showModal(`<button class="close-x" onclick="closeModal()">x</button> 
-  <div class="modal-title"> Import complete</div>
-  <div style="font-size:13px;color:#5f7a99;margin-top:4px;">${batchLabel}</div>
-  <div style="font-size:28px;font-weight:500;color:#138181;margin:12px 0;">${toInsert.length} leads added</div>
-  ${batch.length - toInsert.length > 0 ? `<div style="font-size:12px;color:#a0b8cc;">${batch.length - toInsert.length} skipped (already exist)</div>` : ''}
-  <div style="margin-top:12px;">
-    ${toInsert.map(l=>`<div style="font-size:12px;color:#1D3557;padding:3px 0;border-top:1px solid #f0f4f8;">${l.name} - ${l.state}</div>`).join('')}
-  </div>`);
-}
-
-
-
 //  GO 
 init();
 </script>
