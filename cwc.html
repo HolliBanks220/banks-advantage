@@ -1964,28 +1964,14 @@ async function toggleUpload(id, si, ai) {
 }
 
 //  BULK IMPORT 
-const IMPORT_BATCH_20260609 = [
-  {name:'Brett Jennings',phone:'540-661-8161',state:'VA',age:24,source:'CIA',address:'61 Oakland Pl, Louisa, VA 23093',notes:'Age: 24 - Mortgage: $343,660 - Gender: Male - Tobacco: N - Co-borrower: Y - Lender: Capital Center LLC'},
-  {name:'Clark Gesen',phone:'603-724-0297',state:'NH',age:32,source:'CIA',address:'100 Main St Apt 203, Pembroke, NH 03275',notes:'Age: 32 - Mortgage: $193,500 - Gender: Male - Tobacco: N - Co-borrower: N'},
-  {name:'Freddie Light',phone:'419-626-8659',state:'OH',age:81,source:'CIA',address:'2905 W Perkins Ave, Sandusky, OH 44870',notes:'Age: 81 - Mortgage: $55,000 - Gender: Male - Tobacco: N - Co-borrower: N'},
-  {name:'Phillip Salas',phone:'832-244-4408',state:'TX',age:null,source:'CIA',address:'1155 Beals Creek St, Conroe, TX 77304',notes:'Age: - - Mortgage: $569,000 - Gender: Male - Tobacco: Y - Co-borrower: N - Lender: Village Capital & Investment LLC'},
-  {name:'Steven Swanson',phone:'508-776-7505',state:'MA',age:73,source:'CIA',address:'650 Old Barnstable Rd, Mashpee, MA 02649',notes:'Age: 73 - Mortgage: $250,000 - Gender: Male - Tobacco: Y - Co-borrower: Y'},
-  {name:'Steve Dostie',phone:'603-530-2977',state:'NH',age:54,source:'CIA',address:'131 Birch Hill Rd, Bristol, NH 03222',notes:'Age: 54 - Mortgage: $100,000 - Gender: Male - Tobacco: N - Co-borrower: Y'},
-  {name:'Skyler Foote',phone:'217-407-9216',state:'NC',age:20,source:'CIA',address:'116 W Bayshore Blvd, Jacksonville, NC 28540',notes:'Age: 20 - Mortgage: $244,138 - Gender: Female - Tobacco: N - Co-borrower: N - Lender: Alpha Mortgage Corporation'},
-  {name:'Richard Love',phone:'276-492-9224',state:'TN',age:82,source:'CIA',address:'11336 Woodcliff Dr, Farragut, TN 37934',notes:'Age: 82 - Mortgage: $395,000 - Gender: Male - Tobacco: N - Co-borrower: N'},
-  {name:'Richard Fitzpatrick',phone:'413-537-0827',state:'MA',age:65,source:'CIA',address:'54 Atlantic St, Ludlow, MA 01056',notes:'Age: 65 - Mortgage: $173,675 - Gender: Male - Tobacco: N - Co-borrower: Y'},
-  {name:'Ruben Espinosa',phone:'860-893-4870',state:'CT',age:58,source:'CIA',address:'298 Murray St, Meriden, CT 06450',notes:'Age: 58 - Mortgage: $294,566 - Gender: Male - Tobacco: Y - Co-borrower: N'},
-  {name:'Philadelpo Guevarra',phone:'203-264-9855',state:'CT',age:null,source:'CIA',address:'133 Old Woodbury Rd, Southbury, CT 06488',notes:'Age: - - Mortgage: $311,200 - Gender: Male - Tobacco: N - Co-borrower: Y'},
-  {name:'Nicholas Ricciardi',phone:'774-479-2636',state:'NH',age:20,source:'CIA',address:'67 Linden Rd, North Conway, NH 03860',notes:'Age: 20 - Mortgage: $240,000 - Gender: Male - Tobacco: N - Co-borrower: Y'},
-  {name:'Melissa Mincey',phone:'865-607-8477',state:'TN',age:null,source:'CIA',address:'4901 Salem Church Rd, Knoxville, TN 37938',notes:'Age: - - Mortgage: $92,800 - Gender: Female - Tobacco: N - Co-borrower: N - Lender: ORNL FCU'},
-  {name:'Matthew Meyers',phone:'320-630-1910',state:'TX',age:null,source:'CIA',address:'601 Harris St, Kilgore, TX 75662',notes:'Age: - - Mortgage: $225,342 - Gender: Male - Tobacco: N - Co-borrower: N - Lender: Guaranteed Rate Inc'},
-  {name:'Marvin Washington',phone:'757-751-7546',state:'VA',age:62,source:'CIA',address:'6686 Wharfview Ct, Hayes, VA 23072',notes:'Age: 62 - Mortgage: $45,000 - Gender: Male - Tobacco: N - Co-borrower: N - Lender: Langley Federal Credit Union'},
-  {name:'Mark Bish',phone:'413-219-9617',state:'MA',age:61,source:'CIA',address:'17 Tall Timber Dr, Wilbraham, MA 01095',notes:'Age: 61 - Mortgage: $293,243 - Gender: Male - Tobacco: N - Co-borrower: Y'},
-  {name:'Kenneth Ayers',phone:'603-352-0697',state:'NH',age:71,source:'CIA',address:'3 Freedom Ln, Rindge, NH 03461',notes:'Age: 71 - Mortgage: $33,408 - Gender: Male - Tobacco: N - Co-borrower: N'},
-  {name:'John Soares',phone:'401-663-3670',state:'RI',age:52,source:'CIA',address:'93 Manton St, Pawtucket, RI 02861',notes:'Age: 52 - Mortgage: $30,130 - Gender: Male - Tobacco: Y - Co-borrower: N - Lender: Mutual of Omaha Mortgage'}
-];
 
-const IMPORT_BATCH_20260610 = [
+
+function openImportModal() {
+  showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+  '<div class="modal-title">Import leads</div>' +
+  '<div style="font-size:12px;color:#5f7a99;margin-bottom:14px;">Upload a PDF to import new leads. PDF import coming soon!</div>' +
+  '<div style="font-size:13px;color:#1D3557;padding:12px;background:#f0f4f8;border-radius:8px;">Previous batches (June 9 + June 10) already imported - 31 leads in your tracker.</div>');
+}
   {name:'Christopher Martensen',phone:'774-280-8801',state:'MA',age:44,source:'CIA',address:'2 Northland Rd, Shrewsbury, MA 01545',notes:'Age: 44 - Mortgage: $420,000 - Gender: Male - Tobacco: N - Co-borrower: N - Lender: Your Lender'},
   {name:'Laura Bales',phone:'423-877-7040',state:'TN',age:78,source:'CIA',address:'210 Vreeland St, Chattanooga, TN 37415',notes:'Age: 78 - Mortgage: $160,900 - Gender: Female - Tobacco: N - Co-borrower: N - Lender: Nations Lending Corp'},
   {name:'Nora Iraheta',phone:'615-586-0462',state:'TN',age:44,source:'MIA',address:'1102 Tinnell Rd, Mt Juliet, TN 37122',notes:'Age: 44 - Mortgage: $382,410 - Lender: 5th Street Capital Inc'},
@@ -2037,21 +2023,7 @@ const IMPORT_BATCH_20260610 = [
   </div>`);
 }
 
-function openImportModal() {
-  showModal(`<button class="close-x" onclick="closeModal()">x</button>
-  <div class="modal-title">[Import] Import leads</div>
-  <div style="font-size:12px;color:#5f7a99;margin-bottom:14px;">Available batches - duplicates skipped automatically by phone number.</div>
-  <div style="background:#E1F5EE;border:1px solid #9FE1CB;border-radius:8px;padding:12px;margin-bottom:8px;">
-    <div style="font-size:13px;font-weight:500;color:#1D3557;">June 10, 2026 - CIA/MIA batch</div>
-    <div style="font-size:11px;color:#5f7a99;margin-top:2px;">13 leads - 2 CIA, 11 MIA - MA, TN, VA, TX, OH, CT</div>
-    <button class="save-btn" style="margin-top:10px;" onclick="importBatch(IMPORT_BATCH_20260610,'June 10 2026 - CIA/MIA batch')">Import 13 leads</button>
-  </div>
-  <div style="background:#E1F5EE;border:1px solid #9FE1CB;border-radius:8px;padding:12px;margin-bottom:8px;">
-    <div style="font-size:13px;font-weight:500;color:#1D3557;">June 9, 2026 - CIA batch</div>
-    <div style="font-size:11px;color:#5f7a99;margin-top:2px;">18 leads - All CIA - VA, NH, OH, TX, MA, NC, TN, CT, RI</div>
-    <button class="save-btn" style="margin-top:10px;" onclick="importBatch(IMPORT_BATCH_20260609,'June 9 2026 - CIA batch')">Import 18 leads</button>
-  </div>`);
-}
+
 
 //  GO 
 init();
