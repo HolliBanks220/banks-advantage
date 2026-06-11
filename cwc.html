@@ -1170,7 +1170,7 @@ async function confirmReschedule(id) {
   if (!dtVal) return;
   const apptNotesEl = document.getElementById('appt-note-field');
   const apptNotes = apptNotesEl ? apptNotesEl.value.trim() : '';
-  const apptDatetime = localISOString(dtVal);
+  const apptDatetime = new Date(dtVal).toISOString();
   const dialCount = window._dialCount || 1;
   const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(),outcome:'Rescheduled',dials:dialCount,appt_datetime:apptDatetime,appt_notes:apptNotes}];
   showSync('Saving...');
@@ -1213,7 +1213,7 @@ async function confirmAppt(id) {
   if (!dtVal) return;
   const apptNotesEl = document.getElementById('appt-note-field');
   const apptNotes = apptNotesEl ? apptNotesEl.value.trim() : '';
-  const apptDatetime = localISOString(dtVal);
+  const apptDatetime = new Date(dtVal).toISOString();
   const caseTypeEl = document.getElementById('appt-case-type');
   const selectedType = caseTypeEl ? caseTypeEl.value : 'Mortgage Protection';
   // Map selection to actual case type
@@ -1321,7 +1321,7 @@ async function deleteCallLogEntry(id, idx) {
 }
 
 // Convert datetime-local value to ISO string WITHOUT UTC conversion
-function localISOString(dtVal) {
+function new Date(dtVal).toISOString() {
   if (!dtVal) return null;
   // datetime-local gives "2026-06-16T19:30" - add seconds and timezone offset
   const d = new Date(dtVal);
@@ -1684,7 +1684,7 @@ async function saveTouchpoint(id, ci) {
   const addons = window._tpAddons || {};
   const tp = {
     type: document.getElementById('tp-type').value,
-    datetime: localISOString(dt),
+    datetime: new Date(dt).toISOString(),
     outcome,
     incomeOffered: addons.income||false,
     resetSelf: addons.resetself||false,
@@ -1710,7 +1710,7 @@ async function saveTouchpoint(id, ci) {
     const contDtVal = (document.getElementById('tp-cont-dt')||{value:''}).value;
     const contType = (document.getElementById('tp-cont-type')||{value:'Follow-up'}).value;
     if (contDtVal) {
-      const contDtIso = localISOString(contDtVal);
+      const contDtIso = new Date(contDtVal).toISOString();
       c.cases[ci].touchpoints.push({
         type: contType, datetime: contDtIso, outcome: 'pending',
         notes: '', apps: [], created: new Date().toISOString()
@@ -1728,7 +1728,7 @@ async function saveTouchpoint(id, ci) {
     const resetDtVal = addons.resetself
       ? (document.getElementById('tp-resetself-dt')||{value:''}).value
       : (document.getElementById('tp-reset-dt')||{value:''}).value;
-    const resetDtIso = resetDtVal ? localISOString(resetDtVal) : null;
+    const resetDtIso = resetDtVal ? new Date(resetDtVal).toISOString() : null;
     const newCase = {
       type: newCaseType, status: 'Open',
       notes: `Reset from ${c.cases[ci].type}${addons.resetsme?' - SME: '+tp.resetSMEName:''}`,
@@ -1761,7 +1761,9 @@ async function saveTouchpoint(id, ci) {
 function openEditTouchpoint(id, ci, ti) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const tp = c.cases[ci].touchpoints[ti];
-  const dtVal = new Date(tp.datetime).toISOString().slice(0,16);
+  // Convert UTC to local time for datetime-local input
+  const dtLocal = new Date(tp.datetime);
+  const dtVal = new Date(dtLocal.getTime() - dtLocal.getTimezoneOffset()*60000).toISOString().slice(0,16);
   const outcomeColor = tp.outcome==='sale'?'#3B6D11':tp.outcome==='nosale'?'#A32D2D':tp.outcome==='noshow'?'#BA7517':'#8fa8c0';
   const outcomeLabel = tp.outcome==='sale'?'Sale':tp.outcome==='nosale'?'No Sale':tp.outcome==='noshow'?'No Show':'Pending';
   const tpTypes = getTpTypes(c.cases[ci].type);
@@ -1816,7 +1818,7 @@ async function toggleTpFlag(id, ci, ti, key) {
 async function saveEditTouchpoint(id, ci, ti) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const newDt = document.getElementById('etp-dt').value;
-  if (newDt) c.cases[ci].touchpoints[ti].datetime = localISOString(newDt);
+  if (newDt) c.cases[ci].touchpoints[ti].datetime = new Date(newDt).toISOString();
   c.cases[ci].touchpoints[ti].type = document.getElementById('etp-type').value;
   c.cases[ci].touchpoints[ti].asrs = (document.getElementById('etp-asrs')||{value:''}).value.trim();
   c.cases[ci].touchpoints[ti].notes = document.getElementById('etp-notes').value.trim();
@@ -1852,7 +1854,7 @@ async function saveSit(id) {
   const dt = document.getElementById('sit-dt').value; if (!dt) return;
   const c = clients.find(x=>x.id===id); if (!c) return;
   const outcome = window._sitOutcome==='pending' ? undefined : window._sitOutcome;
-  const newSit = {datetime:localISOString(dt), reason:document.getElementById('sit-reason').value, type:document.getElementById('sit-type').value, outcome, notes:document.getElementById('sit-notes').value.trim(), apps:[], ppu:false, selfReset:false, sme:false, recruitAsk:false, refsask:0, refs:0, created:new Date().toISOString()};
+  const newSit = {datetime:new Date(dt).toISOString(), reason:document.getElementById('sit-reason').value, type:document.getElementById('sit-type').value, outcome, notes:document.getElementById('sit-notes').value.trim(), apps:[], ppu:false, selfReset:false, sme:false, recruitAsk:false, refsask:0, refs:0, created:new Date().toISOString()};
   const sits = [...(c.sits||[]), newSit];
   let newStatus = c.status;
   if (outcome==='showed') newStatus='Closed';
@@ -1941,7 +1943,7 @@ async function confirmReset(id) {
   const dtVal = document.getElementById('reset-dt').value;
   if (!dtVal) return;
   const resetNotes = document.getElementById('reset-note-field') ? document.getElementById('reset-note-field').value.trim() : '';
-  const resetDatetime = localISOString(dtVal);
+  const resetDatetime = new Date(dtVal).toISOString();
   const callLog = [...(c.call_log||[]), {
     ts: new Date().toISOString(),
     outcome: 'Reset scheduled',
@@ -1978,7 +1980,7 @@ async function toggleSitFlag(id, si, k) {
 async function saveEditSit(id, si) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const newDt = document.getElementById('er-datetime').value;
-  if (newDt) c.sits[si].datetime = localISOString(newDt);
+  if (newDt) c.sits[si].datetime = new Date(newDt).toISOString();
   c.sits[si].reason = document.getElementById('er-reason').value;
   c.sits[si].refs = parseInt(document.getElementById('er-refs').value)||0;
   c.sits[si].refsask = parseInt(document.getElementById('er-refsask').value)||0;
