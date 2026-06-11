@@ -2116,7 +2116,9 @@ function dismissTask(i) {
   renderTasks();
 }
 
-// -- GO --init();
+// -- GO --
+document.addEventListener('DOMContentLoaded', function() { init(); });
+if (document.readyState !== 'loading') { init(); }
 </script>
 </body>
 </html>
