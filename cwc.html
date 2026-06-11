@@ -698,7 +698,8 @@ function renderScore() {
   const totalShowed = tpSits + legacySits;
   const totalNoShows = allTPs.filter(t=>t.outcome==='noshow').length + allSits.filter(s=>s.outcome==='noshow').length;
   const totalSales = allTPs.filter(t=>t.outcome==='sale').length;
-  const totalNoSales = allTPs.filter(t=>t.outcome==='nosale').length;
+  const legacyNoSales = allSits.filter(s=>s.outcome==='showed'&&(s.apps||[]).length===0).length;
+  const totalNoSales = allTPs.filter(t=>t.outcome==='nosale').length + legacyNoSales;
   const totalCont = allTPs.filter(t=>t.outcome==='cont').length;
   const totalPPUs = allTPs.filter(t=>t.type==='PPU / Policy Pickup'&&(t.outcome==='sale'||t.outcome==='nosale'||t.outcome==='cont')).length;
   const totalPPUSales = allTPs.filter(t=>t.type==='PPU / Policy Pickup'&&t.outcome==='sale').length;
@@ -1374,7 +1375,11 @@ async function saveNamePhone(id) {
 //  UPDATE CLIENT 
 async function updateClient(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
+  const nameEl = document.getElementById('edit-name');
+  const phoneEl = document.getElementById('edit-phone');
   const updates = {
+    name: nameEl ? nameEl.value.trim() : c.name,
+    phone: phoneEl ? phoneEl.value.trim() : c.phone,
     address: document.getElementById('cn-address').value.trim(),
     notes: document.getElementById('cn-notes').value.trim(),
     health_notes: document.getElementById('cn-health').value.trim(),
