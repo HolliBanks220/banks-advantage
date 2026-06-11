@@ -118,7 +118,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .dial-cnt-btn.on{background:#1D3557;color:#fff;border-color:#1D3557;}
 .page-layout{display:inline-flex;gap:8px;align-items:flex-start;padding:0 12px;min-width:0;}
 .app-main{width:420px;flex-shrink:0;}
-.appt-sidebar{width:220px;flex-shrink:0;background:#fff;border-radius:12px;border:1px solid #e2eaf2;padding:14px 12px;position:sticky;top:12px;display:none;}
+.appt-sidebar{width:220px;flex-shrink:0;background:#fff;border-radius:12px;border:1px solid #e2eaf2;padding:14px 12px;display:none;}
 .appt-sidebar-title{font-size:10px;font-weight:600;color:#1D3557;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;}
 .appt-sidebar-item{padding:8px 10px;border-radius:8px;cursor:pointer;margin-bottom:4px;transition:background 0.15s;}
 .appt-sidebar-item:hover{background:#f5f8fb;}
@@ -126,7 +126,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .appt-sidebar-divider{font-size:9px;font-weight:600;color:#a0b8cc;text-transform:uppercase;letter-spacing:0.07em;margin:8px 0 4px;padding:0 2px;}
 .appt-banner{background:#1D3557;color:#fff;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;cursor:pointer;display:none;}
 @media(min-width:720px){.appt-sidebar{display:block!important;}.appt-banner{display:none!important;}}
-@media(max-width:719px){.appt-sidebar{display:none!important;}.appt-banner{display:block;}}
+@media(max-width:719px){.appt-sidebar{display:none!important;}.appt-banner{display:block;}#task-mobile-btn{display:block!important;}}
 </style>
 </head>
 <body>
@@ -157,6 +157,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
   <div id="appt-banner" class="appt-banner" onclick="showTab('appts',document.querySelector('.tab:nth-child(3)'))">
     [Cal] <span id="next-appt-text">Loading...</span>
+  </div>
+  <div style="display:flex;gap:6px;margin-bottom:8px;">
+    <button id="task-mobile-btn" onclick="openTaskModal()" style="display:none;flex:1;background:#1D3557;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:500;cursor:pointer;">Tasks <span id="task-badge"></span></button>
   </div>
 
   <div class="tab-bar">
@@ -228,41 +231,41 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
       <div class="stat stat-teal">
         <div class="stat-lbl lbl-white">Sits</div>
-        <div class="stat-val val-white" id="p-showed">0</div>
+        <div class="stat-val val-white" id="p-showed" style="cursor:pointer;" onclick="drillDown('showed')">0</div>
         <div class="stat-sub sub-white" id="p-sit-rate">- close rate</div>
       </div>
       <div class="stat stat-amber">
         <div class="stat-lbl lbl-amber">No Shows</div>
-        <div class="stat-val val-amber" id="p-noshow">0</div>
+        <div class="stat-val val-amber" id="p-noshow" style="cursor:pointer;" onclick="drillDown('noshow')">0</div>
         <div class="stat-sub" style="color:#854F0B;" id="p-cancel">-</div>
       </div>
     </div>
     <div class="stat-row">
       <div class="stat stat-teal">
         <div class="stat-lbl lbl-white">Sales</div>
-        <div class="stat-val val-white" id="p-sales">0</div>
+        <div class="stat-val val-white" id="p-sales" style="cursor:pointer;" onclick="drillDown('sales')">0</div>
         <div class="stat-sub sub-white" id="p-sales-sub">- of sits</div>
       </div>
       <div class="stat stat-red">
         <div class="stat-lbl lbl-red">No Sales</div>
-        <div class="stat-val val-red" id="p-nosales">0</div>
+        <div class="stat-val val-red" id="p-nosales" style="cursor:pointer;" onclick="drillDown('nosales')">0</div>
         <div class="stat-sub" style="color:#791F1F;" id="p-nosales-sub">-</div>
       </div>
       <div class="stat stat-navy-lt">
         <div class="stat-lbl lbl-navy">Continuations</div>
-        <div class="stat-val val-navy" id="p-cont">0</div>
+        <div class="stat-val val-navy" id="p-cont" style="cursor:pointer;" onclick="drillDown('cont')">0</div>
         <div class="stat-sub sub-navy" id="p-cont-sub">-</div>
       </div>
     </div>
     <div class="stat-row">
       <div class="stat stat-amber">
         <div class="stat-lbl lbl-amber">PPUs</div>
-        <div class="stat-val val-amber" id="p-ppu">0</div>
+        <div class="stat-val val-amber" id="p-ppu" style="cursor:pointer;" onclick="drillDown('ppu')">0</div>
         <div class="stat-sub" style="color:#854F0B;" id="p-ppu-sub">- sold</div>
       </div>
       <div class="stat stat-purple">
         <div class="stat-lbl lbl-purple">Resets</div>
-        <div class="stat-val val-purple" id="p-resets">0</div>
+        <div class="stat-val val-purple" id="p-resets" style="cursor:pointer;" onclick="drillDown('resets')">0</div>
         <div class="stat-sub" style="color:#3C3489;" id="p-resets-sub">-</div>
       </div>
       <div class="stat stat-green">
@@ -317,10 +320,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div><!-- end wrap/app-main -->
 
-<div class="appt-sidebar" id="appt-sidebar">
+<div style="width:220px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;position:sticky;top:12px;">
+  <div id="task-sidebar" style="background:#fff;border-radius:12px;border:1px solid #e2eaf2;padding:14px 12px;">
+    <div style="font-size:10px;font-weight:600;color:#1D3557;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Tasks</div>
+    <div id="task-list" style="margin-bottom:8px;"></div>
+    <div style="display:flex;gap:6px;">
+      <input id="task-input" type="text" placeholder="Add a task..." style="flex:1;border:1px solid #d0dcea;border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit;background:#f7fafd;color:#1a2e44;" onkeydown="if(event.key==='Enter')addTask()">
+      <button onclick="addTask()" style="background:#138181;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-weight:500;">+</button>
+    </div>
+  </div>
+  <div class="appt-sidebar" id="appt-sidebar">
     <div class="appt-sidebar-title">[Cal] Today & upcoming</div>
     <div id="sidebar-appts"><div style="font-size:11px;color:#a0b8cc;">No appointments</div></div>
   </div>
+</div>
 </div><!-- end page-layout -->
 
 <script>
@@ -384,6 +397,7 @@ async function init() {
   hideSync();
   renderScore();
   renderSidebar();
+  renderTasks();
   if (document.getElementById('tab-clients').style.display !== 'none') renderClients();
   startRealtimeSync();
 }
@@ -774,21 +788,41 @@ function drillDown(type) {
     }).sort((a,b) => new Date(a.appt_datetime) - new Date(b.appt_datetime));
   } else if (type === 'showed') {
     title = 'Sits - ' + label;
-    const sitClients = clients.filter(c =>
-      (c.sits||[]).some(s => {
-        const d = new Date(s.datetime);
-        return d >= start && d <= end && s.outcome === 'showed';
-      })
+    leads = clients.filter(c =>
+      (c.sits||[]).some(s => { const d=new Date(s.datetime); return d>=start&&d<=end&&s.outcome==='showed'; }) ||
+      (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&(tp.outcome==='sale'||tp.outcome==='nosale'||tp.outcome==='cont'); }))
     );
-    leads = sitClients;
   } else if (type === 'noshow') {
     title = 'No shows - ' + label;
-    // Leads with no-show in call log within period
     leads = clients.filter(c =>
-      (c.call_log||[]).some(cl => {
-        const t = new Date(cl.ts);
-        return cl.outcome === 'No show' && t >= start && t <= end;
-      })
+      (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&tp.outcome==='noshow'; })) ||
+      (c.call_log||[]).some(cl => { const t=new Date(cl.ts); return cl.outcome==='No show'&&t>=start&&t<=end; })
+    );
+  } else if (type === 'sales') {
+    title = 'Sales - ' + label;
+    leads = clients.filter(c =>
+      (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&tp.outcome==='sale'; }))
+    );
+  } else if (type === 'nosales') {
+    title = 'No sales - ' + label;
+    leads = clients.filter(c =>
+      (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&tp.outcome==='nosale'; })) ||
+      (c.sits||[]).some(s => { const d=new Date(s.datetime); return d>=start&&d<=end&&s.outcome==='showed'&&(s.apps||[]).length===0; })
+    );
+  } else if (type === 'cont') {
+    title = 'Continuations - ' + label;
+    leads = clients.filter(c =>
+      (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&tp.outcome==='cont'; }))
+    );
+  } else if (type === 'ppu') {
+    title = 'PPUs - ' + label;
+    leads = clients.filter(c =>
+      (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&tp.type==='PPU / Policy Pickup'&&(tp.outcome==='sale'||tp.outcome==='nosale'||tp.outcome==='cont'); }))
+    );
+  } else if (type === 'resets') {
+    title = 'Resets - ' + label;
+    leads = clients.filter(c =>
+      (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&(tp.resetSelf||tp.resetSME); }))
     );
   }
 
@@ -1446,6 +1480,12 @@ const CASE_TYPES = ['Mortgage Protection','Retirement','Debt Free Life','Infinit
 const CASE_TYPE_CLASS = {'Mortgage Protection':'mp','Retirement':'ret','Debt Free Life':'dfl','Infinite Banking':'ib'};
 const CASE_STATUSES = ['Open','Closed Won','Closed Lost','Reset'];
 const TP_TYPES = ['Initial','PPU / Policy Pickup','Follow-up','Policy Review'];
+const TP_TYPES_RETIREMENT = ['Step 1','Step 2','Step 3','Follow-up','Policy Review'];
+
+function getTpTypes(caseType) {
+  if (caseType === 'Retirement') return TP_TYPES_RETIREMENT;
+  return TP_TYPES;
+}
 
 function renderCasesHtml(c) {
   const cases = c.cases || [];
@@ -1546,12 +1586,13 @@ function openAddTouchpoint(id, ci) {
   const cs = c.cases[ci];
   const now = new Date(); now.setMinutes(0,0,0); now.setHours(now.getHours()+1);
   const resetDt = new Date(now.getTime()+7*24*60*60*1000).toISOString().slice(0,16);
+  const tpTypes = getTpTypes(cs.type);
   window._tpOutcome = 'pending';
   window._tpAddons = {income:false, resetself:false, resetsme:false};
   showModal(`<button class="close-x" onclick="closeModal()">x</button>
   <div class="modal-title">Add touchpoint</div>
   <div class="modal-sub">${c.name} - ${cs.type}</div>
-  <div class="field"><label>Type</label><select id="tp-type">${TP_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></div>
+  <div class="field"><label>Type</label><select id="tp-type">${tpTypes.map(t=>`<option>${t}</option>`).join('')}</select></div>
   <div class="field"><label>Date & time</label><input type="datetime-local" id="tp-dt" value="${now.toISOString().slice(0,16)}" style="font-size:16px;"></div>
   <div class="section-lbl">Outcome</div>
   <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
@@ -1563,7 +1604,7 @@ function openAddTouchpoint(id, ci) {
   </div>
   <div id="tp-cont-detail" style="display:none;">
     <div class="field"><label>Next touchpoint date & time</label><input type="datetime-local" id="tp-cont-dt" value="${resetDt}" style="font-size:15px;"></div>
-    <div class="field"><label>Next touchpoint type</label><select id="tp-cont-type">${TP_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></div>
+    <div class="field"><label>Next touchpoint type</label><select id="tp-cont-type">${tpTypes.map(t=>`<option>${t}</option>`).join('')}</select></div>
   </div>
   <div id="tp-addons" style="display:none;">
     <div class="section-lbl">Add-ons</div>
@@ -1694,10 +1735,11 @@ function openEditTouchpoint(id, ci, ti) {
   const dtVal = new Date(tp.datetime).toISOString().slice(0,16);
   const outcomeColor = tp.outcome==='sale'?'#3B6D11':tp.outcome==='nosale'?'#A32D2D':tp.outcome==='noshow'?'#BA7517':'#8fa8c0';
   const outcomeLabel = tp.outcome==='sale'?'Sale':tp.outcome==='nosale'?'No Sale':tp.outcome==='noshow'?'No Show':'Pending';
+  const tpTypes = getTpTypes(c.cases[ci].type);
   showModal(`<button class="close-x" onclick="closeModal()">x</button>
   <div class="modal-title">${tp.type||'Touchpoint'} - ${c.name}</div>
   <div class="modal-sub">${c.cases[ci].type} - <span style="color:${outcomeColor};font-weight:600;">${outcomeLabel}</span></div>
-  <div class="field"><label>Type</label><select id="etp-type">${TP_TYPES.map(t=>`<option${tp.type===t?' selected':''}>${t}</option>`).join('')}</select></div>
+  <div class="field"><label>Type</label><select id="etp-type">${tpTypes.map(t=>`<option${tp.type===t?' selected':''}>${t}</option>`).join('')}</select></div>
   <div class="field"><label>Date & time</label><input type="datetime-local" id="etp-dt" value="${dtVal}" style="font-size:16px;"></div>
   <div class="section-lbl">Outcome</div>
   <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
@@ -1977,8 +2019,104 @@ function openImportModal() {
   '<div style="font-size:12px;color:#5f7a99;margin-bottom:14px;">Upload a PDF to import new leads. PDF import coming soon!</div>' +
   '<div style="font-size:13px;color:#1D3557;padding:12px;background:#f0f4f8;border-radius:8px;">Previous batches (June 9 + June 10) already imported - 31 leads in your tracker.</div>');
 }
-//  GO 
-init();
+function openTaskModal() {
+  const tasks = loadTasks();
+  const taskHtml = tasks.length
+    ? tasks.map((t,i) => `
+      <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid #f0f4f8;">
+        <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${i});renderTaskModal()" style="margin-top:2px;cursor:pointer;accent-color:#138181;">
+        <span style="flex:1;font-size:13px;color:#1D3557;${t.done?'text-decoration:line-through;color:#a0b8cc;':''}">${t.text}</span>
+        <button onclick="dismissTask(${i});renderTaskModal()" style="background:none;border:none;color:#d0dcea;font-size:16px;cursor:pointer;padding:0;">x</button>
+      </div>`).join('')
+    : '<div style="font-size:13px;color:#a0b8cc;padding:8px 0;">No tasks yet.</div>';
+
+  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  <div class="modal-title">Tasks</div>
+  <div id="modal-task-list" style="margin-bottom:12px;">${taskHtml}</div>
+  <div style="display:flex;gap:6px;">
+    <input id="modal-task-input" type="text" placeholder="Add a task..." style="flex:1;border:1px solid #d0dcea;border-radius:6px;padding:8px 10px;font-size:14px;font-family:inherit;" onkeydown="if(event.key==='Enter'){addTaskFromModal();}">
+    <button onclick="addTaskFromModal()" style="background:#138181;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:14px;cursor:pointer;font-weight:500;">+</button>
+  </div>`);
+}
+
+function addTaskFromModal() {
+  const input = document.getElementById('modal-task-input');
+  const text = input ? input.value.trim() : '';
+  if (!text) return;
+  const tasks = loadTasks();
+  tasks.push({text, done:false, created: new Date().toISOString()});
+  saveTasks(tasks);
+  input.value = '';
+  renderTaskModal();
+  renderTasks();
+}
+
+function renderTaskModal() {
+  const tasks = loadTasks();
+  const el = document.getElementById('modal-task-list');
+  if (!el) return;
+  el.innerHTML = tasks.length
+    ? tasks.map((t,i) => `
+      <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid #f0f4f8;">
+        <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${i});renderTaskModal();renderTasks()" style="margin-top:2px;cursor:pointer;accent-color:#138181;">
+        <span style="flex:1;font-size:13px;color:#1D3557;${t.done?'text-decoration:line-through;color:#a0b8cc;':''}">${t.text}</span>
+        <button onclick="dismissTask(${i});renderTaskModal();renderTasks()" style="background:none;border:none;color:#d0dcea;font-size:16px;cursor:pointer;padding:0;">x</button>
+      </div>`).join('')
+    : '<div style="font-size:13px;color:#a0b8cc;padding:8px 0;">No tasks yet.</div>';
+  renderTasks();
+}
+
+// -- TASK LIST --
+function loadTasks() {
+  try {
+    return JSON.parse(localStorage.getItem('cwc-tasks') || '[]');
+  } catch(e) { return []; }
+}
+function saveTasks(tasks) {
+  try { localStorage.setItem('cwc-tasks', JSON.stringify(tasks)); } catch(e) {}
+}
+function renderTasks() {
+  const tasks = loadTasks();
+  const el = document.getElementById('task-list');
+  if (el) {
+    if (!tasks.length) { el.innerHTML = '<div style="font-size:11px;color:#a0b8cc;padding:2px 0;">No tasks yet.</div>'; }
+    else { el.innerHTML = tasks.map((t,i) => `
+      <div style="display:flex;align-items:flex-start;gap:6px;padding:4px 0;border-bottom:1px solid #f0f4f8;">
+        <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${i})" style="margin-top:2px;cursor:pointer;accent-color:#138181;">
+        <span style="flex:1;font-size:12px;color:#1D3557;${t.done?'text-decoration:line-through;color:#a0b8cc;':''}">${t.text}</span>
+        <button onclick="dismissTask(${i})" style="background:none;border:none;color:#d0dcea;font-size:14px;cursor:pointer;padding:0;line-height:1;" title="Dismiss">x</button>
+      </div>`).join('');
+    }
+  }
+  // Update mobile badge
+  const badge = document.getElementById('task-badge');
+  if (badge) {
+    const open = tasks.filter(t=>!t.done).length;
+    badge.textContent = tasks.length ? '(' + open + ' open)' : '';
+  }
+}
+function addTask() {
+  const input = document.getElementById('task-input');
+  const text = input ? input.value.trim() : '';
+  if (!text) return;
+  const tasks = loadTasks();
+  tasks.push({text, done:false, created: new Date().toISOString()});
+  saveTasks(tasks);
+  input.value = '';
+  renderTasks();
+}
+function toggleTask(i) {
+  const tasks = loadTasks();
+  if (tasks[i]) { tasks[i].done = !tasks[i].done; saveTasks(tasks); renderTasks(); }
+}
+function dismissTask(i) {
+  const tasks = loadTasks();
+  tasks.splice(i, 1);
+  saveTasks(tasks);
+  renderTasks();
+}
+
+// -- GO --init();
 </script>
 </body>
 </html>
