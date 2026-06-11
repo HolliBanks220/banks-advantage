@@ -1170,7 +1170,7 @@ async function confirmReschedule(id) {
   if (!dtVal) return;
   const apptNotesEl = document.getElementById('appt-note-field');
   const apptNotes = apptNotesEl ? apptNotesEl.value.trim() : '';
-  const apptDatetime = new Date(dtVal).toISOString();
+  const apptDatetime = localISOString(dtVal);
   const dialCount = window._dialCount || 1;
   const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(),outcome:'Rescheduled',dials:dialCount,appt_datetime:apptDatetime,appt_notes:apptNotes}];
   showSync('Saving...');
@@ -1213,7 +1213,7 @@ async function confirmAppt(id) {
   if (!dtVal) return;
   const apptNotesEl = document.getElementById('appt-note-field');
   const apptNotes = apptNotesEl ? apptNotesEl.value.trim() : '';
-  const apptDatetime = new Date(dtVal).toISOString();
+  const apptDatetime = localISOString(dtVal);
   const caseTypeEl = document.getElementById('appt-case-type');
   const selectedType = caseTypeEl ? caseTypeEl.value : 'Mortgage Protection';
   // Map selection to actual case type
@@ -1318,6 +1318,16 @@ async function deleteCallLogEntry(id, idx) {
   hideSync();
   openClient(id);
   renderScore();
+}
+
+// Convert datetime-local value to ISO string WITHOUT UTC conversion
+function localISOString(dtVal) {
+  if (!dtVal) return null;
+  // datetime-local gives "2026-06-16T19:30" - add seconds and timezone offset
+  const d = new Date(dtVal);
+  const offset = d.getTimezoneOffset();
+  const local = new Date(d.getTime() - offset * 60000);
+  return local.toISOString().slice(0, 16) + ':00';
 }
 
 //  AUTO SAVE 
@@ -1569,7 +1579,26 @@ function openEditCase(id, ci) {
   <div class="field"><label>Case type</label><select id="ec-type">${CASE_TYPES.map(t=>`<option${cs.type===t?' selected':''}>${t}</option>`).join('')}</select></div>
   <div class="field"><label>Status</label><select id="ec-status">${CASE_STATUSES.map(s=>`<option${cs.status===s?' selected':''}>${s}</option>`).join('')}</select></div>
   <div class="field"><label>Notes</label><input type="text" id="ec-notes" value="${cs.notes||''}"></div>
-  <button class="save-btn" onclick="saveEditCase('${id}',${ci})">Save</button>`);
+  <button class="save-btn" onclick="saveEditCase('${id}',${ci})">Save</button>
+  <button onclick="deleteCase('${id}',${ci})" style="width:100%;margin-top:6px;background:none;border:1px solid #F7C1C1;border-radius:8px;padding:10px;font-size:12px;color:#A32D2D;cursor:pointer;">Delete this case</button>`);
+}
+
+async function deleteTouchpoint(id, ci, ti) {
+  if (!confirm('Delete this touchpoint?')) return;
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  c.cases[ci].touchpoints.splice(ti, 1);
+  showSync('Saving...');
+  await sb.from('clients').update({cases:c.cases}).eq('id',id);
+  hideSync(); closeModal(); openClient(id); renderScore();
+}
+
+async function deleteCase(id, ci) {
+  if (!confirm('Delete this entire case and all its touchpoints?')) return;
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  c.cases.splice(ci, 1);
+  showSync('Saving...');
+  await sb.from('clients').update({cases:c.cases}).eq('id',id);
+  hideSync(); closeModal(); openClient(id); renderScore();
 }
 
 async function saveEditCase(id, ci) {
@@ -1655,7 +1684,7 @@ async function saveTouchpoint(id, ci) {
   const addons = window._tpAddons || {};
   const tp = {
     type: document.getElementById('tp-type').value,
-    datetime: new Date(dt).toISOString(),
+    datetime: localISOString(dt),
     outcome,
     incomeOffered: addons.income||false,
     resetSelf: addons.resetself||false,
@@ -1681,7 +1710,7 @@ async function saveTouchpoint(id, ci) {
     const contDtVal = (document.getElementById('tp-cont-dt')||{value:''}).value;
     const contType = (document.getElementById('tp-cont-type')||{value:'Follow-up'}).value;
     if (contDtVal) {
-      const contDtIso = new Date(contDtVal).toISOString();
+      const contDtIso = localISOString(contDtVal);
       c.cases[ci].touchpoints.push({
         type: contType, datetime: contDtIso, outcome: 'pending',
         notes: '', apps: [], created: new Date().toISOString()
@@ -1699,7 +1728,7 @@ async function saveTouchpoint(id, ci) {
     const resetDtVal = addons.resetself
       ? (document.getElementById('tp-resetself-dt')||{value:''}).value
       : (document.getElementById('tp-reset-dt')||{value:''}).value;
-    const resetDtIso = resetDtVal ? new Date(resetDtVal).toISOString() : null;
+    const resetDtIso = resetDtVal ? localISOString(resetDtVal) : null;
     const newCase = {
       type: newCaseType, status: 'Open',
       notes: `Reset from ${c.cases[ci].type}${addons.resetsme?' - SME: '+tp.resetSMEName:''}`,
@@ -1756,7 +1785,8 @@ function openEditTouchpoint(id, ci, ti) {
   </div>
   <div class="field"><label>ASRs</label><input type="text" id="etp-asrs" value="${tp.asrs||''}" placeholder="Names / numbers..."></div>
   <div class="field"><label>Notes</label><textarea id="etp-notes">${tp.notes||''}</textarea></div>
-  <button class="save-btn" onclick="saveEditTouchpoint('${id}',${ci},${ti})">Save</button>`);
+  <button class="save-btn" onclick="saveEditTouchpoint('${id}',${ci},${ti})">Save</button>
+  <button onclick="deleteTouchpoint('${id}',${ci},${ti})" style="width:100%;margin-top:6px;background:none;border:1px solid #F7C1C1;border-radius:8px;padding:10px;font-size:12px;color:#A32D2D;cursor:pointer;">Delete this touchpoint</button>`);
 }
 
 async function updateTpOutcome(id, ci, ti, val) {
@@ -1786,7 +1816,7 @@ async function toggleTpFlag(id, ci, ti, key) {
 async function saveEditTouchpoint(id, ci, ti) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const newDt = document.getElementById('etp-dt').value;
-  if (newDt) c.cases[ci].touchpoints[ti].datetime = new Date(newDt).toISOString();
+  if (newDt) c.cases[ci].touchpoints[ti].datetime = localISOString(newDt);
   c.cases[ci].touchpoints[ti].type = document.getElementById('etp-type').value;
   c.cases[ci].touchpoints[ti].asrs = (document.getElementById('etp-asrs')||{value:''}).value.trim();
   c.cases[ci].touchpoints[ti].notes = document.getElementById('etp-notes').value.trim();
@@ -1822,7 +1852,7 @@ async function saveSit(id) {
   const dt = document.getElementById('sit-dt').value; if (!dt) return;
   const c = clients.find(x=>x.id===id); if (!c) return;
   const outcome = window._sitOutcome==='pending' ? undefined : window._sitOutcome;
-  const newSit = {datetime:new Date(dt).toISOString(), reason:document.getElementById('sit-reason').value, type:document.getElementById('sit-type').value, outcome, notes:document.getElementById('sit-notes').value.trim(), apps:[], ppu:false, selfReset:false, sme:false, recruitAsk:false, refsask:0, refs:0, created:new Date().toISOString()};
+  const newSit = {datetime:localISOString(dt), reason:document.getElementById('sit-reason').value, type:document.getElementById('sit-type').value, outcome, notes:document.getElementById('sit-notes').value.trim(), apps:[], ppu:false, selfReset:false, sme:false, recruitAsk:false, refsask:0, refs:0, created:new Date().toISOString()};
   const sits = [...(c.sits||[]), newSit];
   let newStatus = c.status;
   if (outcome==='showed') newStatus='Closed';
@@ -1911,7 +1941,7 @@ async function confirmReset(id) {
   const dtVal = document.getElementById('reset-dt').value;
   if (!dtVal) return;
   const resetNotes = document.getElementById('reset-note-field') ? document.getElementById('reset-note-field').value.trim() : '';
-  const resetDatetime = new Date(dtVal).toISOString();
+  const resetDatetime = localISOString(dtVal);
   const callLog = [...(c.call_log||[]), {
     ts: new Date().toISOString(),
     outcome: 'Reset scheduled',
@@ -1948,7 +1978,7 @@ async function toggleSitFlag(id, si, k) {
 async function saveEditSit(id, si) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const newDt = document.getElementById('er-datetime').value;
-  if (newDt) c.sits[si].datetime = new Date(newDt).toISOString();
+  if (newDt) c.sits[si].datetime = localISOString(newDt);
   c.sits[si].reason = document.getElementById('er-reason').value;
   c.sits[si].refs = parseInt(document.getElementById('er-refs').value)||0;
   c.sits[si].refsask = parseInt(document.getElementById('er-refsask').value)||0;
