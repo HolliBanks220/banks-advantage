@@ -204,6 +204,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-val val-amber" id="s-callbacks" onclick="startEdit('callbacks','amber')">0</div>
         <div class="stat-btns">
           <button class="tap-btn tap-amber" onclick="addStat('callbacks',1)">+1</button>
+          <button class="tap-btn tap-amber" onclick="drillDown('callbacks')" style="font-size:10px;">who?</button>
         </div>
       </div>
       <div class="stat stat-red">
@@ -819,11 +820,18 @@ function drillDown(type) {
     leads = clients.filter(c =>
       (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&tp.type==='PPU / Policy Pickup'&&(tp.outcome==='sale'||tp.outcome==='nosale'||tp.outcome==='cont'); }))
     );
-  } else if (type === 'resets') {
-    title = 'Resets - ' + label;
+  } else if (type === 'callbacks') {
+    title = 'Callbacks - ' + label;
     leads = clients.filter(c =>
-      (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&(tp.resetSelf||tp.resetSME); }))
-    );
+      (c.call_log||[]).some(cl => {
+        const t = new Date(cl.ts);
+        return cl.outcome === 'Callback' && t >= start && t <= end;
+      })
+    ).sort((a,b) => {
+      const aLast = Math.max(...(a.call_log||[]).filter(cl=>cl.outcome==='Callback').map(cl=>new Date(cl.ts)));
+      const bLast = Math.max(...(b.call_log||[]).filter(cl=>cl.outcome==='Callback').map(cl=>new Date(cl.ts)));
+      return bLast - aLast;
+    });
   }
 
   if (!leads.length) {
@@ -1087,7 +1095,7 @@ function openClient(id, keepDialCount) {
     <span style="color:#5f7a99;font-size:13px;">- ${c.state||''} - <span class="${badgeClass(c.source)}">${c.source||''}</span></span>
   </div>
   ${c.address?`<div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">[Addr] ${c.address}</div>`:''}
-  ${c.appt_datetime?`<div style="font-size:12px;font-weight:600;color:#138181;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:6px;padding:5px 10px;margin-bottom:8px;display:inline-block;">[Cal] Appt: ${new Date(c.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(c.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}${c.appt_notes?' - '+c.appt_notes:''}</div>`:''}
+  ${c.appt_datetime?`<div onclick="openMoveAppt('${id}')" style="font-size:12px;font-weight:600;color:#138181;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:6px;padding:5px 10px;margin-bottom:8px;display:inline-block;cursor:pointer;" title="Tap to move appointment">[Cal] Appt: ${new Date(c.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(c.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}${c.appt_notes?' - '+c.appt_notes:''} <span style="font-size:10px;opacity:0.7;">- tap to move</span></div>`:''}
   <div class="dial-row">
     <span class="dial-lbl">Dials:</span>
     <button class="dial-cnt-btn on" id="dcb-1" onclick="setDialCount(1)">1x</button>
@@ -1149,6 +1157,35 @@ function buildWeekGrid(excludeId) {
     <div style="font-size:9px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Next 7 days - booked slots</div>
     <div style="display:flex;gap:2px;border:1px solid #e2eaf2;border-radius:8px;padding:6px;background:#fff;overflow-x:auto;">${cols}</div>
   </div>`;
+}
+
+function openMoveAppt(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const current = new Date(c.appt_datetime);
+  const local = new Date(current.getTime() - current.getTimezoneOffset()*60000);
+  const dtVal = local.toISOString().slice(0,16);
+  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  <div class="modal-title">Move appointment</div>
+  <div class="modal-sub">${c.name}</div>
+  <div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:6px 10px;margin-bottom:10px;">No stats will be logged - this just moves the time.</div>
+  ${buildWeekGrid(id)}
+  <div class="field"><label>New date & time</label><input type="datetime-local" id="move-dt" value="${dtVal}" style="font-size:16px;"></div>
+  <div class="field"><label>Notes (optional)</label><input type="text" id="move-notes" value="${c.appt_notes||''}" placeholder="Notes..."></div>
+  <button class="save-btn" style="background:#138181;" onclick="confirmMoveAppt('${id}')">Move appointment</button>`);
+}
+
+async function confirmMoveAppt(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const dtVal = document.getElementById('move-dt').value;
+  if (!dtVal) return;
+  const notes = document.getElementById('move-notes').value.trim();
+  const newDt = new Date(dtVal).toISOString();
+  showSync('Saving...');
+  await sb.from('clients').update({appt_datetime: newDt, appt_notes: notes}).eq('id',id);
+  c.appt_datetime = newDt;
+  c.appt_notes = notes;
+  hideSync(); closeModal(); openClient(id); renderSidebar();
+  // No stats logged - intentional
 }
 
 function openReschedulePicker(id) {
