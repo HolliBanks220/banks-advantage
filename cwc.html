@@ -166,6 +166,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <button class="tab on" onclick="showTab('score',this)">Board</button>
     <button class="tab" onclick="showTab('clients',this)">Leads</button>
     <button class="tab" onclick="showTab('appts',this)">Appts</button>
+    <button class="tab" onclick="showTab('apps',this)">Apps</button>
   </div>
 
   <div id="tab-score">
@@ -318,6 +319,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
   <div id="tab-appts" style="display:none;">
     <div id="appts-list"><div class="loading">Loading appointments...</div></div>
+  </div>
+  <div id="tab-apps" style="display:none;">
+    <div style="padding:8px 0 12px;">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+        <select id="app-filter-status" onchange="renderAppsTab()" style="font-size:12px;border:1px solid #d0dcea;border-radius:6px;padding:5px 8px;color:#1D3557;">
+          <option value="">All statuses</option>
+          ${['Written','Submitted','Approved','Placed','Paid'].map(s=>`<option value="${s}">${s}</option>`).join('')}
+        </select>
+        <select id="app-filter-carrier" onchange="renderAppsTab()" style="font-size:12px;border:1px solid #d0dcea;border-radius:6px;padding:5px 8px;color:#1D3557;">
+          <option value="">All carriers</option>
+          ${Object.keys(CARRIERS).map(c=>`<option value="${c}">${c}</option>`).join('')}
+        </select>
+        <select id="app-filter-case" onchange="renderAppsTab()" style="font-size:12px;border:1px solid #d0dcea;border-radius:6px;padding:5px 8px;color:#1D3557;">
+          <option value="">All case types</option>
+          ${['Mortgage Protection','Retirement','Debt Free Life','Infinite Banking'].map(t=>`<option value="${t}">${t}</option>`).join('')}
+        </select>
+      </div>
+      <div id="apps-tab-list"></div>
+    </div>
   </div>
 </div><!-- end wrap/app-main -->
 
@@ -770,6 +790,8 @@ function showTab(t, btn) {
   document.getElementById('tab-score').style.display = t==='score'?'block':'none';
   document.getElementById('tab-clients').style.display = t==='clients'?'block':'none';
   document.getElementById('tab-appts').style.display = t==='appts'?'block':'none';
+  document.getElementById('tab-apps').style.display = t==='apps'?'block':'none';
+  if (t==='apps') renderAppsTab();
   if (t==='clients') renderClients();
   if (t==='appts') renderAppts();
 }
@@ -920,6 +942,47 @@ function renderSidebar() {
       banner.style.display = 'none';
     }
   }
+}
+
+function renderAppsTab() {
+  const el = document.getElementById('apps-tab-list');
+  if (!el) return;
+  const filterStatus = (document.getElementById('app-filter-status')||{value:''}).value;
+  const filterCarrier = (document.getElementById('app-filter-carrier')||{value:''}).value;
+  const filterCase = (document.getElementById('app-filter-case')||{value:''}).value;
+
+  const allApps = clients.flatMap(c =>
+    (c.cases||[]).flatMap((cs, ci) =>
+      (cs.touchpoints||[]).flatMap((tp, ti) =>
+        (tp.apps||[]).map((ap, ai) => ({...ap, ci, ti, ai, caseType: cs.type, tpType: tp.type, tpDate: tp.datetime, clientId: c.id, clientName: c.name, clientPhone: c.phone}))
+      )
+    )
+  ).filter(ap =>
+    (!filterStatus || ap.status === filterStatus) &&
+    (!filterCarrier || ap.carrier === filterCarrier) &&
+    (!filterCase || ap.caseType === filterCase)
+  ).sort((a,b) => new Date(b.tpDate||0) - new Date(a.tpDate||0));
+
+  if (!allApps.length) {
+    el.innerHTML = '<div style="font-size:13px;color:#a0b8cc;padding:20px 0;text-align:center;">No applications found.</div>';
+    return;
+  }
+
+  const totalAPV = allApps.reduce((a,ap) => a+(ap.premium||0), 0);
+  el.innerHTML = `<div style="font-size:12px;color:#5f7a99;margin-bottom:10px;">${allApps.length} application${allApps.length!==1?'s':''} - Total APV: <strong style="color:#138181;">$${totalAPV.toLocaleString()}</strong></div>` +
+  allApps.map(ap => {
+    const statusColor = {'Paid':'#3B6D11','Placed':'#138181','Approved':'#534AB7','Submitted':'#BA7517','Written':'#1D3557'}[ap.status]||'#1D3557';
+    const dt = ap.tpDate ? new Date(ap.tpDate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+    return `<div style="border:1px solid #e2eaf2;border-radius:10px;padding:12px;margin-bottom:8px;background:#fff;cursor:pointer;" onclick="openClient('${ap.clientId}')">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <span style="font-size:13px;font-weight:600;color:#1D3557;">${ap.clientName}</span>
+        <span style="font-size:11px;font-weight:600;color:${statusColor};background:${statusColor}15;padding:2px 8px;border-radius:10px;">${ap.status}</span>
+      </div>
+      <div style="font-size:12px;color:#5f7a99;margin-bottom:2px;">${ap.carrier} - ${ap.product}</div>
+      <div style="font-size:11px;color:#8fa8c0;">APV: $${(ap.premium||0).toLocaleString()} - Face: $${(ap.face||0).toLocaleString()} - ${ap.who||'Borrower'}</div>
+      <div style="font-size:10px;color:#a0b8cc;margin-top:2px;">${ap.caseType} - ${dt}</div>
+    </div>`;
+  }).join('');
 }
 
 function renderAppts() {
@@ -1125,7 +1188,9 @@ function openClient(id, keepDialCount) {
   </div>
   <div class="section-lbl" style="margin-top:4px;">Cases</div>
   ${renderCasesHtml(c)}
-  <button class="sec-btn" onclick="openNewCase('${id}')">+ New case</button>`);
+  <button class="sec-btn" onclick="openNewCase('${id}')">+ New case</button>
+  <div class="section-lbl" style="margin-top:12px;">Applications</div>
+  ${renderAppsSection(c)}`);
 }
 
 //  APPT PICKER 
@@ -1787,7 +1852,14 @@ async function saveTouchpoint(id, ci) {
   showSync('Saving...');
   await sb.from('clients').update(updatePayload).eq('id',id);
   c.status = newLeadStatus;
-  hideSync(); closeModal(); openClient(id); renderScore(); renderSidebar();
+  hideSync();
+  if (outcome === 'sale') {
+    // Get the index of the touchpoint we just added
+    const newTi = c.cases[ci].touchpoints.length - 1;
+    openAddAppToTouchpoint(id, ci, newTi);
+  } else {
+    closeModal(); openClient(id); renderScore(); renderSidebar();
+  }
 }
 
 function openEditTouchpoint(id, ci, ti) {
@@ -1837,7 +1909,11 @@ async function updateTpOutcome(id, ci, ti, val) {
   showSync('Saving...');
   await sb.from('clients').update({cases:c.cases, status:newLeadStatus}).eq('id',id);
   c.status = newLeadStatus; hideSync(); renderScore();
-  openEditTouchpoint(id, ci, ti);
+  if (val === 'sale') {
+    openAddAppToTouchpoint(id, ci, ti);
+  } else {
+    openEditTouchpoint(id, ci, ti);
+  }
 }
 
 async function toggleTpFlag(id, ci, ti, key) {
@@ -1856,6 +1932,127 @@ async function saveEditTouchpoint(id, ci, ti) {
   c.cases[ci].touchpoints[ti].notes = document.getElementById('etp-notes').value.trim();
   showSync('Saving...'); await sb.from('clients').update({cases:c.cases}).eq('id',id);
   hideSync(); closeModal(); openClient(id); renderScore();
+}
+
+// ── APPLICATION SYSTEM ──────────────────────────────────────
+const APP_STATUSES = ['Written','Submitted','Approved','Placed','Paid'];
+
+function carrierOptions(selected) {
+  return Object.keys(CARRIERS).map(c => `<option${selected===c?' selected':''}>${c}</option>`).join('');
+}
+function productOptions(carrier, selected) {
+  const prods = CARRIERS[carrier] || [];
+  return prods.map(p => `<option${selected===p?' selected':''}>${p}</option>`).join('');
+}
+
+function openAddAppToTouchpoint(id, ci, ti) {
+  const c = clients.find(x=>x.id===id); if(!c) return;
+  _appCount = 1;
+  const defaultCarrier = Object.keys(CARRIERS)[0];
+  showModal(`<button class="close-x" onclick="closeModal();openClient('${id}')">x</button>
+  <div class="modal-title">Log application</div>
+  <div class="modal-sub">${c.name} - Sale!</div>
+  <div id="app-entries">
+    <div class="app-entry" id="app-entry-0">
+      <div style="font-size:11px;font-weight:600;color:#138181;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;">Application 1</div>
+      <div class="field"><label>Carrier</label><select id="app-carrier-0" onchange="updateProductDropdown(0)">${carrierOptions(defaultCarrier)}</select></div>
+      <div class="field"><label>Product</label><select id="app-product-0">${productOptions(defaultCarrier,'')}</select></div>
+      <div class="field"><label>Face amount</label><input type="number" id="app-face-0" placeholder="e.g. 250000" style="font-size:16px;"></div>
+      <div class="field"><label>Annual premium (APV)</label><input type="number" id="app-apv-0" placeholder="e.g. 1200" style="font-size:16px;"></div>
+      <div class="field"><label>Who</label><input type="text" id="app-who-0" placeholder="Borrower" value="Borrower"></div>
+    </div>
+  </div>
+  <button onclick="addAnotherApp()" style="width:100%;background:none;border:1px solid #138181;border-radius:8px;padding:8px;font-size:12px;color:#138181;cursor:pointer;margin-bottom:10px;">+ Add another application</button>
+  <button class="save-btn" onclick="saveAppsToTouchpoint('${id}',${ci},${ti})">Save applications</button>
+  <button onclick="closeModal();openClient('${id}')" style="width:100%;background:none;border:none;padding:8px;font-size:12px;color:#8fa8c0;cursor:pointer;">Skip - no applications</button>`);
+}
+
+let _appCount = 1;
+function addAnotherApp() {
+  const i = _appCount++;
+  const defaultCarrier = Object.keys(CARRIERS)[0];
+  const container = document.getElementById('app-entries');
+  if (!container) return;
+  const div = document.createElement('div');
+  div.className = 'app-entry';
+  div.id = 'app-entry-' + i;
+  div.style.cssText = 'border-top:1px solid #e2eaf2;padding-top:10px;margin-top:10px;';
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <div style="font-size:11px;font-weight:600;color:#138181;text-transform:uppercase;letter-spacing:0.05em;">Application ${i+1}</div>
+      <button onclick="this.parentElement.parentElement.remove()" style="background:none;border:none;color:#d0dcea;font-size:14px;cursor:pointer;">x</button>
+    </div>
+    <div class="field"><label>Carrier</label><select id="app-carrier-${i}" onchange="updateProductDropdown(${i})">${carrierOptions(defaultCarrier)}</select></div>
+    <div class="field"><label>Product</label><select id="app-product-${i}">${productOptions(defaultCarrier,'')}</select></div>
+    <div class="field"><label>Face amount</label><input type="number" id="app-face-${i}" placeholder="e.g. 250000" style="font-size:16px;"></div>
+    <div class="field"><label>Annual premium (APV)</label><input type="number" id="app-apv-${i}" placeholder="e.g. 1200" style="font-size:16px;"></div>
+    <div class="field"><label>Who</label><input type="text" id="app-who-${i}" placeholder="Borrower" value="Borrower"></div>`;
+  container.appendChild(div);
+}
+
+function updateProductDropdown(i) {
+  const carrier = (document.getElementById('app-carrier-'+i)||{value:''}).value;
+  const prodEl = document.getElementById('app-product-'+i);
+  if (prodEl) prodEl.innerHTML = productOptions(carrier, '');
+}
+
+async function saveAppsToTouchpoint(id, ci, ti) {
+  const c = clients.find(x=>x.id===id); if(!c) return;
+  const entries = document.querySelectorAll('.app-entry');
+  const apps = [];
+  entries.forEach((entry, idx) => {
+    const carrier = (document.getElementById('app-carrier-'+idx)||{value:''}).value;
+    const product = (document.getElementById('app-product-'+idx)||{value:''}).value;
+    const face = parseFloat((document.getElementById('app-face-'+idx)||{value:0}).value)||0;
+    const apv = parseFloat((document.getElementById('app-apv-'+idx)||{value:0}).value)||0;
+    const who = (document.getElementById('app-who-'+idx)||{value:'Borrower'}).value.trim()||'Borrower';
+    if (carrier && apv > 0) {
+      apps.push({carrier, product, face, premium: apv, who, status:'Written', written_date: new Date().toISOString(), id: Date.now()+idx});
+    }
+  });
+  _appCount = 1;
+  if (c.cases[ci]?.touchpoints[ti]) {
+    c.cases[ci].touchpoints[ti].apps = [...(c.cases[ci].touchpoints[ti].apps||[]), ...apps];
+  }
+  showSync('Saving...');
+  await sb.from('clients').update({cases:c.cases}).eq('id',id);
+  hideSync(); closeModal(); openClient(id); renderScore(); renderSidebar();
+}
+
+function renderAppsSection(c) {
+  const allApps = (c.cases||[]).flatMap((cs, ci) =>
+    (cs.touchpoints||[]).flatMap((tp, ti) =>
+      (tp.apps||[]).map((ap, ai) => ({...ap, ci, ti, ai, caseType: cs.type, tpType: tp.type, tpDate: tp.datetime}))
+    )
+  );
+  if (!allApps.length) return '<div style="font-size:12px;color:#a0b8cc;margin-bottom:8px;">No applications yet.</div>';
+  return allApps.map(ap => {
+    const statusColor = {'Paid':'#3B6D11','Placed':'#138181','Approved':'#534AB7','Submitted':'#BA7517','Written':'#1D3557'}[ap.status]||'#1D3557';
+    const dt = ap.tpDate ? new Date(ap.tpDate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+    return `<div style="border:1px solid #e2eaf2;border-radius:8px;padding:10px 12px;margin-bottom:6px;background:#f8fafc;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <span style="font-size:12px;font-weight:600;color:#1D3557;">${ap.carrier} - ${ap.product}</span>
+        <select onchange="updateAppStatus('${c.id}',${ap.ci},${ap.ti},${ap.ai},this.value)" style="font-size:10px;border:1px solid #e2eaf2;border-radius:4px;padding:2px 4px;color:${statusColor};font-weight:600;background:#fff;">
+          ${APP_STATUSES.map(s=>`<option${ap.status===s?' selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div style="font-size:11px;color:#5f7a99;">APV: $${(ap.premium||0).toLocaleString()} - Face: $${(ap.face||0).toLocaleString()} - ${ap.who||'Borrower'}</div>
+      <div style="font-size:10px;color:#a0b8cc;margin-top:2px;">${ap.caseType} - ${ap.tpType} - ${dt}</div>
+      <button onclick="openAddAppToTouchpoint('${c.id}',${ap.ci},${ap.ti})" style="margin-top:6px;background:none;border:1px solid #e2eaf2;border-radius:6px;padding:3px 8px;font-size:10px;color:#5f7a99;cursor:pointer;">+ Add app to this touchpoint</button>
+    </div>`;
+  }).join('');
+}
+
+async function updateAppStatus(id, ci, ti, ai, status) {
+  const c = clients.find(x=>x.id===id); if(!c) return;
+  if (c.cases[ci]?.touchpoints[ti]?.apps[ai]) {
+    c.cases[ci].touchpoints[ti].apps[ai].status = status;
+    if (status==='Placed') c.cases[ci].touchpoints[ti].apps[ai].placed_date = new Date().toISOString();
+    if (status==='Paid') c.cases[ci].touchpoints[ti].apps[ai].paid_date = new Date().toISOString();
+  }
+  showSync('Saving...');
+  await sb.from('clients').update({cases:c.cases}).eq('id',id);
+  hideSync();
 }
 
 //  SITS (legacy) 
