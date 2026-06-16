@@ -512,7 +512,7 @@ function isFresh(c) {
   return (new Date() - new Date(d)) / (1000*60*60*24) <= FRESH_DAYS;
 }
 
-function fmt(n) { return n >= 1000 ? '$' + Math.round(n/100)/10 + 'k' : '$' + n; }
+function fmt(n) { return '$' + (n||0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
 function pct(n, d) { return d > 0 ? Math.round((n/d)*100) + '%' : '-'; }
 function todayStr() { return new Date().toISOString().slice(0,10); }
 
@@ -735,8 +735,36 @@ function renderScore() {
   const legacyNoSales = allSits.filter(s=>s.outcome==='showed'&&(s.apps||[]).length===0).length;
   const totalNoSales = allTPs.filter(t=>t.outcome==='nosale').length + legacyNoSales;
   const totalCont = allTPs.filter(t=>t.outcome==='cont').length;
-  const totalPPUs = allTPs.filter(t=>t.type==='PPU / Policy Pickup'&&(t.outcome==='sale'||t.outcome==='nosale'||t.outcome==='cont')).length;
-  const totalPPUSales = allTPs.filter(t=>t.type==='PPU / Policy Pickup'&&t.outcome==='sale').length;
+  // Case-based PPU impact analysis
+  const allCasesInPeriod = clients.flatMap(c => (c.cases||[]).filter(cs => {
+    const firstTp = (cs.touchpoints||[])[0];
+    if (!firstTp) return false;
+    const d = new Date(firstTp.datetime);
+    return d >= pStart && d <= pEnd;
+  }).map(cs => ({...cs, clientId: c.id})));
+
+  const hasPPUTouchpoint = cs => (cs.touchpoints||[]).some(tp => tp.type === 'PPU / Policy Pickup' && (tp.outcome==='sale'||tp.outcome==='nosale'||tp.outcome==='cont'));
+  const caseAPV = cs => (cs.touchpoints||[]).reduce((a,tp) => a+(tp.apps||[]).reduce((b,ap)=>b+(ap.premium||0),0), 0);
+  const caseSold = cs => (cs.touchpoints||[]).some(tp => tp.outcome==='sale');
+  const caseNoSale = cs => (cs.touchpoints||[]).some(tp => tp.outcome==='nosale') && !(cs.touchpoints||[]).some(tp=>tp.outcome==='sale');
+
+  const ppuCases = allCasesInPeriod.filter(hasPPUTouchpoint);
+  const nonPPUCases = allCasesInPeriod.filter(cs => !hasPPUTouchpoint(cs));
+
+  const ppuSales = ppuCases.filter(caseSold).length;
+  const ppuNoSales = ppuCases.filter(caseNoSale).length;
+  const nonPPUSales = nonPPUCases.filter(caseSold).length;
+  const nonPPUNoSales = nonPPUCases.filter(caseNoSale).length;
+
+  const ppuAPV = ppuCases.filter(caseSold).reduce((a,cs)=>a+caseAPV(cs),0);
+  const nonPPUAPV = nonPPUCases.filter(caseSold).reduce((a,cs)=>a+caseAPV(cs),0);
+  const ppuAvgAPV = ppuSales > 0 ? ppuAPV/ppuSales : 0;
+  const nonPPUAvgAPV = nonPPUSales > 0 ? nonPPUAPV/nonPPUSales : 0;
+  const ppuCloseRate = ppuCases.length > 0 ? pct(ppuSales, ppuCases.length) : '-';
+  const nonPPUCloseRate = nonPPUCases.length > 0 ? pct(nonPPUSales, nonPPUCases.length) : '-';
+
+  const totalPPUs = ppuCases.length;
+  const totalPPUSales = ppuSales;
   const totalResets = allTPs.filter(t=>t.resetSelf||t.resetSME).length;
 
   const saleTPs = allTPs.filter(t=>t.outcome==='sale');
@@ -746,9 +774,7 @@ function renderScore() {
   const totalApps = saleTPs.reduce((a,t)=>a+(t.apps||[]).length,0)
     + satSits.reduce((a,s)=>a+(s.apps||[]).length,0);
   const closedCount = saleTPs.filter(t=>(t.apps||[]).length>0).length + satSits.filter(s=>(s.apps||[]).length>0).length;
-  const ppuSaleAPV = allTPs.filter(t=>t.type==='PPU / Policy Pickup'&&t.outcome==='sale').reduce((a,t)=>a+(t.apps||[]).reduce((b,ap)=>b+(ap.premium||0),0),0);
-  const apvPerSale = totalSales>0 ? Math.round(totalAPV/totalSales) : 0;
-  const apvPerPPUSale = totalPPUSales>0 ? Math.round(ppuSaleAPV/totalPPUSales) : 0;
+  const apvPerSale = totalSales>0 ? totalAPV/totalSales : 0;
 
   document.getElementById('p-first').textContent = periodAppts;
   document.getElementById('p-first-rate').textContent = pct(totalShowed, periodAppts) + ' show rate';
@@ -763,14 +789,14 @@ function renderScore() {
   document.getElementById('p-cont').textContent = totalCont;
   document.getElementById('p-cont-sub').textContent = pct(totalCont,totalShowed)+' of sits';
   document.getElementById('p-ppu').textContent = totalPPUs;
-  document.getElementById('p-ppu-sub').textContent = totalPPUSales+' sold ('+pct(totalPPUSales,totalPPUs)+')';
+  document.getElementById('p-ppu-sub').textContent = ppuSales+' sold ('+ppuCloseRate+') vs '+nonPPUCloseRate+' w/o PPU';
   document.getElementById('p-resets').textContent = totalResets;
   document.getElementById('p-closed').textContent = closedCount;
   document.getElementById('p-close-rate').textContent = pct(closedCount,totalShowed)+' close rate';
   document.getElementById('p-apv').textContent = fmt(totalAPV);
   document.getElementById('p-apps').textContent = totalApps+' applications';
   document.getElementById('p-apv-hh').textContent = fmt(apvPerSale);
-  document.getElementById('p-apv-ppu').textContent = fmt(apvPerPPUSale)+' / PPU sale';
+  document.getElementById('p-apv-ppu').textContent = fmt(ppuAvgAPV)+' PPU vs '+fmt(nonPPUAvgAPV)+' non-PPU';
 
   // All-time APV
   const allTimeSits = clients.flatMap(c => (c.sits||[]).filter(s => s.outcome==='showed'));
