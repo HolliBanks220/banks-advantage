@@ -1191,7 +1191,7 @@ async function confirmMoveAppt(id) {
 function openReschedulePicker(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const d = new Date(); d.setDate(d.getDate()+1); d.setHours(10,0,0,0);
-  const dt = d.toISOString().slice(0,16);
+  const dt = toLocalDT(d);
   showModal(`<button class="close-x" onclick="closeModal()">x</button>
   <div class="modal-title">Reschedule appointment</div>
   <div class="modal-sub">${c.name}</div>
@@ -1223,10 +1223,15 @@ async function confirmReschedule(id) {
   if (nextLead) setTimeout(() => openClient(nextLead.id), 300);
 }
 
+// Convert a Date object to datetime-local input value in LOCAL time
+function toLocalDT(d) {
+  return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,16);
+}
+
 function openApptPicker(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const d = new Date(); d.setDate(d.getDate()+1); d.setHours(10,0,0,0);
-  const dt = d.toISOString().slice(0,16);
+  const dt = toLocalDT(d);
   const caseOptions = [
     {value:'Mortgage Protection', label:'Mortgage Protection'},
     {value:'Reset - Retirement', label:'Reset - Retirement'},
@@ -1641,7 +1646,7 @@ function openAddTouchpoint(id, ci) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const cs = c.cases[ci];
   const now = new Date(); now.setMinutes(0,0,0); now.setHours(now.getHours()+1);
-  const resetDt = new Date(now.getTime()+7*24*60*60*1000).toISOString().slice(0,16);
+  const resetDt = toLocalDT(new Date(now.getTime()+7*24*60*60*1000));
   const tpTypes = getTpTypes(cs.type);
   window._tpOutcome = 'pending';
   window._tpAddons = {income:false, resetself:false, resetsme:false};
@@ -1649,7 +1654,7 @@ function openAddTouchpoint(id, ci) {
   <div class="modal-title">Add touchpoint</div>
   <div class="modal-sub">${c.name} - ${cs.type}</div>
   <div class="field"><label>Type</label><select id="tp-type">${tpTypes.map(t=>`<option>${t}</option>`).join('')}</select></div>
-  <div class="field"><label>Date & time</label><input type="datetime-local" id="tp-dt" value="${now.toISOString().slice(0,16)}" style="font-size:16px;"></div>
+  <div class="field"><label>Date & time</label><input type="datetime-local" id="tp-dt" value="${toLocalDT(now)}" style="font-size:16px;"></div>
   <div class="section-lbl">Outcome</div>
   <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
     <button class="call-btn" id="tpo-pending" style="background:#1D3557;color:#fff;" onclick="setTpOutcome('pending')">Pending</button>
@@ -1860,7 +1865,7 @@ function openAddSit(id, suggestedReason) {
   const reasonOptions = SIT_REASONS.map(r=>`<option value="${r.value}"${r.value===suggestedReason?' selected':''}>${r.label}</option>`).join('');
   showModal(`<button class="close-x" onclick="closeModal()">x</button>
   <div class="modal-title">Log sit - ${c.name}</div>
-  <div class="field"><label>Date & time</label><input type="datetime-local" id="sit-dt" value="${now.toISOString().slice(0,16)}"></div>
+  <div class="field"><label>Date & time</label><input type="datetime-local" id="sit-dt" value="${toLocalDT(now)}"></div>
   <div class="field"><label>Reason</label><select id="sit-reason">${reasonOptions}</select></div>
   <div class="field"><label>Type</label><select id="sit-type"><option>Mortgage protection</option><option>Continuation</option><option>Policy review / PPU</option><option>Retirement strategy</option><option>Existing client - additional coverage</option><option>Other</option></select></div>
   <div class="section-lbl">Outcome (if known)</div>
@@ -1955,7 +1960,7 @@ function openResetPrompt(id) {
 function openResetPicker(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const d = new Date(); d.setDate(d.getDate()+7); d.setHours(10,0,0,0);
-  const dt = d.toISOString().slice(0,16);
+  const dt = toLocalDT(d);
   showModal(`<button class="close-x" onclick="closeModal()">x</button>
   <div class="modal-title">Schedule reset</div>
   <div class="modal-sub">${c.name}</div>
