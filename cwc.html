@@ -1990,6 +1990,7 @@ function openAddAppToTouchpoint(id, ci, ti) {
   const c = clients.find(x=>x.id===id); if(!c) return;
   _appCount = 1;
   const defaultCarrier = Object.keys(CARRIERS)[0];
+  const defaultProducts = productOptions(defaultCarrier,'');
   showModal(`<button class="close-x" onclick="closeModal();openClient('${id}')">x</button>
   <div class="modal-title">Log application</div>
   <div class="modal-sub">${c.name} - Sale!</div>
@@ -1997,7 +1998,7 @@ function openAddAppToTouchpoint(id, ci, ti) {
     <div class="app-entry" id="app-entry-0">
       <div style="font-size:11px;font-weight:600;color:#138181;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;">Application 1</div>
       <div class="field"><label>Carrier</label><select id="app-carrier-0" onchange="updateProductDropdown(0)">${carrierOptions(defaultCarrier)}</select></div>
-      <div class="field"><label>Product</label><select id="app-product-0">${productOptions(defaultCarrier,'')}</select></div>
+      <div class="field"><label>Product</label><select id="app-product-0">${defaultProducts}</select></div>
       <div class="field"><label>Face amount</label><input type="number" id="app-face-0" placeholder="e.g. 250000" style="font-size:16px;"></div>
       <div class="field"><label>Annual premium (APV)</label><input type="number" id="app-apv-0" placeholder="e.g. 1200" style="font-size:16px;"></div>
       <div class="field"><label>Who</label><input type="text" id="app-who-0" placeholder="Borrower" value="Borrower"></div>
