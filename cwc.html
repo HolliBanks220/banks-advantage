@@ -727,7 +727,7 @@ function renderScore() {
     const d = new Date(s.datetime); return d >= pStart && d <= pEnd;
   }));
 
-  const tpSits = allTPs.filter(t => t.outcome==='sale'||t.outcome==='nosale'||t.outcome==='cont').length;
+  const tpSits = allTPs.filter(t => t.outcome==='sale'||t.outcome==='nosale').length;
   const legacySits = allSits.filter(s => s.outcome==='showed').length;
   const totalShowed = tpSits + legacySits;
   const totalNoShows = allTPs.filter(t=>t.outcome==='noshow').length + allSits.filter(s=>s.outcome==='noshow').length;
@@ -776,8 +776,11 @@ function renderScore() {
   const closedCount = saleTPs.filter(t=>(t.apps||[]).length>0).length + satSits.filter(s=>(s.apps||[]).length>0).length;
   const apvPerSale = totalSales>0 ? totalAPV/totalSales : 0;
 
+  // Showed = anyone who showed up (sale + nosale + cont)
+  const totalShowed2 = allTPs.filter(t=>t.outcome==='sale'||t.outcome==='nosale'||t.outcome==='cont').length + legacySits;
+
   document.getElementById('p-first').textContent = periodAppts;
-  document.getElementById('p-first-rate').textContent = pct(totalShowed, periodAppts) + ' show rate';
+  document.getElementById('p-first-rate').textContent = pct(totalShowed2, periodAppts) + ' show rate';
   document.getElementById('p-showed').textContent = totalShowed;
   document.getElementById('p-sit-rate').textContent = totalSales + totalNoSales > 0 ? pct(totalSales, totalSales + totalNoSales) + ' close rate' : '- close rate';
   document.getElementById('p-noshow').textContent = totalNoShows;
