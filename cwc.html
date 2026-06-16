@@ -779,11 +779,11 @@ function renderScore() {
   document.getElementById('p-first').textContent = periodAppts;
   document.getElementById('p-first-rate').textContent = pct(totalShowed, periodAppts) + ' show rate';
   document.getElementById('p-showed').textContent = totalShowed;
-  document.getElementById('p-sit-rate').textContent = pct(totalSales, totalShowed) + ' close rate';
+  document.getElementById('p-sit-rate').textContent = totalSales + totalNoSales > 0 ? pct(totalSales, totalSales + totalNoSales) + ' close rate' : '- close rate';
   document.getElementById('p-noshow').textContent = totalNoShows;
   document.getElementById('p-cancel').textContent = periodAppts>0 ? pct(totalNoShows,periodAppts)+' no-show rate' : '-';
   document.getElementById('p-sales').textContent = totalSales;
-  document.getElementById('p-sales-sub').textContent = pct(totalSales,totalShowed)+' of sits';
+  document.getElementById('p-sales-sub').textContent = pct(totalSales, totalSales + totalNoSales) + ' close rate';
   document.getElementById('p-nosales').textContent = totalNoSales;
   document.getElementById('p-nosales-sub').textContent = pct(totalNoSales,totalShowed)+' of sits';
   document.getElementById('p-cont').textContent = totalCont;
