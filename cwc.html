@@ -1363,7 +1363,7 @@ async function confirmAppt(id) {
     'Reset - Retirement': 'Retirement',
     'Reset - Debt Free Life': 'Debt Free Life',
     'Reset - Infinite Banking': 'Infinite Banking',
-    'General Life': 'Mortgage Protection'
+    'General Life': 'General Life'
   };
   const caseType = caseTypeMap[selectedType] || 'Mortgage Protection';
 
@@ -1619,8 +1619,8 @@ async function saveClient() {
 }
 
 //  CASE SYSTEM 
-const CASE_TYPES = ['Mortgage Protection','Retirement','Debt Free Life','Infinite Banking'];
-const CASE_TYPE_CLASS = {'Mortgage Protection':'mp','Retirement':'ret','Debt Free Life':'dfl','Infinite Banking':'ib'};
+const CASE_TYPES = ['Mortgage Protection','Retirement','Debt Free Life','Infinite Banking','General Life'];
+const CASE_TYPE_CLASS = {'Mortgage Protection':'mp','Retirement':'ret','Debt Free Life':'dfl','Infinite Banking':'ib','General Life':'mp'};
 const CASE_STATUSES = ['Open','Closed Won','Closed Lost','Reset'];
 const TP_TYPES = ['Initial','PPU / Policy Pickup','Follow-up','Policy Review'];
 const TP_TYPES_RETIREMENT = ['Step 1','Step 2','Step 3','Follow-up','Policy Review'];
