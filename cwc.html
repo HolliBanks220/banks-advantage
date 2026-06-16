@@ -118,7 +118,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .dial-cnt-btn.on{background:#1D3557;color:#fff;border-color:#1D3557;}
 .page-layout{display:inline-flex;gap:8px;align-items:flex-start;padding:0 12px;min-width:0;}
 .app-main{width:420px;flex-shrink:0;}
-.appt-sidebar{width:220px;flex-shrink:0;background:#fff;border-radius:12px;border:1px solid #e2eaf2;padding:14px 12px;display:none;}
+.appt-sidebar{width:220px;flex-shrink:0;background:#fff;border-radius:12px;border:1px solid #e2eaf2;padding:14px 12px;display:none;max-height:calc(100vh - 120px);overflow-y:auto;}
 .appt-sidebar-title{font-size:10px;font-weight:600;color:#1D3557;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;}
 .appt-sidebar-item{padding:8px 10px;border-radius:8px;cursor:pointer;margin-bottom:4px;transition:background 0.15s;}
 .appt-sidebar-item:hover{background:#f5f8fb;}
@@ -302,13 +302,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <input class="search" placeholder="Search by name or phone..." oninput="renderClients(this.value)" id="client-search">
     <div class="filter-row">
       <button class="filter-btn on" onclick="setFilter('all',this)">All</button>
-      <button class="filter-btn" onclick="setFilter('fresh',this)"> Fresh</button>
-      <button class="filter-btn" onclick="setFilter('warm',this)"> Warm</button>
-      <button class="filter-btn" onclick="setFilter('open',this)"> Open</button>
+      <button class="filter-btn" onclick="setFilter('fresh',this)">Fresh</button>
+      <button class="filter-btn" onclick="setFilter('warm',this)">Warm</button>
+      <button class="filter-btn" onclick="setFilter('open',this)">Open</button>
       <button class="filter-btn" onclick="setFilter('none',this)">0 attempts</button>
+      <button class="filter-btn" onclick="setFilter('working',this)">Working</button>
       <button class="filter-btn" onclick="setFilter('noshow',this)">No show</button>
-      <button class="filter-btn" onclick="setFilter('New',this)">New</button>
-      <button class="filter-btn" onclick="setFilter('Working',this)">Working</button>
       <button class="filter-btn" onclick="setFilter('Appointment set',this)">Appt</button>
       <button class="filter-btn" onclick="setFilter('Closed',this)">Closed</button>
       <button class="filter-btn" onclick="setFilter('No sale',this)">No sale</button>
@@ -1040,22 +1039,31 @@ function badgeClass(src) { return 'badge b-' + (src||'').split(' ')[0]; }
 function statusBadge(s) { const m={'New':'b-New','Working':'b-Working','Appointment set':'b-Appt','Closed':'b-Closed','No sale':'b-No','No show':'b-Noshow','Dead':'b-Dead'}; return 'badge '+(m[s]||'b-New'); }
 function dotClass(s) { if(s.outcome==='showed')return'jd-showed'; if(s.outcome==='noshow')return'jd-noshow'; if(s.outcome==='canceled')return'jd-cancel'; return'jd-pending'; }
 
-function renderClients(q='') {
-  const el = document.getElementById('clients-list');
-  let list = clients.filter(c => {
+function getFilteredClients(q='') {
+  return clients.filter(c => {
     const matchQ = !q || (c.name||'').toLowerCase().includes(q.toLowerCase()) || (c.phone||'').includes(q);
     const days = Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24));
     const attempts = (c.call_log||[]).length;
+    const isAppt = c.status === 'Appointment set';
+    const isNoShow = c.status === 'No show';
+    const hasOpenCase = (c.cases||[]).some(cs => cs.status === 'Open' && (cs.touchpoints||[]).length > 0);
     let matchF = false;
     if (activeFilter==='all') matchF = c.status !== 'Dead';
-    else if (activeFilter==='fresh') matchF = days <= 4 && c.status !== 'Dead';
-    else if (activeFilter==='warm') matchF = days >= 5 && days <= 17 && c.status !== 'Dead';
-    else if (activeFilter==='open') matchF = days > 17 && c.status !== 'Dead';
+    else if (activeFilter==='fresh') matchF = days <= 4 && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale';
+    else if (activeFilter==='warm') matchF = days >= 5 && days <= 17 && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale';
+    else if (activeFilter==='open') matchF = days > 17 && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale';
     else if (activeFilter==='none') matchF = attempts === 0 && c.status !== 'Dead';
-    else if (activeFilter==='noshow') matchF = c.status === 'No show';
-    else matchF = c.status===activeFilter;
+    else if (activeFilter==='working') matchF = hasOpenCase && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed';
+    else if (activeFilter==='noshow') matchF = isNoShow;
+    else if (activeFilter==='Appointment set') matchF = isAppt;
+    else matchF = c.status === activeFilter;
     return matchQ && matchF;
   });
+}
+
+function renderClients(q='') {
+  const el = document.getElementById('clients-list');
+  const list = getFilteredClients(q);
   document.getElementById('client-count').textContent = clients.length + ' leads - ' + list.length + ' shown';
   if (!list.length) { el.innerHTML='<div class="empty">No leads match.</div>'; return; }
   el.innerHTML = list.map(c => {
@@ -1545,11 +1553,13 @@ async function updateClient(id) {
   closeModal();
   renderClients(document.getElementById('client-search').value);
   renderScore();
-  // Auto-advance to next lead
-  const list = clients.filter(cl => cl.status === 'New' || cl.status === 'Working');
-  const idx = list.findIndex(cl => cl.id === id);
-  const next = list[idx + 1] || list[idx - 1];
+  // Auto-advance to next lead in current filter
+  const searchVal = document.getElementById('client-search').value;
+  const filteredList = getFilteredClients(searchVal);
+  const idx = filteredList.findIndex(cl => cl.id === id);
+  const next = filteredList[idx + 1];
   if (next) setTimeout(() => openClient(next.id), 300);
+  broadcastAdvance(next ? next.id : null);
 }
 
 //  ADD CLIENT 
