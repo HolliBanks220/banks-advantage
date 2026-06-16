@@ -2125,9 +2125,49 @@ function renderAppsSection(c) {
       </div>
       <div style="font-size:11px;color:#5f7a99;">APV: $${(ap.premium||0).toLocaleString()} - Face: $${(ap.face||0).toLocaleString()} - ${ap.who||'Borrower'}</div>
       <div style="font-size:10px;color:#a0b8cc;margin-top:2px;">${ap.caseType} - ${ap.tpType} - ${dt}</div>
-      <button onclick="openAddAppToTouchpoint('${c.id}',${ap.ci},${ap.ti})" style="margin-top:6px;background:none;border:1px solid #e2eaf2;border-radius:6px;padding:3px 8px;font-size:10px;color:#5f7a99;cursor:pointer;">+ Add app to this touchpoint</button>
+      <div style="display:flex;gap:6px;margin-top:6px;">
+        <button onclick="openEditApp('${c.id}',${ap.ci},${ap.ti},${ap.ai})" style="background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 8px;font-size:10px;color:#5f7a99;cursor:pointer;">Edit</button>
+        <button onclick="openAddAppToTouchpoint('${c.id}',${ap.ci},${ap.ti})" style="background:none;border:1px solid #e2eaf2;border-radius:6px;padding:3px 8px;font-size:10px;color:#5f7a99;cursor:pointer;">+ Add app to this touchpoint</button>
+      </div>
     </div>`;
   }).join('');
+}
+
+function openEditApp(id, ci, ti, ai) {
+  const c = clients.find(x=>x.id===id); if(!c) return;
+  const ap = c.cases[ci].touchpoints[ti].apps[ai];
+  if (!ap) return;
+  showModal(`<button class="close-x" onclick="closeModal();openClient('${id}')">x</button>
+  <div class="modal-title">Edit application</div>
+  <div class="modal-sub">${c.name}</div>
+  <div class="field"><label>Carrier</label><select id="edit-app-carrier" onchange="updateEditAppProducts()">${carrierOptions(ap.carrier)}</select></div>
+  <div class="field"><label>Product</label><select id="edit-app-product">${productOptions(ap.carrier, ap.product)}</select></div>
+  <div class="field"><label>Face amount</label><input type="number" id="edit-app-face" value="${ap.face||''}" placeholder="e.g. 250000" style="font-size:16px;"></div>
+  <div class="field"><label>Annual premium (APV)</label><input type="number" id="edit-app-apv" value="${ap.premium||''}" placeholder="e.g. 1200" style="font-size:16px;"></div>
+  <div class="field"><label>Who</label><input type="text" id="edit-app-who" value="${ap.who||'Borrower'}"></div>
+  <div class="field"><label>Status</label><select id="edit-app-status">${APP_STATUSES.map(s=>`<option${ap.status===s?' selected':''}>${s}</option>`).join('')}</select></div>
+  <button class="save-btn" onclick="saveEditApp('${id}',${ci},${ti},${ai})">Save</button>`);
+}
+
+function updateEditAppProducts() {
+  const carrier = (document.getElementById('edit-app-carrier')||{value:''}).value;
+  const el = document.getElementById('edit-app-product');
+  if (el) el.innerHTML = productOptions(carrier, '');
+}
+
+async function saveEditApp(id, ci, ti, ai) {
+  const c = clients.find(x=>x.id===id); if(!c) return;
+  const ap = c.cases[ci].touchpoints[ti].apps[ai];
+  if (!ap) return;
+  ap.carrier = document.getElementById('edit-app-carrier').value;
+  ap.product = document.getElementById('edit-app-product').value;
+  ap.face = parseFloat(document.getElementById('edit-app-face').value)||0;
+  ap.premium = parseFloat(document.getElementById('edit-app-apv').value)||0;
+  ap.who = document.getElementById('edit-app-who').value.trim()||'Borrower';
+  ap.status = document.getElementById('edit-app-status').value;
+  showSync('Saving...');
+  await sb.from('clients').update({cases:c.cases}).eq('id',id);
+  hideSync(); closeModal(); openClient(id); renderScore();
 }
 
 async function updateAppStatus(id, ci, ti, ai, status) {
