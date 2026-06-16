@@ -653,8 +653,20 @@ function getPeriodBounds(type) {
   return {start, end, label};
 }
 
-function setView(v, btn) { view=v; periodOffset=0; document.querySelectorAll('.pill').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); renderScore(); }
-function shiftPeriod(d) { periodOffset+=d; renderScore(); }
+function setView(v, btn) { 
+  view=v; periodOffset=0; 
+  document.querySelectorAll('.pill').forEach(b=>b.classList.remove('on')); 
+  btn.classList.add('on'); 
+  renderScore(); 
+  if (document.getElementById('tab-appts').style.display !== 'none') renderAppts();
+  if (document.getElementById('tab-apps').style.display !== 'none') renderAppsTab();
+}
+function shiftPeriod(d) { 
+  periodOffset+=d; 
+  renderScore(); 
+  if (document.getElementById('tab-appts').style.display !== 'none') renderAppts();
+  if (document.getElementById('tab-apps').style.display !== 'none') renderAppsTab();
+}
 
 //  STATS 
 async function addStat(key, n) {
@@ -824,6 +836,7 @@ function showTab(t, btn) {
   document.getElementById('tab-clients').style.display = t==='clients'?'block':'none';
   document.getElementById('tab-appts').style.display = t==='appts'?'block':'none';
   document.getElementById('tab-apps').style.display = t==='apps'?'block':'none';
+  if (t==='appts') renderAppts();
   if (t==='apps') renderAppsTab();
   if (t==='clients') renderClients();
   if (t==='appts') renderAppts();
@@ -886,6 +899,18 @@ function drillDown(type) {
       const aLast = Math.max(...(a.call_log||[]).filter(cl=>cl.outcome==='Callback').map(cl=>new Date(cl.ts)));
       const bLast = Math.max(...(b.call_log||[]).filter(cl=>cl.outcome==='Callback').map(cl=>new Date(cl.ts)));
       return bLast - aLast;
+    });
+  } else if (type === 'resets') {
+    title = 'Resets - ' + label;
+    leads = clients.filter(c => {
+      const hasResetTp = (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => {
+        const d = new Date(tp.datetime); return d>=start&&d<=end&&(tp.resetSelf||tp.resetSME);
+      }));
+      const hasResetCase = (c.cases||[]).some(cs => {
+        const n = cs.notes||'';
+        return n.includes('Reset from') || n.startsWith('Reset -');
+      });
+      return hasResetTp || hasResetCase;
     });
   }
 
@@ -980,15 +1005,18 @@ function renderSidebar() {
 function renderAppsTab() {
   const el = document.getElementById('apps-tab-list');
   if (!el) return;
+  const {start: pStart, end: pEnd} = getPeriodBounds('production');
   const filterStatus = (document.getElementById('app-filter-status')||{value:''}).value;
   const filterCarrier = (document.getElementById('app-filter-carrier')||{value:''}).value;
   const filterCase = (document.getElementById('app-filter-case')||{value:''}).value;
 
   const allApps = clients.flatMap(c =>
     (c.cases||[]).flatMap((cs, ci) =>
-      (cs.touchpoints||[]).flatMap((tp, ti) =>
-        (tp.apps||[]).map((ap, ai) => ({...ap, ci, ti, ai, caseType: cs.type, tpType: tp.type, tpDate: tp.datetime, clientId: c.id, clientName: c.name, clientPhone: c.phone}))
-      )
+      (cs.touchpoints||[]).flatMap((tp, ti) => {
+        const tpDt = new Date(tp.datetime);
+        if (tpDt < pStart || tpDt > pEnd) return [];
+        return (tp.apps||[]).map((ap, ai) => ({...ap, ci, ti, ai, caseType: cs.type, tpType: tp.type, tpDate: tp.datetime, clientId: c.id, clientName: c.name, clientPhone: c.phone}));
+      })
     )
   ).filter(ap =>
     (!filterStatus || ap.status === filterStatus) &&
@@ -1021,7 +1049,14 @@ function renderAppsTab() {
 function renderAppts() {
   const el = document.getElementById('appts-list');
   const now = new Date();
-  const withAppts = clients.filter(c => c.appt_datetime);
+  const {start: pStart, end: pEnd} = getPeriodBounds('production');
+
+  const withAppts = clients.filter(c => {
+    if (!c.appt_datetime) return false;
+    const d = new Date(c.appt_datetime);
+    return d >= pStart && d <= pEnd;
+  });
+
   const upcoming = withAppts.filter(c => new Date(c.appt_datetime) >= now).sort((a,b) => new Date(a.appt_datetime)-new Date(b.appt_datetime));
   const past = withAppts.filter(c => new Date(c.appt_datetime) < now).sort((a,b) => new Date(b.appt_datetime)-new Date(a.appt_datetime));
 
@@ -1053,11 +1088,11 @@ function renderAppts() {
     html += upcoming.map(apptCard).join('');
   }
   if (past.length) {
-    html += `<div class="section-lbl" style="margin-top:12px;">Past (${past.length})</div>`;
+    html += `<div class="section-lbl" style="margin-top:12px;">Past this period (${past.length})</div>`;
     html += past.map(apptCard).join('');
   }
   if (!withAppts.length) {
-    html = '<div class="empty">No appointments set yet.</div>';
+    html = '<div class="empty">No appointments in this period.</div>';
   }
   el.innerHTML = html;
 }
@@ -1971,8 +2006,18 @@ async function saveEditTouchpoint(id, ci, ti) {
   c.cases[ci].touchpoints[ti].type = document.getElementById('etp-type').value;
   c.cases[ci].touchpoints[ti].asrs = (document.getElementById('etp-asrs')||{value:''}).value.trim();
   c.cases[ci].touchpoints[ti].notes = document.getElementById('etp-notes').value.trim();
-  showSync('Saving...'); await sb.from('clients').update({cases:c.cases}).eq('id',id);
-  hideSync(); closeModal(); openClient(id); renderScore();
+
+  const updatePayload = {cases: c.cases};
+  if (c.cases[ci].touchpoints[ti].outcome === 'pending' && newDt) {
+    const newIso = new Date(newDt).toISOString();
+    updatePayload.appt_datetime = newIso;
+    updatePayload.appt_notes = c.cases[ci].type + ' - ' + c.cases[ci].touchpoints[ti].type;
+    c.appt_datetime = newIso;
+    c.appt_notes = updatePayload.appt_notes;
+  }
+
+  showSync('Saving...'); await sb.from('clients').update(updatePayload).eq('id',id);
+  hideSync(); closeModal(); openClient(id); renderScore(); renderSidebar();
 }
 
 // ── APPLICATION SYSTEM ──────────────────────────────────────
