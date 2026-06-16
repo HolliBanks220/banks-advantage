@@ -765,7 +765,12 @@ function renderScore() {
 
   const totalPPUs = ppuCases.length;
   const totalPPUSales = ppuSales;
-  const totalResets = allTPs.filter(t=>t.resetSelf||t.resetSME).length;
+  const totalResets = allTPs.filter(t=>t.resetSelf||t.resetSME).length +
+    clients.filter(c => (c.cases||[]).some(cs => {
+      const n = cs.notes || '';
+      return (n.includes('Reset from') && !n.includes('SME')) || 
+             n.startsWith('Reset -');
+    })).length;
 
   const saleTPs = allTPs.filter(t=>t.outcome==='sale');
   const satSits = allSits.filter(s=>s.outcome==='showed');
@@ -1648,7 +1653,6 @@ function renderCasesHtml(c) {
       const flags = [];
       if (tp.resetSelf) flags.push('Reset Reset->me');
       if (tp.resetSME) flags.push(`Reset Reset->${tp.resetSMEName||'SME'}`);
-      if (tp.incomeOffered) flags.push('[Income] Income offered');
       if (tp.asrs) flags.push(`[ASR] ASRs: ${tp.asrs}`);
       return `<div class="tp-card tp-outcome-${tp.outcome||'pending'}" onclick="openEditTouchpoint('${c.id}',${ci},${ti})">
         <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -1774,7 +1778,6 @@ function openAddTouchpoint(id, ci) {
   <div id="tp-addons" style="display:none;">
     <div class="section-lbl">Add-ons</div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
-      <button class="flag-btn" id="tpa-income" onclick="toggleTpAddon('income')">[Income] Income offered</button>
       <button class="flag-btn" id="tpa-resetself" onclick="toggleTpAddon('resetself')">Reset Reset->me</button>
       <button class="flag-btn" id="tpa-resetsme" onclick="toggleTpAddon('resetsme')">Reset Reset->SME</button>
     </div>
@@ -1924,7 +1927,6 @@ function openEditTouchpoint(id, ci, ti) {
     <button class="call-btn" style="background:${tp.outcome==='noshow'?'#BA7517':'#f0f4f8'};color:${tp.outcome==='noshow'?'#fff':'#5f7a99'};" onclick="updateTpOutcome('${id}',${ci},${ti},'noshow')">No Show</button>
   </div>
   <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
-    <button class="flag-btn${tp.incomeOffered?' on-teal':''}" onclick="toggleTpFlag('${id}',${ci},${ti},'incomeOffered')">[Income] Income offered${tp.incomeOffered?' v':''}</button>
     <button class="flag-btn${tp.resetSelf?' on-navy':''}" onclick="toggleTpFlag('${id}',${ci},${ti},'resetSelf')">Reset Reset->me${tp.resetSelf?' v':''}</button>
     <button class="flag-btn${tp.resetSME?' on-purple':''}" onclick="toggleTpFlag('${id}',${ci},${ti},'resetSME')">Reset Reset->SME${tp.resetSME?' v':''}</button>
   </div>
