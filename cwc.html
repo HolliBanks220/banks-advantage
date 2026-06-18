@@ -127,6 +127,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .appt-banner{background:#1D3557;color:#fff;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;cursor:pointer;display:none;}
 @media(min-width:720px){.appt-sidebar{display:block!important;}.appt-banner{display:none!important;}}
 @media(max-width:719px){.appt-sidebar{display:none!important;}.appt-banner{display:block;}#task-mobile-btn{display:block!important;}}
+.task-item{display:flex;align-items:flex-start;gap:6px;padding:6px 0;border-bottom:1px solid #f0f4f8;}
+.task-item:last-child{border-bottom:none;}
 </style>
 </head>
 <body>
@@ -343,7 +345,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div style="width:220px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;position:sticky;top:12px;">
   <div id="task-sidebar" style="background:#fff;border-radius:12px;border:1px solid #e2eaf2;padding:14px 12px;">
     <div style="font-size:10px;font-weight:600;color:#1D3557;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Tasks</div>
-    <div id="task-list" style="margin-bottom:8px;"></div>
+    <div id="task-list" style="margin-bottom:8px;"><div style="font-size:11px;color:#a0b8cc;">Loading...</div></div>
     <div style="display:flex;gap:6px;">
       <input id="task-input" type="text" placeholder="Add a task..." style="flex:1;border:1px solid #d0dcea;border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit;background:#f7fafd;color:#1a2e44;" onkeydown="if(event.key==='Enter')addTask()">
       <button onclick="addTask()" style="background:#138181;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-weight:500;">+</button>
@@ -388,13 +390,12 @@ const SIT_REASONS = [
   {value:'reset',label:'Reset - new product'}
 ];
 
-const SEED_LEADS = []; // Leads already seeded in Supabase
-
-//  STATE 
+const SEED_LEADS = [];
 
 //  STATE 
 let clients = [];
 let stats = [];
+let tasks = [];
 let view = 'day';
 let periodOffset = 0;
 let activeFilter = 'all';
@@ -405,9 +406,7 @@ document.getElementById('hdr-date').textContent = new Date().toLocaleDateString(
 //  INIT 
 async function init() {
   showSync('Loading your data...');
-  await loadClients();
-  await loadStats();
-  // Seed if empty
+  await Promise.all([loadClients(), loadStats(), loadTasksFromDB()]);
   if (clients.length === 0 && !seeded) {
     seeded = true;
     showSync('Setting up your leads...');
@@ -423,54 +422,39 @@ async function init() {
 }
 
 function startRealtimeSync() {
-  // Listen for changes to clients table
   sb.channel('clients-sync')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, async (payload) => {
       if (payload.eventType === 'UPDATE') {
         const idx = clients.findIndex(c => c.id === payload.new.id);
-        if (idx > -1) {
-          // Merge updated fields into local client
-          Object.assign(clients[idx], payload.new);
-        } else {
-          clients.unshift(payload.new);
-        }
+        if (idx > -1) { Object.assign(clients[idx], payload.new); }
+        else { clients.unshift(payload.new); }
       } else if (payload.eventType === 'INSERT') {
         const exists = clients.find(c => c.id === payload.new.id);
         if (!exists) clients.unshift(payload.new);
       } else if (payload.eventType === 'DELETE') {
         clients = clients.filter(c => c.id !== payload.old.id);
       }
-      // Re-render everything
       renderScore();
       renderSidebar();
       if (document.getElementById('tab-clients').style.display !== 'none') {
         renderClients(document.getElementById('client-search') ? document.getElementById('client-search').value : '');
       }
       if (document.getElementById('tab-appts').style.display !== 'none') renderAppts();
-      // If a lead modal is open and it's the one that changed, refresh it
-      const modal = document.getElementById('modal-ov');
-      if (modal && payload.new && payload.new.id) {
-        const openId = modal.querySelector('[id^="edit-name"]');
-        if (openId) {
-          // Find which lead is open by checking current name value
-          const currentName = openId.value;
-          const updatedClient = clients.find(c => c.id === payload.new.id);
-          if (updatedClient && updatedClient.name === currentName) {
-            openClient(payload.new.id, true);
-          }
-        }
-      }
     })
     .subscribe();
 
-  // Listen for stats changes
   sb.channel('stats-sync')
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'stats' }, (payload) => {
       const exists = stats.find(s => s.id === payload.new.id);
-      if (!exists) {
-        stats.push(payload.new);
-        renderScore();
-      }
+      if (!exists) { stats.push(payload.new); renderScore(); }
+    })
+    .subscribe();
+
+  // Realtime sync for tasks
+  sb.channel('tasks-sync')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, async () => {
+      await loadTasksFromDB();
+      renderTasks();
     })
     .subscribe();
 }
@@ -485,6 +469,11 @@ async function loadStats() {
   if (!error && data) stats = data;
 }
 
+async function loadTasksFromDB() {
+  const { data, error } = await sb.from('tasks').select('*').order('created_at', { ascending: true });
+  if (!error && data) tasks = data;
+}
+
 async function seedLeads() {
   const today = new Date().toISOString().slice(0,10);
   const rows = SEED_LEADS.map(l => ({
@@ -492,7 +481,7 @@ async function seedLeads() {
     status: 'New', assigned_date: today, notes: l.notes,
     health_notes: '', policy_notes: '', call_log: [], sits: []
   }));
-  await sb.from('clients').insert(rows);
+  if (rows.length) await sb.from('clients').insert(rows);
 }
 
 function showSync(msg) {
@@ -517,37 +506,27 @@ function pct(n, d) { return d > 0 ? Math.round((n/d)*100) + '%' : '-'; }
 function todayStr() { return new Date().toISOString().slice(0,10); }
 
 //  CALENDAR HELPERS 
-// Production week: Saturday -> Friday
-// Dialing week:    Friday -> Thursday (one day earlier)
-// Production month: starts the Saturday on/after the 1st of the calendar month
-//   (specifically: the Saturday after the last Friday of the prior calendar month)
-// Dialing month: one day earlier than production month
-
 function lastFridayOfMonth(year, month) {
-  // Find last Friday of calendar month (month is 0-indexed)
-  const lastDay = new Date(year, month + 1, 0); // last day of month
-  const dow = lastDay.getDay(); // 0=Sun,5=Fri,6=Sat
-  const diff = (dow >= 5) ? dow - 5 : dow + 2; // days back to Friday
+  const lastDay = new Date(year, month + 1, 0);
+  const dow = lastDay.getDay();
+  const diff = (dow >= 5) ? dow - 5 : dow + 2;
   const fri = new Date(year, month + 1, 0);
   fri.setDate(lastDay.getDate() - diff);
   return fri;
 }
 
 function getProductionMonthBounds(calYear, calMonth) {
-  // Production month starts the day after last Friday of prior calendar month
   const prevLastFri = lastFridayOfMonth(calYear, calMonth - 1 < 0 ? 11 : calMonth - 1);
   if (calMonth === 0) prevLastFri.setFullYear(calYear - 1);
   const start = new Date(prevLastFri);
   start.setDate(prevLastFri.getDate() + 1);
   start.setHours(0, 0, 0, 0);
-  // Production month ends on last Friday of this calendar month
   const end = lastFridayOfMonth(calYear, calMonth);
   end.setHours(23, 59, 59, 999);
   return { start, end };
 }
 
 function getActivityMonthBounds(calYear, calMonth) {
-  // Dialing month is one day earlier than production month
   const prod = getProductionMonthBounds(calYear, calMonth);
   const start = new Date(prod.start);
   start.setDate(prod.start.getDate() - 1);
@@ -557,14 +536,11 @@ function getActivityMonthBounds(calYear, calMonth) {
 }
 
 function getCurrentProductionMonth(now) {
-  // Which calendar month's production period contains 'now'?
-  // Try current month first, then next month
   for (let offset = 0; offset <= 1; offset++) {
     const d = new Date(now.getFullYear(), now.getMonth() + offset, 1);
     const b = getProductionMonthBounds(d.getFullYear(), d.getMonth());
     if (now >= b.start && now <= b.end) return { year: d.getFullYear(), month: d.getMonth() };
   }
-  // fallback to current calendar month
   return { year: now.getFullYear(), month: now.getMonth() };
 }
 
@@ -578,7 +554,6 @@ function getCurrentActivityMonth(now) {
 }
 
 function getPeriodBounds(type) {
-  // type: 'activity' or 'production'
   const now = new Date(); let start, end, label;
   const isActivity = type === 'activity';
 
@@ -591,15 +566,13 @@ function getPeriodBounds(type) {
 
   } else if (view === 'week') {
     if (isActivity) {
-      // Activity week: Friday -> Thursday
-      const dow = now.getDay(); // 0=Sun,5=Fri
+      const dow = now.getDay();
       const diffToFri = (dow >= 5) ? dow - 5 : dow + 2;
       const fri = new Date(now); fri.setDate(now.getDate() - diffToFri + periodOffset*7); fri.setHours(0,0,0,0);
       const thu = new Date(fri); thu.setDate(fri.getDate()+6); thu.setHours(23,59,59,999);
       start = fri; end = thu;
       label = periodOffset===0?'This week':periodOffset===-1?'Last week':fri.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' - '+thu.toLocaleDateString('en-US',{month:'short',day:'numeric'});
     } else {
-      // Production week: Saturday -> Friday
       const dow = now.getDay();
       const diffToSat = (dow === 6) ? 0 : dow + 1;
       const sat = new Date(now); sat.setDate(now.getDate() - diffToSat + periodOffset*7); sat.setHours(0,0,0,0);
@@ -624,9 +597,8 @@ function getPeriodBounds(type) {
     }
 
   } else if (view === 'quarter') {
-    // Quarter uses production calendar: find first Sat after last Fri of quarter-start month
     const now2 = new Date(now.getFullYear(), now.getMonth() + periodOffset*3, 1);
-    const qMonth = Math.floor(now2.getMonth()/3)*3; // 0,3,6,9
+    const qMonth = Math.floor(now2.getMonth()/3)*3;
     const qStart = getProductionMonthBounds(now2.getFullYear(), qMonth).start;
     const qEnd = getProductionMonthBounds(now2.getFullYear(), qMonth+2).end;
     if (isActivity) {
@@ -638,7 +610,6 @@ function getPeriodBounds(type) {
     label = periodOffset===0?'This quarter':'Q'+(Math.floor(qMonth/3)+1)+' '+now2.getFullYear();
 
   } else {
-    // Year uses production calendar
     const yr = now.getFullYear() + periodOffset;
     const yStart = getProductionMonthBounds(yr, 0).start;
     const yEnd = getProductionMonthBounds(yr, 11).end;
@@ -709,7 +680,6 @@ function renderScore() {
   const {start: pStart, end: pEnd} = getPeriodBounds('production');
   document.getElementById('period-label').textContent = label;
 
-  //  DIALING (activity calendar: Fri->Thu) 
   const dials=sumStat('dials',aStart,aEnd), convos=sumStat('convos',aStart,aEnd);
   const appts=sumStat('appts',aStart,aEnd), callbacks=sumStat('callbacks',aStart,aEnd), dead=sumStat('dead',aStart,aEnd);
   const resolved = appts + dead;
@@ -725,7 +695,6 @@ function renderScore() {
   document.getElementById('s-resolved-pct').textContent = resolved + ' resolved / ' + assignedInPeriod + ' assigned';
   document.getElementById('s-resolved-fresh').textContent = assignedInPeriod > 0 ? pct(resolved, assignedInPeriod) + ' resolution rate' : '-';
 
-  //  PRODUCTION (production calendar: Sat->Fri) 
   const periodAppts = clients.filter(c => {
     if (!c.appt_datetime) return false;
     const d = new Date(c.appt_datetime);
@@ -747,7 +716,7 @@ function renderScore() {
   const legacyNoSales = allSits.filter(s=>s.outcome==='showed'&&(s.apps||[]).length===0).length;
   const totalNoSales = allTPs.filter(t=>t.outcome==='nosale').length + legacyNoSales;
   const totalCont = allTPs.filter(t=>t.outcome==='cont').length;
-  // Case-based PPU impact analysis
+
   const allCasesInPeriod = clients.flatMap(c => (c.cases||[]).filter(cs => {
     const firstTp = (cs.touchpoints||[])[0];
     if (!firstTp) return false;
@@ -764,9 +733,7 @@ function renderScore() {
   const nonPPUCases = allCasesInPeriod.filter(cs => !hasPPUTouchpoint(cs));
 
   const ppuSales = ppuCases.filter(caseSold).length;
-  const ppuNoSales = ppuCases.filter(caseNoSale).length;
   const nonPPUSales = nonPPUCases.filter(caseSold).length;
-  const nonPPUNoSales = nonPPUCases.filter(caseNoSale).length;
 
   const ppuAPV = ppuCases.filter(caseSold).reduce((a,cs)=>a+caseAPV(cs),0);
   const nonPPUAPV = nonPPUCases.filter(caseSold).reduce((a,cs)=>a+caseAPV(cs),0);
@@ -780,8 +747,7 @@ function renderScore() {
   const totalResets = allTPs.filter(t=>t.resetSelf||t.resetSME).length +
     clients.filter(c => (c.cases||[]).some(cs => {
       const n = cs.notes || '';
-      return (n.includes('Reset from') && !n.includes('SME')) || 
-             n.startsWith('Reset -');
+      return (n.includes('Reset from') && !n.includes('SME')) || n.startsWith('Reset -');
     })).length;
 
   const saleTPs = allTPs.filter(t=>t.outcome==='sale');
@@ -793,7 +759,6 @@ function renderScore() {
   const closedCount = saleTPs.filter(t=>(t.apps||[]).length>0).length + satSits.filter(s=>(s.apps||[]).length>0).length;
   const apvPerSale = totalSales>0 ? totalAPV/totalSales : 0;
 
-  // Showed = anyone who showed up (sale + nosale + cont)
   const totalShowed2 = allTPs.filter(t=>t.outcome==='sale'||t.outcome==='nosale'||t.outcome==='cont').length + legacySits;
 
   document.getElementById('p-first').textContent = periodAppts;
@@ -818,7 +783,6 @@ function renderScore() {
   document.getElementById('p-apv-hh').textContent = fmt(apvPerSale);
   document.getElementById('p-apv-ppu').textContent = fmt(ppuAvgAPV)+' PPU vs '+fmt(nonPPUAvgAPV)+' non-PPU';
 
-  // All-time APV
   const allTimeSits = clients.flatMap(c => (c.sits||[]).filter(s => s.outcome==='showed'));
   const allTimeTps = clients.flatMap(c => (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).filter(t => t.outcome==='sale')));
   const allTimeAPV = allTimeSits.reduce((a,s)=>a+(s.apps||[]).reduce((b,ap)=>b+(ap.premium||0),0),0)
@@ -839,12 +803,10 @@ function showTab(t, btn) {
   if (t==='appts') renderAppts();
   if (t==='apps') renderAppsTab();
   if (t==='clients') renderClients();
-  if (t==='appts') renderAppts();
 }
 
 function drillDown(type) {
   const {start, end, label} = getPeriodBounds('production');
-  const now = new Date();
   let leads = [];
   let title = '';
 
@@ -1112,7 +1074,6 @@ function getFilteredClients(q='') {
   return clients.filter(c => {
     const matchQ = !q || (c.name||'').toLowerCase().includes(q.toLowerCase()) || (c.phone||'').includes(q);
     const days = Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24));
-    const attempts = (c.call_log||[]).length;
     const isAppt = c.status === 'Appointment set';
     const isNoShow = c.status === 'No show';
     const hasOpenCase = (c.cases||[]).some(cs => cs.status === 'Open' && (cs.touchpoints||[]).length > 0);
@@ -1121,7 +1082,7 @@ function getFilteredClients(q='') {
     else if (activeFilter==='fresh') matchF = days <= 4 && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale';
     else if (activeFilter==='warm') matchF = days >= 5 && days <= 17 && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale';
     else if (activeFilter==='open') matchF = days > 17 && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale';
-    else if (activeFilter==='none') matchF = attempts === 0 && c.status !== 'Dead';
+    else if (activeFilter==='none') matchF = (c.call_log||[]).length === 0 && c.status !== 'Dead';
     else if (activeFilter==='working') matchF = hasOpenCase && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed';
     else if (activeFilter==='noshow') matchF = isNoShow;
     else if (activeFilter==='Appointment set') matchF = isAppt;
@@ -1162,7 +1123,6 @@ function showModal(html) {
   closeModal();
   const ov = document.createElement('div'); ov.className='modal-overlay'; ov.id='modal-ov';
   ov.innerHTML = '<div class="modal">' + html + '</div>';
-  // Removed click-outside-to-close to prevent accidental data loss
   document.body.appendChild(ov);
 }
 function closeModal() { const m=document.getElementById('modal-ov'); if(m) m.remove(); }
@@ -1171,16 +1131,14 @@ function closeModal() { const m=document.getElementById('modal-ov'); if(m) m.rem
 function openClient(id, keepDialCount) {
   const c = clients.find(x => x.id === id);
   if (!c) return;
-  // Only reset dial count when opening a NEW lead, not when refreshing same lead
   if (!keepDialCount) { window._dialCount = 1; window._dialCountSet = false; }
   const sits = c.sits || [];
   const callLog = c.call_log || [];
   const statuses = ['New','Working','Appointment set','No show','Closed','No sale','Dead'];
-  const suggestedReason = sits.length===0?'first':sits[sits.length-1].outcome==='noshow'?'resched-noshow':sits[sits.length-1].ppu?'cont-ppu':'cont-followup';
 
   const callHistory = callLog.slice().reverse().slice(0,6).map((cl, ri) => {
-  const realIdx = callLog.length - 1 - ri;
-  return `
+    const realIdx = callLog.length - 1 - ri;
+    return `
     <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:5px;">
       <div style="width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0;background:${cl.outcome==='Appt set'?'#138181':cl.outcome==='No show'?'#E24B4A':cl.outcome==='Not interested'?'#E24B4A':cl.outcome==='Callback'?'#BA7517':'#1D3557'};"></div>
       <div style="flex:1;">
@@ -1191,7 +1149,7 @@ function openClient(id, keepDialCount) {
       </div>
       <button onclick="deleteCallLogEntry('${id}',${realIdx})" style="background:none;border:none;color:#d0dcea;font-size:14px;cursor:pointer;padding:0 2px;flex-shrink:0;" title="Delete this entry">x</button>
     </div>`;
-}).join('');
+  }).join('');
 
   const sitsHtml = sits.map((s,si) => {
     const reason = SIT_REASONS.find(r=>r.value===s.reason)||SIT_REASONS[0];
@@ -1327,7 +1285,6 @@ async function confirmMoveAppt(id) {
   c.appt_datetime = newDt;
   c.appt_notes = notes;
   hideSync(); closeModal(); openClient(id); renderSidebar();
-  // No stats logged - intentional
 }
 
 function openReschedulePicker(id) {
@@ -1347,8 +1304,7 @@ async function confirmReschedule(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const dtVal = document.getElementById('appt-dt').value;
   if (!dtVal) return;
-  const apptNotesEl = document.getElementById('appt-note-field');
-  const apptNotes = apptNotesEl ? apptNotesEl.value.trim() : '';
+  const apptNotes = (document.getElementById('appt-note-field')||{value:''}).value.trim();
   const apptDatetime = new Date(dtVal).toISOString();
   const dialCount = window._dialCount || 1;
   const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(),outcome:'Rescheduled',dials:dialCount,appt_datetime:apptDatetime,appt_notes:apptNotes}];
@@ -1365,7 +1321,6 @@ async function confirmReschedule(id) {
   if (nextLead) setTimeout(() => openClient(nextLead.id), 300);
 }
 
-// Convert a Date object to datetime-local input value in LOCAL time
 function toLocalDT(d) {
   return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,16);
 }
@@ -1395,12 +1350,10 @@ async function confirmAppt(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const dtVal = document.getElementById('appt-dt').value;
   if (!dtVal) return;
-  const apptNotesEl = document.getElementById('appt-note-field');
-  const apptNotes = apptNotesEl ? apptNotesEl.value.trim() : '';
+  const apptNotes = (document.getElementById('appt-note-field')||{value:''}).value.trim();
   const apptDatetime = new Date(dtVal).toISOString();
   const caseTypeEl = document.getElementById('appt-case-type');
   const selectedType = caseTypeEl ? caseTypeEl.value : 'Mortgage Protection';
-  // Map selection to actual case type
   const caseTypeMap = {
     'Mortgage Protection': 'Mortgage Protection',
     'Reset - Retirement': 'Retirement',
@@ -1410,64 +1363,29 @@ async function confirmAppt(id) {
   };
   const caseType = caseTypeMap[selectedType] || 'Mortgage Protection';
 
-  // Auto-create case with pending touchpoint
   const newCase = {
-    type: caseType,
-    status: 'Open',
+    type: caseType, status: 'Open',
     notes: selectedType !== caseType ? selectedType : '',
-    touchpoints: [{
-      type: 'Initial',
-      datetime: apptDatetime,
-      outcome: 'pending',
-      notes: apptNotes,
-      apps: [],
-      created: new Date().toISOString()
-    }],
+    touchpoints: [{type:'Initial',datetime:apptDatetime,outcome:'pending',notes:apptNotes,apps:[],created:new Date().toISOString()}],
     created: new Date().toISOString()
   };
   const cases = [...(c.cases||[]), newCase];
-
   const dialCount = window._dialCount || 1;
-  const callLog = [...(c.call_log||[]), {
-    ts: new Date().toISOString(),
-    outcome: 'Appt set',
-    dials: dialCount,
-    appt_datetime: apptDatetime,
-    appt_notes: apptNotes
-  }];
+  const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(),outcome:'Appt set',dials:dialCount,appt_datetime:apptDatetime,appt_notes:apptNotes}];
   showSync('Saving...');
-  await sb.from('clients').update({
-    call_log: callLog,
-    status: 'Appointment set',
-    appt_datetime: apptDatetime,
-    appt_notes: apptNotes,
-    cases
-  }).eq('id', id);
-  c.call_log = callLog;
-  c.status = 'Appointment set';
-  c.appt_datetime = apptDatetime;
-  c.appt_notes = apptNotes;
-  c.cases = cases;
-  await addStat('dials', dialCount);
-  await addStat('appts', 1);
-  await addStat('convos', 1);
-  window._dialCount = 1;
-  hideSync();
-  closeModal();
+  await sb.from('clients').update({call_log:callLog,status:'Appointment set',appt_datetime:apptDatetime,appt_notes:apptNotes,cases}).eq('id',id);
+  c.call_log=callLog; c.status='Appointment set'; c.appt_datetime=apptDatetime; c.appt_notes=apptNotes; c.cases=cases;
+  await addStat('dials',dialCount); await addStat('appts',1); await addStat('convos',1);
+  window._dialCount=1; hideSync(); closeModal();
   renderClients(document.getElementById('client-search').value);
-  renderScore();
-  renderSidebar();
-  broadcastAdvance(null);
+  renderScore(); renderSidebar();
   const list = clients.filter(cl => cl.status === 'New' || cl.status === 'Working');
   const idx = list.findIndex(cl => cl.id === id);
-  const next = list[idx + 1] || list[idx - 1];
-  broadcastAdvance(next ? next.id : null);
+  const next = list[idx+1] || list[idx-1];
   if (next) setTimeout(() => openClient(next.id), 300);
 }
 
 //  DIAL COUNT 
-// window._dialCount is the source of truth. Dialers can write to it directly.
-// e.g. window.setDialCount(3) from an external dialer integration.
 window._dialCount = 1;
 window._dialCountSet = false;
 
@@ -1499,9 +1417,7 @@ async function deleteCallLogEntry(id, idx) {
   showSync('Saving...');
   await sb.from('clients').update({call_log: newLog}).eq('id', id);
   c.call_log = newLog;
-  hideSync();
-  openClient(id);
-  renderScore();
+  hideSync(); openClient(id); renderScore();
 }
 
 //  AUTO SAVE 
@@ -1514,16 +1430,16 @@ function scheduleAutoSave(id) {
 async function silentSave(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const notesEl = document.getElementById('cn-notes');
-  const healthEl = document.getElementById('cn-health');
-  const policyEl = document.getElementById('cn-policy');
-  const ppuEl = document.getElementById('cn-ppu');
-  const addrEl = document.getElementById('cn-address');
-  if (!notesEl) return; // modal no longer open
+  if (!notesEl) return;
   const updates = {};
   if (notesEl) updates.notes = notesEl.value.trim();
+  const healthEl = document.getElementById('cn-health');
   if (healthEl) updates.health_notes = healthEl.value.trim();
+  const policyEl = document.getElementById('cn-policy');
   if (policyEl) updates.policy_notes = policyEl.value.trim();
+  const ppuEl = document.getElementById('cn-ppu');
   if (ppuEl) updates.ppu_notes = ppuEl.value.trim();
+  const addrEl = document.getElementById('cn-address');
   if (addrEl) updates.address = addrEl.value.trim();
   await sb.from('clients').update(updates).eq('id', id);
   Object.assign(c, updates);
@@ -1540,7 +1456,6 @@ async function autoSaveField(id, field, value) {
 async function quickLog(id, outcome, statKey) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const dialCount = window._dialCount || 1;
-  // For no-shows, use the appointment datetime as the timestamp so it counts in the right period
   const ts = (outcome === 'No show' && c.appt_datetime) ? c.appt_datetime : new Date().toISOString();
   const callLog = [...(c.call_log||[]), {ts, outcome, dials:dialCount}];
   let newStatus = c.status;
@@ -1548,22 +1463,17 @@ async function quickLog(id, outcome, statKey) {
   else if (outcome==='Appt set') newStatus='Appointment set';
   else if (outcome==='No show') newStatus='No show';
   else if (outcome==='Conversation'||outcome==='Callback') newStatus='Working';
-  // Update memory first so renderScore reflects immediately
   c.call_log = callLog; c.status = newStatus;
   showSync('Saving...');
   await sb.from('clients').update({call_log:callLog, status:newStatus}).eq('id',id);
-  // Log actual dial count to stats
   await addStat('dials', dialCount);
   if (statKey !== 'dials') {
     await addStat(statKey, 1);
-    await addStat('convos', 1); // any outcome other than no answer = conversation
+    await addStat('convos', 1);
   }
-  // Capture next lead BEFORE status changes take effect
   const allActive = clients.filter(cl => cl.status === 'New' || cl.status === 'Working');
   const currentIdx = allActive.findIndex(cl => cl.id === id);
   const nextLead = allActive[currentIdx + 1] || allActive[currentIdx - 1];
-
-  // Reset dial count to 1 after logging
   window._dialCount = 1;
   hideSync();
   renderScore();
@@ -1585,8 +1495,7 @@ async function saveNamePhone(id) {
   showSync('Saving...');
   await sb.from('clients').update({name, phone}).eq('id',id);
   c.name = name; c.phone = phone;
-  hideSync();
-  openClient(id);
+  hideSync(); openClient(id);
   renderClients(document.getElementById('client-search').value);
 }
 
@@ -1606,7 +1515,6 @@ async function updateClient(id) {
     status: document.getElementById('cn-status').value,
     assigned_date: document.getElementById('cn-assigned').value
   };
-  // Only log dials if user explicitly tapped a dial count button
   if (window._dialCountSet) {
     const dialCount = window._dialCount || 1;
     const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(), outcome:'No answer', dials:dialCount}];
@@ -1618,17 +1526,14 @@ async function updateClient(id) {
   showSync('Saving...');
   await sb.from('clients').update(updates).eq('id',id);
   Object.assign(c, updates);
-  hideSync();
-  closeModal();
+  hideSync(); closeModal();
   renderClients(document.getElementById('client-search').value);
   renderScore();
-  // Auto-advance to next lead in current filter
   const searchVal = document.getElementById('client-search').value;
   const filteredList = getFilteredClients(searchVal);
   const idx = filteredList.findIndex(cl => cl.id === id);
   const next = filteredList[idx + 1];
   if (next) setTimeout(() => openClient(next.id), 300);
-  broadcastAdvance(next ? next.id : null);
 }
 
 //  ADD CLIENT 
@@ -1655,10 +1560,7 @@ async function saveClient() {
   showSync('Saving...');
   const {data} = await sb.from('clients').insert([row]).select();
   if (data) clients.unshift(data[0]);
-  hideSync();
-  closeModal();
-  renderClients();
-  renderScore();
+  hideSync(); closeModal(); renderClients(); renderScore();
 }
 
 //  CASE SYSTEM 
@@ -1873,28 +1775,22 @@ async function saveTouchpoint(id, ci) {
     apps: [], created: new Date().toISOString()
   };
 
-  // Update case status
   if (outcome==='sale') c.cases[ci].status='Closed Won';
   else if (outcome==='nosale') c.cases[ci].status='Closed Lost';
   else if (outcome==='cont') c.cases[ci].status='Open';
   else if (outcome==='noshow') c.cases[ci].status='Open';
 
-  // Handle continuation - create next pending touchpoint, update appt_datetime, NO stat
   if (outcome==='cont') {
     const contDtVal = (document.getElementById('tp-cont-dt')||{value:''}).value;
     const contType = (document.getElementById('tp-cont-type')||{value:'Follow-up'}).value;
     if (contDtVal) {
       const contDtIso = new Date(contDtVal).toISOString();
-      c.cases[ci].touchpoints.push({
-        type: contType, datetime: contDtIso, outcome: 'pending',
-        notes: '', apps: [], created: new Date().toISOString()
-      });
+      c.cases[ci].touchpoints.push({type:contType, datetime:contDtIso, outcome:'pending', notes:'', apps:[], created:new Date().toISOString()});
       c.appt_datetime = contDtIso;
       c.appt_notes = contType + ' (continuation)';
     }
   }
 
-  // Spawn new case on reset
   if (addons.resetself || addons.resetsme) {
     const newCaseType = addons.resetself
       ? (document.getElementById('tp-resetself-type')||{value:'Mortgage Protection'}).value
@@ -1915,7 +1811,6 @@ async function saveTouchpoint(id, ci) {
 
   c.cases[ci].touchpoints = [...(c.cases[ci].touchpoints||[]), tp];
 
-  // Update lead status - never touches dial stats
   let newLeadStatus = c.status;
   if (outcome==='sale') newLeadStatus='Closed';
   else if (outcome==='nosale' && !addons.resetself && !addons.resetsme) newLeadStatus='No sale';
@@ -1931,7 +1826,6 @@ async function saveTouchpoint(id, ci) {
   c.status = newLeadStatus;
   hideSync();
   if (outcome === 'sale') {
-    // Get the index of the touchpoint we just added
     const newTi = c.cases[ci].touchpoints.length - 1;
     openAddAppToTouchpoint(id, ci, newTi);
   } else {
@@ -1942,7 +1836,6 @@ async function saveTouchpoint(id, ci) {
 function openEditTouchpoint(id, ci, ti) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const tp = c.cases[ci].touchpoints[ti];
-  // Convert UTC to local time for datetime-local input
   const dtLocal = new Date(tp.datetime);
   const dtVal = new Date(dtLocal.getTime() - dtLocal.getTimezoneOffset()*60000).toISOString().slice(0,16);
   const outcomeColor = tp.outcome==='sale'?'#3B6D11':tp.outcome==='nosale'?'#A32D2D':tp.outcome==='noshow'?'#BA7517':'#8fa8c0';
@@ -2020,7 +1913,7 @@ async function saveEditTouchpoint(id, ci, ti) {
   hideSync(); closeModal(); openClient(id); renderScore(); renderSidebar();
 }
 
-// ── APPLICATION SYSTEM ──────────────────────────────────────
+// APPLICATION SYSTEM
 const APP_STATUSES = ['Written','Submitted','Approved','Placed','Paid'];
 
 function carrierOptions(selected) {
@@ -2035,7 +1928,6 @@ function openAddAppToTouchpoint(id, ci, ti) {
   const c = clients.find(x=>x.id===id); if(!c) return;
   _appCount = 1;
   const defaultCarrier = Object.keys(CARRIERS)[0];
-  const defaultProducts = productOptions(defaultCarrier,'');
   showModal(`<button class="close-x" onclick="closeModal();openClient('${id}')">x</button>
   <div class="modal-title">Log application</div>
   <div class="modal-sub">${c.name} - Sale!</div>
@@ -2043,7 +1935,7 @@ function openAddAppToTouchpoint(id, ci, ti) {
     <div class="app-entry" id="app-entry-0">
       <div style="font-size:11px;font-weight:600;color:#138181;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;">Application 1</div>
       <div class="field"><label>Carrier</label><select id="app-carrier-0" onchange="updateProductDropdown(0)">${carrierOptions(defaultCarrier)}</select></div>
-      <div class="field"><label>Product</label><select id="app-product-0">${defaultProducts}</select></div>
+      <div class="field"><label>Product</label><select id="app-product-0">${productOptions(defaultCarrier,'')}</select></div>
       <div class="field"><label>Face amount</label><input type="number" id="app-face-0" placeholder="e.g. 250000" style="font-size:16px;"></div>
       <div class="field"><label>Annual premium (APV)</label><input type="number" id="app-apv-0" placeholder="e.g. 1200" style="font-size:16px;"></div>
       <div class="field"><label>Who</label><input type="text" id="app-who-0" placeholder="Borrower" value="Borrower"></div>
@@ -2218,9 +2110,7 @@ async function saveSit(id) {
   showSync('Saving...');
   await sb.from('clients').update({sits, status:newStatus}).eq('id',id);
   c.sits = sits; c.status = newStatus;
-  hideSync();
-  openClient(id);
-  renderScore();
+  hideSync(); openClient(id); renderScore();
 }
 
 function openEditSit(id, si) {
@@ -2259,14 +2149,9 @@ async function setSitOutcome(id, si, val) {
   if (val==='showed') c.status='Closed';
   showSync('Saving...');
   await sb.from('clients').update({sits:c.sits, status:c.status}).eq('id',id);
-  hideSync();
-  renderScore();
-  // After logging a showed outcome, prompt for reset
-  if (val==='showed') {
-    openResetPrompt(id);
-  } else {
-    openEditSit(id, si);
-  }
+  hideSync(); renderScore();
+  if (val==='showed') { openResetPrompt(id); }
+  else { openEditSit(id, si); }
 }
 
 function openResetPrompt(id) {
@@ -2284,12 +2169,11 @@ function openResetPrompt(id) {
 function openResetPicker(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const d = new Date(); d.setDate(d.getDate()+7); d.setHours(10,0,0,0);
-  const dt = toLocalDT(d);
   showModal(`<button class="close-x" onclick="closeModal()">x</button>
   <div class="modal-title">Schedule reset</div>
   <div class="modal-sub">${c.name}</div>
   ${buildWeekGrid(id)}
-  <div class="field"><label>Date & time</label><input type="datetime-local" id="reset-dt" value="${dt}" style="font-size:16px;"></div>
+  <div class="field"><label>Date & time</label><input type="datetime-local" id="reset-dt" value="${toLocalDT(d)}" style="font-size:16px;"></div>
   <div class="field"><label>Notes (optional)</label><input type="text" id="reset-note-field" placeholder="e.g. Call to confirm, bring spouse..."></div>
   <button class="save-btn" onclick="confirmReset('${id}')">Confirm reset</button>`);
 }
@@ -2300,26 +2184,12 @@ async function confirmReset(id) {
   if (!dtVal) return;
   const resetNotes = document.getElementById('reset-note-field') ? document.getElementById('reset-note-field').value.trim() : '';
   const resetDatetime = new Date(dtVal).toISOString();
-  const callLog = [...(c.call_log||[]), {
-    ts: new Date().toISOString(),
-    outcome: 'Reset scheduled',
-    appt_datetime: resetDatetime,
-    appt_notes: resetNotes
-  }];
+  const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(),outcome:'Reset scheduled',appt_datetime:resetDatetime,appt_notes:resetNotes}];
   showSync('Saving...');
-  await sb.from('clients').update({
-    call_log: callLog,
-    status: 'Appointment set',
-    appt_datetime: resetDatetime,
-    appt_notes: resetNotes
-  }).eq('id', id);
-  c.call_log = callLog;
-  c.status = 'Appointment set';
-  c.appt_datetime = resetDatetime;
-  c.appt_notes = resetNotes;
-  await addStat('appts', 1);
-  hideSync();
-  closeModal();
+  await sb.from('clients').update({call_log:callLog,status:'Appointment set',appt_datetime:resetDatetime,appt_notes:resetNotes}).eq('id',id);
+  c.call_log=callLog; c.status='Appointment set'; c.appt_datetime=resetDatetime; c.appt_notes=resetNotes;
+  await addStat('appts',1);
+  hideSync(); closeModal();
   renderClients(document.getElementById('client-search') ? document.getElementById('client-search').value : '');
   renderScore();
 }
@@ -2329,8 +2199,7 @@ async function toggleSitFlag(id, si, k) {
   c.sits[si][k] = !c.sits[si][k];
   showSync('Saving...');
   await sb.from('clients').update({sits:c.sits}).eq('id',id);
-  hideSync();
-  openEditSit(id, si);
+  hideSync(); openEditSit(id, si);
 }
 
 async function saveEditSit(id, si) {
@@ -2343,12 +2212,10 @@ async function saveEditSit(id, si) {
   c.sits[si].notes = document.getElementById('er-notes').value.trim();
   showSync('Saving...');
   await sb.from('clients').update({sits:c.sits}).eq('id',id);
-  hideSync();
-  openClient(id);
-  renderScore();
+  hideSync(); openClient(id); renderScore();
 }
 
-//  APPLICATIONS 
+//  APPLICATIONS (legacy sits) 
 function openAddApp(id, si) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const carriers = Object.keys(CARRIERS);
@@ -2378,15 +2245,12 @@ function updateProducts() {
 
 async function saveApp(id, si) {
   const c = clients.find(x=>x.id===id); if (!c) return;
-  const whoEl = document.getElementById('ap-who');
-  const app = {who:whoEl?whoEl.value.trim():'', carrier:document.getElementById('ap-carrier').value, product:document.getElementById('ap-product').value, faceAmount:parseInt(document.getElementById('ap-face').value)||0, premium:parseInt(document.getElementById('ap-premium').value)||0, notes:document.getElementById('ap-notes').value.trim(), uploaded:document.getElementById('ap-uploaded').checked, created:new Date().toISOString()};
+  const app = {who:(document.getElementById('ap-who')||{value:''}).value.trim(), carrier:document.getElementById('ap-carrier').value, product:document.getElementById('ap-product').value, faceAmount:parseInt(document.getElementById('ap-face').value)||0, premium:parseInt(document.getElementById('ap-premium').value)||0, notes:document.getElementById('ap-notes').value.trim(), uploaded:document.getElementById('ap-uploaded').checked, created:new Date().toISOString()};
   c.sits[si].apps = [...(c.sits[si].apps||[]), app];
   if (app.premium > 0) c.status = 'Closed';
   showSync('Saving...');
   await sb.from('clients').update({sits:c.sits, status:c.status}).eq('id',id);
-  hideSync();
-  openClient(id);
-  renderScore();
+  hideSync(); openClient(id); renderScore();
 }
 
 async function toggleUpload(id, si, ai) {
@@ -2394,86 +2258,60 @@ async function toggleUpload(id, si, ai) {
   c.sits[si].apps[ai].uploaded = !c.sits[si].apps[ai].uploaded;
   showSync('Saving...');
   await sb.from('clients').update({sits:c.sits}).eq('id',id);
-  hideSync();
-  openClient(id);
+  hideSync(); openClient(id);
 }
 
 //  BULK IMPORT 
-
-
 function openImportModal() {
   showModal('<button class="close-x" onclick="closeModal()">x</button>' +
   '<div class="modal-title">Import leads</div>' +
   '<div style="font-size:12px;color:#5f7a99;margin-bottom:14px;">Upload a PDF to import new leads. PDF import coming soon!</div>' +
   '<div style="font-size:13px;color:#1D3557;padding:12px;background:#f0f4f8;border-radius:8px;">Previous batches (June 9 + June 10) already imported - 31 leads in your tracker.</div>');
 }
-function openTaskModal() {
-  const tasks = loadTasks();
-  const taskHtml = tasks.length
-    ? tasks.map((t,i) => `
-      <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid #f0f4f8;">
-        <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${i});renderTaskModal()" style="margin-top:2px;cursor:pointer;accent-color:#138181;">
-        <span style="flex:1;font-size:13px;color:#1D3557;${t.done?'text-decoration:line-through;color:#a0b8cc;':''}">${t.text}</span>
-        <button onclick="dismissTask(${i});renderTaskModal()" style="background:none;border:none;color:#d0dcea;font-size:16px;cursor:pointer;padding:0;">x</button>
-      </div>`).join('')
-    : '<div style="font-size:13px;color:#a0b8cc;padding:8px 0;">No tasks yet.</div>';
 
-  showModal(`<button class="close-x" onclick="closeModal()">x</button>
-  <div class="modal-title">Tasks</div>
-  <div id="modal-task-list" style="margin-bottom:12px;">${taskHtml}</div>
-  <div style="display:flex;gap:6px;">
-    <input id="modal-task-input" type="text" placeholder="Add a task..." style="flex:1;border:1px solid #d0dcea;border-radius:6px;padding:8px 10px;font-size:14px;font-family:inherit;" onkeydown="if(event.key==='Enter'){addTaskFromModal();}">
-    <button onclick="addTaskFromModal()" style="background:#138181;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:14px;cursor:pointer;font-weight:500;">+</button>
-  </div>`);
-}
-
-function addTaskFromModal() {
-  const input = document.getElementById('modal-task-input');
+// ── TASK SYSTEM (Supabase-backed) ──────────────────────────────
+async function addTask() {
+  const input = document.getElementById('task-input');
   const text = input ? input.value.trim() : '';
   if (!text) return;
-  const tasks = loadTasks();
-  tasks.push({text, done:false, created: new Date().toISOString()});
-  saveTasks(tasks);
-  input.value = '';
-  renderTaskModal();
+  showSync('Saving task...');
+  const { data, error } = await sb.from('tasks').insert([{
+    text,
+    done: false,
+    created_at: new Date().toISOString()
+  }]).select();
+  if (data) tasks.push(data[0]);
+  if (input) input.value = '';
+  hideSync();
   renderTasks();
 }
 
-function renderTaskModal() {
-  const tasks = loadTasks();
-  const el = document.getElementById('modal-task-list');
-  if (!el) return;
-  el.innerHTML = tasks.length
-    ? tasks.map((t,i) => `
-      <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid #f0f4f8;">
-        <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${i});renderTaskModal();renderTasks()" style="margin-top:2px;cursor:pointer;accent-color:#138181;">
-        <span style="flex:1;font-size:13px;color:#1D3557;${t.done?'text-decoration:line-through;color:#a0b8cc;':''}">${t.text}</span>
-        <button onclick="dismissTask(${i});renderTaskModal();renderTasks()" style="background:none;border:none;color:#d0dcea;font-size:16px;cursor:pointer;padding:0;">x</button>
-      </div>`).join('')
-    : '<div style="font-size:13px;color:#a0b8cc;padding:8px 0;">No tasks yet.</div>';
+async function toggleTask(id) {
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
+  task.done = !task.done;
+  await sb.from('tasks').update({ done: task.done }).eq('id', id);
   renderTasks();
 }
 
-// -- TASK LIST --
-function loadTasks() {
-  try {
-    return JSON.parse(localStorage.getItem('cwc-tasks') || '[]');
-  } catch(e) { return []; }
+async function dismissTask(id) {
+  tasks = tasks.filter(t => t.id !== id);
+  await sb.from('tasks').delete().eq('id', id);
+  renderTasks();
 }
-function saveTasks(tasks) {
-  try { localStorage.setItem('cwc-tasks', JSON.stringify(tasks)); } catch(e) {}
-}
+
 function renderTasks() {
-  const tasks = loadTasks();
   const el = document.getElementById('task-list');
   if (el) {
-    if (!tasks.length) { el.innerHTML = '<div style="font-size:11px;color:#a0b8cc;padding:2px 0;">No tasks yet.</div>'; }
-    else { el.innerHTML = tasks.map((t,i) => `
-      <div style="display:flex;align-items:flex-start;gap:6px;padding:4px 0;border-bottom:1px solid #f0f4f8;">
-        <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${i})" style="margin-top:2px;cursor:pointer;accent-color:#138181;">
-        <span style="flex:1;font-size:12px;color:#1D3557;${t.done?'text-decoration:line-through;color:#a0b8cc;':''}">${t.text}</span>
-        <button onclick="dismissTask(${i})" style="background:none;border:none;color:#d0dcea;font-size:14px;cursor:pointer;padding:0;line-height:1;" title="Dismiss">x</button>
-      </div>`).join('');
+    if (!tasks.length) {
+      el.innerHTML = '<div style="font-size:11px;color:#a0b8cc;padding:2px 0;">No tasks yet.</div>';
+    } else {
+      el.innerHTML = tasks.map(t => `
+        <div class="task-item">
+          <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask('${t.id}')" style="margin-top:2px;cursor:pointer;accent-color:#138181;flex-shrink:0;">
+          <span style="flex:1;font-size:12px;color:#1D3557;${t.done?'text-decoration:line-through;color:#a0b8cc;':''}">${t.text}</span>
+          <button onclick="dismissTask('${t.id}')" style="background:none;border:none;color:#d0dcea;font-size:14px;cursor:pointer;padding:0;line-height:1;flex-shrink:0;" title="Dismiss">x</button>
+        </div>`).join('');
     }
   }
   // Update mobile badge
@@ -2483,28 +2321,48 @@ function renderTasks() {
     badge.textContent = tasks.length ? '(' + open + ' open)' : '';
   }
 }
-function addTask() {
-  const input = document.getElementById('task-input');
-  const text = input ? input.value.trim() : '';
-  if (!text) return;
-  const tasks = loadTasks();
-  tasks.push({text, done:false, created: new Date().toISOString()});
-  saveTasks(tasks);
-  input.value = '';
-  renderTasks();
-}
-function toggleTask(i) {
-  const tasks = loadTasks();
-  if (tasks[i]) { tasks[i].done = !tasks[i].done; saveTasks(tasks); renderTasks(); }
-}
-function dismissTask(i) {
-  const tasks = loadTasks();
-  tasks.splice(i, 1);
-  saveTasks(tasks);
-  renderTasks();
+
+function openTaskModal() {
+  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  <div class="modal-title">Tasks</div>
+  <div id="modal-task-list" style="margin-bottom:12px;">${renderTaskListHtml()}</div>
+  <div style="display:flex;gap:6px;">
+    <input id="modal-task-input" type="text" placeholder="Add a task..." style="flex:1;border:1px solid #d0dcea;border-radius:6px;padding:8px 10px;font-size:14px;font-family:inherit;" onkeydown="if(event.key==='Enter'){addTaskFromModal();}">
+    <button onclick="addTaskFromModal()" style="background:#138181;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:14px;cursor:pointer;font-weight:500;">+</button>
+  </div>`);
 }
 
-// -- GO --
+function renderTaskListHtml() {
+  if (!tasks.length) return '<div style="font-size:13px;color:#a0b8cc;padding:8px 0;">No tasks yet.</div>';
+  return tasks.map(t => `
+    <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid #f0f4f8;">
+      <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask('${t.id}');refreshModalTaskList()" style="margin-top:2px;cursor:pointer;accent-color:#138181;">
+      <span style="flex:1;font-size:13px;color:#1D3557;${t.done?'text-decoration:line-through;color:#a0b8cc;':''}">${t.text}</span>
+      <button onclick="dismissTask('${t.id}');refreshModalTaskList()" style="background:none;border:none;color:#d0dcea;font-size:16px;cursor:pointer;padding:0;">x</button>
+    </div>`).join('');
+}
+
+function refreshModalTaskList() {
+  const el = document.getElementById('modal-task-list');
+  if (el) el.innerHTML = renderTaskListHtml();
+}
+
+async function addTaskFromModal() {
+  const input = document.getElementById('modal-task-input');
+  const text = input ? input.value.trim() : '';
+  if (!text) return;
+  const { data } = await sb.from('tasks').insert([{
+    text,
+    done: false,
+    created_at: new Date().toISOString()
+  }]).select();
+  if (data) tasks.push(data[0]);
+  if (input) input.value = '';
+  renderTasks();
+  refreshModalTaskList();
+}
+
+// GO
 document.addEventListener('DOMContentLoaded', function() { init(); });
 if (document.readyState !== 'loading') { init(); }
 </script>
