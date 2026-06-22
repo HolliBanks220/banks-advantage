@@ -1205,6 +1205,7 @@ function openClient(id, keepDialCount) {
     <button class="call-btn cb-green" onclick="openApptPicker('${id}')">Appt set</button>
     <button class="call-btn cb-amber" onclick="quickLog('${id}','Callback','callbacks')">Callback</button>
     <button class="call-btn" style="background:#534AB7;color:#fff;" onclick="openReschedulePicker('${id}')">Reschedule</button>
+    <button class="call-btn" style="background:#BA7517;color:#fff;" onclick="openResetToPicker('${id}')">↺ Reset to</button>
     <button class="call-btn cb-red" onclick="quickLog('${id}','Not interested','dead')">Not interested</button>
   </div>
   <button class="save-btn" onclick="updateClient('${id}')" style="margin-bottom:12px;">Save & next</button>
@@ -1323,6 +1324,109 @@ async function confirmReschedule(id) {
 
 function toLocalDT(d) {
   return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,16);
+}
+
+// RESET TO NEW PRODUCT
+function openResetToPicker(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const d = new Date(); d.setDate(d.getDate()+1); d.setHours(10,0,0,0);
+  const dt = toLocalDT(d);
+  const resetOptions = [
+    {value:'Mortgage Protection', label:'Mortgage Protection'},
+    {value:'Retirement', label:'Retirement'},
+    {value:'Debt Free Life', label:'Debt Free Life'},
+    {value:'Infinite Banking', label:'Infinite Banking'},
+    {value:'General Life', label:'General Life'}
+  ].map(o=>`<option value="${o.value}">${o.label}</option>`).join('');
+
+  // Show current open cases so agent knows what's active
+  const openCases = (c.cases||[]).filter(cs=>cs.status==='Open');
+  const currentCaseHtml = openCases.length
+    ? `<div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:6px 10px;margin-bottom:10px;">
+        Current open: ${openCases.map(cs=>cs.type).join(', ')}
+       </div>`
+    : '';
+
+  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  <div class="modal-title">↺ Reset to new product</div>
+  <div class="modal-sub">${c.name}</div>
+  ${currentCaseHtml}
+  <div style="font-size:11px;color:#BA7517;background:#FAEEDA;border:1px solid #FAC775;border-radius:6px;padding:6px 10px;margin-bottom:12px;">
+    Current case will be closed as Reset. A new case + appointment will be created. No sale will be logged.
+  </div>
+  ${buildWeekGrid(id)}
+  <div class="field"><label>Reset to</label><select id="reset-to-type">${resetOptions}</select></div>
+  <div class="field"><label>New appointment date & time</label><input type="datetime-local" id="reset-to-dt" value="${dt}" style="font-size:16px;"></div>
+  <div class="field"><label>Notes (optional)</label><input type="text" id="reset-to-notes" placeholder="e.g. Shifting focus to retirement strategy..."></div>
+  <button class="save-btn" style="background:#BA7517;" onclick="confirmResetTo('${id}')">Confirm reset</button>`);
+}
+
+async function confirmResetTo(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const dtVal = document.getElementById('reset-to-dt').value;
+  if (!dtVal) return;
+  const newType = document.getElementById('reset-to-type').value;
+  const notes = document.getElementById('reset-to-notes').value.trim();
+  const apptDatetime = new Date(dtVal).toISOString();
+  const dialCount = window._dialCount || 1;
+
+  // Close all currently open cases as Reset
+  const cases = (c.cases||[]).map(cs => {
+    if (cs.status === 'Open') return {...cs, status: 'Reset', notes: (cs.notes ? cs.notes + ' | ' : '') + 'Reset to ' + newType};
+    return cs;
+  });
+
+  // Create new case with pending touchpoint
+  const newCase = {
+    type: newType,
+    status: 'Open',
+    notes: notes || ('Reset from ' + ((c.cases||[]).find(cs=>cs.status==='Open')||{type:'previous'}).type),
+    touchpoints: [{
+      type: 'Initial',
+      datetime: apptDatetime,
+      outcome: 'pending',
+      notes: notes,
+      apps: [],
+      created: new Date().toISOString()
+    }],
+    created: new Date().toISOString()
+  };
+  cases.push(newCase);
+
+  // Log call entry
+  const callLog = [...(c.call_log||[]), {
+    ts: new Date().toISOString(),
+    outcome: 'Reset to ' + newType,
+    dials: dialCount,
+    appt_datetime: apptDatetime,
+    appt_notes: notes || newType
+  }];
+
+  showSync('Saving...');
+  await sb.from('clients').update({
+    cases,
+    call_log: callLog,
+    status: 'Appointment set',
+    appt_datetime: apptDatetime,
+    appt_notes: notes || newType
+  }).eq('id', id);
+
+  Object.assign(c, { cases, call_log: callLog, status: 'Appointment set', appt_datetime: apptDatetime, appt_notes: notes || newType });
+
+  await addStat('dials', dialCount);
+  await addStat('appts', 1);
+  await addStat('convos', 1);
+
+  window._dialCount = 1; window._dialCountSet = false;
+  hideSync(); closeModal();
+  renderClients(document.getElementById('client-search') ? document.getElementById('client-search').value : '');
+  renderScore(); renderSidebar();
+
+  // Advance to next lead
+  const allActive = clients.filter(cl => cl.status === 'New' || cl.status === 'Working');
+  const currentIdx = allActive.findIndex(cl => cl.id === id);
+  const nextLead = allActive[currentIdx + 1] || allActive[currentIdx - 1];
+  if (nextLead) setTimeout(() => openClient(nextLead.id), 300);
 }
 
 function openApptPicker(id) {
