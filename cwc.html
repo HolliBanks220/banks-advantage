@@ -745,17 +745,14 @@ function renderScore() {
   const totalPPUs = ppuCases.length;
   const totalPPUSales = ppuSales;
   const totalResets = clients.reduce((acc, c) => {
-    // Count touchpoint-flagged resets in period
     const tpResets = (c.cases||[]).reduce((a, cs) =>
       a + (cs.touchpoints||[]).filter(tp => {
         const d = new Date(tp.datetime); return d>=pStart&&d<=pEnd&&(tp.resetSelf||tp.resetSME);
       }).length, 0);
-    // Count cases with reset notes (each reset case = 1)
     const caseResets = (c.cases||[]).filter(cs => {
       const n = cs.notes||'';
       return n.includes('Reset from') || n.startsWith('Reset -');
     }).length;
-    // Use whichever is higher per client to avoid double-counting
     return acc + Math.max(tpResets, caseResets);
   }, 0);
 
@@ -1080,7 +1077,7 @@ function statusBadge(s) { const m={'New':'b-New','Working':'b-Working','Appointm
 function dotClass(s) { if(s.outcome==='showed')return'jd-showed'; if(s.outcome==='noshow')return'jd-noshow'; if(s.outcome==='canceled')return'jd-cancel'; return'jd-pending'; }
 
 function getFilteredClients(q='') {
-  return clients.filter(c => {
+  const filtered = clients.filter(c => {
     const matchQ = !q || (c.name||'').toLowerCase().includes(q.toLowerCase()) || (c.phone||'').includes(q);
     const days = Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24));
     const isAppt = c.status === 'Appointment set';
@@ -1097,6 +1094,21 @@ function getFilteredClients(q='') {
     else if (activeFilter==='Appointment set') matchF = isAppt;
     else matchF = c.status === activeFilter;
     return matchQ && matchF;
+  });
+
+  // Sort: never contacted first (oldest assigned), then by last contact oldest first
+  return filtered.sort((a, b) => {
+    const aLog = a.call_log || [];
+    const bLog = b.call_log || [];
+    const aLast = aLog.length ? new Date(aLog[aLog.length-1].ts).getTime() : 0;
+    const bLast = bLog.length ? new Date(bLog[bLog.length-1].ts).getTime() : 0;
+    // Never contacted: sort by assigned date ascending (oldest first)
+    if (!aLast && !bLast) return new Date(a.assigned_date||a.created_at) - new Date(b.assigned_date||b.created_at);
+    // Never contacted always before contacted
+    if (!aLast) return -1;
+    if (!bLast) return 1;
+    // Both contacted: oldest last contact first
+    return aLast - bLast;
   });
 }
 
@@ -1340,12 +1352,20 @@ function openResetToPicker(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const d = new Date(); d.setDate(d.getDate()+1); d.setHours(10,0,0,0);
   const dt = toLocalDT(d);
-  const resetOptions = ['Mortgage Protection','Retirement','Debt Free Life','Infinite Banking','General Life']
-    .map(o=>`<option value="${o}">${o}</option>`).join('');
+
+  // Reset type options with case type mapping
+  const resetOptions = [
+    {value:'Mortgage Protection', label:'Mortgage Protection', caseType:'Mortgage Protection'},
+    {value:'General Life', label:'General Life', caseType:'General Life'},
+    {value:'Retirement Solutions', label:'Retirement Solutions (self reset)', caseType:'Retirement'},
+    {value:'DFL/IBC', label:'DFL / IBC (outside reset)', caseType:'Debt Free Life'}
+  ].map(o=>`<option value="${o.value}">${o.label}</option>`).join('');
+
   const openCases = (c.cases||[]).filter(cs=>cs.status==='Open');
   const currentCaseHtml = openCases.length
     ? `<div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:6px 10px;margin-bottom:10px;">Current open: ${openCases.map(cs=>cs.type).join(', ')}</div>`
     : '';
+
   showModal(`<button class="close-x" onclick="closeModal()">x</button>
   <div class="modal-title">↺ Reset to new product</div>
   <div class="modal-sub">${c.name}</div>
@@ -1354,43 +1374,99 @@ function openResetToPicker(id) {
     Current case will be closed as Reset. A new case + appointment will be created. No sale will be logged.
   </div>
   ${buildWeekGrid(id)}
-  <div class="field"><label>Reset to</label><select id="reset-to-type">${resetOptions}</select></div>
+  <div class="field"><label>Reset to</label>
+    <select id="reset-to-type" onchange="toggleSMEField()">
+      <option value="Retirement Solutions">Retirement Solutions (self reset)</option>
+      <option value="IBC/DFL">IBC / DFL (outside reset - SME)</option>
+    </select>
+  </div>
+  <div id="sme-name-field" style="display:none;" class="field"><label>SME name</label><input type="text" id="reset-sme-name" placeholder="Who are you resetting to?"></div>
   <div class="field"><label>New appointment date & time</label><input type="datetime-local" id="reset-to-dt" value="${dt}" style="font-size:16px;"></div>
-  <div class="field"><label>Notes (optional)</label><input type="text" id="reset-to-notes" placeholder="e.g. Shifting focus to retirement strategy..."></div>
+  <div class="field"><label>Notes (optional)</label><input type="text" id="reset-to-notes" placeholder="e.g. Shifting to retirement strategy..."></div>
   <button class="save-btn" style="background:#BA7517;" onclick="confirmResetTo('${id}')">Confirm reset</button>`);
+}
+
+// Map reset label to internal case type
+const RESET_TYPE_MAP = {
+  'Retirement Solutions': 'Retirement',
+  'IBC/DFL': 'Debt Free Life'
+};
+
+function toggleSMEField() {
+  const val = (document.getElementById('reset-to-type')||{value:''}).value;
+  const el = document.getElementById('sme-name-field');
+  if (el) el.style.display = val === 'IBC/DFL' ? 'flex' : 'none';
 }
 
 async function confirmResetTo(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const dtVal = document.getElementById('reset-to-dt').value;
   if (!dtVal) return;
-  const newType = document.getElementById('reset-to-type').value;
+  const resetLabel = document.getElementById('reset-to-type').value;
+  const caseType = RESET_TYPE_MAP[resetLabel] || resetLabel;
+  const smeName = resetLabel === 'IBC/DFL' ? (document.getElementById('reset-sme-name')||{value:''}).value.trim() : '';
   const notes = document.getElementById('reset-to-notes').value.trim();
   const apptDatetime = new Date(dtVal).toISOString();
   const dialCount = window._dialCount || 1;
+
+  const fromType = ((c.cases||[]).find(cs=>cs.status==='Open')||{type:'previous'}).type;
   const cases = (c.cases||[]).map(cs => {
-    if (cs.status === 'Open') return {...cs, status:'Reset', notes:(cs.notes?cs.notes+' | ':'')+'Reset to '+newType};
+    if (cs.status === 'Open') return {...cs, status:'Reset', notes:(cs.notes?cs.notes+' | ':'')+'Reset to '+resetLabel+(smeName?' ('+smeName+')':'')};
     return cs;
   });
+
+  const apptNotes = resetLabel + (smeName?' - '+smeName:'') + (notes?' - '+notes:'');
+  const caseNotes = smeName ? 'Reset from '+fromType+' - SME: '+smeName : (notes || 'Reset from '+fromType);
+
   const newCase = {
-    type: newType, status:'Open',
-    notes: notes || ('Reset from '+((c.cases||[]).find(cs=>cs.status==='Open')||{type:'previous'}).type),
-    touchpoints: [{type:'Initial',datetime:apptDatetime,outcome:'pending',notes:notes,apps:[],created:new Date().toISOString()}],
+    type: caseType,
+    status: 'Open',
+    notes: caseNotes,
+    touchpoints: [{
+      type: 'Initial',
+      datetime: apptDatetime,
+      outcome: 'pending',
+      notes: apptNotes,
+      resetSME: resetLabel === 'IBC/DFL',
+      resetSMEName: smeName,
+      apps: [],
+      created: new Date().toISOString()
+    }],
     created: new Date().toISOString()
   };
   cases.push(newCase);
-  const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(),outcome:'Reset to '+newType,dials:dialCount,appt_datetime:apptDatetime,appt_notes:notes||newType}];
+
+  const callLog = [...(c.call_log||[]), {
+    ts: new Date().toISOString(),
+    outcome: 'Reset to ' + resetLabel + (smeName?' ('+smeName+')':''),
+    dials: dialCount,
+    appt_datetime: apptDatetime,
+    appt_notes: apptNotes
+  }];
+
   showSync('Saving...');
-  await sb.from('clients').update({cases,call_log:callLog,status:'Appointment set',appt_datetime:apptDatetime,appt_notes:notes||newType}).eq('id',id);
-  Object.assign(c,{cases,call_log:callLog,status:'Appointment set',appt_datetime:apptDatetime,appt_notes:notes||newType});
-  await addStat('dials',dialCount); await addStat('appts',1); await addStat('convos',1);
-  window._dialCount=1; window._dialCountSet=false;
+  await sb.from('clients').update({
+    cases, call_log: callLog,
+    status: 'Appointment set',
+    appt_datetime: apptDatetime,
+    appt_notes: apptNotes
+  }).eq('id', id);
+
+  Object.assign(c, {cases, call_log: callLog, status: 'Appointment set', appt_datetime: apptDatetime, appt_notes: apptNotes});
+
+  await addStat('dials', dialCount);
+  await addStat('appts', 1);
+  await addStat('convos', 1);
+
+  window._dialCount = 1; window._dialCountSet = false;
   hideSync(); closeModal();
-  renderClients(document.getElementById('client-search')?document.getElementById('client-search').value:'');
+  renderClients(document.getElementById('client-search') ? document.getElementById('client-search').value : '');
   renderScore(); renderSidebar();
-  const allActive = clients.filter(cl=>cl.status==='New'||cl.status==='Working');
-  const nextLead = allActive[allActive.findIndex(cl=>cl.id===id)+1] || allActive[allActive.findIndex(cl=>cl.id===id)-1];
-  if (nextLead) setTimeout(()=>openClient(nextLead.id),300);
+
+  const allActive = clients.filter(cl => cl.status === 'New' || cl.status === 'Working');
+  const idx = allActive.findIndex(cl => cl.id === id);
+  const nextLead = allActive[idx + 1] || allActive[idx - 1];
+  if (nextLead) setTimeout(() => openClient(nextLead.id), 300);
 }
 
 function openApptPicker(id) {
@@ -1399,10 +1475,9 @@ function openApptPicker(id) {
   const dt = toLocalDT(d);
   const caseOptions = [
     {value:'Mortgage Protection', label:'Mortgage Protection'},
-    {value:'Reset - Retirement', label:'Reset - Retirement'},
-    {value:'Reset - Debt Free Life', label:'Reset - Debt Free Life'},
-    {value:'Reset - Infinite Banking', label:'Reset - Infinite Banking'},
-    {value:'General Life', label:'General Life'}
+    {value:'General Life', label:'General Life'},
+    {value:'Retirement Solutions', label:'Retirement Solutions'},
+    {value:'IBC/DFL', label:'IBC / DFL'}
   ].map(o=>`<option value="${o.value}">${o.label}</option>`).join('');
   showModal(`<button class="close-x" onclick="closeModal()">x</button>
   <div class="modal-title">Set appointment</div>
@@ -1424,10 +1499,9 @@ async function confirmAppt(id) {
   const selectedType = caseTypeEl ? caseTypeEl.value : 'Mortgage Protection';
   const caseTypeMap = {
     'Mortgage Protection': 'Mortgage Protection',
-    'Reset - Retirement': 'Retirement',
-    'Reset - Debt Free Life': 'Debt Free Life',
-    'Reset - Infinite Banking': 'Infinite Banking',
-    'General Life': 'General Life'
+    'General Life': 'General Life',
+    'Retirement Solutions': 'Retirement',
+    'IBC/DFL': 'Debt Free Life'
   };
   const caseType = caseTypeMap[selectedType] || 'Mortgage Protection';
 
