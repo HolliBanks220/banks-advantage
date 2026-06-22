@@ -718,10 +718,10 @@ function renderScore() {
   const totalCont = allTPs.filter(t=>t.outcome==='cont').length;
 
   const allCasesInPeriod = clients.flatMap(c => (c.cases||[]).filter(cs => {
-    const firstTp = (cs.touchpoints||[])[0];
-    if (!firstTp) return false;
-    const d = new Date(firstTp.datetime);
-    return d >= pStart && d <= pEnd;
+    return (cs.touchpoints||[]).some(tp => {
+      const d = new Date(tp.datetime);
+      return d >= pStart && d <= pEnd && (tp.outcome==='sale'||tp.outcome==='nosale'||tp.outcome==='cont');
+    });
   }).map(cs => ({...cs, clientId: c.id})));
 
   const hasPPUTouchpoint = cs => (cs.touchpoints||[]).some(tp => tp.type === 'PPU / Policy Pickup' && (tp.outcome==='sale'||tp.outcome==='nosale'||tp.outcome==='cont'));
@@ -2037,14 +2037,19 @@ async function toggleTpFlag(id, ci, ti, key) {
 async function saveEditTouchpoint(id, ci, ti) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const newDt = document.getElementById('etp-dt').value;
-  if (newDt) c.cases[ci].touchpoints[ti].datetime = new Date(newDt).toISOString();
+  if (newDt) {
+    const localDate = new Date(newDt);
+    const isoStr = new Date(localDate.getTime() - localDate.getTimezoneOffset()*60000).toISOString();
+    c.cases[ci].touchpoints[ti].datetime = isoStr;
+  }
   c.cases[ci].touchpoints[ti].type = document.getElementById('etp-type').value;
   c.cases[ci].touchpoints[ti].asrs = (document.getElementById('etp-asrs')||{value:''}).value.trim();
   c.cases[ci].touchpoints[ti].notes = document.getElementById('etp-notes').value.trim();
 
   const updatePayload = {cases: c.cases};
   if (c.cases[ci].touchpoints[ti].outcome === 'pending' && newDt) {
-    const newIso = new Date(newDt).toISOString();
+    const localDate = new Date(newDt);
+    const newIso = new Date(localDate.getTime() - localDate.getTimezoneOffset()*60000).toISOString();
     updatePayload.appt_datetime = newIso;
     updatePayload.appt_notes = c.cases[ci].type + ' - ' + c.cases[ci].touchpoints[ti].type;
     c.appt_datetime = newIso;
