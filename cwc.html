@@ -744,11 +744,20 @@ function renderScore() {
 
   const totalPPUs = ppuCases.length;
   const totalPPUSales = ppuSales;
-  const totalResets = allTPs.filter(t=>t.resetSelf||t.resetSME).length +
-    clients.filter(c => (c.cases||[]).some(cs => {
-      const n = cs.notes || '';
-      return (n.includes('Reset from') && !n.includes('SME')) || n.startsWith('Reset -');
-    })).length;
+  const totalResets = clients.reduce((acc, c) => {
+    // Count touchpoint-flagged resets in period
+    const tpResets = (c.cases||[]).reduce((a, cs) =>
+      a + (cs.touchpoints||[]).filter(tp => {
+        const d = new Date(tp.datetime); return d>=pStart&&d<=pEnd&&(tp.resetSelf||tp.resetSME);
+      }).length, 0);
+    // Count cases with reset notes (each reset case = 1)
+    const caseResets = (c.cases||[]).filter(cs => {
+      const n = cs.notes||'';
+      return n.includes('Reset from') || n.startsWith('Reset -');
+    }).length;
+    // Use whichever is higher per client to avoid double-counting
+    return acc + Math.max(tpResets, caseResets);
+  }, 0);
 
   const saleTPs = allTPs.filter(t=>t.outcome==='sale');
   const satSits = allSits.filter(s=>s.outcome==='showed');
@@ -1331,22 +1340,12 @@ function openResetToPicker(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const d = new Date(); d.setDate(d.getDate()+1); d.setHours(10,0,0,0);
   const dt = toLocalDT(d);
-  const resetOptions = [
-    {value:'Mortgage Protection', label:'Mortgage Protection'},
-    {value:'Retirement', label:'Retirement'},
-    {value:'Debt Free Life', label:'Debt Free Life'},
-    {value:'Infinite Banking', label:'Infinite Banking'},
-    {value:'General Life', label:'General Life'}
-  ].map(o=>`<option value="${o.value}">${o.label}</option>`).join('');
-
-  // Show current open cases so agent knows what's active
+  const resetOptions = ['Mortgage Protection','Retirement','Debt Free Life','Infinite Banking','General Life']
+    .map(o=>`<option value="${o}">${o}</option>`).join('');
   const openCases = (c.cases||[]).filter(cs=>cs.status==='Open');
   const currentCaseHtml = openCases.length
-    ? `<div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:6px 10px;margin-bottom:10px;">
-        Current open: ${openCases.map(cs=>cs.type).join(', ')}
-       </div>`
+    ? `<div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:6px 10px;margin-bottom:10px;">Current open: ${openCases.map(cs=>cs.type).join(', ')}</div>`
     : '';
-
   showModal(`<button class="close-x" onclick="closeModal()">x</button>
   <div class="modal-title">↺ Reset to new product</div>
   <div class="modal-sub">${c.name}</div>
@@ -1369,64 +1368,29 @@ async function confirmResetTo(id) {
   const notes = document.getElementById('reset-to-notes').value.trim();
   const apptDatetime = new Date(dtVal).toISOString();
   const dialCount = window._dialCount || 1;
-
-  // Close all currently open cases as Reset
   const cases = (c.cases||[]).map(cs => {
-    if (cs.status === 'Open') return {...cs, status: 'Reset', notes: (cs.notes ? cs.notes + ' | ' : '') + 'Reset to ' + newType};
+    if (cs.status === 'Open') return {...cs, status:'Reset', notes:(cs.notes?cs.notes+' | ':'')+'Reset to '+newType};
     return cs;
   });
-
-  // Create new case with pending touchpoint
   const newCase = {
-    type: newType,
-    status: 'Open',
-    notes: notes || ('Reset from ' + ((c.cases||[]).find(cs=>cs.status==='Open')||{type:'previous'}).type),
-    touchpoints: [{
-      type: 'Initial',
-      datetime: apptDatetime,
-      outcome: 'pending',
-      notes: notes,
-      apps: [],
-      created: new Date().toISOString()
-    }],
+    type: newType, status:'Open',
+    notes: notes || ('Reset from '+((c.cases||[]).find(cs=>cs.status==='Open')||{type:'previous'}).type),
+    touchpoints: [{type:'Initial',datetime:apptDatetime,outcome:'pending',notes:notes,apps:[],created:new Date().toISOString()}],
     created: new Date().toISOString()
   };
   cases.push(newCase);
-
-  // Log call entry
-  const callLog = [...(c.call_log||[]), {
-    ts: new Date().toISOString(),
-    outcome: 'Reset to ' + newType,
-    dials: dialCount,
-    appt_datetime: apptDatetime,
-    appt_notes: notes || newType
-  }];
-
+  const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(),outcome:'Reset to '+newType,dials:dialCount,appt_datetime:apptDatetime,appt_notes:notes||newType}];
   showSync('Saving...');
-  await sb.from('clients').update({
-    cases,
-    call_log: callLog,
-    status: 'Appointment set',
-    appt_datetime: apptDatetime,
-    appt_notes: notes || newType
-  }).eq('id', id);
-
-  Object.assign(c, { cases, call_log: callLog, status: 'Appointment set', appt_datetime: apptDatetime, appt_notes: notes || newType });
-
-  await addStat('dials', dialCount);
-  await addStat('appts', 1);
-  await addStat('convos', 1);
-
-  window._dialCount = 1; window._dialCountSet = false;
+  await sb.from('clients').update({cases,call_log:callLog,status:'Appointment set',appt_datetime:apptDatetime,appt_notes:notes||newType}).eq('id',id);
+  Object.assign(c,{cases,call_log:callLog,status:'Appointment set',appt_datetime:apptDatetime,appt_notes:notes||newType});
+  await addStat('dials',dialCount); await addStat('appts',1); await addStat('convos',1);
+  window._dialCount=1; window._dialCountSet=false;
   hideSync(); closeModal();
-  renderClients(document.getElementById('client-search') ? document.getElementById('client-search').value : '');
+  renderClients(document.getElementById('client-search')?document.getElementById('client-search').value:'');
   renderScore(); renderSidebar();
-
-  // Advance to next lead
-  const allActive = clients.filter(cl => cl.status === 'New' || cl.status === 'Working');
-  const currentIdx = allActive.findIndex(cl => cl.id === id);
-  const nextLead = allActive[currentIdx + 1] || allActive[currentIdx - 1];
-  if (nextLead) setTimeout(() => openClient(nextLead.id), 300);
+  const allActive = clients.filter(cl=>cl.status==='New'||cl.status==='Working');
+  const nextLead = allActive[allActive.findIndex(cl=>cl.id===id)+1] || allActive[allActive.findIndex(cl=>cl.id===id)-1];
+  if (nextLead) setTimeout(()=>openClient(nextLead.id),300);
 }
 
 function openApptPicker(id) {
