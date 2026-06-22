@@ -1613,9 +1613,9 @@ async function quickLog(id, outcome, statKey) {
     await addStat(statKey, 1);
     await addStat('convos', 1);
   }
-  const allActive = clients.filter(cl => cl.status === 'New' || cl.status === 'Working');
-  const currentIdx = allActive.findIndex(cl => cl.id === id);
-  const nextLead = allActive[currentIdx + 1] || allActive[currentIdx - 1];
+  const searchVal = document.getElementById('client-search') ? document.getElementById('client-search').value : '';
+  const filteredList = getFilteredClients(searchVal);
+  const nextLead = filteredList[filteredList.findIndex(cl => cl.id === id) + 1] || filteredList[filteredList.findIndex(cl => cl.id === id) - 1];
   window._dialCount = 1;
   hideSync();
   renderScore();
@@ -1623,7 +1623,7 @@ async function quickLog(id, outcome, statKey) {
     openClient(id, true);
   } else {
     closeModal();
-    renderClients(document.getElementById('client-search') ? document.getElementById('client-search').value : '');
+    renderClients(searchVal);
     if (nextLead) setTimeout(() => openClient(nextLead.id), 300);
   }
 }
