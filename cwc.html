@@ -1716,6 +1716,12 @@ async function quickLog(id, outcome, statKey) {
   else if (outcome==='Appt set') newStatus='Appointment set';
   else if (outcome==='No show') newStatus='No show';
   else if (outcome==='Conversation'||outcome==='Callback') newStatus='Working';
+  // Capture next lead BEFORE updating status so filter still includes current lead
+  const searchVal = document.getElementById('client-search') ? document.getElementById('client-search').value : '';
+  const filteredList = getFilteredClients(searchVal);
+  const currentIdx = filteredList.findIndex(cl => cl.id === id);
+  const nextLead = filteredList[currentIdx + 1] || filteredList[currentIdx - 1];
+
   c.call_log = callLog; c.status = newStatus;
   showSync('Saving...');
   await sb.from('clients').update({call_log:callLog, status:newStatus}).eq('id',id);
@@ -1724,9 +1730,6 @@ async function quickLog(id, outcome, statKey) {
     await addStat(statKey, 1);
     await addStat('convos', 1);
   }
-  const searchVal = document.getElementById('client-search') ? document.getElementById('client-search').value : '';
-  const filteredList = getFilteredClients(searchVal);
-  const nextLead = filteredList[filteredList.findIndex(cl => cl.id === id) + 1] || filteredList[filteredList.findIndex(cl => cl.id === id) - 1];
   window._dialCount = 1;
   hideSync();
   renderScore();
