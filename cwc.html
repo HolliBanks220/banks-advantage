@@ -1098,8 +1098,9 @@ function getClientAppts(c) {
       });
     }
   });
-  // Fall back to appt_datetime if no case touchpoints found
-  if (appts.length === 0 && c.appt_datetime) {
+  // Fall back to appt_datetime ONLY if no open cases with pending touchpoints exist
+  const hasOpenCases = (c.cases||[]).some(cs => cs.status === 'Open' && (cs.touchpoints||[]).some(tp => tp.outcome === 'pending'));
+  if (appts.length === 0 && !hasOpenCases && c.appt_datetime) {
     appts.push({
       datetime: c.appt_datetime,
       notes: c.appt_notes || '',
