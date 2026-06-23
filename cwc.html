@@ -1572,16 +1572,29 @@ async function confirmReschedule(id) {
   const apptDatetime = new Date(dtVal).toISOString();
   const dialCount = window._dialCount || 1;
   const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(),outcome:'Rescheduled',dials:dialCount,appt_datetime:apptDatetime,appt_notes:apptNotes}];
+  // Also update the pending touchpoint datetime in the open case
+  const cases = (c.cases||[]).map(cs => {
+    if (cs.status !== 'Open') return cs;
+    const touchpoints = (cs.touchpoints||[]).map(tp => {
+      if (tp.outcome === 'pending') return {...tp, datetime: apptDatetime, notes: apptNotes || tp.notes};
+      return tp;
+    });
+    return {...cs, touchpoints};
+  });
+
   showSync('Saving...');
-  await sb.from('clients').update({call_log:callLog,status:'Appointment set',appt_datetime:apptDatetime,appt_notes:apptNotes}).eq('id',id);
-  c.call_log=callLog; c.status='Appointment set'; c.appt_datetime=apptDatetime; c.appt_notes=apptNotes;
-  await addStat('dials',dialCount); await addStat('appts',1); await addStat('convos',1);
+  await sb.from('clients').update({call_log:callLog,status:'Appointment set',appt_datetime:apptDatetime,appt_notes:apptNotes,cases}).eq('id',id);
+  c.call_log=callLog; c.status='Appointment set'; c.appt_datetime=apptDatetime; c.appt_notes=apptNotes; c.cases=cases;
+  await addStat('dials',dialCount); await addStat('convos',1); // No appt stat - reschedule is same appt moved
   window._dialCount=1; window._dialCountSet=false; hideSync(); closeModal();
-  renderClients(document.getElementById('client-search') ? document.getElementById('client-search').value : '');
-  renderScore();
-  const allActive = clients.filter(cl => cl.status === 'New' || cl.status === 'Working');
-  const currentIdx = allActive.findIndex(cl => cl.id === id);
-  const nextLead = allActive[currentIdx + 1] || allActive[currentIdx - 1];
+
+  const searchVal = document.getElementById('client-search') ? document.getElementById('client-search').value : '';
+  const filteredList = getFilteredClients(searchVal);
+  const currentIdx = filteredList.findIndex(cl => cl.id === id);
+  const nextLead = filteredList[currentIdx + 1] || filteredList[currentIdx - 1];
+
+  renderClients(searchVal);
+  renderScore(); renderSidebar();
   if (nextLead) setTimeout(() => openClient(nextLead.id), 300);
 }
 
