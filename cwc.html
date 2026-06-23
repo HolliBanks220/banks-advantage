@@ -748,7 +748,7 @@ function renderScore() {
     const d = new Date(s.datetime); return d >= pStart && d <= pEnd;
   }));
 
-  const tpSits = allTPs.filter(t => t.outcome==='sale'||t.outcome==='nosale').length;
+  const tpSits = allTPs.filter(t => t.outcome==='sale'||t.outcome==='nosale'||t.outcome==='cont').length;
   const legacySits = allSits.filter(s => s.outcome==='showed').length;
   const totalShowed = tpSits + legacySits;
   const totalNoShows = allTPs.filter(t=>t.outcome==='noshow').length + allSits.filter(s=>s.outcome==='noshow').length;
