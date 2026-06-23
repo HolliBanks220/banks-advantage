@@ -1819,16 +1819,18 @@ async function updateClient(id) {
     window._dialCount = 1;
     window._dialCountSet = false;
   }
-  showSync('Saving...');
-  await sb.from('clients').update(updates).eq('id',id);
-  Object.assign(c, updates);
-  hideSync(); closeModal();
-  renderClients(document.getElementById('client-search').value);
-  renderScore();
+  // Capture next lead BEFORE status update so filter still includes current lead
   const searchVal = document.getElementById('client-search').value;
   const filteredList = getFilteredClients(searchVal);
   const idx = filteredList.findIndex(cl => cl.id === id);
   const next = filteredList[idx + 1];
+
+  showSync('Saving...');
+  await sb.from('clients').update(updates).eq('id',id);
+  Object.assign(c, updates);
+  hideSync(); closeModal();
+  renderClients(searchVal);
+  renderScore();
   if (next) setTimeout(() => openClient(next.id), 300);
 }
 
