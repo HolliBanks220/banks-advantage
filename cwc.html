@@ -1074,38 +1074,32 @@ function drillDown(type) {
 function getClientAppts(c) {
   const appts = [];
   const now = new Date();
-  // Add NEXT pending touchpoint per open case (not all pending touchpoints)
-  (c.cases||[]).forEach(cs => {
-    if (cs.status !== 'Open') return;
-    // Find the next upcoming pending touchpoint for this case
-    const pendingTps = (cs.touchpoints||[])
-      .filter(tp => tp.outcome === 'pending' && tp.datetime)
-      .sort((a,b) => new Date(a.datetime) - new Date(b.datetime));
-    // Take the first upcoming one, or most recent past one if all are past
-    const nextTp = pendingTps.find(tp => new Date(tp.datetime) >= now) || pendingTps[pendingTps.length-1];
-    if (nextTp) {
-      appts.push({
-        datetime: nextTp.datetime,
-        notes: nextTp.notes || (cs.type + ' - ' + nextTp.type),
-        caseType: cs.type,
-        tpType: nextTp.type,
-        clientId: c.id,
-        clientName: c.name,
-        clientPhone: c.phone,
-        clientState: c.state,
-        clientAddress: c.address,
-        clientStatus: c.status
+
+  // Primary: use appt_datetime as the main appointment indicator
+  if (c.appt_datetime) {
+    // Find the matching touchpoint for context (case type, tp type)
+    let matchedCase = null;
+    let matchedTp = null;
+    const apptTime = new Date(c.appt_datetime).getTime();
+    (c.cases||[]).forEach(cs => {
+      if (cs.status !== 'Open') return;
+      (cs.touchpoints||[]).forEach(tp => {
+        if (tp.outcome === 'pending') {
+          const tpTime = new Date(tp.datetime).getTime();
+          // Match within 5 minutes
+          if (Math.abs(tpTime - apptTime) < 5 * 60 * 1000) {
+            matchedCase = cs;
+            matchedTp = tp;
+          }
+        }
       });
-    }
-  });
-  // Fall back to appt_datetime ONLY if no open cases with pending touchpoints exist
-  const hasOpenCases = (c.cases||[]).some(cs => cs.status === 'Open' && (cs.touchpoints||[]).some(tp => tp.outcome === 'pending'));
-  if (appts.length === 0 && !hasOpenCases && c.appt_datetime) {
+    });
+
     appts.push({
       datetime: c.appt_datetime,
-      notes: c.appt_notes || '',
-      caseType: '',
-      tpType: '',
+      notes: c.appt_notes || (matchedCase ? matchedCase.type + (matchedTp ? ' - ' + matchedTp.type : '') : ''),
+      caseType: matchedCase ? matchedCase.type : '',
+      tpType: matchedTp ? matchedTp.type : '',
       clientId: c.id,
       clientName: c.name,
       clientPhone: c.phone,
@@ -1114,6 +1108,35 @@ function getClientAppts(c) {
       clientStatus: c.status
     });
   }
+
+  // Secondary: add any OTHER pending touchpoints from open cases that are NOT the primary appt
+  (c.cases||[]).forEach(cs => {
+    if (cs.status !== 'Open') return;
+    const pendingTps = (cs.touchpoints||[])
+      .filter(tp => tp.outcome === 'pending' && tp.datetime)
+      .sort((a,b) => new Date(a.datetime) - new Date(b.datetime));
+    const nextTp = pendingTps.find(tp => new Date(tp.datetime) >= now) || pendingTps[pendingTps.length-1];
+    if (nextTp) {
+      const tpTime = new Date(nextTp.datetime).getTime();
+      const primaryTime = c.appt_datetime ? new Date(c.appt_datetime).getTime() : 0;
+      // Only add if this is a DIFFERENT time from the primary appt (more than 5 min apart)
+      if (Math.abs(tpTime - primaryTime) > 5 * 60 * 1000) {
+        appts.push({
+          datetime: nextTp.datetime,
+          notes: nextTp.notes || (cs.type + ' - ' + nextTp.type),
+          caseType: cs.type,
+          tpType: nextTp.type,
+          clientId: c.id,
+          clientName: c.name,
+          clientPhone: c.phone,
+          clientState: c.state,
+          clientAddress: c.address,
+          clientStatus: c.status
+        });
+      }
+    }
+  });
+
   return appts;
 }
 
