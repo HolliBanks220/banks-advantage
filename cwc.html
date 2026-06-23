@@ -1134,7 +1134,7 @@ function renderClients(q='') {
         </div>
       </div>
       ${sits.length?`<div class="journey-row">${journey}</div>`:''}
-      ${lastCall?`<div class="log-row"><span class="log-time">${new Date(lastCall.ts).toLocaleDateString('en-US',{month:'short',day:'numeric'})} ${new Date(lastCall.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</span> - ${lastCall.outcome}</div>`:''}
+      ${lastCall?`<div class="log-row"><span class="log-time">${new Date(lastCall.ts).toLocaleDateString('en-US',{month:'short',day:'numeric'})} ${new Date(lastCall.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</span> - ${lastCall.outcome}${lastCall.outcome==='No show'&&c.appt_datetime?' <span style="color:#BA7517;font-weight:500;">(appt: '+new Date(c.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})+' at '+new Date(c.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})+')</span>':''}</div>`:''}
     </div>`;
   }).join('');
 }
