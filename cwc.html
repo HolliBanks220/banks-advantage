@@ -789,9 +789,12 @@ function renderScore() {
       a + (cs.touchpoints||[]).filter(tp => {
         const d = new Date(tp.datetime); return d>=pStart&&d<=pEnd&&(tp.resetSelf||tp.resetSME);
       }).length, 0);
+    // Only count reset cases created within the production period
     const caseResets = (c.cases||[]).filter(cs => {
       const n = cs.notes||'';
-      return n.includes('Reset from') || n.startsWith('Reset -');
+      if (!n.includes('Reset from') && !n.startsWith('Reset -')) return false;
+      const d = new Date(cs.created||0);
+      return d >= pStart && d <= pEnd;
     }).length;
     return acc + Math.max(tpResets, caseResets);
   }, 0);
@@ -1027,7 +1030,9 @@ function drillDown(type) {
       }));
       const hasResetCase = (c.cases||[]).some(cs => {
         const n = cs.notes||'';
-        return n.includes('Reset from') || n.startsWith('Reset -');
+        if (!n.includes('Reset from') && !n.startsWith('Reset -')) return false;
+        const d = new Date(cs.created||0);
+        return d >= start && d <= end;
       });
       return hasResetTp || hasResetCase;
     });
@@ -1111,11 +1116,15 @@ function renderSidebar() {
   const now = new Date();
   const todayStr = now.toDateString();
   const allAppts = getAllAppts();
-  const upcoming = allAppts
+  // Deduplicate by clientId+datetime to avoid showing same slot twice
+  const deduped = allAppts.filter((a, i, arr) =>
+    arr.findIndex(b => b.clientId === a.clientId && b.datetime === a.datetime) === i
+  );
+  const upcoming = deduped
     .filter(a => new Date(a.datetime) >= now)
     .sort((a,b) => new Date(a.datetime)-new Date(b.datetime))
     .slice(0,15);
-  const todayPassed = allAppts
+  const todayPassed = deduped
     .filter(a => { const dt = new Date(a.datetime); return dt < now && dt.toDateString() === todayStr; })
     .sort((a,b) => new Date(a.datetime)-new Date(b.datetime));
 
@@ -1231,7 +1240,7 @@ function renderAppts() {
     const dateStr = dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
     const timeStr = dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
     const isPast = dt < now;
-    const typeColor = a.caseType === 'Retirement' ? '#138181' : a.caseType === 'Debt Free Life' ? '#534AB7' : '#1D3557';
+    const typeColor = a.caseType === 'Retirement' ? '#138181' : (a.caseType === 'Debt Free Life' || a.caseType === 'IBC/DFL') ? '#534AB7' : '#1D3557';
     return `<div class="client-card" onclick="openClient('${a.clientId}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
         <div>
