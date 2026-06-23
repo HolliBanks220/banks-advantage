@@ -1073,25 +1073,30 @@ function drillDown(type) {
 // Get all pending appointments for a client across all open cases
 function getClientAppts(c) {
   const appts = [];
-  // Add touchpoint-based appointments from open cases
+  const now = new Date();
+  // Add NEXT pending touchpoint per open case (not all pending touchpoints)
   (c.cases||[]).forEach(cs => {
     if (cs.status !== 'Open') return;
-    (cs.touchpoints||[]).forEach(tp => {
-      if (tp.outcome === 'pending' && tp.datetime) {
-        appts.push({
-          datetime: tp.datetime,
-          notes: tp.notes || (cs.type + ' - ' + tp.type),
-          caseType: cs.type,
-          tpType: tp.type,
-          clientId: c.id,
-          clientName: c.name,
-          clientPhone: c.phone,
-          clientState: c.state,
-          clientAddress: c.address,
-          clientStatus: c.status
-        });
-      }
-    });
+    // Find the next upcoming pending touchpoint for this case
+    const pendingTps = (cs.touchpoints||[])
+      .filter(tp => tp.outcome === 'pending' && tp.datetime)
+      .sort((a,b) => new Date(a.datetime) - new Date(b.datetime));
+    // Take the first upcoming one, or most recent past one if all are past
+    const nextTp = pendingTps.find(tp => new Date(tp.datetime) >= now) || pendingTps[pendingTps.length-1];
+    if (nextTp) {
+      appts.push({
+        datetime: nextTp.datetime,
+        notes: nextTp.notes || (cs.type + ' - ' + nextTp.type),
+        caseType: cs.type,
+        tpType: nextTp.type,
+        clientId: c.id,
+        clientName: c.name,
+        clientPhone: c.phone,
+        clientState: c.state,
+        clientAddress: c.address,
+        clientStatus: c.status
+      });
+    }
   });
   // Fall back to appt_datetime if no case touchpoints found
   if (appts.length === 0 && c.appt_datetime) {
