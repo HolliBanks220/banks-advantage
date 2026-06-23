@@ -1061,30 +1061,78 @@ function drillDown(type) {
     ${rows}`);
 }
 
+// Get all pending appointments for a client across all open cases
+function getClientAppts(c) {
+  const appts = [];
+  // Add touchpoint-based appointments from open cases
+  (c.cases||[]).forEach(cs => {
+    if (cs.status !== 'Open') return;
+    (cs.touchpoints||[]).forEach(tp => {
+      if (tp.outcome === 'pending' && tp.datetime) {
+        appts.push({
+          datetime: tp.datetime,
+          notes: tp.notes || (cs.type + ' - ' + tp.type),
+          caseType: cs.type,
+          tpType: tp.type,
+          clientId: c.id,
+          clientName: c.name,
+          clientPhone: c.phone,
+          clientState: c.state,
+          clientAddress: c.address,
+          clientStatus: c.status
+        });
+      }
+    });
+  });
+  // Fall back to appt_datetime if no case touchpoints found
+  if (appts.length === 0 && c.appt_datetime) {
+    appts.push({
+      datetime: c.appt_datetime,
+      notes: c.appt_notes || '',
+      caseType: '',
+      tpType: '',
+      clientId: c.id,
+      clientName: c.name,
+      clientPhone: c.phone,
+      clientState: c.state,
+      clientAddress: c.address,
+      clientStatus: c.status
+    });
+  }
+  return appts;
+}
+
+// Get all appointments across all clients
+function getAllAppts() {
+  return clients.flatMap(c => getClientAppts(c));
+}
+
 function renderSidebar() {
   const now = new Date();
   const todayStr = now.toDateString();
-  const allAppts = clients.filter(c => c.appt_datetime);
+  const allAppts = getAllAppts();
   const upcoming = allAppts
-    .filter(c => new Date(c.appt_datetime) >= now)
-    .sort((a,b) => new Date(a.appt_datetime)-new Date(b.appt_datetime))
-    .slice(0,10);
+    .filter(a => new Date(a.datetime) >= now)
+    .sort((a,b) => new Date(a.datetime)-new Date(b.datetime))
+    .slice(0,15);
   const todayPassed = allAppts
-    .filter(c => { const dt = new Date(c.appt_datetime); return dt < now && dt.toDateString() === todayStr; })
-    .sort((a,b) => new Date(a.appt_datetime)-new Date(b.appt_datetime));
+    .filter(a => { const dt = new Date(a.datetime); return dt < now && dt.toDateString() === todayStr; })
+    .sort((a,b) => new Date(a.datetime)-new Date(b.datetime));
 
-  function apptCard(c, passed) {
-    const dt = new Date(c.appt_datetime);
+  function apptCard(a, passed) {
+    const dt = new Date(a.datetime);
     const isToday = dt.toDateString() === todayStr;
     const dateStr = isToday ? '' : dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' - ';
     const timeStr = dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
     const timeColor = passed ? '#A32D2D' : isToday ? '#138181' : '#5f7a99';
     const bg = passed ? '#FFF5F5' : isToday ? '#F0FBF7' : '#F8FAFB';
     const border = passed ? '#F7C1C1' : isToday ? '#9FE1CB' : '#e2eaf2';
-    return `<div class="appt-sidebar-item${passed?' passed':''}" style="background:${bg};border:1px solid ${border};" onclick="openClient('${c.id}')">
-      <div style="font-size:12px;font-weight:500;color:#1D3557;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.name}</div>
+    const typeLabel = a.caseType ? `<div style="font-size:9px;color:#8fa8c0;margin-top:1px;">${a.caseType}${a.tpType?' - '+a.tpType:''}</div>` : '';
+    return `<div class="appt-sidebar-item${passed?' passed':''}" style="background:${bg};border:1px solid ${border};" onclick="openClient('${a.clientId}')">
+      <div style="font-size:12px;font-weight:500;color:#1D3557;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.clientName}</div>
       <div style="font-size:11px;color:${timeColor};font-weight:500;margin-top:1px;">${dateStr}${timeStr}${passed?' - past':''}</div>
-      ${c.appt_notes?`<div style="font-size:10px;color:#8fa8c0;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.appt_notes}</div>`:''}
+      ${typeLabel}
+      ${a.notes?`<div style="font-size:10px;color:#8fa8c0;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.notes}</div>`:''}
     </div>`;
   }
 
@@ -1094,10 +1142,10 @@ function renderSidebar() {
       sidebar.innerHTML = '<div style="font-size:11px;color:#a0b8cc;padding:4px 2px;">No appointments today</div>';
     } else {
       let html = '';
-      if (upcoming.length) html += upcoming.map(c => apptCard(c, false)).join('');
+      if (upcoming.length) html += upcoming.map(a => apptCard(a, false)).join('');
       if (todayPassed.length) {
         html += `<div class="appt-sidebar-divider">Earlier today</div>`;
-        html += todayPassed.map(c => apptCard(c, true)).join('');
+        html += todayPassed.map(a => apptCard(a, true)).join('');
       }
       sidebar.innerHTML = html;
     }
@@ -1108,9 +1156,9 @@ function renderSidebar() {
   if (banner && bannerText) {
     const next = upcoming[0];
     if (next) {
-      const dt = new Date(next.appt_datetime);
+      const dt = new Date(next.datetime);
       const timeStr = dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-      bannerText.textContent = `Next: ${next.name} - ${timeStr}`;
+      bannerText.textContent = `Next: ${next.clientName} - ${timeStr}`;
       banner.style.display = 'block';
     } else if (todayPassed.length) {
       bannerText.textContent = `${todayPassed.length} appt${todayPassed.length>1?'s':''} passed today`;
@@ -1170,34 +1218,35 @@ function renderAppts() {
   const now = new Date();
   const {start: pStart, end: pEnd} = getPeriodBounds('production');
 
-  const withAppts = clients.filter(c => {
-    if (!c.appt_datetime) return false;
-    const d = new Date(c.appt_datetime);
+  const allAppts = getAllAppts().filter(a => {
+    const d = new Date(a.datetime);
     return d >= pStart && d <= pEnd;
   });
 
-  const upcoming = withAppts.filter(c => new Date(c.appt_datetime) >= now).sort((a,b) => new Date(a.appt_datetime)-new Date(b.appt_datetime));
-  const past = withAppts.filter(c => new Date(c.appt_datetime) < now).sort((a,b) => new Date(b.appt_datetime)-new Date(a.appt_datetime));
+  const upcoming = allAppts.filter(a => new Date(a.datetime) >= now).sort((a,b) => new Date(a.datetime)-new Date(b.datetime));
+  const past = allAppts.filter(a => new Date(a.datetime) < now).sort((a,b) => new Date(b.datetime)-new Date(a.datetime));
 
-  function apptCard(c) {
-    const dt = new Date(c.appt_datetime);
+  function apptCard(a) {
+    const dt = new Date(a.datetime);
     const dateStr = dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
     const timeStr = dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
     const isPast = dt < now;
-    return `<div class="client-card" onclick="openClient('${c.id}')">
+    const typeColor = a.caseType === 'Retirement' ? '#138181' : a.caseType === 'Debt Free Life' ? '#534AB7' : '#1D3557';
+    return `<div class="client-card" onclick="openClient('${a.clientId}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
         <div>
-          <div class="client-name">${c.name||'Unknown'}</div>
-          <div class="client-meta">${c.phone||''} - ${c.state||''}</div>
-          ${c.address?`<div style="font-size:10px;color:#8fa8c0;margin-top:2px;">[Addr] ${c.address}</div>`:''}
+          <div class="client-name">${a.clientName||'Unknown'}</div>
+          <div class="client-meta">${a.clientPhone||''} - ${a.clientState||''}</div>
+          ${a.clientAddress?`<div style="font-size:10px;color:#8fa8c0;margin-top:2px;">[Addr] ${a.clientAddress}</div>`:''}
+          ${a.caseType?`<div style="font-size:10px;font-weight:500;color:${typeColor};margin-top:2px;">${a.caseType}${a.tpType?' - '+a.tpType:''}</div>`:''}
         </div>
         <div style="text-align:right;">
           <div style="font-size:13px;font-weight:600;color:${isPast?'#A32D2D':'#138181'};">${timeStr}</div>
           <div style="font-size:10px;color:#5f7a99;">${dateStr}</div>
-          <span class="${statusBadge(c.status)}" style="margin-top:3px;display:inline-block;">${c.status}</span>
+          <span class="${statusBadge(a.clientStatus)}" style="margin-top:3px;display:inline-block;">${a.clientStatus}</span>
         </div>
       </div>
-      ${c.appt_notes?`<div style="font-size:11px;color:#5f7a99;margin-top:4px;font-style:italic;">${c.appt_notes}</div>`:''}
+      ${a.notes?`<div style="font-size:11px;color:#5f7a99;margin-top:4px;font-style:italic;">${a.notes}</div>`:''}
     </div>`;
   }
 
@@ -1210,7 +1259,7 @@ function renderAppts() {
     html += `<div class="section-lbl" style="margin-top:12px;">Past this period (${past.length})</div>`;
     html += past.map(apptCard).join('');
   }
-  if (!withAppts.length) {
+  if (!allAppts.length) {
     html = '<div class="empty">No appointments in this period.</div>';
   }
   el.innerHTML = html;
@@ -1656,13 +1705,28 @@ async function confirmAppt(id) {
   };
   const caseType = caseTypeMap[selectedType] || 'Mortgage Protection';
 
-  const newCase = {
-    type: caseType, status: 'Open',
-    notes: selectedType !== caseType ? selectedType : '',
-    touchpoints: [{type:'Initial',datetime:apptDatetime,outcome:'pending',notes:apptNotes,apps:[],created:new Date().toISOString()}],
-    created: new Date().toISOString()
-  };
-  const cases = [...(c.cases||[]), newCase];
+  // Find existing open case of same type — add touchpoint instead of creating new case
+  const cases = [...(c.cases||[])];
+  const existingCaseIdx = cases.findIndex(cs => cs.status === 'Open' && cs.type === caseType);
+
+  if (existingCaseIdx > -1) {
+    // Add pending touchpoint to existing case
+    const tpType = cases[existingCaseIdx].touchpoints && cases[existingCaseIdx].touchpoints.length > 0 ? 'Follow-up' : 'Initial';
+    cases[existingCaseIdx].touchpoints = [...(cases[existingCaseIdx].touchpoints||[]), {
+      type: tpType, datetime: apptDatetime, outcome: 'pending',
+      notes: apptNotes, apps: [], created: new Date().toISOString()
+    }];
+  } else {
+    // No matching open case — create new one
+    const newCase = {
+      type: caseType, status: 'Open',
+      notes: selectedType !== caseType ? selectedType : '',
+      touchpoints: [{type:'Initial',datetime:apptDatetime,outcome:'pending',notes:apptNotes,apps:[],created:new Date().toISOString()}],
+      created: new Date().toISOString()
+    };
+    cases.push(newCase);
+  }
+
   const dialCount = window._dialCount || 1;
   const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(),outcome:'Appt set',dials:dialCount,appt_datetime:apptDatetime,appt_notes:apptNotes}];
   showSync('Saving...');
@@ -1670,12 +1734,16 @@ async function confirmAppt(id) {
   c.call_log=callLog; c.status='Appointment set'; c.appt_datetime=apptDatetime; c.appt_notes=apptNotes; c.cases=cases;
   await addStat('dials',dialCount); await addStat('appts',1); await addStat('convos',1);
   window._dialCount=1; hideSync(); closeModal();
-  renderClients(document.getElementById('client-search').value);
+
+  // Capture next lead before re-rendering
+  const searchVal = document.getElementById('client-search') ? document.getElementById('client-search').value : '';
+  const filteredList = getFilteredClients(searchVal);
+  const currentIdx = filteredList.findIndex(cl => cl.id === id);
+  const nextLead = filteredList[currentIdx + 1] || filteredList[currentIdx - 1];
+
+  renderClients(searchVal);
   renderScore(); renderSidebar();
-  const list = clients.filter(cl => cl.status === 'New' || cl.status === 'Working');
-  const idx = list.findIndex(cl => cl.id === id);
-  const next = list[idx+1] || list[idx-1];
-  if (next) setTimeout(() => openClient(next.id), 300);
+  if (nextLead) setTimeout(() => openClient(nextLead.id), 300);
 }
 
 //  DIAL COUNT 
