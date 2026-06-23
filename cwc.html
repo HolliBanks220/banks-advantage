@@ -293,6 +293,42 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
   </div>
 
+  <!-- MIA vs CIA comparison panel -->
+  <div id="source-comparison" style="margin-top:4px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 6px;">
+      <div class="section-lbl" style="margin:0;">Lead source comparison</div>
+      <div style="font-size:9px;color:#a0b8cc;" id="source-period-label"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+      <div style="background:#1D3557;border-radius:10px;padding:10px 12px;">
+        <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;">MIA</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Leads assigned</div>
+        <div style="font-size:18px;font-weight:500;color:#fff;margin-bottom:6px;" id="mia-leads">-</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Appt set ratio</div>
+        <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="mia-appt-ratio">-</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Show ratio</div>
+        <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="mia-show-ratio">-</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Close ratio</div>
+        <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="mia-close-ratio">-</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Avg APV</div>
+        <div style="font-size:15px;font-weight:500;color:#fff;" id="mia-avg-apv">-</div>
+      </div>
+      <div style="background:#138181;border-radius:10px;padding:10px 12px;">
+        <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;">CIA</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Leads assigned</div>
+        <div style="font-size:18px;font-weight:500;color:#fff;margin-bottom:6px;" id="cia-leads">-</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Appt set ratio</div>
+        <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="cia-appt-ratio">-</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Show ratio</div>
+        <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="cia-show-ratio">-</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Close ratio</div>
+        <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="cia-close-ratio">-</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Avg APV</div>
+        <div style="font-size:15px;font-weight:500;color:#fff;" id="cia-avg-apv">-</div>
+      </div>
+    </div>
+  </div>
+
   <div id="tab-clients" style="display:none;">
     <div class="leads-hdr">
       <div style="font-size:13px;font-weight:500;color:#1D3557;" id="client-count">Loading...</div>
@@ -797,8 +833,83 @@ function renderScore() {
     + allTimeTps.reduce((a,t)=>a+(t.apps||[]).length,0);
   const allTimeEl = document.getElementById('p-apv-alltime');
   if (allTimeEl) allTimeEl.textContent = fmt(allTimeAPV) + ' total - ' + allTimeApps + ' apps (all time)';
+  renderSourceComparison(pStart, pEnd, label);
 }
 
+
+function renderSourceComparison(pStart, pEnd, label) {
+  const el = document.getElementById("source-period-label");
+  if (el) el.textContent = label;
+
+  function sourceStats(source) {
+    const sourceClients = clients.filter(c => c.source === source);
+
+    // Leads assigned in period
+    const assigned = sourceClients.filter(c => {
+      const d = new Date(c.assigned_date || c.created_at);
+      return d >= pStart && d <= pEnd;
+    }).length;
+
+    // Appts set in period - call log entry with appt_datetime in period
+    const apptsSet = sourceClients.filter(c =>
+      (c.call_log||[]).some(cl => {
+        if (cl.outcome !== "Appt set" && cl.outcome !== "Rescheduled") return false;
+        const t = new Date(cl.ts);
+        return t >= pStart && t <= pEnd;
+      })
+    ).length;
+
+    // Shows in period - sits or sale/nosale touchpoints with datetime in period
+    const shows = sourceClients.filter(c =>
+      (c.sits||[]).some(s => { const d = new Date(s.datetime); return d >= pStart && d <= pEnd && s.outcome === "showed"; }) ||
+      (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => {
+        const d = new Date(tp.datetime);
+        return d >= pStart && d <= pEnd && (tp.outcome === "sale" || tp.outcome === "nosale");
+      }))
+    ).length;
+
+    // Sales in period
+    const sales = sourceClients.filter(c =>
+      (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => {
+        const d = new Date(tp.datetime);
+        return d >= pStart && d <= pEnd && tp.outcome === "sale";
+      }))
+    ).length;
+
+    // APV from sales in period
+    const totalAPV = sourceClients.reduce((acc, c) => {
+      const tpAPV = (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).filter(tp => {
+        const d = new Date(tp.datetime);
+        return d >= pStart && d <= pEnd && tp.outcome === "sale";
+      })).reduce((a,tp) => a + (tp.apps||[]).reduce((b,ap) => b+(ap.premium||0), 0), 0);
+      const sitAPV = (c.sits||[]).filter(s => {
+        const d = new Date(s.datetime);
+        return d >= pStart && d <= pEnd && s.outcome === "showed";
+      }).reduce((a,s) => a + (s.apps||[]).reduce((b,ap) => b+(ap.premium||0), 0), 0);
+      return acc + tpAPV + sitAPV;
+    }, 0);
+
+    return { assigned, apptsSet, shows, sales, totalAPV };
+  }
+
+  function fmtPct(n, d) { return d > 0 ? Math.round((n/d)*100) + "%" : "-"; }
+  function fmtAvg(apv, sales) { return sales > 0 ? "$" + Math.round(apv/sales).toLocaleString() : "-"; }
+
+  const mia = sourceStats("MIA");
+  const cia = sourceStats("CIA");
+
+  document.getElementById("mia-leads").textContent = mia.assigned;
+  document.getElementById("mia-appt-ratio").textContent = fmtPct(mia.apptsSet, mia.assigned);
+  document.getElementById("mia-show-ratio").textContent = fmtPct(mia.shows, mia.apptsSet);
+  document.getElementById("mia-close-ratio").textContent = fmtPct(mia.sales, mia.shows);
+  document.getElementById("mia-avg-apv").textContent = fmtAvg(mia.totalAPV, mia.sales);
+
+  document.getElementById("cia-leads").textContent = cia.assigned;
+  document.getElementById("cia-appt-ratio").textContent = fmtPct(cia.apptsSet, cia.assigned);
+  document.getElementById("cia-show-ratio").textContent = fmtPct(cia.shows, cia.apptsSet);
+  document.getElementById("cia-close-ratio").textContent = fmtPct(cia.sales, cia.shows);
+  document.getElementById("cia-avg-apv").textContent = fmtAvg(cia.totalAPV, cia.sales);
+}
 //  TABS 
 function showTab(t, btn) {
   document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on')); btn.classList.add('on');
