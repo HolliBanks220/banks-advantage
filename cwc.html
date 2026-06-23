@@ -789,12 +789,16 @@ function renderScore() {
       a + (cs.touchpoints||[]).filter(tp => {
         const d = new Date(tp.datetime); return d>=pStart&&d<=pEnd&&(tp.resetSelf||tp.resetSME);
       }).length, 0);
-    // Only count reset cases created within the production period
+    // Only count reset cases initiated within the production period
+    // Check case created date OR first touchpoint datetime as fallback
     const caseResets = (c.cases||[]).filter(cs => {
       const n = cs.notes||'';
       if (!n.includes('Reset from') && !n.startsWith('Reset -')) return false;
-      const d = new Date(cs.created||0);
-      return d >= pStart && d <= pEnd;
+      const createdDate = new Date(cs.created||0);
+      const firstTpDate = cs.touchpoints && cs.touchpoints[0] ? new Date(cs.touchpoints[0].datetime) : null;
+      const checkDate = createdDate > new Date(0) ? createdDate : firstTpDate;
+      if (!checkDate) return false;
+      return checkDate >= pStart && checkDate <= pEnd;
     }).length;
     return acc + Math.max(tpResets, caseResets);
   }, 0);
