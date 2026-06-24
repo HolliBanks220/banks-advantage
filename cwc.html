@@ -470,7 +470,7 @@ function startRealtimeSync() {
         else { clients.unshift(payload.new); }
       } else if (payload.eventType === 'INSERT') {
         const exists = clients.find(c => c.id === payload.new.id);
-        if (!exists) clients.unshift(payload.new);
+        if (!exists) clients.unshift({...payload.new, cases: payload.new.cases||[]});
       } else if (payload.eventType === 'DELETE') {
         clients = clients.filter(c => c.id !== payload.old.id);
       }
@@ -501,7 +501,15 @@ function startRealtimeSync() {
 
 async function loadClients() {
   const { data, error } = await sb.from('clients').select('*').order('created_at', { ascending: false });
-  if (!error && data) clients = data.map(c => ({...c, cases: c.cases||[]}));
+  if (!error && data) {
+    // Deduplicate by id in case realtime sync already added some
+    const seen = new Set();
+    clients = data.map(c => ({...c, cases: c.cases||[]})).filter(c => {
+      if (seen.has(c.id)) return false;
+      seen.add(c.id);
+      return true;
+    });
+  }
 }
 
 async function loadStats() {
@@ -1872,6 +1880,23 @@ async function autoSaveField(id, field, value) {
 async function quickLog(id, outcome, statKey) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const dialCount = window._dialCount || 1;
+
+  // Capture next lead BEFORE any status changes
+  const searchVal = document.getElementById('client-search') ? document.getElementById('client-search').value : '';
+  const filteredList = getFilteredClients(searchVal);
+  const currentIdx = filteredList.findIndex(cl => cl.id === id);
+  const nextLead = filteredList[currentIdx + 1] || filteredList[currentIdx - 1];
+
+  // If this is a repeat Callback (already has one in call log), just advance - no stats
+  const alreadyCallbacked = outcome === 'Callback' && (c.call_log||[]).some(cl => cl.outcome === 'Callback');
+  if (alreadyCallbacked) {
+    window._dialCount = 1;
+    closeModal();
+    renderClients(searchVal);
+    if (nextLead) setTimeout(() => openClient(nextLead.id), 300);
+    return;
+  }
+
   const ts = (outcome === 'No show' && c.appt_datetime) ? c.appt_datetime : new Date().toISOString();
   const callLog = [...(c.call_log||[]), {ts, outcome, dials:dialCount}];
   let newStatus = c.status;
@@ -1879,11 +1904,6 @@ async function quickLog(id, outcome, statKey) {
   else if (outcome==='Appt set') newStatus='Appointment set';
   else if (outcome==='No show') newStatus='No show';
   else if (outcome==='Conversation'||outcome==='Callback') newStatus='Working';
-  // Capture next lead BEFORE updating status so filter still includes current lead
-  const searchVal = document.getElementById('client-search') ? document.getElementById('client-search').value : '';
-  const filteredList = getFilteredClients(searchVal);
-  const currentIdx = filteredList.findIndex(cl => cl.id === id);
-  const nextLead = filteredList[currentIdx + 1] || filteredList[currentIdx - 1];
 
   c.call_log = callLog; c.status = newStatus;
   showSync('Saving...');
