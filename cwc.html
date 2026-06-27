@@ -1551,11 +1551,24 @@ async function confirmMoveAppt(id) {
   const dtVal = document.getElementById('move-dt').value;
   if (!dtVal) return;
   const notes = document.getElementById('move-notes').value.trim();
-  const newDt = new Date(dtVal).toISOString();
+  const localDate = new Date(dtVal);
+  const newDt = new Date(localDate.getTime() - localDate.getTimezoneOffset()*60000).toISOString();
+
+  // Also update the pending touchpoint in the open case to match new datetime
+  const cases = (c.cases||[]).map(cs => {
+    if (cs.status !== 'Open') return cs;
+    const touchpoints = (cs.touchpoints||[]).map(tp => {
+      if (tp.outcome === 'pending') return {...tp, datetime: newDt, notes: notes || tp.notes};
+      return tp;
+    });
+    return {...cs, touchpoints};
+  });
+
   showSync('Saving...');
-  await sb.from('clients').update({appt_datetime: newDt, appt_notes: notes}).eq('id',id);
+  await sb.from('clients').update({appt_datetime: newDt, appt_notes: notes, cases}).eq('id',id);
   c.appt_datetime = newDt;
   c.appt_notes = notes;
+  c.cases = cases;
   hideSync(); closeModal(); openClient(id); renderSidebar();
 }
 
