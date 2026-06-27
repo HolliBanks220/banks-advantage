@@ -172,6 +172,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 
   <div id="tab-score">
+    <div id="alerts-section" style="margin-bottom:4px;"></div>
     <div class="section-lbl">Dialing activity</div>
     <div class="stat-row">
       <div class="stat stat-navy">
@@ -853,8 +854,9 @@ function renderScore() {
   const allTimeEl = document.getElementById('p-apv-alltime');
   if (allTimeEl) allTimeEl.textContent = fmt(allTimeAPV) + ' total - ' + allTimeApps + ' apps (all time)';
   renderSourceComparison(pStart, pEnd, label);
-}
 
+  renderAlerts();
+}
 
 function renderSourceComparison(pStart, pEnd, label) {
   const el = document.getElementById("source-period-label");
@@ -1358,6 +1360,15 @@ function renderAppts() {
   el.innerHTML = html;
 }
 
+function setFilterAlert(f) {
+  // Find the filter button and trigger it
+  const btn = document.querySelector('.filter-btn[onclick*="' + f + '"]') ||
+               document.querySelector('.filter-btn2[onclick*="' + f + '"]');
+  setFilter(f, btn);
+  // Switch to leads tab
+  showTab('clients', document.querySelector('.tab[onclick*="clients"]'));
+}
+
 function setFilter(f, btn) {
   activeFilter = f;
   document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('on')); btn.classList.add('on');
@@ -1369,6 +1380,227 @@ function badgeClass(src) { return 'badge b-' + (src||'').split(' ')[0]; }
 function statusBadge(s) { const m={'New':'b-New','Working':'b-Working','Appointment set':'b-Appt','Closed':'b-Closed','No sale':'b-No','No show':'b-Noshow','Dead':'b-Dead'}; return 'badge '+(m[s]||'b-New'); }
 function dotClass(s) { if(s.outcome==='showed')return'jd-showed'; if(s.outcome==='noshow')return'jd-noshow'; if(s.outcome==='canceled')return'jd-cancel'; return'jd-pending'; }
 
+// ── TIMEZONE MAP ────────────────────────────────────────────────────────────
+const STATE_TZ_OFFSET = {
+  'CT':0,'ME':0,'MA':0,'NH':0,'NJ':0,'NY':0,'PA':0,'RI':0,'VT':0,'VA':0,
+  'DC':0,'MD':0,'DE':0,'FL':0,'GA':0,'NC':0,'SC':0,'WV':0,'OH':0,'MI':0,
+  'IN':0,'KY':0,'TN':0,'AL':0,'MS':0,'IL':0,'WI':0,'MO':0,'AR':0,'LA':0,
+  'MN':0,'IA':0,'KS':0,'NE':0,'SD':0,'ND':0,'OK':0,'TX':-1,'CO':-1,
+  'MT':-1,'WY':-1,'NM':-1,'AZ':-1,'UT':-1,'ID':-1,'WA':-2,'OR':-2,
+  'CA':-2,'NV':-2,'AK':-3,'HI':-5
+};
+
+function getLeadLocalHour(c) {
+  const now = new Date();
+  const offset = STATE_TZ_OFFSET[c.state] || 0;
+  const localHour = now.getHours() + offset;
+  return ((localHour % 24) + 24) % 24;
+}
+
+function isGoodTimeToCall(c) {
+  const h = getLeadLocalHour(c);
+  return h >= 8 && h <= 21;
+}
+
+// ── URGENCY SCORING ─────────────────────────────────────────────────────────
+function getNoShowCount(c) {
+  return (c.call_log||[]).filter(cl => cl.outcome === 'No show').length;
+}
+
+function getAttemptCount(c) {
+  return (c.call_log||[]).filter(cl => cl.dials > 0).length;
+}
+
+function getDaysSinceAssigned(c) {
+  return Math.floor((new Date() - new Date(c.assigned_date||c.created_at)) / (1000*60*60*24));
+}
+
+function getDaysSinceLastAttempt(c) {
+  const log = (c.call_log||[]);
+  if (!log.length) return 999;
+  const last = new Date(log[log.length-1].ts);
+  return (new Date() - last) / (1000*60*60*24);
+}
+
+function getHoursSinceNoShow(c) {
+  const noShows = (c.call_log||[]).filter(cl => cl.outcome === 'No show');
+  if (!noShows.length) return 999;
+  const last = new Date(noShows[noShows.length-1].ts);
+  return (new Date() - last) / (1000*60*60);
+}
+
+function isCallbackOverdue(c) {
+  const lastCb = [...(c.call_log||[])].reverse().find(cl => cl.outcome === 'Callback' && cl.callback_dt);
+  if (!lastCb) return false;
+  return new Date(lastCb.callback_dt) < new Date();
+}
+
+function isCallbackToday(c) {
+  const lastCb = [...(c.call_log||[])].reverse().find(cl => cl.outcome === 'Callback' && cl.callback_dt);
+  if (!lastCb) return false;
+  return new Date(lastCb.callback_dt).toDateString() === new Date().toDateString();
+}
+
+function getTimeSlotsCovered(c) {
+  const slots = new Set();
+  (c.call_log||[]).forEach(cl => {
+    const h = new Date(cl.ts).getHours();
+    if (h >= 8 && h < 12) slots.add('morning');
+    else if (h >= 12 && h < 17) slots.add('afternoon');
+    else if (h >= 17 && h <= 21) slots.add('evening');
+  });
+  return slots;
+}
+
+function isReadyForText(c) {
+  const attempts = getAttemptCount(c);
+  const slots = getTimeSlotsCovered(c);
+  return attempts >= 5 && slots.size >= 3;
+}
+
+// Urgency score — lower = more urgent, show first
+function getUrgencyScore(c) {
+  const days = getDaysSinceAssigned(c);
+  const attempts = getAttemptCount(c);
+  const daysSinceLast = getDaysSinceLastAttempt(c);
+  const noShowCount = getNoShowCount(c);
+  const goodTime = isGoodTimeToCall(c);
+  const tzPenalty = goodTime ? 0 : 100; // deprioritize if bad time in their timezone
+
+  // Tier 1: Callback today (score 0-9)
+  if (isCallbackToday(c)) return tzPenalty + 1;
+
+  // Tier 2: Callback overdue (score 10-19)
+  if (isCallbackOverdue(c)) return tzPenalty + 10;
+
+  // Tier 3: No show needs follow-up (2-4 hrs, score 20-29)
+  const hrsSinceNS = getHoursSinceNoShow(c);
+  if (noShowCount > 0 && hrsSinceNS >= 2 && hrsSinceNS <= 48) return tzPenalty + 20;
+
+  // Tier 4: Urgent fresh — day 3-4, under 4 attempts (score 30-39)
+  if (days >= 3 && days <= 4 && attempts < 4) return tzPenalty + 30 + (4 - attempts);
+
+  // Tier 5: Fresh needs first contact — day 2+, under 2 attempts (score 40-49)
+  if (days >= 2 && attempts < 2) return tzPenalty + 40 + days;
+
+  // Tier 6: 0 attempts (score 50-59)
+  if (attempts === 0) return tzPenalty + 50 + days;
+
+  // Tier 7: Warm overdue — last attempt 7+ days (score 60-69)
+  if (daysSinceLast >= 7) return tzPenalty + 60 + Math.min(daysSinceLast, 9);
+
+  // Tier 8: Warm due — last attempt 4-6 days (score 70-79)
+  if (daysSinceLast >= 4) return tzPenalty + 70 + Math.min(daysSinceLast, 9);
+
+  // Tier 9: Ready for text (score 80-89)
+  if (isReadyForText(c)) return tzPenalty + 80;
+
+  // Tier 10: On track (score 90+)
+  return tzPenalty + 90 + daysSinceLast;
+}
+
+function getUrgencyBadge(c) {
+  const days = getDaysSinceAssigned(c);
+  const attempts = getAttemptCount(c);
+  const daysSinceLast = getDaysSinceLastAttempt(c);
+  const noShowCount = getNoShowCount(c);
+  const hrsSinceNS = getHoursSinceNoShow(c);
+
+  if (isCallbackToday(c)) return {label:'📞 Callback today', color:'#BA7517', bg:'#FFF8E6'};
+  if (isCallbackOverdue(c)) return {label:'⚠️ Callback overdue', color:'#A32D2D', bg:'#FFF5F5'};
+  if (noShowCount > 0 && hrsSinceNS >= 2 && hrsSinceNS <= 48) return {label:'📵 Follow up now', color:'#A32D2D', bg:'#FFF5F5'};
+  if (days >= 3 && days <= 4 && attempts < 4) return {label:'🔥 Urgent — last fresh days', color:'#A32D2D', bg:'#FFF5F5'};
+  if (days >= 2 && attempts < 2) return {label:'⚡ Needs first contact', color:'#BA7517', bg:'#FFF8E6'};
+  if (attempts === 0) return {label:'🆕 Not contacted', color:'#534AB7', bg:'#F5F3FF'};
+  if (daysSinceLast >= 7) return {label:'⚠️ Overdue — ' + Math.floor(daysSinceLast) + 'd no contact', color:'#A32D2D', bg:'#FFF5F5'};
+  if (daysSinceLast >= 4) return {label:'📋 Due for follow-up', color:'#BA7517', bg:'#FFF8E6'};
+  if (isReadyForText(c)) return {label:'📱 Ready for text', color:'#138181', bg:'#F0FBF7'};
+  return null;
+}
+
+function getNoShowBadge(c) {
+  const count = getNoShowCount(c);
+  if (count === 0) return '';
+  const color = count >= 3 ? '#A32D2D' : count === 2 ? '#BA7517' : '#5f7a99';
+  return '<span style="font-size:9px;font-weight:600;background:' + color + ';color:#fff;border-radius:10px;padding:1px 5px;margin-left:4px;">NS:' + count + '</span>';
+}
+
+function getUrgencyBadgeHtml(c) {
+  const badge = getUrgencyBadge(c);
+  if (!badge) return '';
+  return '<div style="font-size:9px;font-weight:600;color:' + badge.color + ';background:' + badge.bg + ';border-radius:4px;padding:2px 6px;margin-top:3px;display:inline-block;">' + badge.label + '</div>';
+}
+
+function getCallTimeBadge(c) {
+  if (!isGoodTimeToCall(c)) {
+    const h = getLeadLocalHour(c);
+    const too = h < 8 ? 'Too early' : 'Too late';
+    return '<span style="font-size:9px;color:#A32D2D;margin-left:4px;">(' + too + ' their time)</span>';
+  }
+  return '';
+}
+
+function renderAlerts() {
+  const el = document.getElementById('alerts-section');
+  if (!el) return;
+  const now = new Date();
+
+  const alerts = [];
+
+  // Callback overdue
+  const cbOverdue = clients.filter(c => isCallbackOverdue(c) && c.status !== 'Dead');
+  if (cbOverdue.length) alerts.push({label: '📞 ' + cbOverdue.length + ' callback' + (cbOverdue.length>1?'s':'') + ' overdue', color:'#A32D2D', bg:'#FFF5F5', filter:'working'});
+
+  // No show needs follow-up
+  const nsFollowup = clients.filter(c => {
+    const hrs = getHoursSinceNoShow(c);
+    return hrs >= 2 && hrs <= 48 && c.status === 'No show';
+  });
+  if (nsFollowup.length) alerts.push({label: '📵 ' + nsFollowup.length + ' no show' + (nsFollowup.length>1?'s':'') + ' need follow-up', color:'#A32D2D', bg:'#FFF5F5', filter:'noshow'});
+
+  // Urgent fresh
+  const urgentFresh = clients.filter(c => {
+    const days = getDaysSinceAssigned(c);
+    const attempts = getAttemptCount(c);
+    return days >= 3 && days <= 4 && attempts < 4 && c.status !== 'Dead' && c.status !== 'Appointment set';
+  });
+  if (urgentFresh.length) alerts.push({label: '🔥 ' + urgentFresh.length + ' fresh lead' + (urgentFresh.length>1?'s':'') + ' running out of time', color:'#A32D2D', bg:'#FFF5F5', filter:'fresh'});
+
+  // Warm overdue
+  const warmOverdue = clients.filter(c => {
+    const days = getDaysSinceAssigned(c);
+    return days >= 5 && days <= 17 && getDaysSinceLastAttempt(c) >= 7 && c.status !== 'Dead' && c.status !== 'Appointment set';
+  });
+  if (warmOverdue.length) alerts.push({label: '⚠️ ' + warmOverdue.length + ' warm lead' + (warmOverdue.length>1?'s':'') + ' gone stale (7+ days)', color:'#BA7517', bg:'#FFF8E6', filter:'warm'});
+
+  // 0 attempts 24hrs
+  const noAttempts = clients.filter(c => {
+    const days = getDaysSinceAssigned(c);
+    return days >= 1 && getAttemptCount(c) === 0 && c.status !== 'Dead';
+  });
+  if (noAttempts.length) alerts.push({label: '🆕 ' + noAttempts.length + ' lead' + (noAttempts.length>1?'s':'') + ' never contacted (24h+)', color:'#534AB7', bg:'#F5F3FF', filter:'none'});
+
+  // Ready for text
+  const textReady = clients.filter(c => isReadyForText(c) && c.status !== 'Dead' && c.status !== 'Appointment set');
+  if (textReady.length) alerts.push({label: '📱 ' + textReady.length + ' lead' + (textReady.length>1?'s':'') + ' ready for a text', color:'#138181', bg:'#F0FBF7', filter:'working'});
+
+  if (!alerts.length) {
+    el.innerHTML = '';
+    return;
+  }
+
+  el.innerHTML = '<div style="margin-bottom:8px;">' +
+    alerts.map(a =>
+      '<div onclick="setFilterAlert(\''+a.filter+'\')" style="background:' + a.bg + ';border:1px solid ' + a.color + '33;border-radius:8px;padding:7px 10px;margin-bottom:4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">' +
+        '<span style="font-size:11px;font-weight:600;color:' + a.color + ';">' + a.label + '</span>' +
+        '<span style="font-size:10px;color:' + a.color + ';opacity:0.7;">tap to view →</span>' +
+      '</div>'
+    ).join('') +
+  '</div>';
+}
+
+
+
 function getFilteredClients(q='') {
   const filtered = clients.filter(c => {
     const matchQ = !q || (c.name||'').toLowerCase().includes(q.toLowerCase()) || (c.phone||'').includes(q);
@@ -1377,7 +1609,7 @@ function getFilteredClients(q='') {
     const isNoShow = c.status === 'No show';
     const hasOpenCase = (c.cases||[]).some(cs => cs.status === 'Open' && (cs.touchpoints||[]).length > 0);
     let matchF = false;
-    if (activeFilter==='all') matchF = c.status !== 'Dead';
+    if (activeFilter==='all') matchF = true; // includes dead
     else if (activeFilter==='fresh') matchF = days <= 4 && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale';
     else if (activeFilter==='warm') matchF = days >= 5 && days <= 17 && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale';
     else if (activeFilter==='open') matchF = days > 17 && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale';
@@ -1389,20 +1621,8 @@ function getFilteredClients(q='') {
     return matchQ && matchF;
   });
 
-  // Sort: never contacted first (oldest assigned), then by last contact oldest first
-  return filtered.sort((a, b) => {
-    const aLog = a.call_log || [];
-    const bLog = b.call_log || [];
-    const aLast = aLog.length ? new Date(aLog[aLog.length-1].ts).getTime() : 0;
-    const bLast = bLog.length ? new Date(bLog[bLog.length-1].ts).getTime() : 0;
-    // Never contacted: sort by assigned date ascending (oldest first)
-    if (!aLast && !bLast) return new Date(a.assigned_date||a.created_at) - new Date(b.assigned_date||b.created_at);
-    // Never contacted always before contacted
-    if (!aLast) return -1;
-    if (!bLast) return 1;
-    // Both contacted: oldest last contact first
-    return aLast - bLast;
-  });
+  // Sort by urgency score (lower = more urgent)
+  return filtered.sort((a, b) => getUrgencyScore(a) - getUrgencyScore(b));
 }
 
 function renderClients(q='') {
@@ -1419,7 +1639,8 @@ function renderClients(q='') {
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
         <div>
           <div class="client-name">${c.name||'Unknown'}${fresh?'<span class="fresh-tag">fresh</span>':''}</div>
-          <div class="client-meta">${c.phone||''} - ${c.state||''}${c.age?' - <span style="color:#1D3557;font-weight:500;">'+c.age+'</span>':''} - <span style="color:#8fa8c0;">${Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24))}d</span> - <span style="color:#8fa8c0;">${(c.call_log||[]).length} att</span></div>
+          <div class="client-meta">${c.phone||''} - ${c.state||''}${c.age?' - <span style="color:#1D3557;font-weight:500;">'+c.age+'</span>':''} - <span style="color:#8fa8c0;">${Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24))}d</span> - <span style="color:#8fa8c0;">${(c.call_log||[]).length} att</span>${getNoShowBadge(c)}${getCallTimeBadge(c)}</div>
+          ${getUrgencyBadgeHtml(c)}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
           <span class="${badgeClass(c.source)}">${c.source||''}</span>
