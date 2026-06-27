@@ -1708,7 +1708,7 @@ function renderWeekGrid(excludeId, weekOffset, containerId) {
   const prevDisabled = weekOffset <= 0;
   return '<div style="margin-bottom:12px;">' +
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
-      '<button onclick="shiftCalWeek(\''+excludeId+'\',\''+containerId+'\','+(weekOffset-1)+')" style="background:none;border:1px solid #d0dcea;border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;color:#5f7a99;'+(prevDisabled?'opacity:0.3;pointer-events:none;':'')+'">&larr;</button>' +
+      '<button ' + (prevDisabled?'disabled style="opacity:0.3;"':'') + ' onclick="shiftCalWeek(\''+excludeId+'\',\''+containerId+'\','+(weekOffset-1)+')" style="background:none;border:1px solid #d0dcea;border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;color:#5f7a99;">&larr;</button>' +
       '<div style="font-size:9px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;">' + weekLabel + ' - booked slots</div>' +
       '<button onclick="shiftCalWeek(\''+excludeId+'\',\''+containerId+'\','+(weekOffset+1)+')" style="background:none;border:1px solid #d0dcea;border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;color:#5f7a99;">&rarr;</button>' +
     '</div>' +
