@@ -1650,14 +1650,29 @@ async function confirmSitOutcome(id, ci, outcome) {
   hideSync();
 
   if (outcome === 'sale') {
-    // Open app entry
+    // Open app entry, then offer reset after apps saved
     openAddAppToTouchpoint(id, targetCi, cases[targetCi].touchpoints.length-1);
+  } else if (outcome === 'nosale') {
+    // Offer reset after no sale
+    showResetPromptAfterOutcome(id, 'No Sale');
   } else {
     closeModal();
     openClient(id);
     renderScore();
     renderSidebar();
   }
+}
+
+function showResetPromptAfterOutcome(id, outcomeLabel) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  showModal('<button class="close-x" onclick="closeModal();openClient(\''+id+'\');renderScore();renderSidebar();">x</button>' +
+    '<div class="modal-title">' + outcomeLabel + ' logged ✓</div>' +
+    '<div class="modal-sub">' + c.name + '</div>' +
+    '<div style="font-size:13px;color:#1D3557;margin-bottom:16px;">Would you like to reset to a new product?</div>' +
+    '<div style="display:flex;gap:8px;">' +
+      '<button onclick="closeModal();openResetToPicker(\''+id+'\')" style="flex:1;background:#BA7517;color:#fff;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:500;cursor:pointer;">↺ Yes — reset now</button>' +
+      '<button onclick="closeModal();openClient(\''+id+'\');renderScore();renderSidebar();" style="flex:1;background:#5f7a99;color:#fff;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:500;cursor:pointer;">No — done</button>' +
+    '</div>');
 }
 
 function openAddAppsForCase(id, ci) {
@@ -2717,7 +2732,9 @@ async function saveAppsToTouchpoint(id, ci, ti) {
   }
   showSync('Saving...');
   await sb.from('clients').update({cases:c.cases}).eq('id',id);
-  hideSync(); closeModal(); openClient(id); renderScore(); renderSidebar();
+  hideSync();
+  // After saving apps from a sale, offer reset
+  showResetPromptAfterOutcome(id, 'Sale');
 }
 
 function renderAppsSection(c) {
