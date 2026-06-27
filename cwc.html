@@ -1464,7 +1464,7 @@ function openClient(id, keepDialCount) {
     <span style="color:#5f7a99;font-size:13px;">- ${c.state||''} - <span class="${badgeClass(c.source)}">${c.source||''}</span></span>
   </div>
   ${c.address?`<div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">[Addr] ${c.address}</div>`:''}
-  ${c.appt_datetime?`<div onclick="openMoveAppt('${id}')" style="font-size:12px;font-weight:600;color:#138181;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:6px;padding:5px 10px;margin-bottom:8px;display:inline-block;cursor:pointer;" title="Tap to move appointment">[Cal] Appt: ${new Date(c.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(c.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}${c.appt_notes?' - '+c.appt_notes:''} <span style="font-size:10px;opacity:0.7;">- tap to move</span></div>`:''}
+  ${c.appt_datetime?`<div style="margin-bottom:8px;"><div onclick="openSitOutcome('${id}')" style="font-size:12px;font-weight:600;color:#138181;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:6px;padding:5px 10px;margin-bottom:4px;cursor:pointer;display:block;">[Cal] ${new Date(c.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(c.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}${c.appt_notes?' — '+c.appt_notes:''} <span style="font-size:10px;opacity:0.6;">tap to log outcome</span></div><button onclick="openMoveAppt('${id}')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Move appointment</button></div>`:''}
   <div class="dial-row">
     <span class="dial-lbl">Dials:</span>
     <button class="dial-cnt-btn on" id="dcb-1" onclick="setDialCount(1)">1x</button>
@@ -1500,8 +1500,229 @@ function openClient(id, keepDialCount) {
   ${renderAppsSection(c)}`);
 }
 
+// ── SIT OUTCOME SYSTEM ──────────────────────────────────────────────────────
+
+function openSitOutcome(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  // Find the open case that matches the current appt
+  const openCases = (c.cases||[]).filter(cs=>cs.status==='Open');
+  if (openCases.length === 0) {
+    // No open case - open with no case preselected
+    showSitOutcomeModal(id, null);
+  } else if (openCases.length === 1) {
+    showSitOutcomeModal(id, (c.cases||[]).findIndex(cs=>cs.status==='Open'));
+  } else {
+    // Multiple open cases - ask which one
+    const caseButtons = openCases.map((cs, i) => {
+      const realIdx = (c.cases||[]).findIndex(x=>x===cs);
+      const color = cs.type==='Retirement'?'#138181':cs.type==='Debt Free Life'||cs.type==='Infinite Banking'?'#534AB7':'#1D3557';
+      return '<button onclick="closeModal();showSitOutcomeModal(\''+id+'\','+realIdx+')" style="flex:1;background:'+color+';color:#fff;border:none;border-radius:8px;padding:10px;font-size:12px;font-weight:500;cursor:pointer;">'+cs.type+'</button>';
+    }).join('');
+    showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+      '<div class="modal-title">Which case?</div>' +
+      '<div class="modal-sub">' + c.name + '</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;">' + caseButtons + '</div>');
+  }
+}
+
+function openSitOutcomeForCase(id, ci) {
+  showSitOutcomeModal(id, ci);
+}
+
+function showSitOutcomeModal(id, ci) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const cs = ci !== null ? c.cases[ci] : null;
+  const apptDt = c.appt_datetime ? new Date(c.appt_datetime) : new Date();
+  const apptStr = c.appt_datetime ? apptDt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + apptDt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : 'Today';
+  const caseLabel = cs ? cs.type : 'New case';
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+7); tomorrow.setHours(10,0,0,0);
+  const contDt = toLocalDT(tomorrow);
+  window._sitPPU = false;
+
+  const _id = id, _ci = ci;
+  showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">Log outcome</div>' +
+    '<div class="modal-sub">' + c.name + ' — ' + caseLabel + '</div>' +
+    '<div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:5px 10px;margin-bottom:12px;">' + apptStr + '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">' +
+      '<button onclick="confirmSitOutcome(\''+_id+'\','+_ci+',\'sale\')" style="background:#3B6D11;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">✓ Sale</button>' +
+      '<button onclick="confirmSitOutcome(\''+_id+'\','+_ci+',\'nosale\')" style="background:#A32D2D;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">✗ No Sale</button>' +
+      '<button onclick="showContModal(\''+_id+'\','+_ci+')" style="background:#534AB7;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">↻ Continuation</button>' +
+      '<button onclick="confirmSitOutcome(\''+_id+'\','+_ci+',\'noshow\')" style="background:#BA7517;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">✗ No Show</button>' +
+    '</div>' +
+    '<button onclick="closeModal();openResetToPicker(\''+_id+'\')" style="width:100%;background:none;border:1px solid #BA7517;border-radius:8px;padding:10px;font-size:12px;color:#BA7517;cursor:pointer;font-weight:500;">↺ Reset to new product</button>');
+}
+
+function showContModal(id, ci) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+7); tomorrow.setHours(10,0,0,0);
+  const contDt = toLocalDT(tomorrow);
+  window._sitPPU = false;
+  showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">Continuation</div>' +
+    '<div class="modal-sub">' + c.name + '</div>' +
+    buildWeekGrid(id, 'cont-wg-'+id) +
+    '<div class="field"><label>Next appointment date & time</label><input type="datetime-local" id="cont-next-dt" value="' + contDt + '" style="font-size:16px;"></div>' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">' +
+      '<input type="checkbox" id="cont-ppu" onchange="window._sitPPU=this.checked" style="width:16px;height:16px;accent-color:#138181;">' +
+      '<label for="cont-ppu" style="font-size:13px;color:#1D3557;font-weight:500;">PPU / Policy Pickup</label>' +
+    '</div>' +
+    '<div class="field"><label>Notes</label><textarea id="cont-notes" placeholder="Notes about this sit..." style="min-height:60px;"></textarea></div>' +
+    '<button class="save-btn" style="background:#534AB7;" onclick="confirmSitOutcome(\''+id+'\','+ci+',\'cont\')">Save continuation</button>');
+}
+
+async function confirmSitOutcome(id, ci, outcome) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const now = new Date();
+
+  // Get continuation details if needed
+  let nextDt = null;
+  let contNotes = '';
+  let ppu = window._sitPPU || false;
+  if (outcome === 'cont') {
+    const dtEl = document.getElementById('cont-next-dt');
+    const notesEl = document.getElementById('cont-notes');
+    if (dtEl && dtEl.value) {
+      const ld = new Date(dtEl.value);
+      nextDt = new Date(ld.getTime() - ld.getTimezoneOffset()*60000).toISOString();
+    }
+    if (notesEl) contNotes = notesEl.value.trim();
+  }
+
+  // Get notes for nosale/noshow
+  let sitNotes = contNotes;
+
+  // Find or create the case
+  const cases = [...(c.cases||[])];
+  let targetCi = ci;
+  if (targetCi === null || targetCi === undefined) {
+    // Create new MP case
+    const newCase = {type:'Mortgage Protection',status:'Open',notes:'',touchpoints:[],created:now.toISOString()};
+    cases.push(newCase);
+    targetCi = cases.length - 1;
+  }
+
+  // Use the appt datetime as the sit datetime
+  const sitDatetime = c.appt_datetime || now.toISOString();
+
+  // Create touchpoint record
+  const tp = {
+    type: ppu ? 'PPU / Policy Pickup' : 'Initial',
+    datetime: sitDatetime,
+    outcome,
+    ppu,
+    notes: sitNotes,
+    apps: [],
+    created: now.toISOString()
+  };
+
+  // Update case status
+  if (outcome === 'sale') cases[targetCi].status = 'Closed Won';
+  else if (outcome === 'nosale') cases[targetCi].status = 'Closed Lost';
+  else if (outcome === 'noshow') cases[targetCi].status = 'Open';
+  else if (outcome === 'cont') cases[targetCi].status = 'Open';
+
+  // Add continuation touchpoint for next appt
+  if (outcome === 'cont' && nextDt) {
+    const pendingTp = {type: ppu ? 'PPU / Policy Pickup' : 'Follow-up', datetime: nextDt, outcome:'pending', notes:'', apps:[], created:now.toISOString()};
+    cases[targetCi].touchpoints = [...(cases[targetCi].touchpoints||[]), tp, pendingTp];
+  } else {
+    cases[targetCi].touchpoints = [...(cases[targetCi].touchpoints||[]), tp];
+  }
+
+  // Update lead status and appt
+  let newStatus = c.status;
+  let newApptDt = c.appt_datetime;
+  let newApptNotes = c.appt_notes;
+
+  if (outcome === 'sale') { newStatus = 'Closed'; }
+  else if (outcome === 'nosale') { newStatus = 'No sale'; newApptDt = null; newApptNotes = null; }
+  else if (outcome === 'noshow') { newStatus = 'No show'; }
+  else if (outcome === 'cont') { newStatus = 'Appointment set'; newApptDt = nextDt; newApptNotes = (ppu?'PPU ':'') + 'Continuation'; }
+
+  const updatePayload = {cases, status:newStatus};
+  if (outcome === 'nosale') { updatePayload.appt_datetime = null; updatePayload.appt_notes = null; }
+  else if (outcome === 'cont' && nextDt) { updatePayload.appt_datetime = nextDt; updatePayload.appt_notes = newApptNotes; }
+
+  showSync('Saving...');
+  await sb.from('clients').update(updatePayload).eq('id',id);
+  Object.assign(c, {cases, status:newStatus, appt_datetime:newApptDt, appt_notes:newApptNotes});
+  hideSync();
+
+  if (outcome === 'sale') {
+    // Open app entry
+    openAddAppToTouchpoint(id, targetCi, cases[targetCi].touchpoints.length-1);
+  } else {
+    closeModal();
+    openClient(id);
+    renderScore();
+    renderSidebar();
+  }
+}
+
+function openAddAppsForCase(id, ci) {
+  const c = clients.find(x=>x.id===id); if(!c) return;
+  // Find the sale touchpoint in this case
+  const saleTpIdx = (c.cases[ci].touchpoints||[]).findIndex(tp=>tp.outcome==='sale');
+  if (saleTpIdx > -1) {
+    openAddAppToTouchpoint(id, ci, saleTpIdx);
+  }
+}
+
 //  APPT PICKER 
-function buildWeekGrid(excludeId) {
+window._calWeekOffset = {};
+
+function buildWeekGrid(excludeId, containerId) {
+  const cid = containerId || ('wg-' + excludeId);
+  window._calWeekOffset[cid] = 0;
+  return '<div id="' + cid + '">' + renderWeekGrid(excludeId, 0, cid) + '</div>';
+}
+
+function renderWeekGrid(excludeId, weekOffset, containerId) {
+  const now = new Date();
+  const startDay = new Date(now);
+  startDay.setDate(now.getDate() + weekOffset * 7);
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(startDay); d.setDate(startDay.getDate() + i); d.setHours(0,0,0,0);
+    days.push(d);
+  }
+  const booked = clients
+    .filter(c => c.appt_datetime && c.id !== excludeId)
+    .map(c => ({name: c.name, dt: new Date(c.appt_datetime)}))
+    .filter(a => a.dt >= now);
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const cols = days.map(d => {
+    const dayBooked = booked.filter(a => a.dt.toDateString() === d.toDateString()).sort((a,b) => a.dt - b.dt);
+    const isToday = d.toDateString() === now.toDateString();
+    const dateLabel = '<div style="font-size:9px;font-weight:600;color:' + (isToday?'#138181':'#1D3557') + ';text-align:center;margin-bottom:4px;">' + dayNames[d.getDay()] + '<br>' + (d.getMonth()+1) + '/' + d.getDate() + '</div>';
+    const slots = dayBooked.length
+      ? dayBooked.map(a => {
+          const t = a.dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+          return '<div style="background:#FAEEDA;border:1px solid #FAC775;border-radius:4px;padding:2px 4px;margin-bottom:2px;font-size:9px;color:#633806;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + a.name + ' - ' + t + '">' + t + '<br><span style="opacity:0.8;">' + a.name.split(' ')[0] + '</span></div>';
+        }).join('')
+      : '<div style="font-size:9px;color:#9FE1CB;text-align:center;padding:4px 0;">free</div>';
+    return '<div style="flex:1;min-width:0;border-right:1px solid #f0f4f8;padding:0 3px;' + (isToday?'background:#f0fbf7;border-radius:6px;':'') + '">' + dateLabel + slots + '</div>';
+  }).join('');
+  const weekLabel = weekOffset === 0 ? 'This week' : weekOffset === 1 ? 'Next week' : '+' + weekOffset + ' weeks';
+  const prevDisabled = weekOffset <= 0;
+  return '<div style="margin-bottom:12px;">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+      '<button onclick="shiftCalWeek(\''+excludeId+'\',\''+containerId+'\','+(weekOffset-1)+')" style="background:none;border:1px solid #d0dcea;border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;color:#5f7a99;'+(prevDisabled?'opacity:0.3;pointer-events:none;':'')+'">&larr;</button>' +
+      '<div style="font-size:9px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;">' + weekLabel + ' - booked slots</div>' +
+      '<button onclick="shiftCalWeek(\''+excludeId+'\',\''+containerId+'\','+(weekOffset+1)+')" style="background:none;border:1px solid #d0dcea;border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;color:#5f7a99;">&rarr;</button>' +
+    '</div>' +
+    '<div style="display:flex;gap:2px;border:1px solid #e2eaf2;border-radius:8px;padding:6px;background:#fff;overflow-x:auto;">' + cols + '</div>' +
+  '</div>';
+}
+
+function shiftCalWeek(excludeId, containerId, newOffset) {
+  if (newOffset < 0) return;
+  const el = document.getElementById(containerId);
+  if (el) el.innerHTML = renderWeekGrid(excludeId, newOffset, containerId);
+}
+
+function buildWeekGrid_OLD(excludeId) {
   const now = new Date();
   const days = [];
   for (let i = 0; i < 7; i++) {
@@ -1893,6 +2114,7 @@ async function autoSaveField(id, field, value) {
 async function quickLog(id, outcome, statKey) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const dialCount = window._dialCount || 1;
+  let updatePayloadExtra = {};
 
   // Capture next lead BEFORE any status changes
   const searchVal = document.getElementById('client-search') ? document.getElementById('client-search').value : '';
@@ -1918,9 +2140,18 @@ async function quickLog(id, outcome, statKey) {
   else if (outcome==='No show') newStatus='No show';
   else if (outcome==='Conversation'||outcome==='Callback') newStatus='Working';
 
+  // Not interested: close all open cases and clear appointment
+  if (outcome==='Not interested') {
+    const closedCases = (c.cases||[]).map(cs => cs.status==='Open'?{...cs,status:'Closed Lost'}:cs);
+    callLog[callLog.length-1].cases_closed = true;
+    updatePayloadExtra = {cases:closedCases, appt_datetime:null, appt_notes:null};
+  }
+
   c.call_log = callLog; c.status = newStatus;
   showSync('Saving...');
-  await sb.from('clients').update({call_log:callLog, status:newStatus}).eq('id',id);
+  await sb.from('clients').update({call_log:callLog, status:newStatus, ...updatePayloadExtra}).eq('id',id);
+  if (updatePayloadExtra.appt_datetime === null) { c.appt_datetime = null; c.appt_notes = null; }
+  if (updatePayloadExtra.cases) c.cases = updatePayloadExtra.cases;
   await addStat('dials', dialCount);
   if (statKey !== 'dials') {
     await addStat(statKey, 1);
@@ -2032,46 +2263,72 @@ function getTpTypes(caseType) {
 function renderCasesHtml(c) {
   const cases = c.cases || [];
   if (!cases.length) return '<div style="font-size:12px;color:#a0b8cc;margin-bottom:8px;">No cases yet.</div>';
+
   return cases.map((cs, ci) => {
     const cls = CASE_TYPE_CLASS[cs.type] || 'mp';
-    const tps = cs.touchpoints || [];
-    const statusColors = {'Closed Won':'#3B6D11','Closed Lost':'#A32D2D','Reset':'#534AB7','Open':'rgba(255,255,255,0.7)'};
-    const tpHtml = tps.map((tp, ti) => {
+    // Only show resolved touchpoints in history (not pending)
+    const resolvedTps = (cs.touchpoints||[]).filter(tp => tp.outcome && tp.outcome !== 'pending');
+    const statusColors = {'Closed Won':'#3B6D11','Closed Lost':'#A32D2D','Reset':'#534AB7','Open':'#138181'};
+    const hdrColor = cls==='ret'?'#138181':(cls==='dfl'||cls==='ib')?'#534AB7':'#1D3557';
+
+    // History log
+    const historyHtml = resolvedTps.length ? resolvedTps.slice().reverse().map(tp => {
       const dt = new Date(tp.datetime);
       const dtStr = dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' + dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-      const outcomeLabel = tp.outcome==='sale'?'Sale':tp.outcome==='nosale'?'No Sale':tp.outcome==='noshow'?'No Show':tp.outcome==='cont'?'Continuation':'Pending';
+      const outcomeLabel = tp.outcome==='sale'?'Sale':tp.outcome==='nosale'?'No Sale':tp.outcome==='noshow'?'No Show':tp.outcome==='cont'?'Continuation':'';
+      if (!outcomeLabel) return '';
       const outcomeColor = tp.outcome==='sale'?'#3B6D11':tp.outcome==='nosale'?'#A32D2D':tp.outcome==='noshow'?'#BA7517':tp.outcome==='cont'?'#534AB7':'#8fa8c0';
       const flags = [];
-      if (tp.resetSelf) flags.push('Reset Reset->me');
-      if (tp.resetSME) flags.push(`Reset Reset->${tp.resetSMEName||'SME'}`);
-      if (tp.asrs) flags.push(`[ASR] ASRs: ${tp.asrs}`);
-      return `<div class="tp-card tp-outcome-${tp.outcome||'pending'}" onclick="openEditTouchpoint('${c.id}',${ci},${ti})">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-size:11px;font-weight:500;color:#1D3557;">${tp.type||'Initial'}</span>
-          <span style="font-size:11px;font-weight:600;color:${outcomeColor};">${outcomeLabel}</span>
-        </div>
-        <div style="font-size:10px;color:#8fa8c0;margin-top:2px;">${dtStr}</div>
-        ${flags.length?`<div style="font-size:10px;color:#5f7a99;margin-top:3px;">${flags.join(' - ')}</div>`:''}
-        ${tp.notes?`<div style="font-size:10px;color:#8fa8c0;margin-top:2px;">${tp.notes}</div>`:''}
-      </div>`;
-    }).join('');
-    const statusColor = statusColors[cs.status] || statusColors['Open'];
-    return `<div class="case-card">
-      <div class="case-hdr case-hdr-${cls}" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
-        <div>
-          <div style="font-size:12px;font-weight:600;">${cs.type}</div>
-          <div style="font-size:10px;opacity:0.7;">${tps.length} touchpoint${tps.length!==1?'s':''}</div>
-        </div>
-        <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:rgba(255,255,255,0.2);color:${cs.status==='Open'?'#fff':statusColor};">${cs.status||'Open'}</span>
-      </div>
-      <div class="case-body">
-        ${tpHtml||'<div style="font-size:11px;color:#a0b8cc;margin-bottom:6px;">No touchpoints yet.</div>'}
-        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
-          <button class="sec-btn" style="margin:0;" onclick="openAddTouchpoint('${c.id}',${ci})">+ Add touchpoint</button>
-          <button class="sec-btn" style="margin:0;background:#e2eaf2;color:#5f7a99;" onclick="openEditCase('${c.id}',${ci})">Edit case</button>
-        </div>
-      </div>
-    </div>`;
+      if (tp.ppu) flags.push('PPU');
+      if (tp.resetSelf) flags.push('Reset→me');
+      if (tp.resetSME) flags.push('Reset→'+(tp.resetSMEName||'SME'));
+      if (tp.asrs) flags.push('ASRs: '+tp.asrs);
+      return '<div style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-top:1px solid #f0f4f8;">' +
+        '<div style="width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0;background:' + outcomeColor + ';"></div>' +
+        '<div style="flex:1;">' +
+          '<div style="display:flex;justify-content:space-between;">' +
+            '<span style="font-size:11px;font-weight:600;color:' + outcomeColor + ';">' + outcomeLabel + '</span>' +
+            '<span style="font-size:10px;color:#a0b8cc;">' + dtStr + '</span>' +
+          '</div>' +
+          (flags.length?'<div style="font-size:10px;color:#5f7a99;">' + flags.join(' · ') + '</div>':'') +
+          (tp.notes?'<div style="font-size:10px;color:#8fa8c0;font-style:italic;">' + tp.notes + '</div>':'') +
+        '</div>' +
+      '</div>';
+    }).filter(Boolean).join('') : '';
+
+    // Apps for this case
+    const caseApps = (cs.touchpoints||[]).flatMap((tp,ti) => (tp.apps||[]).map((ap,ai) => ({...ap, ti, ai})));
+    const appsHtml = caseApps.length ? caseApps.map(ap => {
+      const sc = {'Paid':'#3B6D11','Placed':'#138181','Approved':'#534AB7','Submitted':'#BA7517','Written':'#1D3557'}[ap.status]||'#1D3557';
+      return '<div style="background:#f7fafd;border:1px solid #e2eaf2;border-radius:6px;padding:6px 8px;margin-top:4px;display:flex;justify-content:space-between;align-items:center;">' +
+        '<div>' +
+          '<div style="font-size:11px;font-weight:500;color:#1D3557;">' + ap.carrier + ' - ' + ap.product + '</div>' +
+          '<div style="font-size:10px;color:#5f7a99;">$' + (ap.premium||0).toLocaleString() + ' APV · ' + (ap.who||'Borrower') + '</div>' +
+        '</div>' +
+        '<select onchange="updateAppStatus(\''+c.id+'\','+ci+','+ap.ti+','+ap.ai+',this.value)" style="font-size:10px;border:1px solid #e2eaf2;border-radius:4px;padding:2px 4px;color:'+sc+';font-weight:600;background:#fff;">' +
+          ['Written','Submitted','Approved','Placed','Paid'].map(s => '<option' + (ap.status===s?' selected':'') + '>' + s + '</option>').join('') +
+        '</select>' +
+      '</div>';
+    }).join('') : '';
+
+    return '<div style="border-radius:10px;margin-bottom:8px;overflow:hidden;border:1px solid #e2eaf2;">' +
+      '<div style="background:' + hdrColor + ';color:#fff;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">' +
+        '<div>' +
+          '<div style="font-size:12px;font-weight:600;">' + cs.type + '</div>' +
+          '<div style="font-size:10px;opacity:0.65;">' + resolvedTps.length + ' sit' + (resolvedTps.length!==1?'s':'') + ' logged</div>' +
+        '</div>' +
+        '<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:rgba(255,255,255,0.2);">' + (cs.status||'Open') + '</span>' +
+      '</div>' +
+      '<div style="padding:8px 12px;background:#fff;">' +
+        (historyHtml||'<div style="font-size:11px;color:#a0b8cc;padding:4px 0;">No sits logged yet.</div>') +
+        appsHtml +
+        '<div style="display:flex;gap:6px;margin-top:8px;">' +
+          (cs.status==='Open'?'<button onclick="openSitOutcomeForCase(\''+c.id+'\','+ci+')" style="flex:1;background:#138181;color:#fff;border:none;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;font-weight:500;">+ Log outcome</button>':'') +
+          (caseApps.length===0 && resolvedTps.some(tp=>tp.outcome==='sale')?'<button onclick="openAddAppsForCase(\''+c.id+'\','+ci+')" style="flex:1;background:#1D3557;color:#fff;border:none;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;font-weight:500;">+ Add apps</button>':'') +
+          '<button onclick="openEditCase(\''+c.id+'\','+ci+')" style="background:#f0f4f8;border:none;border-radius:6px;padding:6px 10px;font-size:11px;color:#5f7a99;cursor:pointer;">Edit</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
   }).join('');
 }
 
