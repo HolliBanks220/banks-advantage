@@ -1156,8 +1156,30 @@ function getAllAppts() {
 function renderSidebar() {
   const now = new Date();
   const todayStr = now.toDateString();
+
+  // Get scheduled callbacks for today
+  const todayCallbacks = clients.filter(c => {
+    const lastCb = [...(c.call_log||[])].reverse().find(cl => cl.outcome === 'Callback' && cl.callback_dt);
+    if (!lastCb) return false;
+    const cbDt = new Date(lastCb.callback_dt);
+    return cbDt.toDateString() === todayStr;
+  }).map(c => {
+    const lastCb = [...(c.call_log||[])].reverse().find(cl => cl.outcome === 'Callback' && cl.callback_dt);
+    return {clientId: c.id, clientName: c.name, datetime: lastCb.callback_dt, note: lastCb.callback_note||'Callback', isCallback: true};
+  }).sort((a,b) => new Date(a.datetime)-new Date(b.datetime));
+
+  // Get future callbacks (not today)
+  const futureCallbacks = clients.filter(c => {
+    const lastCb = [...(c.call_log||[])].reverse().find(cl => cl.outcome === 'Callback' && cl.callback_dt);
+    if (!lastCb) return false;
+    const cbDt = new Date(lastCb.callback_dt);
+    return cbDt > now && cbDt.toDateString() !== todayStr;
+  }).map(c => {
+    const lastCb = [...(c.call_log||[])].reverse().find(cl => cl.outcome === 'Callback' && cl.callback_dt);
+    return {clientId: c.id, clientName: c.name, datetime: lastCb.callback_dt, note: lastCb.callback_note||'Callback', isCallback: true};
+  }).sort((a,b) => new Date(a.datetime)-new Date(b.datetime));
+
   const allAppts = getAllAppts();
-  // Deduplicate by clientId+datetime to avoid showing same slot twice
   const deduped = allAppts.filter((a, i, arr) =>
     arr.findIndex(b => b.clientId === a.clientId && b.datetime === a.datetime) === i
   );
@@ -1186,13 +1208,34 @@ function renderSidebar() {
     </div>`;
   }
 
+  function callbackCard(a) {
+    const dt = new Date(a.datetime);
+    const isToday = dt.toDateString() === todayStr;
+    const dateStr = isToday ? '' : dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' - ';
+    const hasTime = dt.getHours() !== 9 || dt.getMinutes() !== 0;
+    const timeStr = hasTime ? dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : '';
+    return `<div class="appt-sidebar-item" style="background:#FFFBF0;border:1px solid #FAC775;" onclick="openClient('${a.clientId}')">
+      <div style="font-size:12px;font-weight:500;color:#1D3557;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.clientName}</div>
+      <div style="font-size:11px;color:#BA7517;font-weight:500;margin-top:1px;">📞 ${dateStr}${timeStr}</div>
+      <div style="font-size:10px;color:#8fa8c0;margin-top:1px;">Scheduled callback</div>
+    </div>`;
+  }
+
   const sidebar = document.getElementById('sidebar-appts');
   if (sidebar) {
-    if (!upcoming.length && !todayPassed.length) {
+    if (!upcoming.length && !todayPassed.length && !todayCallbacks.length && !futureCallbacks.length) {
       sidebar.innerHTML = '<div style="font-size:11px;color:#a0b8cc;padding:4px 2px;">No appointments today</div>';
     } else {
       let html = '';
+      if (todayCallbacks.length) {
+        html += `<div class="appt-sidebar-divider" style="color:#BA7517;">Callbacks today</div>`;
+        html += todayCallbacks.map(a => callbackCard(a)).join('');
+      }
       if (upcoming.length) html += upcoming.map(a => apptCard(a, false)).join('');
+      if (futureCallbacks.length) {
+        html += `<div class="appt-sidebar-divider" style="color:#BA7517;">Upcoming callbacks</div>`;
+        html += futureCallbacks.map(a => callbackCard(a)).join('');
+      }
       if (todayPassed.length) {
         html += `<div class="appt-sidebar-divider">Earlier today</div>`;
         html += todayPassed.map(a => apptCard(a, true)).join('');
@@ -1474,7 +1517,7 @@ function openClient(id, keepDialCount) {
   <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;">
     <button class="call-btn cb-navy" onclick="quickLog('${id}','No answer','dials')">No answer</button>
     <button class="call-btn cb-green" onclick="openApptPicker('${id}')">Appt set</button>
-    <button class="call-btn cb-amber" onclick="quickLog('${id}','Callback','callbacks')">Callback</button>
+    <button class="call-btn cb-amber" onclick="openCallbackPicker('${id}')">Callback</button>
     <button class="call-btn" style="background:#534AB7;color:#fff;" onclick="openReschedulePicker('${id}')">Reschedule</button>
     <button class="call-btn" style="background:#BA7517;color:#fff;" onclick="openResetToPicker('${id}')">↺ Reset to</button>
     <button class="call-btn cb-red" onclick="quickLog('${id}','Not interested','dead')">Not interested</button>
@@ -2126,6 +2169,73 @@ async function autoSaveField(id, field, value) {
 }
 
 //  QUICK LOG 
+function openCallbackPicker(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const alreadyCallbacked = (c.call_log||[]).some(cl => cl.outcome === 'Callback');
+  if (alreadyCallbacked) {
+    // Already has a callback - just advance, no stats
+    const searchVal = document.getElementById('client-search') ? document.getElementById('client-search').value : '';
+    const filteredList = getFilteredClients(searchVal);
+    const currentIdx = filteredList.findIndex(cl => cl.id === id);
+    const nextLead = filteredList[currentIdx + 1] || filteredList[currentIdx - 1];
+    window._dialCount = 1;
+    closeModal();
+    renderClients(searchVal);
+    if (nextLead) setTimeout(() => openClient(nextLead.id), 300);
+    return;
+  }
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
+  const tomorrowStr = tomorrow.toISOString().slice(0,10);
+  showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">Schedule callback</div>' +
+    '<div class="modal-sub">' + c.name + '</div>' +
+    '<div class="field"><label>Date</label><input type="date" id="cb-date" value="' + tomorrowStr + '" style="font-size:16px;"></div>' +
+    '<div class="field"><label>Time (optional)</label><input type="time" id="cb-time" placeholder="Leave blank if no specific time" style="font-size:16px;"></div>' +
+    '<button class="save-btn" style="background:#BA7517;" onclick="confirmCallback(\''+id+'\',true)">Save callback date</button>' +
+    '<button onclick="confirmCallback(\''+id+'\',false)" style="width:100%;background:none;border:none;padding:8px;font-size:12px;color:#8fa8c0;cursor:pointer;">No specific date — just log callback</button>');
+}
+
+async function confirmCallback(id, hasDate) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const dialCount = window._dialCount || 1;
+
+  let callbackDt = null;
+  let callbackNote = '';
+  if (hasDate) {
+    const dateEl = document.getElementById('cb-date');
+    const timeEl = document.getElementById('cb-time');
+    if (dateEl && dateEl.value) {
+      const timeStr = timeEl && timeEl.value ? timeEl.value : '09:00';
+      const hasTime = timeEl && timeEl.value;
+      callbackDt = new Date(dateEl.value + 'T' + timeStr).toISOString();
+      callbackNote = hasTime
+        ? new Date(callbackDt).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + new Date(callbackDt).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})
+        : new Date(callbackDt).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+    }
+  }
+
+  const searchVal = document.getElementById('client-search') ? document.getElementById('client-search').value : '';
+  const filteredList = getFilteredClients(searchVal);
+  const currentIdx = filteredList.findIndex(cl => cl.id === id);
+  const nextLead = filteredList[currentIdx + 1] || filteredList[currentIdx - 1];
+
+  const ts = new Date().toISOString();
+  const callLog = [...(c.call_log||[]), {ts, outcome:'Callback', dials:dialCount, callback_dt:callbackDt, callback_note:callbackNote}];
+  c.call_log = callLog; c.status = 'Working';
+
+  showSync('Saving...');
+  await sb.from('clients').update({call_log:callLog, status:'Working'}).eq('id',id);
+  await addStat('dials', dialCount);
+  await addStat('callbacks', 1);
+  await addStat('convos', 1);
+  window._dialCount = 1;
+  hideSync(); closeModal();
+  renderClients(searchVal);
+  renderScore();
+  renderSidebar();
+  if (nextLead) setTimeout(() => openClient(nextLead.id), 300);
+}
+
 async function quickLog(id, outcome, statKey) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const dialCount = window._dialCount || 1;
