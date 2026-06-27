@@ -1361,12 +1361,42 @@ function renderAppts() {
 }
 
 function setFilterAlert(f) {
-  // Find the filter button and trigger it
+  // Switch to leads tab first
+  showTab('clients', document.querySelector('.tab[onclick*="clients"]'));
+
+  if (f === 'textready') {
+    // Special case: show all leads that are ready for text, sorted by urgency
+    // Override the rendered list temporarily
+    const el = document.getElementById('clients-list');
+    const textReadyLeads = clients.filter(c => isReadyForText(c) && c.status !== 'Dead' && c.status !== 'Appointment set')
+      .sort((a,b) => getUrgencyScore(a) - getUrgencyScore(b));
+    document.getElementById('client-count').textContent = clients.length + ' leads - ' + textReadyLeads.length + ' shown (ready for text)';
+    if (!textReadyLeads.length) { el.innerHTML='<div class="empty">No leads ready for text.</div>'; return; }
+    el.innerHTML = textReadyLeads.map(c => {
+      const fresh = isFresh(c);
+      const lastCall = (c.call_log||[]).slice(-1)[0];
+      return `<div class="client-card" onclick="openClient('${c.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <div class="client-name">${c.name||'Unknown'}${fresh?'<span class="fresh-tag">fresh</span>':''}</div>
+            <div class="client-meta">${c.phone||''} - ${c.state||''} - ${Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24))}d - ${(c.call_log||[]).length} att${getNoShowBadge(c)}</div>
+            <div style="font-size:9px;font-weight:600;color:#138181;background:#F0FBF7;border-radius:4px;padding:2px 6px;margin-top:3px;display:inline-block;">📱 Ready for text</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
+            <span class="${badgeClass(c.source)}">${c.source||''}</span>
+            <span class="${statusBadge(c.status)}">${c.status||'New'}</span>
+          </div>
+        </div>
+        ${lastCall?`<div class="log-row"><span class="log-time">${new Date(lastCall.ts).toLocaleDateString('en-US',{month:'short',day:'numeric'})} ${new Date(lastCall.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</span> - ${lastCall.outcome}</div>`:''}
+      </div>`;
+    }).join('');
+    return;
+  }
+
+  // Normal filter
   const btn = document.querySelector('.filter-btn[onclick*="' + f + '"]') ||
                document.querySelector('.filter-btn2[onclick*="' + f + '"]');
   setFilter(f, btn);
-  // Switch to leads tab
-  showTab('clients', document.querySelector('.tab[onclick*="clients"]'));
 }
 
 function setFilter(f, btn) {
@@ -1582,7 +1612,7 @@ function renderAlerts() {
 
   // Ready for text
   const textReady = clients.filter(c => isReadyForText(c) && c.status !== 'Dead' && c.status !== 'Appointment set');
-  if (textReady.length) alerts.push({label: '📱 ' + textReady.length + ' lead' + (textReady.length>1?'s':'') + ' ready for a text', color:'#138181', bg:'#F0FBF7', filter:'working'});
+  if (textReady.length) alerts.push({label: '📱 ' + textReady.length + ' lead' + (textReady.length>1?'s':'') + ' ready for a text', color:'#138181', bg:'#F0FBF7', filter:'textready'});
 
   if (!alerts.length) {
     el.innerHTML = '';
