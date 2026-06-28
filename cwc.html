@@ -3564,20 +3564,27 @@ function renderAppsSection(c) {
   );
   if (!allApps.length) return '<div style="font-size:12px;color:#a0b8cc;margin-bottom:8px;">No applications yet.</div>';
   return allApps.map(ap => {
-    const statusColor = {'Paid':'#3B6D11','Placed':'#138181','Approved':'#534AB7','Submitted':'#BA7517','Written':'#1D3557'}[ap.status]||'#1D3557';
+    const statusColors = {'Paid':'#3B6D11','Placed':'#138181','Approved':'#534AB7','Submitted':'#BA7517','Written':'#1D3557'};
+    const statusBgs = {'Paid':'#EAF3DE','Placed':'#E6F9F3','Approved':'#EDE9FB','Submitted':'#FEF3E2','Written':'#EEF1F6'};
+    const statusColor = statusColors[ap.status]||'#1D3557';
+    const statusBg = statusBgs[ap.status]||'#EEF1F6';
     const dt = ap.tpDate ? new Date(ap.tpDate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
-    return `<div style="border:1px solid #e2eaf2;border-radius:8px;padding:10px 12px;margin-bottom:6px;background:#f8fafc;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <span style="font-size:12px;font-weight:600;color:#1D3557;">${ap.carrier} - ${ap.product}</span>
-        <select onchange="updateAppStatus('${c.id}',${ap.ci},${ap.ti},${ap.ai},this.value)" style="font-size:10px;border:1px solid #e2eaf2;border-radius:4px;padding:2px 4px;color:${statusColor};font-weight:600;background:#fff;">
-          ${APP_STATUSES.map(s=>`<option${ap.status===s?' selected':''}>${s}</option>`).join('')}
-        </select>
+    const nextStatus = APP_STATUSES[APP_STATUSES.indexOf(ap.status)+1] || null;
+    return `<div style="border:1px solid ${statusColor}33;border-radius:8px;padding:10px 12px;margin-bottom:6px;background:#fff;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+        <div>
+          <div style="font-size:12px;font-weight:600;color:#1D3557;">${ap.carrier} - ${ap.product}</div>
+          <div style="font-size:11px;color:#5f7a99;margin-top:1px;">$${(ap.premium||0).toLocaleString()} APV · $${(ap.face||0).toLocaleString()} face · ${ap.who||'Borrower'}</div>
+          <div style="font-size:10px;color:#a0b8cc;margin-top:1px;">${dt}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+          <div style="background:${statusBg};color:${statusColor};font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid ${statusColor}44;">${ap.status}</div>
+          ${nextStatus ? `<button onclick="updateAppStatus('${c.id}',${ap.ci},${ap.ti},${ap.ai},'${nextStatus}')" style="font-size:9px;background:none;border:1px solid ${statusColor}66;border-radius:10px;padding:2px 8px;color:${statusColor};cursor:pointer;white-space:nowrap;">→ ${nextStatus}</button>` : '<div style="font-size:9px;color:#3B6D11;font-weight:600;">✓ Complete</div>'}
+        </div>
       </div>
-      <div style="font-size:11px;color:#5f7a99;">APV: $${(ap.premium||0).toLocaleString()} - Face: $${(ap.face||0).toLocaleString()} - ${ap.who||'Borrower'}</div>
-      <div style="font-size:10px;color:#a0b8cc;margin-top:2px;">${ap.caseType} - ${ap.tpType} - ${dt}</div>
-      <div style="display:flex;gap:6px;margin-top:6px;">
+      <div style="display:flex;gap:6px;">
         <button onclick="openEditApp('${c.id}',${ap.ci},${ap.ti},${ap.ai})" style="background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 8px;font-size:10px;color:#5f7a99;cursor:pointer;">Edit</button>
-        <button onclick="openAddAppToTouchpoint('${c.id}',${ap.ci},${ap.ti})" style="background:none;border:1px solid #e2eaf2;border-radius:6px;padding:3px 8px;font-size:10px;color:#5f7a99;cursor:pointer;">+ Add app to this touchpoint</button>
+        <button onclick="openAddAppToTouchpoint('${c.id}',${ap.ci},${ap.ti})" style="background:none;border:1px solid #e2eaf2;border-radius:6px;padding:3px 8px;font-size:10px;color:#5f7a99;cursor:pointer;">+ Add to case</button>
       </div>
     </div>`;
   }).join('');
@@ -3621,6 +3628,7 @@ async function saveEditApp(id, ci, ti, ai) {
 }
 
 async function updateAppStatus(id, ci, ti, ai, status) {
+  // Immediately update local state and re-render card
   const c = clients.find(x=>x.id===id); if(!c) return;
   if (c.cases[ci]?.touchpoints[ti]?.apps[ai]) {
     c.cases[ci].touchpoints[ti].apps[ai].status = status;
