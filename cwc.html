@@ -139,7 +139,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <button onclick="openCompSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙ Comp</button>
+        <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
@@ -3477,13 +3477,13 @@ async function saveEditTouchpoint(id, ci, ti) {
 const APP_STATUSES = ['Written','Submitted','Approved','Placed','Paid'];
 
 function carrierOptions(selected) {
-  return getCarrierList().map(c => `<option${selected===c?' selected':''}>${c}</option>`).join('');
+  return getEnabledCarrierList().map(c => `<option${selected===c?' selected':''}>${c}</option>`).join('');
 }
 function productOptions(carrier, selected) {
-  const prods = getProductsForCarrier(carrier);
+  const prods = getEnabledProductsForCarrier(carrier);
   return prods.map(p => {
     const val = p.baseName + (p.range ? '|' + p.range : '');
-    const label = p.name + (p.type ? ' (' + p.type + ')' : '');
+    const label = p.name + (p.range ? ' ' + p.range : '') + (p.type ? ' (' + p.type + ')' : '');
     return `<option value="${val}"${selected===val?' selected':''}>${label}</option>`;
   }).join('');
 }
@@ -3491,7 +3491,7 @@ function productOptions(carrier, selected) {
 function openAddAppToTouchpoint(id, ci, ti) {
   const c = clients.find(x=>x.id===id); if(!c) return;
   _appCount = 1;
-  const defaultCarrier = getCarrierList()[0];
+  const defaultCarrier = getEnabledCarrierList()[0];
   showModal(`<button class="close-x" onclick="closeModal();openClient('${id}')">x</button>
   <div class="modal-title">Log application</div>
   <div class="modal-sub">${c.name} - Sale!</div>
@@ -3528,7 +3528,7 @@ function openAddAppToTouchpoint(id, ci, ti) {
 let _appCount = 1;
 function addAnotherApp() {
   const i = _appCount++;
-  const defaultCarrier = getCarrierList()[0];
+  const defaultCarrier = getEnabledCarrierList()[0];
   const container = document.getElementById('app-entries');
   if (!container) return;
   const div = document.createElement('div');
@@ -4142,6 +4142,246 @@ function saveCompSettings() {
   saveAgentSettings(settings);
   closeModal();
   // Re-render any open app entry forms
+}
+
+
+// ── SETTINGS PANEL ──────────────────────────────────────────────────────────
+
+// Bonus structure by contract level
+const BONUS_THRESHOLDS = {95:15000, 100:20000, 105:25000, 110:30000, 115:35000, 120:45000, 125:55000, 130:55000};
+const BONUS_MAX_CASE_CREDIT = 7500;
+
+// Bonus rates per product (5=full, 2.5=half, 0=qualifier only)
+const BONUS_RATES = {
+  // Full 5% bonusable
+  'AmAm & Occidental': {'Whole Life Insurance to Age 110 (previously QSFP)': 5},
+  'Legal & General (LGA)': {'Beyond Term': 5},
+  'F&G': {'F&G Quantum': 5, 'F&G Pathsetter': 5},
+  'Foresters': {'Live Well Plus - WL Pay 100': 5, 'Advantage Plus II - Simplified - WL Pay 100': 5, 'Advantage Plus II - Fully Underwritten - WL Pay 100': 5},
+  'SBLI': {'EasyTrak Digital Term': 5},
+  'UHL': {'Express Issue Whole Life': 5, 'Express Issue Deluxe': 5, 'Express Issue Premier': 5, 'Provider Whole Life': 5},
+  // Half 2.5% bonusable
+  // AmAm
+  // 'AmAm & Occidental': {'Dignity Solutions...': 2.5, 'Intelligent Choice': 2.5, 'Term Made Simple': 2.5},
+  // Americo
+  'Americo': {'Eagle Select 1': 2.5, 'Eagle Select 2': 2.5, 'Instant Decision IUL': 2.5},
+  // F&G
+  // 'F&G': {'F&G Everlast': 2.5},  // already in F&G above
+  // MOO
+  "MOO": {"Children's Whole Life": 2.5, "Living Promise - Level": 2.5, "Living Promise - Graded": 2.5, "Index Universal Life Express": 2.5},
+  // Pan American (Mutual Trust)
+  'Pan American Life (MTL)': {'Horizon Value': 2.5},
+  // Transamerica
+  'Transamerica': {'FE Express Solution': 2.5, 'FFIUL 2 Express': 2.5}
+};
+
+function getBonusRate(carrierName, productName) {
+  const carrierBonus = BONUS_RATES[carrierName] || {};
+  // Check exact match first
+  if (carrierBonus[productName] !== undefined) return carrierBonus[productName];
+  // Check partial match
+  for (const [key, rate] of Object.entries(carrierBonus)) {
+    if (productName.includes(key) || key.includes(productName)) return rate;
+  }
+  return 0; // qualifier only
+}
+
+function openSettings() {
+  const settings = getAgentSettings();
+  const level = settings.contractLevel || 105;
+  const levels = [95, 100, 105, 110, 115, 120, 125, 130];
+  const enabledCarriers = settings.enabledCarriers || {};
+
+  const carrierList = getCarrierList();
+  const enabledCount = carrierList.filter(c => enabledCarriers[c] && enabledCarriers[c]._enabled).length;
+
+  showModal(
+    '<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">⚙️ Settings</div>' +
+
+    '<div style="background:#f0f4f8;border-radius:10px;padding:12px;margin-bottom:12px;">' +
+      '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Profile</div>' +
+      '<div class="field"><label>Name</label><input type="text" id="s-name" value="' + (settings.agentName||'Holli Banks') + '" style="font-size:14px;"></div>' +
+      '<div class="field"><label>Contract level</label>' +
+        '<select id="s-level" style="font-size:16px;width:100%;border:1px solid #d0dcea;border-radius:8px;padding:8px;">' +
+          levels.map(l => '<option value="' + l + '"' + (l===level?' selected':'') + '>' + l + '% — Bonus qualifier: $' + (BONUS_THRESHOLDS[l]||'N/A').toLocaleString() + '</option>').join('') +
+        '</select>' +
+      '</div>' +
+      '<div class="field"><label>Foresters advance</label>' +
+        '<select id="s-foresters" style="font-size:14px;width:100%;border:1px solid #d0dcea;border-radius:8px;padding:8px;">' +
+          '<option value="as_earned"' + (settings.forestersAsEarned!==false?' selected':'') + '>As earned (my setting)</option>' +
+          '<option value="advance"' + (settings.forestersAsEarned===false?' selected':'') + '>75% advance</option>' +
+        '</select>' +
+      '</div>' +
+      '<button onclick="saveProfileSettings()" style="width:100%;background:#1D3557;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;">Save profile</button>' +
+    '</div>' +
+
+    '<div style="background:#f0f4f8;border-radius:10px;padding:12px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+        '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;">Carriers & products</div>' +
+        '<div style="font-size:10px;color:#5f7a99;">' + enabledCount + ' of ' + carrierList.length + ' enabled</div>' +
+      '</div>' +
+      '<div style="font-size:11px;color:#8fa8c0;margin-bottom:8px;">Enable only the carriers you write. Products from enabled carriers show in app entry.</div>' +
+      '<button onclick="openCarrierManager()" style="width:100%;background:#138181;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;">Manage carriers & products →</button>' +
+    '</div>'
+  );
+}
+
+function saveProfileSettings() {
+  const settings = getAgentSettings();
+  settings.agentName = document.getElementById('s-name').value.trim();
+  settings.contractLevel = parseInt(document.getElementById('s-level').value);
+  settings.forestersAsEarned = document.getElementById('s-foresters').value === 'as_earned';
+  saveAgentSettings(settings);
+
+  // Update Foresters as_earned in COMP_DATA
+  if (COMP_DATA['Foresters']) {
+    COMP_DATA['Foresters'].as_earned = settings.forestersAsEarned;
+  }
+
+  closeModal();
+  showSync('Settings saved!');
+  setTimeout(hideSync, 1500);
+}
+
+function openCarrierManager() {
+  const settings = getAgentSettings();
+  const enabledCarriers = settings.enabledCarriers || {};
+  const carrierList = getCarrierList();
+
+  let html = '<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">Carriers & products</div>' +
+    '<div style="font-size:11px;color:#8fa8c0;margin-bottom:12px;">Toggle carriers on to show them in app entry. Tap a carrier name to manage its products.</div>';
+
+  html += '<div id="carrier-list-container"></div>';
+  showModal(html);
+  // Populate carrier list after modal is shown
+  carrierList.forEach(name => {
+    const carrier = COMP_DATA[name];
+    const isEnabled = enabledCarriers[name] && enabledCarriers[name]._enabled;
+    const enabledProducts = isEnabled ? Object.keys(enabledCarriers[name] || {}).filter(k => k !== '_enabled' && enabledCarriers[name][k]).length : 0;
+    const totalProducts = carrier ? carrier.products.length : 0;
+    const safeId = name.replace(/[^a-z0-9]/gi,'_');
+    const container = document.getElementById('carrier-list-container');
+    if (!container) return;
+    const div = document.createElement('div');
+    div.style.cssText = 'background:'+(isEnabled?'#F0FBF7':'#fff')+';border:1px solid '+(isEnabled?'#9FE1CB':'#e2eaf2')+';border-radius:8px;padding:8px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;';
+    div.innerHTML = '<div style="flex:1;cursor:pointer;"><div style="font-size:12px;font-weight:600;color:#1D3557;">'+name+'</div><div style="font-size:10px;color:#8fa8c0;">'+( isEnabled ? enabledProducts+' products enabled' : totalProducts+' products available')+'</div></div><input type="checkbox" '+( isEnabled?'checked':'')+' style="width:18px;height:18px;accent-color:#138181;margin-left:8px;">';
+    div.querySelector('[style*="cursor"]').addEventListener('click', function(){ openProductManager(name); });
+    div.querySelector('input').addEventListener('change', function(){ toggleCarrier(name, this.checked); });
+    container.appendChild(div);
+  });
+}
+
+function toggleCarrier(name, enabled) {
+  const settings = getAgentSettings();
+  if (!settings.enabledCarriers) settings.enabledCarriers = {};
+  if (!settings.enabledCarriers[name]) settings.enabledCarriers[name] = {};
+  settings.enabledCarriers[name]._enabled = enabled;
+
+  // If enabling for first time, enable all products by default
+  if (enabled) {
+    const carrier = COMP_DATA[name];
+    if (carrier) {
+      carrier.products.forEach(p => {
+        const key = p.name + (p.range ? '|' + p.range : '');
+        if (settings.enabledCarriers[name][key] === undefined) {
+          settings.enabledCarriers[name][key] = true;
+        }
+      });
+    }
+  }
+  saveAgentSettings(settings);
+}
+
+function openProductManager(carrierName) {
+  const settings = getAgentSettings();
+  const enabledCarriers = settings.enabledCarriers || {};
+  const carrierSettings = enabledCarriers[carrierName] || {};
+  const carrier = COMP_DATA[carrierName];
+  if (!carrier) return;
+
+  const html = '<button class="close-x" id="pm-back-btn">←</button>' +
+    '<div class="modal-title">' + carrierName + '</div>' +
+    '<div style="font-size:11px;color:#8fa8c0;margin-bottom:8px;">Toggle products to show/hide in app entry.</div>' +
+    '<div style="display:flex;gap:6px;margin-bottom:10px;">' +
+      '<button id="pm-enable-all" style="flex:1;background:#138181;color:#fff;border:none;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;">Enable all</button>' +
+      '<button id="pm-disable-all" style="flex:1;background:#f0f4f8;color:#5f7a99;border:none;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;">Disable all</button>' +
+    '</div>' +
+    '<div id="pm-product-list"></div>';
+
+  showModal(html);
+
+  document.getElementById('pm-back-btn').addEventListener('click', openCarrierManager);
+  document.getElementById('pm-enable-all').addEventListener('click', function(){ toggleAllProducts(carrierName, true); });
+  document.getElementById('pm-disable-all').addEventListener('click', function(){ toggleAllProducts(carrierName, false); });
+
+  const listEl = document.getElementById('pm-product-list');
+  carrier.products.forEach((p) => {
+    const key = p.name + (p.range ? '|' + p.range : '');
+    const isEnabled = carrierSettings[key] !== false;
+    const compRate = p.rates[settings.contractLevel || 105];
+    const bonusRate = getBonusRate(carrierName, p.name);
+    const bonusBadge = bonusRate === 5 ? ' <span style="font-size:9px;background:#EAF3DE;color:#27500A;padding:1px 5px;border-radius:4px;">5% bonus</span>' :
+                       bonusRate === 2.5 ? ' <span style="font-size:9px;background:#FEF3E2;color:#854F0B;padding:1px 5px;border-radius:4px;">2.5% bonus</span>' : '';
+
+    const row = document.createElement('div');
+    row.style.cssText = 'border:1px solid ' + (isEnabled?'#9FE1CB':'#e2eaf2') + ';border-radius:6px;padding:6px 10px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;background:' + (isEnabled?'#F0FBF7':'#fff') + ';';
+    row.innerHTML = '<div style="flex:1;">' +
+      '<div style="font-size:11px;font-weight:500;color:#1D3557;">' + p.name + (p.range?' <span style="color:#8fa8c0;font-weight:400;">'+p.range+'</span>':'') + bonusBadge + '</div>' +
+      '<div style="font-size:10px;color:#8fa8c0;">' + (p.type||'') + (compRate ? ' · ' + compRate + '% at ' + (settings.contractLevel||105) + '%' : '') + '</div>' +
+    '</div>' +
+    '<input type="checkbox" ' + (isEnabled?'checked':'') + ' style="width:16px;height:16px;accent-color:#138181;margin-left:8px;">';
+    row.querySelector('input').addEventListener('change', function(){ toggleProduct(carrierName, key, this.checked); });
+    listEl.appendChild(row);
+  });
+}
+
+function toggleProduct(carrierName, productKey, enabled) {
+  const settings = getAgentSettings();
+  if (!settings.enabledCarriers) settings.enabledCarriers = {};
+  if (!settings.enabledCarriers[carrierName]) settings.enabledCarriers[carrierName] = {};
+  settings.enabledCarriers[carrierName][productKey] = enabled;
+  saveAgentSettings(settings);
+}
+
+function toggleAllProducts(carrierName, enabled) {
+  const settings = getAgentSettings();
+  if (!settings.enabledCarriers) settings.enabledCarriers = {};
+  if (!settings.enabledCarriers[carrierName]) settings.enabledCarriers[carrierName] = {};
+  const carrier = COMP_DATA[carrierName];
+  if (carrier) {
+    carrier.products.forEach(p => {
+      const key = p.name + (p.range ? '|' + p.range : '');
+      settings.enabledCarriers[carrierName][key] = enabled;
+    });
+  }
+  saveAgentSettings(settings);
+  openProductManager(carrierName);
+}
+
+// Update carrier/product dropdowns to respect enabled settings
+function getEnabledCarrierList() {
+  const settings = getAgentSettings();
+  const enabledCarriers = settings.enabledCarriers || {};
+  const all = getCarrierList();
+  const enabled = all.filter(c => enabledCarriers[c] && enabledCarriers[c]._enabled);
+  // If none enabled yet, show all (first-time use)
+  return enabled.length > 0 ? enabled : all;
+}
+
+function getEnabledProductsForCarrier(carrierName) {
+  const settings = getAgentSettings();
+  const enabledCarriers = settings.enabledCarriers || {};
+  const carrierSettings = enabledCarriers[carrierName] || {};
+  const allProducts = getProductsForCarrier(carrierName);
+  // If carrier has no settings yet, show all products
+  const hasSettings = Object.keys(carrierSettings).filter(k => k !== '_enabled').length > 0;
+  if (!hasSettings) return allProducts;
+  return allProducts.filter(p => {
+    const key = p.baseName + (p.range ? '|' + p.range : '');
+    return carrierSettings[key] !== false;
+  });
 }
 
 </script>
