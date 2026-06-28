@@ -211,6 +211,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
           <button class="tap-btn tap-amber" onclick="drillDown('callbacks')" style="font-size:10px;">who?</button>
         </div>
       </div>
+      <div class="stat" style="background:#F0FBF7;border:1px solid #9FE1CB;">
+        <div class="stat-lbl" style="color:#138181;">Texts sent</div>
+        <div class="stat-val" id="s-texts" style="color:#138181;">0</div>
+        <div class="stat-btns">
+          <button class="tap-btn" style="background:#138181;color:#fff;" onclick="addStat('texts',1)">+1</button>
+        </div>
+      </div>
       <div class="stat stat-red">
         <div class="stat-lbl lbl-red">Not interested</div>
         <div class="hint-lt">Tap to edit</div>
@@ -731,11 +738,14 @@ function renderScore() {
 
   const dials=sumStat('dials',aStart,aEnd), convos=sumStat('convos',aStart,aEnd);
   const appts=sumStat('appts',aStart,aEnd), callbacks=sumStat('callbacks',aStart,aEnd), dead=sumStat('dead',aStart,aEnd);
+  const texts=sumStat('texts',aStart,aEnd);
   const resolved = appts + dead;
   ['dials','convos','appts','callbacks','dead'].forEach((k,i) => {
     const el = document.getElementById('s-'+k);
     if (el && el.tagName !== 'INPUT') el.textContent = [dials,convos,appts,callbacks,dead][i];
   });
+  const textsEl = document.getElementById('s-texts');
+  if (textsEl) textsEl.textContent = texts;
   document.getElementById('s-resolved').textContent = resolved;
   const assignedInPeriod = clients.filter(c => {
     const d = new Date(c.assigned_date || c.created_at);
@@ -1766,13 +1776,14 @@ function openClient(id, keepDialCount) {
     <button class="dial-cnt-btn" id="dcb-3" onclick="setDialCount(3)">3x</button>
   </div>
   <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;">
-    <button class="call-btn cb-navy" onclick="quickLog('${id}','No answer','dials')">No answer</button>
+    ${isReadyForText(c)?`<button class="call-btn" style="background:#1D3557;color:#fff;border:2px solid #138181;" onclick="quickLogAndText('${id}')">No answer + 📱</button>`:`<button class="call-btn cb-navy" onclick="quickLog('${id}','No answer','dials')">No answer</button>`}
     <button class="call-btn cb-green" onclick="openApptPicker('${id}')">Appt set</button>
     <button class="call-btn cb-amber" onclick="openCallbackPicker('${id}')">Callback</button>
     <button class="call-btn" style="background:#534AB7;color:#fff;" onclick="openReschedulePicker('${id}')">Reschedule</button>
     <button class="call-btn" style="background:#BA7517;color:#fff;" onclick="openResetToPicker('${id}')">↺ Reset to</button>
     <button class="call-btn cb-red" onclick="quickLog('${id}','Not interested','dead')">Not interested</button>
   </div>
+  <button onclick="openTextModal('${id}')" style="font-size:10px;background:none;border:1px solid #9FE1CB;border-radius:6px;padding:3px 10px;color:#138181;cursor:pointer;margin-bottom:8px;">📱 Text templates</button>
   <button class="save-btn" onclick="updateClient('${id}')" style="margin-bottom:12px;">Save & next</button>
   <div class="section-lbl">Call log</div>
   <div style="padding-left:4px;margin-bottom:12px;">${callHistory||'<div style="font-size:12px;color:#a0b8cc;">No calls yet.</div>'}</div>
@@ -2485,6 +2496,206 @@ async function confirmCallback(id, hasDate) {
   renderScore();
   renderSidebar();
   if (nextLead) setTimeout(() => openClient(nextLead.id), 300);
+}
+
+
+// ── TEXT TEMPLATE SYSTEM ─────────────────────────────────────────────────────
+
+const TEXT_TEMPLATES = [
+  {
+    id: 'initial',
+    label: 'Initial outreach',
+    stage: ['never_spoken'],
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli getting back to you. Can you give me a quick call when you get a chance?`
+  },
+  {
+    id: 'missing',
+    label: 'Missing each other',
+    stage: ['never_spoken', 'spoken'],
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli again. Looks like we keep missing each other — is text better for you?`
+  },
+  {
+    id: 'impacted',
+    label: "Who's impacted",
+    stage: ['never_spoken', 'spoken'],
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli again. I've been reaching out to get your mortgage protection options to you. Who would be impacted if there was a loss of income in your home?`
+  },
+  {
+    id: 'appt_now',
+    label: 'At appointment time',
+    stage: ['appt'],
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli. We have an appointment right now — are you still available for a quick call?`
+  },
+  {
+    id: 'post_noshow',
+    label: 'Post no-show',
+    stage: ['noshow'],
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli. We missed our appointment today — I have some time open this week. When works best for you?`
+  },
+  {
+    id: 'ghosting',
+    label: 'Ghosting (spoke before)',
+    stage: ['spoken'],
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli. Is protecting ${c.address||'your home'} still a priority for you? When\'s a good time to connect?`
+  },
+  {
+    id: 'cold',
+    label: 'Never spoken, going cold',
+    stage: ['never_spoken'],
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli. I\'ve been trying to reach you — is it still a priority to protect your home and equity for your loved ones?`
+  },
+  {
+    id: 'missed_appt',
+    label: 'Missed call at appt time',
+    stage: ['appt', 'noshow'],
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli. I tried calling for our appointment — what\'s your schedule looking like these next couple of days?`
+  }
+];
+
+function getLeadTextStage(c) {
+  const hasConvo = (c.call_log||[]).some(cl =>
+    cl.outcome === 'Appt set' || cl.outcome === 'Callback' ||
+    cl.outcome === 'Not interested' || cl.outcome === 'Rescheduled' ||
+    cl.outcome === 'Conversation'
+  );
+  const isNoShow = c.status === 'No show';
+  const hasAppt = !!c.appt_datetime;
+  const now = new Date();
+  const apptTime = hasAppt ? new Date(c.appt_datetime) : null;
+  const minsToAppt = apptTime ? (apptTime - now) / 60000 : 999;
+  const isAtApptTime = minsToAppt >= -30 && minsToAppt <= 120;
+
+  if (isNoShow) return 'noshow';
+  if (hasAppt && isAtApptTime) return 'appt';
+  if (hasConvo) return 'spoken';
+  return 'never_spoken';
+}
+
+function getSentTexts(c) {
+  return (c.call_log||[]).filter(cl => cl.outcome === 'Text sent' && cl.template_id);
+}
+
+function getContextualTemplates(c) {
+  const stage = getLeadTextStage(c);
+  const sentIds = getSentTexts(c).map(cl => cl.template_id);
+  return TEXT_TEMPLATES.filter(t => t.stage.includes(stage) && !sentIds.includes(t.id));
+}
+
+function openTextModal(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const stage = getLeadTextStage(c);
+  const sentTexts = getSentTexts(c);
+  const sentIds = sentTexts.map(cl => cl.template_id);
+  const available = TEXT_TEMPLATES.filter(t => t.stage.includes(stage) && !sentIds.includes(t.id));
+  const sent = TEXT_TEMPLATES.filter(t => sentIds.includes(t.id));
+
+  let html = '<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">Text templates</div>' +
+    '<div class="modal-sub">' + c.name + '</div>';
+
+  if (available.length) {
+    html += '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Recommended for now</div>';
+    html += available.map((t, i) =>
+      '<div id="tpl-' + t.id + '" style="border:1px solid #e2eaf2;border-radius:8px;padding:8px 10px;margin-bottom:6px;cursor:pointer;" onclick="expandTemplate(\''+id+'\',\''+t.id+'\')">' +
+        '<div style="font-size:11px;font-weight:600;color:#1D3557;margin-bottom:4px;">' + t.label + '</div>' +
+        '<div style="font-size:11px;color:#5f7a99;">' + t.text(c) + '</div>' +
+        '<div id="tpl-edit-' + t.id + '" style="display:none;margin-top:8px;">' +
+          '<textarea id="tpl-txt-' + t.id + '" style="width:100%;min-height:80px;font-size:12px;border:1px solid #9FE1CB;border-radius:6px;padding:6px;font-family:inherit;">' + t.text(c) + '</textarea>' +
+          '<button onclick="copyAndLogText(\''+id+'\',\''+t.id+'\')" style="width:100%;background:#138181;color:#fff;border:none;border-radius:8px;padding:10px;font-size:12px;font-weight:600;cursor:pointer;margin-top:6px;">Copy & Log</button>' +
+        '</div>' +
+      '</div>'
+    ).join('');
+  } else {
+    html += '<div style="font-size:12px;color:#a0b8cc;margin-bottom:12px;">All templates for this stage have been sent.</div>';
+  }
+
+  if (sent.length) {
+    html += '<div style="font-size:10px;font-weight:600;color:#a0b8cc;text-transform:uppercase;letter-spacing:0.06em;margin:12px 0 6px;">Previously sent</div>';
+    html += sent.map(t => {
+      const sentEntry = sentTexts.find(cl => cl.template_id === t.id);
+      const sentDate = sentEntry ? new Date(sentEntry.ts).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+      return '<div style="border:1px solid #f0f4f8;border-radius:8px;padding:8px 10px;margin-bottom:4px;opacity:0.6;">' +
+        '<div style="display:flex;justify-content:space-between;">' +
+          '<div style="font-size:11px;font-weight:600;color:#8fa8c0;">' + t.label + '</div>' +
+          '<div style="font-size:10px;color:#a0b8cc;">Sent ' + sentDate + '</div>' +
+        '</div>' +
+        '<div style="font-size:11px;color:#a0b8cc;margin-top:2px;">' + t.text(c) + '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  showModal(html);
+}
+
+function expandTemplate(id, tplId) {
+  // Close any other expanded templates
+  TEXT_TEMPLATES.forEach(t => {
+    const el = document.getElementById('tpl-edit-' + t.id);
+    const card = document.getElementById('tpl-' + t.id);
+    if (el && t.id !== tplId) { el.style.display = 'none'; if(card) card.style.borderColor='#e2eaf2'; }
+  });
+  const el = document.getElementById('tpl-edit-' + tplId);
+  const card = document.getElementById('tpl-' + tplId);
+  if (el) {
+    const isOpen = el.style.display !== 'none';
+    el.style.display = isOpen ? 'none' : 'block';
+    if (card) card.style.borderColor = isOpen ? '#e2eaf2' : '#138181';
+  }
+}
+
+async function copyAndLogText(id, tplId) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const txtEl = document.getElementById('tpl-txt-' + tplId);
+  const text = txtEl ? txtEl.value : '';
+
+  // Copy to clipboard
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch(e) {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+  }
+
+  // Log as text sent
+  const callLog = [...(c.call_log||[]), {
+    ts: new Date().toISOString(),
+    outcome: 'Text sent',
+    template_id: tplId,
+    text_sent: text,
+    dials: 0
+  }];
+  c.call_log = callLog;
+
+  showSync('Saving...');
+  await sb.from('clients').update({call_log: callLog}).eq('id', id);
+  await addStat('texts', 1);
+  hideSync();
+
+  // Get next lead
+  const searchVal = document.getElementById('client-search') ? document.getElementById('client-search').value : '';
+  const filteredList = getFilteredClients(searchVal);
+  const currentIdx = filteredList.findIndex(cl => cl.id === id);
+  const nextLead = filteredList[currentIdx + 1] || filteredList[currentIdx - 1];
+
+  closeModal();
+  renderClients(searchVal);
+  renderScore();
+
+  // Show copied confirmation briefly
+  showSync('Copied! Paste into your phone.');
+  setTimeout(() => {
+    hideSync();
+    if (nextLead) openClient(nextLead.id);
+  }, 1500);
+}
+
+async function quickLogAndText(id) {
+  // Log no answer first, then open text modal
+  await quickLog(id, 'No answer', 'dials');
+  // Small delay to let the modal close, then open text
+  setTimeout(() => openTextModal(id), 400);
 }
 
 async function quickLog(id, outcome, statKey) {
