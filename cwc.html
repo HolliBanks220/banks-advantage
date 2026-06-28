@@ -1145,35 +1145,6 @@ function initTimer() {
 }
 
 function showTab(t, btn) {
-  _origShowTab(t, btn);
-  // Auto-start dial timer when going to leads tab
-  if (t === 'clients' && !window._timerState.activity) {
-    // Don't auto-start, just suggest
-    const el = document.getElementById('timer-activity-label');
-    if (el && el.textContent === 'Inactive') {
-      el.textContent = '▶ Tap Dial to start timer';
-    }
-  }
-}
-
-// Restore timer state on page load if same day
-function initTimer() {
-  const todayKey = getTodayKey();
-  const todayTotals = window._timerState.todayTotals[todayKey] || {};
-  // Show today totals in a tooltip or small display
-  updateTodayTotalsDisplay(todayTotals);
-}
-
-function updateTodayTotalsDisplay(totals) {
-  const el = document.getElementById('timer-today-totals');
-  if (!el) return;
-  const dial = formatTime(totals.dial||0);
-  const prep = formatTime(totals.prep||0);
-  const appt = formatTime(totals.appt||0);
-  el.textContent = 'Today: Dial ' + dial + ' | Prep ' + prep + ' | Appt ' + appt;
-}
-
-function showTab(t, btn) {
   document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on')); btn.classList.add('on');
   document.getElementById('tab-score').style.display = t==='score'?'block':'none';
   document.getElementById('tab-clients').style.display = t==='clients'?'block':'none';
