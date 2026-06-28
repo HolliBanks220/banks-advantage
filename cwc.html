@@ -183,19 +183,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-lbl lbl-white">Dials</div>
         <div class="hint">Tap to edit</div>
         <div class="stat-val val-white" id="s-dials" onclick="startEdit('dials','dark')">0</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.6);margin-top:-4px;margin-bottom:2px;" id="s-dials-per-hr"></div>
         <div class="stat-btns">
           <button class="tap-btn tap-navy" onclick="addStat('dials',1)">+1</button>
           <button class="tap-btn tap-navy" onclick="addStat('dials',3)">+3</button>
         </div>
       </div>
-      <div class="stat stat-teal">
-        <div class="stat-lbl lbl-white">Conversations</div>
-        <div class="hint">Tap to edit</div>
-        <div class="stat-val val-white" id="s-convos" onclick="startEdit('convos','dark')">0</div>
-        <div class="stat-btns">
-          <button class="tap-btn tap-teal" onclick="addStat('convos',1)">+1</button>
-        </div>
-      </div>
+
       <div class="stat stat-navy-lt">
         <div class="stat-lbl lbl-navy">Appts booked</div>
         <div class="hint-lt">Tap to edit</div>
@@ -238,6 +232,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
     </div>
     <div class="divider"></div>
+    <div class="stat-row" style="margin-bottom:4px;">
+      <div class="stat" style="background:#EBF3FF;border:1px solid #B3D1F7;">
+        <div class="stat-lbl" style="color:#1D3557;">Dial time</div>
+        <div class="stat-val" id="s-time-dial" style="color:#1D3557;font-size:18px;">0:00</div>
+      </div>
+      <div class="stat" style="background:#F0FBF7;border:1px solid #9FE1CB;">
+        <div class="stat-lbl" style="color:#138181;">Appt time</div>
+        <div class="stat-val" id="s-time-appt" style="color:#138181;font-size:18px;">0:00</div>
+      </div>
+      <div class="stat" style="background:#F5F3FF;border:1px solid #C4BBEF;">
+        <div class="stat-lbl" style="color:#534AB7;">Admin time</div>
+        <div class="stat-val" id="s-time-admin" style="color:#534AB7;font-size:18px;">0:00</div>
+      </div>
+    </div>
     <div class="section-lbl">Production</div>
     <div class="stat-row">
       <div class="stat stat-navy">
@@ -751,6 +759,33 @@ function renderScore() {
   });
   const textsEl = document.getElementById('s-texts');
   if (textsEl) textsEl.textContent = texts;
+
+  // Time tracking - sum from stats table for the period
+  const dialSecs = sumStat('time_dial_' + aStart.toISOString().slice(0,10) + (aStart.toISOString().slice(0,10) === aEnd.toISOString().slice(0,10) ? '' : '_multi'), aStart, aEnd);
+  // Better: sum all time_dial_ keys in period
+  const timeDialSecs = stats.filter(s => s.stat_key.startsWith('time_dial_') && new Date(s.recorded_at) >= aStart && new Date(s.recorded_at) <= aEnd).reduce((a,s) => a+s.value, 0);
+  const timeApptSecs = stats.filter(s => s.stat_key.startsWith('time_appt_') && new Date(s.recorded_at) >= aStart && new Date(s.recorded_at) <= aEnd).reduce((a,s) => a+s.value, 0);
+  const timeAdminSecs = stats.filter(s => s.stat_key.startsWith('time_admin_') && new Date(s.recorded_at) >= aStart && new Date(s.recorded_at) <= aEnd).reduce((a,s) => a+s.value, 0);
+
+  function fmtHrMin(secs) {
+    const h = Math.floor(secs/3600);
+    const m = Math.floor((secs%3600)/60);
+    return h + ':' + String(m).padStart(2,'0');
+  }
+
+  const dialEl = document.getElementById('s-time-dial');
+  const apptEl = document.getElementById('s-time-appt');
+  const adminEl = document.getElementById('s-time-admin');
+  const dialsPerHrEl = document.getElementById('s-dials-per-hr');
+
+  if (dialEl) dialEl.textContent = fmtHrMin(timeDialSecs);
+  if (apptEl) apptEl.textContent = fmtHrMin(timeApptSecs);
+  if (adminEl) adminEl.textContent = fmtHrMin(timeAdminSecs);
+
+  if (dialsPerHrEl) {
+    const dialHrs = timeDialSecs / 3600;
+    dialsPerHrEl.textContent = dialHrs > 0.1 ? Math.round(dials / dialHrs) + ' dials/hr' : '';
+  }
   document.getElementById('s-resolved').textContent = resolved;
   const assignedInPeriod = clients.filter(c => {
     const d = new Date(c.assigned_date || c.created_at);
