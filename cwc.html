@@ -24,6 +24,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .section-lbl{font-size:10px;font-weight:500;color:#1D3557;text-transform:uppercase;letter-spacing:0.07em;margin:12px 0 6px;}
 .stat-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:6px;}
 .stat-row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-bottom:6px;}
+.board-layout{display:grid;grid-template-columns:1fr;gap:12px;}
+@media(min-width:768px){.board-layout{grid-template-columns:1fr 380px;}}
+.board-right{display:none;}
+@media(min-width:768px){.board-right{display:block;}}
+.goal-sub{font-size:10px;color:rgba(255,255,255,0.55);margin-top:-2px;margin-bottom:2px;cursor:pointer;}
+.goal-sub-lt{font-size:10px;color:#8fa8c0;margin-top:-2px;margin-bottom:2px;cursor:pointer;}
+.goal-bar{height:3px;border-radius:3px;margin:3px 0 2px;background:rgba(255,255,255,0.15);}
+.goal-bar-fill{height:3px;border-radius:3px;background:rgba(255,255,255,0.7);transition:width 0.5s;}
+.goal-bar-lt{height:3px;border-radius:3px;margin:3px 0 2px;background:#e2eaf2;}
+.goal-bar-fill-lt{height:3px;border-radius:3px;transition:width 0.5s;}
+.featured-goal{background:linear-gradient(135deg,#1D3557,#2a4a73);border-radius:10px;padding:10px 14px;margin-bottom:8px;cursor:pointer;}
 .stat{border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:3px;}
 .stat-navy{background:#1D3557;} .stat-teal{background:#138181;}
 .stat-navy-lt{background:#E6F1FB;border:1px solid #B5D4F4;}
@@ -175,151 +186,144 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 
   <div id="tab-score">
-    <div id="alerts-section" style="margin-bottom:4px;"></div>
-    <!-- Hero metric bar -->
-    <div id="hero-metric-bar" style="background:#f8fafc;border:1px solid #e2eaf2;border-radius:10px;padding:10px 12px;margin-bottom:6px;"></div>
-    <!-- Bonus bar (producers 95%+) -->
-    <div id="bonus-bar" style="display:none;"></div>
-    <!-- Mode + goals row -->
-    <div style="display:flex;gap:6px;margin-bottom:8px;">
-      <button onclick="openModeSelector()" style="flex:1;font-size:11px;background:#f0f4f8;border:1px solid #d0dcea;border-radius:6px;padding:5px 8px;color:#5f7a99;cursor:pointer;">⚡ Mode</button>
-      <button onclick="openGoalSetter()" style="flex:1;font-size:11px;background:#f0f4f8;border:1px solid #d0dcea;border-radius:6px;padding:5px 8px;color:#5f7a99;cursor:pointer;">🎯 Goals</button>
-    </div>
-    <div class="section-lbl">Dialing activity</div>
-    <div class="stat-row">
-      <div class="stat stat-navy">
-        <div class="stat-lbl lbl-white">Dials</div>
-        <div class="hint">Tap to edit</div>
-        <div class="stat-val val-white" id="s-dials" onclick="startEdit('dials','dark')">0</div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.6);margin-top:-4px;margin-bottom:2px;" id="s-dials-per-hr"></div>
-        <div class="stat-btns">
-          <button class="tap-btn tap-navy" onclick="addStat('dials',1)">+1</button>
-          <button class="tap-btn tap-navy" onclick="addStat('dials',3)">+3</button>
+    <div class="board-layout">
+      <!-- LEFT COLUMN: Stats -->
+      <div>
+        <div id="alerts-section" style="margin-bottom:6px;"></div>
+
+        <!-- Featured goal bar -->
+        <div id="featured-goal-bar" style="display:none;" class="featured-goal" onclick="openFeaturedGoalPicker()"></div>
+
+        <!-- Bonus bar -->
+        <div id="bonus-bar" style="display:none;margin-bottom:6px;"></div>
+
+        <!-- ACTIVITY ROW -->
+        <div class="section-lbl">Activity</div>
+        <div class="stat-row" style="margin-bottom:6px;">
+          <div class="stat stat-navy">
+            <div class="stat-lbl lbl-white">Dials</div>
+            <div class="hint">Tap to edit</div>
+            <div class="stat-val val-white" id="s-dials" onclick="startEdit('dials','dark')">0</div>
+            <div class="goal-sub" id="s-dials-goal" onclick="openCardGoal('dials')">tap ⊕ to set goal</div>
+            <div class="goal-bar" id="s-dials-goal-bar" style="display:none;"><div class="goal-bar-fill" id="s-dials-goal-fill" style="width:0%"></div></div>
+            <div style="font-size:9px;color:rgba(255,255,255,0.45);margin-bottom:2px;" id="s-dials-per-hr"></div>
+            <div class="stat-btns">
+              <button class="tap-btn tap-navy" onclick="addStat('dials',1)">+1</button>
+              <button class="tap-btn tap-navy" onclick="addStat('dials',3)">+3</button>
+            </div>
+          </div>
+          <div class="stat stat-navy-lt">
+            <div class="stat-lbl lbl-navy">Appts booked</div>
+            <div class="hint-lt">Tap to edit</div>
+            <div class="stat-val val-navy" id="s-appts" onclick="startEdit('appts','navy')">0</div>
+            <div class="goal-sub-lt" id="s-appts-goal" onclick="openCardGoal('appts')">tap ⊕ to set goal</div>
+            <div class="goal-bar-lt" id="s-appts-goal-bar" style="display:none;"><div class="goal-bar-fill-lt" id="s-appts-goal-fill" style="width:0%;background:#1D3557;"></div></div>
+            <div class="stat-btns">
+              <button class="tap-btn tap-lt-navy" onclick="addStat('appts',1)">+1</button>
+            </div>
+          </div>
+          <div class="stat stat-amber">
+            <div class="stat-lbl lbl-amber">Callbacks</div>
+            <div class="hint-lt">Tap to edit</div>
+            <div class="stat-val val-amber" id="s-callbacks" onclick="startEdit('callbacks','amber')">0</div>
+            <div class="stat-btns">
+              <button class="tap-btn tap-amber" onclick="addStat('callbacks',1)">+1</button>
+              <button class="tap-btn tap-amber" onclick="drillDown('callbacks')" style="font-size:10px;">who?</button>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="stat stat-navy-lt">
-        <div class="stat-lbl lbl-navy">Appts booked</div>
-        <div class="hint-lt">Tap to edit</div>
-        <div class="stat-val val-navy" id="s-appts" onclick="startEdit('appts','navy')">0</div>
-        <div class="stat-btns">
-          <button class="tap-btn tap-lt-navy" onclick="addStat('appts',1)">+1</button>
+
+        <!-- PRODUCTION ROW -->
+        <div class="section-lbl">Production</div>
+        <div class="stat-row" style="margin-bottom:6px;">
+          <div class="stat stat-teal">
+            <div class="stat-lbl lbl-white">Sits</div>
+            <div class="stat-val val-white" id="p-showed" style="cursor:pointer;" onclick="drillDown('showed')">0</div>
+            <div class="goal-sub" id="s-sits-goal" onclick="openCardGoal('sits')">tap ⊕ to set goal</div>
+            <div class="goal-bar" id="s-sits-goal-bar" style="display:none;"><div class="goal-bar-fill" id="s-sits-goal-fill" style="width:0%"></div></div>
+          </div>
+          <div class="stat stat-teal">
+            <div class="stat-lbl lbl-white">Sales</div>
+            <div class="stat-val val-white" id="p-sales" style="cursor:pointer;" onclick="drillDown('sales')">0</div>
+            <div class="stat-sub sub-white" id="p-sales-sub">- close rate</div>
+          </div>
+          <div class="stat stat-green">
+            <div class="stat-lbl lbl-green">Apps written</div>
+            <div class="stat-val val-green" id="p-closed">0</div>
+            <div class="goal-sub-lt" id="s-apps-goal" onclick="openCardGoal('apps_written')">tap ⊕ to set goal</div>
+            <div class="goal-bar-lt" id="s-apps-goal-bar" style="display:none;"><div class="goal-bar-fill-lt" id="s-apps-goal-fill" style="width:0%;background:#27500A;"></div></div>
+            <div class="stat-sub sub-green" id="p-close-rate">- avg/household</div>
+          </div>
         </div>
-      </div>
-      <div class="stat stat-red">
-        <div class="stat-lbl lbl-red">Not interested</div>
-        <div class="hint-lt">Tap to edit</div>
-        <div class="stat-val val-red" id="s-dead" onclick="startEdit('dead','red')">0</div>
-        <div class="stat-btns">
-          <button class="tap-btn tap-red" onclick="addStat('dead',1)">+1</button>
+
+        <!-- APV + OUTCOMES ROW -->
+        <div class="stat-row" style="margin-bottom:6px;">
+          <div class="stat stat-teal" style="grid-column:span 2;">
+            <div class="stat-lbl lbl-white">Written APV</div>
+            <div class="stat-val val-white" id="p-apv" style="font-size:22px;">$0</div>
+            <div class="goal-sub" id="s-apv-goal" onclick="openCardGoal('apv')">tap ⊕ to set goal</div>
+            <div class="goal-bar" id="s-apv-goal-bar" style="display:none;"><div class="goal-bar-fill" id="s-apv-goal-fill" style="width:0%"></div></div>
+            <div class="stat-sub sub-white" id="p-apv-hh-sub">$0 / sale</div>
+            <div style="font-size:9px;color:rgba(255,255,255,0.45);" id="p-apv-alltime"></div>
+          </div>
+          <div class="stat stat-navy-lt">
+            <div class="stat-lbl lbl-navy">No Shows</div>
+            <div class="stat-val val-navy" id="p-noshow" style="cursor:pointer;" onclick="drillDown('noshow')">0</div>
+            <div class="stat-sub sub-navy" id="p-first-rate">- show rate</div>
+          </div>
         </div>
-      </div>
-    </div>
-    <div class="stat-row">
-      <div class="stat" style="background:#F0FBF7;border:1px solid #9FE1CB;">
-        <div class="stat-lbl" style="color:#138181;">Texts sent</div>
-        <div class="stat-val" id="s-texts" style="color:#138181;">0</div>
-        <div class="stat-btns">
-          <button class="tap-btn" style="background:#138181;color:#fff;" onclick="addStat('texts',1)">+1</button>
+
+        <!-- SECONDARY ROW -->
+        <div class="stat-row" style="margin-bottom:6px;">
+          <div class="stat" style="background:#F0FBF7;border:1px solid #9FE1CB;">
+            <div class="stat-lbl" style="color:#138181;">Texts sent</div>
+            <div class="stat-val" id="s-texts" style="color:#138181;">0</div>
+            <div class="stat-btns">
+              <button class="tap-btn" style="background:#138181;color:#fff;" onclick="addStat('texts',1)">+1</button>
+            </div>
+          </div>
+          <div class="stat stat-red">
+            <div class="stat-lbl lbl-red">Not interested</div>
+            <div class="hint-lt">Tap to edit</div>
+            <div class="stat-val val-red" id="s-dead" onclick="startEdit('dead','red')">0</div>
+            <div class="stat-btns">
+              <button class="tap-btn tap-red" onclick="addStat('dead',1)">+1</button>
+            </div>
+          </div>
+          <div class="stat stat-green">
+            <div class="stat-lbl lbl-green">Resolved</div>
+            <div class="stat-val val-green" id="s-resolved">0</div>
+            <div class="stat-sub sub-green" id="s-resolved-pct">-</div>
+            <div class="stat-sub" style="color:#639922;" id="s-resolved-fresh"></div>
+          </div>
         </div>
-      </div>
-      <div class="stat stat-amber">
-        <div class="stat-lbl lbl-amber">Callbacks</div>
-        <div class="hint-lt">Tap to edit</div>
-        <div class="stat-val val-amber" id="s-callbacks" onclick="startEdit('callbacks','amber')">0</div>
-        <div class="stat-btns">
-          <button class="tap-btn tap-amber" onclick="addStat('callbacks',1)">+1</button>
-          <button class="tap-btn tap-amber" onclick="drillDown('callbacks')" style="font-size:10px;">who?</button>
+
+        <!-- TIME ROW (compact) -->
+        <div style="display:flex;gap:6px;margin-bottom:6px;" onclick="openTimeSummary()" style="cursor:pointer;">
+          <div style="flex:1;background:#EBF3FF;border:1px solid #B3D1F7;border-radius:8px;padding:6px 8px;cursor:pointer;">
+            <div style="font-size:9px;color:#1D3557;font-weight:600;">DIAL</div>
+            <div style="font-size:14px;font-weight:600;color:#1D3557;" id="s-time-dial">0:00</div>
+          </div>
+          <div style="flex:1;background:#F0FBF7;border:1px solid #9FE1CB;border-radius:8px;padding:6px 8px;cursor:pointer;">
+            <div style="font-size:9px;color:#138181;font-weight:600;">APPT</div>
+            <div style="font-size:14px;font-weight:600;color:#138181;" id="s-time-appt">0:00</div>
+          </div>
+          <div style="flex:1;background:#F5F3FF;border:1px solid #C4BBEF;border-radius:8px;padding:6px 8px;cursor:pointer;">
+            <div style="font-size:9px;color:#534AB7;font-weight:600;">ADMIN</div>
+            <div style="font-size:14px;font-weight:600;color:#534AB7;" id="s-time-admin">0:00</div>
+          </div>
+          <div style="flex:1;background:#f0f4f8;border:1px solid #d0dcea;border-radius:8px;padding:6px 8px;cursor:pointer;">
+            <div style="font-size:9px;color:#5f7a99;font-weight:600;">PPU</div>
+            <div style="font-size:14px;font-weight:600;color:#5f7a99;" id="p-ppu">0</div>
+          </div>
+          <div style="flex:1;background:#f0f4f8;border:1px solid #d0dcea;border-radius:8px;padding:6px 8px;cursor:pointer;">
+            <div style="font-size:9px;color:#534AB7;font-weight:600;">RESETS</div>
+            <div style="font-size:14px;font-weight:600;color:#534AB7;" id="p-resets">0</div>
+          </div>
         </div>
-      </div>
-      <div class="stat stat-green">
-        <div class="stat-lbl lbl-green">Resolved</div>
-        <div class="stat-val val-green" id="s-resolved">0</div>
-        <div class="stat-sub sub-green" id="s-resolved-pct">0% of convos</div>
-        <div class="stat-sub" style="color:#639922;" id="s-resolved-fresh">0 fresh</div>
-      </div>
-    </div>
-    <div class="divider"></div>
-    <div class="stat-row">
-      <div class="stat" style="background:#EBF3FF;border:1px solid #B3D1F7;">
-        <div class="stat-lbl" style="color:#1D3557;">Dial time</div>
-        <div class="stat-val" id="s-time-dial" style="color:#1D3557;font-size:18px;">0:00</div>
-      </div>
-      <div class="stat" style="background:#F0FBF7;border:1px solid #9FE1CB;">
-        <div class="stat-lbl" style="color:#138181;">Appt time</div>
-        <div class="stat-val" id="s-time-appt" style="color:#138181;font-size:18px;">0:00</div>
-      </div>
-      <div class="stat" style="background:#F5F3FF;border:1px solid #C4BBEF;">
-        <div class="stat-lbl" style="color:#534AB7;">Admin time</div>
-        <div class="stat-val" id="s-time-admin" style="color:#534AB7;font-size:18px;">0:00</div>
-      </div>
-    </div>
-    <div class="section-lbl">Production</div>
-    <div class="stat-row">
-      <div class="stat stat-navy">
-        <div class="stat-lbl lbl-white">Appts</div>
-        <div class="stat-val val-white" id="p-first" style="cursor:pointer;" onclick="drillDown('appts')">0</div>
-        <div class="stat-sub sub-white" id="p-first-rate">- show rate</div>
-      </div>
-      <div class="stat stat-teal">
-        <div class="stat-lbl lbl-white">Sits</div>
-        <div class="stat-val val-white" id="p-showed" style="cursor:pointer;" onclick="drillDown('showed')">0</div>
-        <div class="stat-sub sub-white" id="p-sit-rate">- close rate</div>
-      </div>
-      <div class="stat stat-amber">
-        <div class="stat-lbl lbl-amber">No Shows</div>
-        <div class="stat-val val-amber" id="p-noshow" style="cursor:pointer;" onclick="drillDown('noshow')">0</div>
-        <div class="stat-sub" style="color:#854F0B;" id="p-cancel">-</div>
-      </div>
-    </div>
-    <div class="stat-row">
-      <div class="stat stat-teal">
-        <div class="stat-lbl lbl-white">Sales</div>
-        <div class="stat-val val-white" id="p-sales" style="cursor:pointer;" onclick="drillDown('sales')">0</div>
-        <div class="stat-sub sub-white" id="p-sales-sub">- of sits</div>
-      </div>
-      <div class="stat stat-red">
-        <div class="stat-lbl lbl-red">No Sales</div>
-        <div class="stat-val val-red" id="p-nosales" style="cursor:pointer;" onclick="drillDown('nosales')">0</div>
-        <div class="stat-sub" style="color:#791F1F;" id="p-nosales-sub">-</div>
-      </div>
-      <div class="stat stat-navy-lt">
-        <div class="stat-lbl lbl-navy">Continuations</div>
-        <div class="stat-val val-navy" id="p-cont" style="cursor:pointer;" onclick="drillDown('cont')">0</div>
-        <div class="stat-sub sub-navy" id="p-cont-sub">-</div>
-      </div>
-    </div>
-    <div class="stat-row">
-      <div class="stat stat-amber">
-        <div class="stat-lbl lbl-amber">PPUs</div>
-        <div class="stat-val val-amber" id="p-ppu" style="cursor:pointer;" onclick="drillDown('ppu')">0</div>
-        <div class="stat-sub" style="color:#854F0B;" id="p-ppu-sub">- sold</div>
-      </div>
-      <div class="stat stat-purple">
-        <div class="stat-lbl lbl-purple">Resets</div>
-        <div class="stat-val val-purple" id="p-resets" style="cursor:pointer;" onclick="drillDown('resets')">0</div>
-        <div class="stat-sub" style="color:#3C3489;" id="p-resets-sub">-</div>
-      </div>
-      <div class="stat stat-green">
-        <div class="stat-lbl lbl-green">Apps written</div>
-        <div class="stat-val val-green" id="p-closed">0</div>
-        <div class="stat-sub sub-green" id="p-close-rate">-</div>
-      </div>
-    </div>
-    <div class="stat-row2">
-      <div class="stat stat-teal">
-        <div class="stat-lbl lbl-white">Written APV</div>
-        <div class="stat-val val-white" id="p-apv">$0</div>
-        <div class="stat-sub sub-white" id="p-apps">0 applications</div>
-        <div class="stat-sub" style="color:rgba(255,255,255,0.45);font-size:9px;" id="p-apv-alltime"></div>
-      </div>
-      <div class="stat stat-navy-lt">
-        <div class="stat-lbl lbl-navy">APV / Sale</div>
-        <div class="stat-val val-navy" id="p-apv-hh">$0</div>
-        <div class="stat-sub sub-navy" id="p-apv-ppu">$0 / PPU sale</div>
-      </div>
-    </div>
 
   <!-- MIA vs CIA comparison panel -->
+  <div id="source-comparison" style="margin-top:4px;">  <!-- MIA vs CIA comparison panel -->
   <div id="source-comparison" style="margin-top:4px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 6px;">
       <div class="section-lbl" style="margin:0;">Lead source comparison</div>
@@ -357,9 +361,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div style="font-size:15px;font-weight:500;color:#fff;" id="cia-avg-apv">-</div>
       </div>
     </div>
-  </div>
-  </div>
+        </div>
+      </div>
 
+      <!-- RIGHT COLUMN: Tasks + Calendar (desktop only) -->
+      <div class="board-right">
+        <!-- Tasks -->
+        <div style="background:#fff;border:1px solid #e2eaf2;border-radius:12px;padding:12px;margin-bottom:12px;">
+          <div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Tasks</div>
+          <div id="task-list-board"></div>
+          <div style="display:flex;gap:6px;margin-top:8px;">
+            <input type="text" id="task-input-board" placeholder="Add a task..." style="flex:1;font-size:12px;border:1px solid #e2eaf2;border-radius:6px;padding:6px 8px;" onkeydown="if(event.key==='Enter')addTaskFromBoard()">
+            <button onclick="addTaskFromBoard()" style="background:#138181;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;">+</button>
+          </div>
+        </div>
+        <!-- Today & Upcoming -->
+        <div style="background:#fff;border:1px solid #e2eaf2;border-radius:12px;padding:12px;">
+          <div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">[CAL] Today & Upcoming</div>
+          <div id="sidebar-appts-board"></div>
+        </div>
+      </div>
+    </div><!-- end board-layout -->
   <div id="tab-clients" style="display:none;">
     <div class="leads-hdr">
       <div style="font-size:13px;font-weight:500;color:#1D3557;" id="client-count">Loading...</div>
@@ -788,6 +810,9 @@ function renderScore() {
   });
   const textsEl = document.getElementById('s-texts');
   if (textsEl) textsEl.textContent = texts;
+  // Update goal displays
+  updateCardGoalDisplay('dials', dials);
+  updateCardGoalDisplay('appts', appts);
 
   // Time tracking - sum from stats table for the period
   const dialSecs = sumStat('time_dial_' + aStart.toISOString().slice(0,10) + (aStart.toISOString().slice(0,10) === aEnd.toISOString().slice(0,10) ? '' : '_multi'), aStart, aEnd);
@@ -935,8 +960,9 @@ function renderScore() {
   renderSourceComparison(pStart, pEnd, label);
 
   renderAlerts();
-  renderHeroMetric();
+  renderFeaturedGoal();
   renderBonusBar();
+  renderBoardRight();
 }
 
 function renderSourceComparison(pStart, pEnd, label) {
@@ -4953,6 +4979,218 @@ function checkGoalCelebration(metric) {
   showSync('🎉 Goal hit! Amazing work!');
   setTimeout(hideSync, 3000);
 }
+
+// ── CARD GOALS SYSTEM ────────────────────────────────────────────────────────
+function getCardGoal(metric, period) {
+  const settings = getAgentSettings();
+  const p = period || getCurrentPeriod();
+  return ((settings.cardGoals || {})[metric] || {})[p] || 0;
+}
+
+function getCurrentPeriod() {
+  const active = document.querySelector('.pill.on');
+  return active ? active.textContent.toLowerCase().trim() : 'week';
+}
+
+function openCardGoal(metric) {
+  const period = getCurrentPeriod();
+  const current = getCardGoal(metric, period);
+  const labels = {dials:'Dials', appts:'Appts booked', sits:'Sits', apps_written:'Apps written', apv:'Written APV ($)'};
+  const label = labels[metric] || metric;
+
+  showModal(
+    '<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">Set ' + label + ' goal</div>' +
+    '<div style="font-size:11px;color:#8fa8c0;margin-bottom:12px;">For the current ' + period + ' view.</div>' +
+    '<div class="field"><label>' + label + ' goal</label>' +
+      '<input type="number" id="card-goal-input" value="' + (current||'') + '" placeholder="e.g. ' + (metric==='apv'?'40000':metric==='dials'?'200':'10') + '" style="font-size:18px;">' +
+    '</div>' +
+    '<div style="display:flex;gap:8px;margin-top:8px;">' +
+      '<button onclick="saveCardGoal(\'' + metric + '\',\'' + period + '\')" style="flex:1;background:#138181;color:#fff;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;">Save</button>' +
+      '<button onclick="saveCardGoal(\'' + metric + '\',\'' + period + '\',true)" style="background:#f0f4f8;color:#5f7a99;border:none;border-radius:8px;padding:12px;font-size:13px;cursor:pointer;">Clear</button>' +
+    '</div>' +
+    '<div style="margin-top:12px;font-size:10px;color:#8fa8c0;">Also feature this as your main goal?</div>' +
+    '<button onclick="setFeaturedGoal(\'' + metric + '\');closeModal()" style="width:100%;background:#1D3557;color:#fff;border:none;border-radius:8px;padding:8px;font-size:12px;cursor:pointer;margin-top:4px;">⭐ Feature this goal</button>'
+  );
+  setTimeout(() => { const el = document.getElementById('card-goal-input'); if(el) el.focus(); }, 100);
+}
+
+async function saveCardGoal(metric, period, clear) {
+  const settings = getAgentSettings();
+  if (!settings.cardGoals) settings.cardGoals = {};
+  if (!settings.cardGoals[metric]) settings.cardGoals[metric] = {};
+  if (clear) {
+    delete settings.cardGoals[metric][period];
+  } else {
+    const val = parseFloat(document.getElementById('card-goal-input').value) || 0;
+    settings.cardGoals[metric][period] = val;
+  }
+  await saveAgentSettings(settings);
+  closeModal();
+  renderScore();
+}
+
+function setFeaturedGoal(metric) {
+  const settings = getAgentSettings();
+  settings.featuredGoal = metric;
+  saveAgentSettings(settings);
+  renderFeaturedGoal();
+}
+
+function getFeaturedGoal() {
+  return getAgentSettings().featuredGoal || null;
+}
+
+function renderFeaturedGoal() {
+  const el = document.getElementById('featured-goal-bar');
+  if (!el) return;
+  const metric = getFeaturedGoal();
+  if (!metric) { el.style.display = 'none'; return; }
+
+  const period = getCurrentPeriod();
+  const goal = getCardGoal(metric, period);
+  if (!goal) { el.style.display = 'none'; return; }
+
+  el.style.display = 'block';
+  const labels = {dials:'Dials', appts:'Appts booked', sits:'Sits', apps_written:'Apps written', apv:'Written APV'};
+
+  // Get current value
+  const {start: aStart, end: aEnd} = getPeriodBounds('activity');
+  const {start: pStart, end: pEnd} = getPeriodBounds('production');
+  let current = 0;
+
+  if (metric === 'dials') current = sumStat('dials', aStart, aEnd);
+  else if (metric === 'appts') current = sumStat('appts', aStart, aEnd);
+  else if (metric === 'sits') {
+    current = clients.reduce((a, c) => a + (c.cases||[]).reduce((b, cs) =>
+      b + (cs.touchpoints||[]).filter(tp => tp.outcome && ['sale','nosale','cont'].includes(tp.outcome) &&
+        new Date(tp.datetime) >= pStart && new Date(tp.datetime) <= pEnd).length, 0), 0);
+  } else if (metric === 'apps_written') {
+    current = clients.reduce((a, c) => a + (c.cases||[]).reduce((b, cs) =>
+      b + (cs.touchpoints||[]).reduce((d, tp) => {
+        const d2 = new Date(tp.datetime||0);
+        return d2 >= pStart && d2 <= pEnd ? d + (tp.apps||[]).length : d;
+      }, 0), 0), 0);
+  } else if (metric === 'apv') {
+    current = clients.reduce((a, c) => a + (c.cases||[]).reduce((b, cs) =>
+      b + (cs.touchpoints||[]).reduce((d, tp) => {
+        const d2 = new Date(tp.datetime||0);
+        return d2 >= pStart && d2 <= pEnd ? d + (tp.apps||[]).reduce((e, ap) => e+(ap.premium||0), 0) : d;
+      }, 0), 0), 0);
+  }
+
+  const pct = Math.min(100, Math.round((current/goal)*100));
+  const hit = pct >= 100;
+  const displayCurrent = metric === 'apv' ? '$' + current.toLocaleString() : current;
+  const displayGoal = metric === 'apv' ? '$' + goal.toLocaleString() : goal;
+
+  el.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+      '<div style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.06em;">' +
+        (hit ? '🎉 ' : '⭐ ') + labels[metric] + ' goal · ' + period + '</div>' +
+      '<div style="font-size:14px;font-weight:700;color:#fff;">' + displayCurrent + ' / ' + displayGoal + '</div>' +
+    '</div>' +
+    '<div style="background:rgba(255,255,255,0.15);border-radius:20px;height:8px;overflow:hidden;">' +
+      '<div style="background:' + (hit?'#9FE1CB':'rgba(255,255,255,0.8)') + ';width:' + pct + '%;height:100%;border-radius:20px;transition:width 0.5s;"></div>' +
+    '</div>' +
+    (hit ? '<div style="font-size:10px;color:#9FE1CB;margin-top:4px;font-weight:600;">Goal crushed! 🎉</div>' :
+           '<div style="font-size:10px;color:rgba(255,255,255,0.55);margin-top:4px;">' + (goal-current > 0 ? (metric==='apv'?'$'+Math.round(goal-current).toLocaleString():Math.round(goal-current)) + ' to go' : 'So close!') + '</div>');
+}
+
+function openFeaturedGoalPicker() {
+  const settings = getAgentSettings();
+  const goals = settings.cardGoals || {};
+  const period = getCurrentPeriod();
+  const metrics = ['dials','appts','sits','apps_written','apv'];
+  const labels = {dials:'Dials', appts:'Appts booked', sits:'Sits', apps_written:'Apps written', apv:'Written APV'};
+  const current = settings.featuredGoal;
+
+  let html = '<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">⭐ Featured goal</div>' +
+    '<div style="font-size:11px;color:#8fa8c0;margin-bottom:12px;">Pick one goal to feature at the top of your board.</div>';
+
+  const container = document.createElement('div');
+  metrics.forEach(m => {
+    const goal = (goals[m]||{})[period];
+    const isSelected = current === m;
+    if (!goal) return;
+    const div = document.createElement('div');
+    div.style.cssText = 'border:2px solid ' + (isSelected?'#138181':'#e2eaf2') + ';border-radius:8px;padding:10px 12px;margin-bottom:6px;cursor:pointer;background:' + (isSelected?'#F0FBF7':'#fff') + ';';
+    div.innerHTML = '<div style="display:flex;justify-content:space-between;">' +
+      '<div style="font-size:12px;font-weight:600;color:#1D3557;">' + labels[m] + '</div>' +
+      (isSelected ? '<div style="font-size:11px;color:#138181;">⭐ Featured</div>' : '') +
+    '</div>' +
+    '<div style="font-size:11px;color:#5f7a99;">Goal: ' + (m==='apv'?'$'+goal.toLocaleString():goal) + ' / ' + period + '</div>';
+    div.addEventListener('click', (function(metric){ return function(){ setFeaturedGoal(metric); closeModal(); }; })(m));
+    container.appendChild(div);
+  });
+  html += container.outerHTML;
+
+  html += '<button onclick="clearFeaturedGoal();closeModal()" style="width:100%;background:#f0f4f8;color:#5f7a99;border:none;border-radius:8px;padding:8px;font-size:12px;cursor:pointer;margin-top:8px;">Remove featured goal</button>';
+  showModal(html);
+}
+
+function clearFeaturedGoal() {
+  const settings = getAgentSettings();
+  delete settings.featuredGoal;
+  saveAgentSettings(settings);
+  renderFeaturedGoal();
+}
+
+// Update goal sub-lines in stat cards
+function updateCardGoalDisplay(metric, current) {
+  const period = getCurrentPeriod();
+  const goal = getCardGoal(metric, period);
+  const idMap = {dials:'s-dials', appts:'s-appts', sits:'s-sits', apps_written:'s-apps', apv:'s-apv'};
+  const goalEl = document.getElementById(idMap[metric] + '-goal');
+  const barEl = document.getElementById(idMap[metric] + '-goal-bar');
+  const fillEl = document.getElementById(idMap[metric] + '-goal-fill');
+
+  if (!goalEl) return;
+  if (!goal) {
+    goalEl.textContent = 'tap ⊕ to set goal';
+    if (barEl) barEl.style.display = 'none';
+    return;
+  }
+
+  const pct = Math.min(100, Math.round((current/goal)*100));
+  const isAPV = metric === 'apv';
+  const displayCurrent = isAPV ? '$' + Math.round(current).toLocaleString() : current;
+  const displayGoal = isAPV ? '$' + goal.toLocaleString() : goal;
+
+  goalEl.textContent = displayCurrent + ' / ' + displayGoal;
+  if (barEl) barEl.style.display = 'block';
+  if (fillEl) fillEl.style.width = pct + '%';
+
+  // Celebrate on hit
+  if (pct >= 100 && current > 0) {
+    goalEl.textContent = '🎉 ' + displayCurrent + ' / ' + displayGoal;
+  }
+}
+
+// Populate right column board tasks and calendar
+function renderBoardRight() {
+  // Tasks
+  const taskBoardEl = document.getElementById('task-list-board');
+  const taskListEl = document.getElementById('task-list');
+  if (taskBoardEl && taskListEl) {
+    taskBoardEl.innerHTML = taskListEl.innerHTML;
+  }
+  // Calendar
+  const calBoardEl = document.getElementById('sidebar-appts-board');
+  const sidebarEl = document.getElementById('sidebar-appts');
+  if (calBoardEl && sidebarEl) {
+    calBoardEl.innerHTML = sidebarEl.innerHTML;
+  }
+}
+
+function addTaskFromBoard() {
+  const input = document.getElementById('task-input-board');
+  if (!input) return;
+  const taskInput = document.getElementById('task-input');
+  if (taskInput) { taskInput.value = input.value; addTask(); input.value = ''; }
+}
+
 </script>
 </body>
 </html>
