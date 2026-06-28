@@ -1953,12 +1953,25 @@ async function confirmSitOutcome(id, ci, outcome) {
   else if (outcome === 'noshow') { newStatus = 'No show'; }
   else if (outcome === 'cont') { newStatus = 'Appointment set'; newApptDt = nextDt; newApptNotes = (ppu?'PPU ':'') + 'Continuation'; }
 
-  const updatePayload = {cases, status:newStatus};
+  // Also log to call_log so urgency/alert system can track it
+  const callLog = [...(c.call_log||[])];
+  if (outcome === 'noshow') {
+    callLog.push({ts: sitDatetime, outcome: 'No show', dials: 0});
+  } else if (outcome === 'sale') {
+    callLog.push({ts: sitDatetime, outcome: 'Sale', dials: 0});
+  } else if (outcome === 'nosale') {
+    callLog.push({ts: sitDatetime, outcome: 'No sale', dials: 0});
+  } else if (outcome === 'cont') {
+    callLog.push({ts: sitDatetime, outcome: 'Continuation', dials: 0});
+  }
+
+  const updatePayload = {cases, status:newStatus, call_log:callLog};
   if (outcome === 'nosale') { updatePayload.appt_datetime = null; updatePayload.appt_notes = null; }
   else if (outcome === 'cont' && nextDt) { updatePayload.appt_datetime = nextDt; updatePayload.appt_notes = newApptNotes; }
 
   showSync('Saving...');
   await sb.from('clients').update(updatePayload).eq('id',id);
+  c.call_log = callLog;
   Object.assign(c, {cases, status:newStatus, appt_datetime:newApptDt, appt_notes:newApptNotes});
   hideSync();
 
