@@ -1513,9 +1513,14 @@ function getUrgencyScore(c) {
   // Tier 2: Callback overdue (score 10-19)
   if (isCallbackOverdue(c)) return tzPenalty + 10;
 
-  // Tier 3: No show needs follow-up (2-4 hrs, score 20-29)
+  // Tier 3: No show needs follow-up
   const hrsSinceNS = getHoursSinceNoShow(c);
-  if (noShowCount > 0 && hrsSinceNS >= 2 && hrsSinceNS <= 48) return tzPenalty + 20;
+  // 3x no show - final attempt window (3 days)
+  if (noShowCount >= 3 && hrsSinceNS >= 2 && hrsSinceNS <= 72) return tzPenalty + 22;
+  // 2x no show - shorter window (same day + next day)
+  if (noShowCount === 2 && hrsSinceNS >= 2 && hrsSinceNS <= 48) return tzPenalty + 21;
+  // 1x no show - standard window (2-4 hrs same day)
+  if (noShowCount === 1 && hrsSinceNS >= 2 && hrsSinceNS <= 48) return tzPenalty + 20;
 
   // Tier 4: Urgent fresh — day 3-4, under 4 attempts (score 30-39)
   if (days >= 3 && days <= 4 && attempts < 4) return tzPenalty + 30 + (4 - attempts);
@@ -1548,7 +1553,9 @@ function getUrgencyBadge(c) {
 
   if (isCallbackToday(c)) return {label:'📞 Callback today', color:'#BA7517', bg:'#FFF8E6'};
   if (isCallbackOverdue(c)) return {label:'⚠️ Callback overdue', color:'#A32D2D', bg:'#FFF5F5'};
-  if (noShowCount > 0 && hrsSinceNS >= 2 && hrsSinceNS <= 48) return {label:'📵 Follow up now', color:'#A32D2D', bg:'#FFF5F5'};
+  if (noShowCount >= 3 && hrsSinceNS >= 2 && hrsSinceNS <= 72) return {label:'📵 3x NS — final attempt', color:'#A32D2D', bg:'#FFF5F5'};
+  if (noShowCount === 2 && hrsSinceNS >= 2 && hrsSinceNS <= 48) return {label:'📵 2x NS — follow up now', color:'#A32D2D', bg:'#FFF5F5'};
+  if (noShowCount === 1 && hrsSinceNS >= 2 && hrsSinceNS <= 48) return {label:'📵 Follow up now', color:'#A32D2D', bg:'#FFF5F5'};
   if (days >= 3 && days <= 4 && attempts < 4) return {label:'🔥 Urgent — last fresh days', color:'#A32D2D', bg:'#FFF5F5'};
   if (days >= 2 && attempts < 2) return {label:'⚡ Needs first contact', color:'#BA7517', bg:'#FFF8E6'};
   if (attempts === 0) return {label:'🆕 Not contacted', color:'#534AB7', bg:'#F5F3FF'};
@@ -1591,12 +1598,13 @@ function renderAlerts() {
   const cbOverdue = clients.filter(c => isCallbackOverdue(c) && c.status !== 'Dead');
   if (cbOverdue.length) alerts.push({label: '📞 ' + cbOverdue.length + ' callback' + (cbOverdue.length>1?'s':'') + ' overdue', color:'#A32D2D', bg:'#FFF5F5', filter:'working'});
 
-  // No show needs follow-up
-  const nsFollowup = clients.filter(c => {
-    const hrs = getHoursSinceNoShow(c);
-    return hrs >= 2 && hrs <= 48 && c.status === 'No show';
-  });
-  if (nsFollowup.length) alerts.push({label: '📵 ' + nsFollowup.length + ' no show' + (nsFollowup.length>1?'s':'') + ' need follow-up', color:'#A32D2D', bg:'#FFF5F5', filter:'noshow'});
+  // No show needs follow-up (broken down by count)
+  const ns1x = clients.filter(c => { const hrs = getHoursSinceNoShow(c); return hrs >= 2 && hrs <= 48 && c.status === 'No show' && getNoShowCount(c) === 1; });
+  const ns2x = clients.filter(c => { const hrs = getHoursSinceNoShow(c); return hrs >= 2 && hrs <= 48 && c.status === 'No show' && getNoShowCount(c) === 2; });
+  const ns3x = clients.filter(c => { const hrs = getHoursSinceNoShow(c); return hrs >= 2 && hrs <= 72 && c.status === 'No show' && getNoShowCount(c) >= 3; });
+  if (ns3x.length) alerts.push({label: '📵 ' + ns3x.length + ' lead' + (ns3x.length>1?'s':'') + ' — 3x no show (final attempt)', color:'#A32D2D', bg:'#FFF5F5', filter:'noshow'});
+  if (ns2x.length) alerts.push({label: '📵 ' + ns2x.length + ' lead' + (ns2x.length>1?'s':'') + ' — 2x no show follow-up', color:'#A32D2D', bg:'#FFF5F5', filter:'noshow'});
+  if (ns1x.length) alerts.push({label: '📵 ' + ns1x.length + ' no show' + (ns1x.length>1?'s':'') + ' need follow-up', color:'#A32D2D', bg:'#FFF5F5', filter:'noshow'});
 
   // Urgent fresh
   const urgentFresh = clients.filter(c => {
@@ -2549,6 +2557,24 @@ const TEXT_TEMPLATES = [
     label: 'Missed call at appt time',
     stage: ['appt', 'noshow'],
     text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli. I tried calling for our appointment — what\'s your schedule looking like these next couple of days?`
+  },
+  {
+    id: 'noshow_2x',
+    label: '2nd no-show follow-up',
+    stage: ['noshow_2x'],
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli. We\'ve missed each other a couple of times now — I still want to make sure you have the information you need. Is there a better time for us to connect?`
+  },
+  {
+    id: 'noshow_2x_text',
+    label: 'Text if no answer (2nd no-show)',
+    stage: ['noshow_2x'],
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli. I\'ve tried reaching you a couple of times — is it still a priority to protect your home and equity for your loved ones?`
+  },
+  {
+    id: 'noshow_3x',
+    label: 'Final attempt (3rd no-show)',
+    stage: ['noshow_3x'],
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli. I\'ve made several attempts to connect — is protecting ${c.address||'your home'} still something you want to take care of? This will be my last reach out unless I hear back.`
   }
 ];
 
@@ -2564,8 +2590,9 @@ function getLeadTextStage(c) {
   const apptTime = hasAppt ? new Date(c.appt_datetime) : null;
   const minsToAppt = apptTime ? (apptTime - now) / 60000 : 999;
   const isAtApptTime = minsToAppt >= -30 && minsToAppt <= 120;
+  const nsCount = getNoShowCount(c);
 
-  if (isNoShow) return 'noshow';
+  if (isNoShow) return nsCount >= 3 ? 'noshow_3x' : nsCount === 2 ? 'noshow_2x' : 'noshow';
   if (hasAppt && isAtApptTime) return 'appt';
   if (hasConvo) return 'spoken';
   return 'never_spoken';
