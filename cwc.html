@@ -173,10 +173,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
   <div id="tab-score">
     <div id="alerts-section" style="margin-bottom:4px;"></div>
-    <div id="time-summary-bar" onclick="openTimeSummary()" style="display:flex;justify-content:space-between;align-items:center;background:#f0f4f8;border-radius:8px;padding:6px 10px;margin-bottom:6px;cursor:pointer;">
-      <div style="font-size:10px;color:#5f7a99;" id="timer-status-label">⏱ No active session</div>
-      <div style="font-size:10px;color:#138181;font-weight:500;">Today's time →</div>
-    </div>
     <div class="section-lbl">Dialing activity</div>
     <div class="stat-row">
       <div class="stat stat-navy">
@@ -189,31 +185,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
           <button class="tap-btn tap-navy" onclick="addStat('dials',3)">+3</button>
         </div>
       </div>
-
       <div class="stat stat-navy-lt">
         <div class="stat-lbl lbl-navy">Appts booked</div>
         <div class="hint-lt">Tap to edit</div>
         <div class="stat-val val-navy" id="s-appts" onclick="startEdit('appts','navy')">0</div>
         <div class="stat-btns">
           <button class="tap-btn tap-lt-navy" onclick="addStat('appts',1)">+1</button>
-        </div>
-      </div>
-    </div>
-    <div class="stat-row">
-      <div class="stat stat-amber">
-        <div class="stat-lbl lbl-amber">Callbacks</div>
-        <div class="hint-lt">Tap to edit</div>
-        <div class="stat-val val-amber" id="s-callbacks" onclick="startEdit('callbacks','amber')">0</div>
-        <div class="stat-btns">
-          <button class="tap-btn tap-amber" onclick="addStat('callbacks',1)">+1</button>
-          <button class="tap-btn tap-amber" onclick="drillDown('callbacks')" style="font-size:10px;">who?</button>
-        </div>
-      </div>
-      <div class="stat" style="background:#F0FBF7;border:1px solid #9FE1CB;">
-        <div class="stat-lbl" style="color:#138181;">Texts sent</div>
-        <div class="stat-val" id="s-texts" style="color:#138181;">0</div>
-        <div class="stat-btns">
-          <button class="tap-btn" style="background:#138181;color:#fff;" onclick="addStat('texts',1)">+1</button>
         </div>
       </div>
       <div class="stat stat-red">
@@ -224,6 +201,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
           <button class="tap-btn tap-red" onclick="addStat('dead',1)">+1</button>
         </div>
       </div>
+    </div>
+    <div class="stat-row">
+      <div class="stat" style="background:#F0FBF7;border:1px solid #9FE1CB;">
+        <div class="stat-lbl" style="color:#138181;">Texts sent</div>
+        <div class="stat-val" id="s-texts" style="color:#138181;">0</div>
+        <div class="stat-btns">
+          <button class="tap-btn" style="background:#138181;color:#fff;" onclick="addStat('texts',1)">+1</button>
+        </div>
+      </div>
+      <div class="stat stat-amber">
+        <div class="stat-lbl lbl-amber">Callbacks</div>
+        <div class="hint-lt">Tap to edit</div>
+        <div class="stat-val val-amber" id="s-callbacks" onclick="startEdit('callbacks','amber')">0</div>
+        <div class="stat-btns">
+          <button class="tap-btn tap-amber" onclick="addStat('callbacks',1)">+1</button>
+          <button class="tap-btn tap-amber" onclick="drillDown('callbacks')" style="font-size:10px;">who?</button>
+        </div>
+      </div>
       <div class="stat stat-green">
         <div class="stat-lbl lbl-green">Resolved</div>
         <div class="stat-val val-green" id="s-resolved">0</div>
@@ -232,7 +227,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
     </div>
     <div class="divider"></div>
-    <div class="stat-row" style="margin-bottom:4px;">
+    <div class="stat-row">
       <div class="stat" style="background:#EBF3FF;border:1px solid #B3D1F7;">
         <div class="stat-lbl" style="color:#1D3557;">Dial time</div>
         <div class="stat-val" id="s-time-dial" style="color:#1D3557;font-size:18px;">0:00</div>
