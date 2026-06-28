@@ -173,19 +173,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
   <div id="tab-score">
     <div id="alerts-section" style="margin-bottom:4px;"></div>
-    <div id="time-tracker-bar" style="display:flex;gap:6px;margin-bottom:8px;align-items:center;background:#f0f4f8;border-radius:10px;padding:8px 12px;">
-      <div style="flex:1;">
-        <div style="font-size:9px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;" id="timer-activity-label">Inactive</div>
-        <div style="font-size:20px;font-weight:600;color:#1D3557;font-variant-numeric:tabular-nums;" id="timer-display">0:00:00</div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:4px;">
-        <button onclick="startActivityTimer('dial')" id="btn-timer-dial" style="font-size:10px;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;background:#1D3557;color:#fff;font-weight:500;">⏱ Dial</button>
-        <button onclick="startActivityTimer('prep')" id="btn-timer-prep" style="font-size:10px;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;background:#e2eaf2;color:#5f7a99;font-weight:500;">📋 Prep</button>
-        <button onclick="startActivityTimer('appt')" id="btn-timer-appt" style="font-size:10px;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;background:#e2eaf2;color:#5f7a99;font-weight:500;">📅 Appt</button>
-        <button onclick="stopActivityTimer()" id="btn-timer-stop" style="font-size:10px;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;background:#FCEBEB;color:#791F1F;font-weight:500;display:none;">⏹ Stop</button>
-      </div>
+    <div id="time-summary-bar" onclick="openTimeSummary()" style="display:flex;justify-content:space-between;align-items:center;background:#f0f4f8;border-radius:8px;padding:6px 10px;margin-bottom:6px;cursor:pointer;">
+      <div style="font-size:10px;color:#5f7a99;" id="timer-status-label">⏱ No active session</div>
+      <div style="font-size:10px;color:#138181;font-weight:500;">Today's time →</div>
     </div>
-    <div id="timer-today-totals" style="font-size:9px;color:#8fa8c0;margin-bottom:6px;padding-left:2px;"></div>
     <div class="section-lbl">Dialing activity</div>
     <div class="stat-row">
       <div class="stat stat-navy">
@@ -993,124 +984,166 @@ function renderSourceComparison(pStart, pEnd, label) {
 }
 //  TABS 
 
-// ── TIME TRACKER ─────────────────────────────────────────────────────────────
-window._timerState = {
-  activity: null,  // 'dial', 'prep', 'appt'
+
+// ── AUTO TIME TRACKER ────────────────────────────────────────────────────────
+window._timer = {
+  activity: null,   // 'dial', 'appt', 'admin'
   startTime: null,
-  elapsed: 0,      // seconds accumulated before current start
-  interval: null,
-  todayTotals: JSON.parse(localStorage.getItem('cwc_time_totals') || '{}')
+  sessions: [],     // {activity, start, end, seconds}
+  deviceId: 'device_' + Math.random().toString(36).slice(2,8)
 };
 
-function getTodayKey() {
+function timerTodayKey() {
   return new Date().toISOString().slice(0,10);
 }
 
-function saveTodayTotals() {
-  localStorage.setItem('cwc_time_totals', JSON.stringify(window._timerState.todayTotals));
-}
-
-function getCurrentElapsed() {
-  const s = window._timerState;
-  if (!s.startTime) return s.elapsed;
-  return s.elapsed + Math.floor((Date.now() - s.startTime) / 1000);
-}
-
-function formatTime(secs) {
-  const h = Math.floor(secs / 3600);
-  const m = Math.floor((secs % 3600) / 60);
-  const s = secs % 60;
+function timerFormat(secs) {
+  const h = Math.floor(secs/3600);
+  const m = Math.floor((secs%3600)/60);
+  const s = secs%60;
   return h + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
 }
 
-function updateTimerDisplay() {
-  const el = document.getElementById('timer-display');
-  if (el) el.textContent = formatTime(getCurrentElapsed());
+function timerGetTodaySessions() {
+  const stored = JSON.parse(localStorage.getItem('cwc_sessions_' + timerTodayKey()) || '[]');
+  return stored;
 }
 
-function startActivityTimer(activity) {
-  const s = window._timerState;
-
-  // Stop current if running
-  if (s.activity) {
-    stopActivityTimer(true); // silent stop
-  }
-
-  s.activity = activity;
-  s.startTime = Date.now();
-  s.elapsed = 0;
-
-  // Update UI
-  const labels = {dial:'Dialing', prep:'Appt prep', appt:'Running appt'};
-  const colors = {dial:'#1D3557', prep:'#534AB7', appt:'#138181'};
-  const el = document.getElementById('timer-activity-label');
-  const disp = document.getElementById('timer-display');
-  if (el) { el.textContent = labels[activity]; el.style.color = colors[activity]; }
-  if (disp) disp.style.color = colors[activity];
-
-  // Button states
-  ['dial','prep','appt'].forEach(a => {
-    const btn = document.getElementById('btn-timer-' + a);
-    if (btn) {
-      btn.style.background = a === activity ? colors[activity] : '#e2eaf2';
-      btn.style.color = a === activity ? '#fff' : '#5f7a99';
-    }
-  });
-  const stopBtn = document.getElementById('btn-timer-stop');
-  if (stopBtn) stopBtn.style.display = 'block';
-
-  // Start interval
-  if (s.interval) clearInterval(s.interval);
-  s.interval = setInterval(updateTimerDisplay, 1000);
+function timerSaveSessions(sessions) {
+  localStorage.setItem('cwc_sessions_' + timerTodayKey(), JSON.stringify(sessions));
 }
 
-function stopActivityTimer(silent) {
-  const s = window._timerState;
-  if (!s.activity) return;
-
-  // Save elapsed to today totals
-  const todayKey = getTodayKey();
-  if (!s.todayTotals[todayKey]) s.todayTotals[todayKey] = {dial:0, prep:0, appt:0};
-  const elapsed = getCurrentElapsed();
-  s.todayTotals[todayKey][s.activity] = (s.todayTotals[todayKey][s.activity]||0) + elapsed;
-  saveTodayTotals();
-
-  // Also save to Supabase async (fire and forget)
-  saveTimerToSupabase(s.activity, elapsed, todayKey);
-
-  // Reset state
-  if (s.interval) clearInterval(s.interval);
-  s.activity = null;
-  s.startTime = null;
-  s.elapsed = 0;
-
-  if (!silent) {
-    // Reset UI
-    const el = document.getElementById('timer-activity-label');
-    const disp = document.getElementById('timer-display');
-    if (el) { el.textContent = 'Inactive'; el.style.color = '#5f7a99'; }
-    if (disp) { disp.textContent = '0:00:00'; disp.style.color = '#1D3557'; }
-    ['dial','prep','appt'].forEach(a => {
-      const btn = document.getElementById('btn-timer-' + a);
-      if (btn) { btn.style.background = '#e2eaf2'; btn.style.color = '#5f7a99'; }
-    });
-    const stopBtn = document.getElementById('btn-timer-stop');
-    if (stopBtn) stopBtn.style.display = 'none';
-  }
+function timerGetTotals() {
+  const sessions = timerGetTodaySessions();
+  const totals = {dial:0, appt:0, admin:0};
+  sessions.forEach(s => { if (totals[s.activity] !== undefined) totals[s.activity] += s.seconds; });
+  return totals;
 }
 
-async function saveTimerToSupabase(activity, seconds, dateKey) {
+function timerStart(activity) {
+  if (window._timer.activity === activity) return; // already running this
+  timerStop(); // stop current if any
+  window._timer.activity = activity;
+  window._timer.startTime = Date.now();
+  timerUpdateStatusLabel();
+}
+
+function timerStop() {
+  const t = window._timer;
+  if (!t.activity || !t.startTime) return;
+  const seconds = Math.floor((Date.now() - t.startTime) / 1000);
+  if (seconds < 5) { t.activity = null; t.startTime = null; return; } // ignore tiny blips
+
+  // Save session
+  const session = {activity: t.activity, start: new Date(t.startTime).toISOString(), end: new Date().toISOString(), seconds};
+  const sessions = timerGetTodaySessions();
+  sessions.push(session);
+  timerSaveSessions(sessions);
+
+  // Save to Supabase async
+  timerSaveToSupabase(session);
+
+  t.activity = null;
+  t.startTime = null;
+  timerUpdateStatusLabel();
+}
+
+async function timerSaveToSupabase(session) {
   try {
-    // Store as a stat with key like 'time_dial_2026-06-27'
-    const statKey = 'time_' + activity + '_' + dateKey;
-    await sb.from('stats').insert({stat_key: statKey, value: seconds, recorded_at: new Date().toISOString()});
-  } catch(e) {
-    // Silent fail - localStorage backup covers it
+    await sb.from('stats').insert({
+      stat_key: 'time_' + session.activity + '_' + timerTodayKey(),
+      value: session.seconds,
+      recorded_at: session.end
+    });
+  } catch(e) {}
+}
+
+function timerUpdateStatusLabel() {
+  const el = document.getElementById('timer-status-label');
+  if (!el) return;
+  const t = window._timer;
+  const totals = timerGetTotals();
+  const labels = {dial:'⏱ Dialing', appt:'📅 In appointment', admin:'📋 Admin'};
+  const colors = {dial:'#1D3557', appt:'#138181', admin:'#534AB7'};
+  if (t.activity) {
+    el.textContent = labels[t.activity] + ' — Today: D ' + timerFormat(totals.dial) + ' | A ' + timerFormat(totals.appt) + ' | Admin ' + timerFormat(totals.admin);
+    el.style.color = colors[t.activity];
+  } else {
+    el.textContent = '⏱ Today: Dial ' + timerFormat(totals.dial) + ' | Appt ' + timerFormat(totals.appt) + ' | Admin ' + timerFormat(totals.admin);
+    el.style.color = '#5f7a99';
   }
 }
 
-// Auto-start dial timer when switching to Leads tab
-const _origShowTab = showTab;
+function timerIsApptWindow(c) {
+  if (!c || !c.appt_datetime) return false;
+  const now = new Date();
+  const apptTime = new Date(c.appt_datetime);
+  const mins = (now - apptTime) / 60000;
+  return mins >= -30 && mins <= 180; // 30 min before to 3 hrs after
+}
+
+function openTimeSummary() {
+  const sessions = timerGetTodaySessions();
+  const totals = timerGetTotals();
+  if (!sessions.length) { showModal('<button class="close-x" onclick="closeModal()">x</button><div class="modal-title">Time today</div><div style="font-size:13px;color:#a0b8cc;padding:12px 0;">No sessions recorded yet today.</div>'); return; }
+
+  const sessionRows = sessions.slice().reverse().map((s,i) => {
+    const start = new Date(s.start).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    const end = new Date(s.end).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    const labels = {dial:'Dialing', appt:'Appointment', admin:'Admin'};
+    const colors = {dial:'#1D3557', appt:'#138181', admin:'#534AB7'};
+    const realIdx = sessions.length - 1 - i;
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid #f0f4f8;">' +
+      '<div>' +
+        '<div style="font-size:11px;font-weight:600;color:' + (colors[s.activity]||'#1D3557') + ';">' + (labels[s.activity]||s.activity) + '</div>' +
+        '<div style="font-size:10px;color:#a0b8cc;">' + start + ' → ' + end + '</div>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;">' +
+        '<div style="font-size:12px;font-weight:600;color:#1D3557;">' + timerFormat(s.seconds) + '</div>' +
+        '<button onclick="timerAdjustSession(' + realIdx + ')" style="font-size:9px;background:none;border:1px solid #e2eaf2;border-radius:4px;padding:2px 6px;color:#8fa8c0;cursor:pointer;">✏️</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">Time today</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">' +
+      '<div style="background:#f0f4f8;border-radius:8px;padding:8px;text-align:center;">' +
+        '<div style="font-size:9px;color:#5f7a99;font-weight:600;">DIAL</div>' +
+        '<div style="font-size:16px;font-weight:700;color:#1D3557;">' + timerFormat(totals.dial) + '</div>' +
+      '</div>' +
+      '<div style="background:#F0FBF7;border-radius:8px;padding:8px;text-align:center;">' +
+        '<div style="font-size:9px;color:#138181;font-weight:600;">APPT</div>' +
+        '<div style="font-size:16px;font-weight:700;color:#138181;">' + timerFormat(totals.appt) + '</div>' +
+      '</div>' +
+      '<div style="background:#F5F3FF;border-radius:8px;padding:8px;text-align:center;">' +
+        '<div style="font-size:9px;color:#534AB7;font-weight:600;">ADMIN</div>' +
+        '<div style="font-size:16px;font-weight:700;color:#534AB7;">' + timerFormat(totals.admin) + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div style="font-size:10px;font-weight:600;color:#5f7a99;margin-bottom:6px;">Sessions</div>' +
+    sessionRows);
+}
+
+function timerAdjustSession(idx) {
+  const sessions = timerGetTodaySessions();
+  const s = sessions[idx];
+  if (!s) return;
+  const currentMins = Math.round(s.seconds / 60);
+  const input = prompt('Adjust session duration (minutes):', currentMins);
+  if (input === null) return;
+  const newMins = parseInt(input);
+  if (isNaN(newMins) || newMins < 0) return;
+  sessions[idx].seconds = newMins * 60;
+  timerSaveSessions(sessions);
+  timerUpdateStatusLabel();
+  openTimeSummary(); // refresh
+}
+
+function initTimer() {
+  timerUpdateStatusLabel();
+}
+
 function showTab(t, btn) {
   _origShowTab(t, btn);
   // Auto-start dial timer when going to leads tab
@@ -1146,9 +1179,11 @@ function showTab(t, btn) {
   document.getElementById('tab-clients').style.display = t==='clients'?'block':'none';
   document.getElementById('tab-appts').style.display = t==='appts'?'block':'none';
   document.getElementById('tab-apps').style.display = t==='apps'?'block':'none';
-  if (t==='appts') renderAppts();
-  if (t==='apps') renderAppsTab();
-  if (t==='clients') renderClients();
+  if (t==='appts') { renderAppts(); timerStart('admin'); }
+  if (t==='apps') { renderAppsTab(); timerStart('admin'); }
+  if (t==='clients') { renderClients(); timerStart('dial'); }
+  if (t==='score') timerStop();
+  timerUpdateStatusLabel();
 }
 
 function drillDown(type) {
@@ -1877,6 +1912,14 @@ function openClient(id, keepDialCount) {
   const c = clients.find(x => x.id === id);
   if (!c) return;
   if (!keepDialCount) { window._dialCount = 1; window._dialCountSet = false; }
+  // Auto-detect activity type based on appt window
+  if (timerIsApptWindow(c)) {
+    timerStart('appt');
+  } else if (!window._timer.activity || window._timer.activity === 'dial') {
+    // Keep dial time if already dialing, or start admin for prep
+    const inLeadsTab = document.getElementById('tab-clients').style.display !== 'none';
+    if (!inLeadsTab) timerStart('admin');
+  }
   const sits = c.sits || [];
   const callLog = c.call_log || [];
   const statuses = ['New','Working','Appointment set','No show','Closed','No sale','Dead'];
@@ -2005,6 +2048,7 @@ function openSitOutcomeForCase(id, ci) {
 }
 
 function showSitOutcomeModal(id, ci) {
+  timerStart('admin'); // logging outcome = admin time
   const c = clients.find(x=>x.id===id); if (!c) return;
   const cs = ci !== null ? c.cases[ci] : null;
   const apptDt = c.appt_datetime ? new Date(c.appt_datetime) : new Date();
