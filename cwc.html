@@ -3110,7 +3110,7 @@ function renderCasesHtml(c) {
   return cases.map((cs, ci) => {
     const cls = CASE_TYPE_CLASS[cs.type] || 'mp';
     // Only show resolved touchpoints in history (not pending)
-    const resolvedTps = (cs.touchpoints||[]).filter(tp => tp.outcome && tp.outcome !== 'pending');
+    const resolvedTps = (cs.touchpoints||[]).filter(tp => tp.outcome && tp.outcome.toLowerCase() !== 'pending');
     const statusColors = {'Closed Won':'#3B6D11','Closed Lost':'#A32D2D','Reset':'#534AB7','Open':'#138181'};
     const hdrColor = cls==='ret'?'#138181':(cls==='dfl'||cls==='ib')?'#534AB7':'#1D3557';
 
