@@ -3500,7 +3500,18 @@ function openAddAppToTouchpoint(id, ci, ti) {
       <div style="font-size:11px;font-weight:600;color:#138181;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;">Application 1</div>
       <div class="field"><label>Carrier</label><select id="app-carrier-0" onchange="updateProductDropdown(0);updateAppCompDisplay(0)">${carrierOptions(defaultCarrier)}</select></div>
       <div class="field"><label>Product</label><select id="app-product-0" onchange="updateAppCompDisplay(0)">${productOptions(defaultCarrier,'')}</select></div>
-      <div class="field"><label>Annual premium (APV)</label><input type="number" id="app-apv-0" placeholder="e.g. 1200" style="font-size:16px;" oninput="updateAppCompDisplay(0)"></div>
+      <div class="field">
+        <label>Premium</label>
+        <div style="display:flex;gap:6px;margin-bottom:6px;">
+          <button id="app-freq-btn-monthly-0" onclick="setAppFreq(0,'monthly')" style="flex:1;padding:6px;font-size:11px;font-weight:600;border-radius:6px;border:2px solid #138181;background:#138181;color:#fff;cursor:pointer;">Monthly</button>
+          <button id="app-freq-btn-quarterly-0" onclick="setAppFreq(0,'quarterly')" style="flex:1;padding:6px;font-size:11px;font-weight:600;border-radius:6px;border:2px solid #e2eaf2;background:#fff;color:#5f7a99;cursor:pointer;">Quarterly</button>
+          <button id="app-freq-btn-annual-0" onclick="setAppFreq(0,'annual')" style="flex:1;padding:6px;font-size:11px;font-weight:600;border-radius:6px;border:2px solid #e2eaf2;background:#fff;color:#5f7a99;cursor:pointer;">Annual APV</button>
+          <button id="app-freq-btn-account-0" onclick="setAppFreq(0,'account')" style="flex:1;padding:6px;font-size:11px;font-weight:600;border-radius:6px;border:2px solid #e2eaf2;background:#fff;color:#5f7a99;cursor:pointer;">Acct (5%)</button>
+        </div>
+        <input type="number" id="app-prem-0" placeholder="e.g. 100" style="font-size:16px;" oninput="calcAppApv(0)">
+        <div style="font-size:10px;color:#5f7a99;margin-top:3px;" id="app-apv-display-0"></div>
+        <input type="hidden" id="app-apv-0">
+      </div>
       <div id="app-comp-display-0"></div>
       <div class="field"><label>Face amount</label><input type="number" id="app-face-0" placeholder="e.g. 250000" style="font-size:16px;"></div>
       <div style="display:flex;gap:8px;">
@@ -3531,7 +3542,18 @@ function addAnotherApp() {
     </div>
     <div class="field"><label>Carrier</label><select id="app-carrier-${i}" onchange="updateProductDropdown(${i});updateAppCompDisplay(${i})">${carrierOptions(defaultCarrier)}</select></div>
     <div class="field"><label>Product</label><select id="app-product-${i}" onchange="updateAppCompDisplay(${i})">${productOptions(defaultCarrier,'')}</select></div>
-    <div class="field"><label>Annual premium (APV)</label><input type="number" id="app-apv-${i}" placeholder="e.g. 1200" style="font-size:16px;" oninput="updateAppCompDisplay(${i})"></div>
+    <div class="field">
+      <label>Premium</label>
+      <div style="display:flex;gap:6px;margin-bottom:6px;">
+        <button id="app-freq-btn-monthly-${i}" onclick="setAppFreq(${i},'monthly')" style="flex:1;padding:6px;font-size:11px;font-weight:600;border-radius:6px;border:2px solid #138181;background:#138181;color:#fff;cursor:pointer;">Monthly</button>
+        <button id="app-freq-btn-quarterly-${i}" onclick="setAppFreq(${i},'quarterly')" style="flex:1;padding:6px;font-size:11px;font-weight:600;border-radius:6px;border:2px solid #e2eaf2;background:#fff;color:#5f7a99;cursor:pointer;">Quarterly</button>
+        <button id="app-freq-btn-annual-${i}" onclick="setAppFreq(${i},'annual')" style="flex:1;padding:6px;font-size:11px;font-weight:600;border-radius:6px;border:2px solid #e2eaf2;background:#fff;color:#5f7a99;cursor:pointer;">Annual APV</button>
+        <button id="app-freq-btn-account-${i}" onclick="setAppFreq(${i},'account')" style="flex:1;padding:6px;font-size:11px;font-weight:600;border-radius:6px;border:2px solid #e2eaf2;background:#fff;color:#5f7a99;cursor:pointer;">Acct (5%)</button>
+      </div>
+      <input type="number" id="app-prem-${i}" placeholder="e.g. 100" style="font-size:16px;" oninput="calcAppApv(${i})">
+      <div style="font-size:10px;color:#5f7a99;margin-top:3px;" id="app-apv-display-${i}"></div>
+      <input type="hidden" id="app-apv-${i}">
+    </div>
     <div id="app-comp-display-${i}"></div>
     <div class="field"><label>Face amount</label><input type="number" id="app-face-${i}" placeholder="e.g. 250000" style="font-size:16px;"></div>
     <div style="display:flex;gap:8px;">
@@ -3539,6 +3561,52 @@ function addAnotherApp() {
       <div class="field" style="width:80px;"><label>Age</label><input type="number" id="app-age-${i}" placeholder="e.g. 45" style="font-size:16px;"></div>
     </div>`;
   container.appendChild(div);
+}
+
+// Track frequency per app entry
+window._appFreq = {};
+
+function setAppFreq(i, freq) {
+  window._appFreq[i] = freq;
+  // Update button styles
+  ['monthly','quarterly','annual','account'].forEach(f => {
+    const btn = document.getElementById('app-freq-btn-' + f + '-' + i);
+    if (!btn) return;
+    if (f === freq) {
+      btn.style.background = '#138181'; btn.style.color = '#fff'; btn.style.border = '2px solid #138181';
+    } else {
+      btn.style.background = '#fff'; btn.style.color = '#5f7a99'; btn.style.border = '2px solid #e2eaf2';
+    }
+  });
+  calcAppApv(i);
+}
+
+function calcAppApv(i) {
+  const freq = window._appFreq[i] || 'monthly';
+  const prem = parseFloat((document.getElementById('app-prem-'+i)||{value:0}).value)||0;
+  const apvEl = document.getElementById('app-apv-'+i);
+  const displayEl = document.getElementById('app-apv-display-'+i);
+  
+  let apv = 0;
+  let displayStr = '';
+  
+  if (freq === 'monthly') {
+    apv = prem * 12;
+    displayStr = prem > 0 ? 'APV: $' + apv.toLocaleString() + ' (' + prem + '/mo × 12)' : '';
+  } else if (freq === 'quarterly') {
+    apv = prem * 4;
+    displayStr = prem > 0 ? 'APV: $' + apv.toLocaleString() + ' (' + prem + '/qtr × 4)' : '';
+  } else if (freq === 'annual') {
+    apv = prem;
+    displayStr = prem > 0 ? 'APV: $' + apv.toLocaleString() : '';
+  } else if (freq === 'account') {
+    apv = Math.round(prem * 0.05);
+    displayStr = prem > 0 ? 'APV credit: $' + apv.toLocaleString() + ' (5% of $' + prem.toLocaleString() + ')' : '';
+  }
+  
+  if (apvEl) apvEl.value = apv || '';
+  if (displayEl) displayEl.textContent = displayStr;
+  updateAppCompDisplay(i);
 }
 
 function updateProductDropdown(i) {
