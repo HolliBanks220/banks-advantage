@@ -918,18 +918,14 @@ function renderScore() {
     bonusBarEl.style.display = 'block';
     const now = new Date();
     const curMonthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-    const bonusSeen = new Set();
     let netPlacedAPV = 0;
     clients.forEach(c => {
       (c.cases||[]).forEach(cs => {
         (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
           (tp.apps||[]).forEach(ap => {
-            if (!ap || !ap.id || bonusSeen.has(ap.id)) return;
-            bonusSeen.add(ap.id);
-            if (!['Placed','Paid'].includes(ap.status||'')) return;
-            const d = getPlacementMonth(ap);
-            const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-            if (key === curMonthKey) netPlacedAPV += (ap.premium||0);
+            if (ap && ['Placed','Paid'].includes(ap.status||'') && ap.placementMonth === curMonthKey) {
+              netPlacedAPV += (ap.premium||0);
+            }
           });
         });
       });
