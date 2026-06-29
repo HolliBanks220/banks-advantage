@@ -1558,9 +1558,9 @@ async function setAppStatus(clientId, ci, ti, ai, newStatus) {
   const ap = (((c.cases||[])[ci]||{}).touchpoints||[])[ti];
   if (!ap || !ap.apps || !ap.apps[ai]) return;
   ap.apps[ai].status = newStatus;
-  // If marking Placed or Paid, set writtenDate if not set
+  // If marking Placed or Paid, stamp writtenDate from the touchpoint datetime (the sale date)
   if ((newStatus==='Placed'||newStatus==='Paid') && !ap.apps[ai].writtenDate) {
-    ap.apps[ai].writtenDate = ap.apps[ai].tpDate || new Date().toISOString();
+    ap.apps[ai].writtenDate = ap.datetime || ap.apps[ai].created || tp.datetime;
   }
   // Paid implies Placed — set placement month if not set
   if (newStatus==='Paid' && !ap.apps[ai].placementMonth) {
