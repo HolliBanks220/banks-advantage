@@ -919,28 +919,25 @@ function renderScore() {
     const now = new Date();
     const curMonthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
 
-    // Use exact same logic as placed view - deduplicated by app id
-    const seenIds = new Set();
-    let netPlacedAPV = 0;
-    clients.forEach(c => {
-      (c.cases||[]).forEach(cs => {
-        (cs.touchpoints||[]).forEach(tp => {
-          (tp?.apps||[]).forEach(ap => {
-            if (!ap.id || seenIds.has(ap.id)) return;
-            seenIds.add(ap.id);
-            if (!['Placed','Paid'].includes(ap.status||'')) return;
-            // Check placement month
-            const monthKey = ap.placementMonth || (() => {
-              const d = new Date(ap.written_date||ap.writtenDate||0);
-              const day = d.getDate();
-              if (day >= 29) return `${d.getFullYear()}-${String(d.getMonth()+2).padStart(2,'0')}`;
-              return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-            })();
-            if (monthKey === curMonthKey) netPlacedAPV += (ap.premium||0);
-          });
-        });
-      });
+    // Calculate net placed same way as placed view
+    const placedApps = clients.flatMap(c =>
+      (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).flatMap(tp =>
+        (tp?.apps||[]).filter(ap => ['Placed','Paid'].includes(ap.status||''))
+          .map(ap => ({...ap}))
+      ))
+    );
+    // Deduplicate by id
+    const seen = new Set();
+    const uniquePlaced = placedApps.filter(ap => {
+      if (!ap.id || seen.has(ap.id)) return false;
+      seen.add(ap.id);
+      return true;
     });
+    const netPlacedAPV = uniquePlaced.filter(ap => {
+      const d = getPlacementMonth(ap);
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      return key === curMonthKey;
+    }).reduce((a,ap) => a+(ap.premium||0), 0);
     const pct = Math.min(100, Math.round(netPlacedAPV/bonusThreshold*100));
     const remaining = Math.max(0, bonusThreshold - netPlacedAPV);
     const fillColor = pct >= 100 ? '#3B6D11' : pct >= 75 ? '#138181' : '#1D3557';
@@ -1530,6 +1527,7 @@ function renderSidebar() {
 
 // Apps tab view state
 let appsView = 'submitted'; // 'submitted' or 'placed'
+let currentMonthNetPlaced = 0; // updated by renderAppsTab placed view
 function setAppsView(v) {
   appsView = v;
   const sub = document.getElementById('apps-view-submitted');
@@ -1766,6 +1764,7 @@ function renderAppsTab() {
       return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
     }).reduce((a,ap) => a+(ap.premium||0), 0);
     const curNet = curGross - curLapsedAPV;
+    currentMonthNetPlaced = curNet; // store for bonus bar
     const totalSubmitted = allApps.filter(ap => {
       const d = new Date(ap.tpDate||0);
       return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
