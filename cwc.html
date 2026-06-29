@@ -1622,18 +1622,16 @@ function renderAppsTab() {
     if (placementBar) placementBar.style.display = 'none';
 
     const activeStatuses = ['Written','Submitted','Approved','Issued'];
-    // Period-filtered for summary stats
-    const periodApps = allApps.filter(ap => {
-      const d = new Date(ap.tpDate||0);
-      return d >= pStart && d <= pEnd;
-    });
-    // All apps (not period-filtered) for the list — sorted newest first
+    // Period-filtered for both summary AND list
     const submittedApps = allApps
-      .filter(ap => !['Lapse','Cancel'].includes(ap.status||''))
+      .filter(ap => {
+        const d = new Date(ap.tpDate||0);
+        return d >= pStart && d <= pEnd && !['Lapse','Cancel'].includes(ap.status||'');
+      })
       .sort((a,b) => new Date(b.tpDate||0) - new Date(a.tpDate||0));
 
-    const totalAPV = periodApps.reduce((a,ap) => a+(ap.premium||0), 0);
-    const totalApps = periodApps.length;
+    const totalAPV = submittedApps.reduce((a,ap) => a+(ap.premium||0), 0);
+    const totalApps = submittedApps.length;
     const notOPT = submittedApps.filter(ap => activeStatuses.includes(ap.status||'Written') && !ap.opted).length;
 
     if (summaryBar) summaryBar.innerHTML = `
@@ -1648,25 +1646,23 @@ function renderAppsTab() {
     }
 
     el.innerHTML = submittedApps.map(ap => {
-      const statusColor = STATUS_COLOR[ap.status||'Written'] || '#1D3557';
+      const STATUS_OPTS = ['Submitted','Approved','Issued','Paid','Free Look','Lapse','Cancel'];
+      const currentStatus = ap.status || 'Submitted';
+      const statusColor = STATUS_COLOR[currentStatus] || '#1D3557';
       const dt = ap.tpDate ? new Date(ap.tpDate).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
-      const nextStatuses = STATUS_ORDER.slice(STATUS_ORDER.indexOf(ap.status||'Written')+1).filter(s => !['Cancel','Lapse','Free Look'].includes(s)).slice(0,3);
       return `<div style="border:1px solid #e2eaf2;border-radius:10px;padding:12px;margin-bottom:8px;background:#fff;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
-          <div style="cursor:pointer;" onclick="openClient('${ap.clientId}')">
-            <div style="font-size:13px;font-weight:600;color:#1D3557;">${ap.clientName}</div>
-            <div style="font-size:11px;color:#5f7a99;margin-top:1px;">${ap.carrier||''} · ${ap.product||''}</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div style="flex:1;cursor:pointer;min-width:0;" onclick="openClient('${ap.clientId}')">
+            <div style="font-size:13px;font-weight:600;color:#1D3557;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ap.clientName}</div>
+            <div style="font-size:11px;color:#5f7a99;margin-top:2px;">${ap.carrier||''} · ${ap.product||''}</div>
             <div style="font-size:11px;color:#8fa8c0;margin-top:1px;">${fmt(ap.premium||0)} APV · ${ap.caseType||''} · ${dt}</div>
           </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
-            <span style="font-size:11px;font-weight:600;color:${statusColor};background:${statusColor}18;padding:2px 8px;border-radius:10px;">${ap.status||'Written'}</span>
-            <button onclick="toggleAppOPT('${ap.clientId}',${ap.ci},${ap.ti},${ap.ai})" style="font-size:10px;border:1px solid ${ap.opted?'#3B6D11':'#d0dcea'};background:${ap.opted?'#EAF3DE':'#fff'};color:${ap.opted?'#3B6D11':'#5f7a99'};border-radius:6px;padding:2px 8px;cursor:pointer;">${ap.opted?'✓ In OPT':'OPT'}</button>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
+            <select onchange="setAppStatus('${ap.clientId}',${ap.ci},${ap.ti},${ap.ai},this.value)" style="font-size:11px;font-weight:600;color:${statusColor};background:${statusColor}18;border:1px solid ${statusColor}44;border-radius:8px;padding:3px 6px;cursor:pointer;outline:none;">
+              ${STATUS_OPTS.map(s=>`<option value="${s}" ${s===currentStatus?'selected':''}>${s}</option>`).join('')}
+            </select>
+            <button onclick="toggleAppOPT('${ap.clientId}',${ap.ci},${ap.ti},${ap.ai})" style="font-size:10px;border:1px solid ${ap.opted?'#3B6D11':'#d0dcea'};background:${ap.opted?'#EAF3DE':'#fff'};color:${ap.opted?'#3B6D11':'#5f7a99'};border-radius:6px;padding:3px 10px;cursor:pointer;white-space:nowrap;">${ap.opted?'✓ In OPT':'+ OPT'}</button>
           </div>
-        </div>
-        <div style="display:flex;gap:4px;flex-wrap:wrap;">
-          ${nextStatuses.map(s => `<button onclick="setAppStatus('${ap.clientId}',${ap.ci},${ap.ti},${ap.ai},'${s}')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid ${STATUS_COLOR[s]||'#d0dcea'}44;background:${STATUS_COLOR[s]||'#d0dcea'}11;color:${STATUS_COLOR[s]||'#5f7a99'};cursor:pointer;">→ ${s}</button>`).join('')}
-          <button onclick="setAppStatus('${ap.clientId}',${ap.ci},${ap.ti},${ap.ai},'Lapse')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid #A32D2D44;background:#FFF0F0;color:#A32D2D;cursor:pointer;">Lapse</button>
-          <button onclick="setAppStatus('${ap.clientId}',${ap.ci},${ap.ti},${ap.ai},'Cancel')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid #A32D2D44;background:#FFF0F0;color:#A32D2D;cursor:pointer;">Cancel</button>
         </div>
       </div>`;
     }).join('');
@@ -1752,16 +1748,20 @@ function renderAppsTab() {
             <div style="font-size:12px;color:#138181;font-weight:600;">${fmt(monthAPV)}</div>
           </div>
           ${apps.map(ap => {
-            const statusColor = STATUS_COLOR[ap.status] || '#138181';
+            const STATUS_OPTS = ['Submitted','Approved','Issued','Placed','Paid','Free Look','Lapse','Cancel'];
+            const currentStatus = ap.status || 'Placed';
+            const statusColor = STATUS_COLOR[currentStatus] || '#138181';
             return `<div style="border:1px solid #e2eaf2;border-radius:10px;padding:10px 12px;margin-bottom:6px;background:#fff;">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-                <div style="cursor:pointer;" onclick="openClient('${ap.clientId}')">
-                  <div style="font-size:12px;font-weight:600;color:#1D3557;">${ap.clientName}</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="flex:1;min-width:0;cursor:pointer;" onclick="openClient('${ap.clientId}')">
+                  <div style="font-size:12px;font-weight:600;color:#1D3557;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ap.clientName}</div>
                   <div style="font-size:11px;color:#5f7a99;">${ap.carrier||''} · ${fmt(ap.premium||0)}</div>
                 </div>
-                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
-                  <span style="font-size:10px;font-weight:600;color:${statusColor};background:${statusColor}18;padding:1px 7px;border-radius:8px;">${ap.status}</span>
-                  <select onchange="setAppPlacementMonth('${ap.clientId}',${ap.ci},${ap.ti},${ap.ai},this.value)" style="font-size:9px;border:1px solid #d0dcea;border-radius:6px;padding:2px 4px;color:#5f7a99;cursor:pointer;">
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
+                  <select onchange="setAppStatus('${ap.clientId}',${ap.ci},${ap.ti},${ap.ai},this.value)" style="font-size:10px;font-weight:600;color:${statusColor};background:${statusColor}18;border:1px solid ${statusColor}44;border-radius:8px;padding:2px 5px;cursor:pointer;outline:none;">
+                    ${STATUS_OPTS.map(s=>`<option value="${s}" ${s===currentStatus?'selected':''}>${s}</option>`).join('')}
+                  </select>
+                  <select onchange="setAppPlacementMonth('${ap.clientId}',${ap.ci},${ap.ti},${ap.ai},this.value)" style="font-size:9px;border:1px solid #d0dcea;border-radius:6px;padding:2px 4px;color:#5f7a99;cursor:pointer;outline:none;">
                     ${monthOptions.map(o=>`<option value="${o.key}" ${o.key===monthKey?'selected':''}>${o.label}</option>`).join('')}
                   </select>
                 </div>
