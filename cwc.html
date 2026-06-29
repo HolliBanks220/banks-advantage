@@ -917,27 +917,7 @@ function renderScore() {
   if (bonusBarEl && bonusThreshold) {
     bonusBarEl.style.display = 'block';
     const now = new Date();
-    const curMonthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-
-    // Calculate net placed same way as placed view
-    const placedApps = clients.flatMap(c =>
-      (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).flatMap(tp =>
-        (tp?.apps||[]).filter(ap => ['Placed','Paid'].includes(ap.status||''))
-          .map(ap => ({...ap}))
-      ))
-    );
-    // Deduplicate by id
-    const seen = new Set();
-    const uniquePlaced = placedApps.filter(ap => {
-      if (!ap.id || seen.has(ap.id)) return false;
-      seen.add(ap.id);
-      return true;
-    });
-    const netPlacedAPV = uniquePlaced.filter(ap => {
-      const d = getPlacementMonth(ap);
-      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-      return key === curMonthKey;
-    }).reduce((a,ap) => a+(ap.premium||0), 0);
+    const netPlacedAPV = currentMonthNetPlaced || 0;
     const pct = Math.min(100, Math.round(netPlacedAPV/bonusThreshold*100));
     const remaining = Math.max(0, bonusThreshold - netPlacedAPV);
     const fillColor = pct >= 100 ? '#3B6D11' : pct >= 75 ? '#138181' : '#1D3557';
