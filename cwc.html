@@ -1932,7 +1932,10 @@ function getNoShowCount(c) {
 }
 
 function getAttemptCount(c) {
-  return (c.call_log||[]).filter(cl => cl.dials > 0).length;
+  const callLogAttempts = (c.call_log||[]).filter(cl => cl.dials > 0).length;
+  // Also count resolved case touchpoints as contact attempts
+  const caseAttempts = (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).filter(tp => tp && tp.outcome && tp.outcome !== 'pending')).length;
+  return Math.max(callLogAttempts, caseAttempts > 0 ? callLogAttempts + caseAttempts : 0, callLogAttempts);
 }
 
 function getDaysSinceAssigned(c) {
@@ -1941,8 +1944,18 @@ function getDaysSinceAssigned(c) {
 
 function getDaysSinceLastAttempt(c) {
   const log = (c.call_log||[]);
-  if (!log.length) return 999;
-  const last = new Date(log[log.length-1].ts);
+  // Get last date from call log
+  const callLogDate = log.length ? new Date(log[log.length-1].ts) : null;
+  // Get last date from case touchpoints (any resolved touchpoint = contact)
+  const tpDates = (c.cases||[]).flatMap(cs =>
+    (cs.touchpoints||[]).filter(tp => tp && tp.outcome && tp.outcome !== 'pending')
+      .map(tp => new Date(tp.created || tp.datetime || 0))
+  );
+  const tpDate = tpDates.length ? new Date(Math.max(...tpDates)) : null;
+  // Use the most recent of either
+  const dates = [callLogDate, tpDate].filter(Boolean);
+  if (!dates.length) return 999;
+  const last = new Date(Math.max(...dates));
   return (new Date() - last) / (1000*60*60*24);
 }
 
@@ -2029,6 +2042,11 @@ function getUrgencyScore(c) {
 }
 
 function getUrgencyBadge(c) {
+  // Never show urgency alerts for closed or dead leads
+  if (['Closed','Dead'].includes(c.status)) return null;
+  // Never show "needs contact" alerts for leads with active open cases
+  const hasActiveCase = (c.cases||[]).some(cs => cs.status === 'Open');
+  
   const days = getDaysSinceAssigned(c);
   const attempts = getAttemptCount(c);
   const daysSinceLast = getDaysSinceLastAttempt(c);
@@ -2040,6 +2058,8 @@ function getUrgencyBadge(c) {
   if (noShowCount >= 3 && hrsSinceNS >= 2 && hrsSinceNS <= 72) return {label:'📵 3x NS — final attempt', color:'#A32D2D', bg:'#FFF5F5'};
   if (noShowCount === 2 && hrsSinceNS >= 2 && hrsSinceNS <= 48) return {label:'📵 2x NS — follow up now', color:'#A32D2D', bg:'#FFF5F5'};
   if (noShowCount === 1 && hrsSinceNS >= 2 && hrsSinceNS <= 48) return {label:'📵 Follow up now', color:'#A32D2D', bg:'#FFF5F5'};
+  // Skip contact alerts for leads with active cases
+  if (hasActiveCase) return null;
   if (days >= 3 && days <= 4 && attempts < 4) return {label:'🔥 Urgent — last fresh days', color:'#A32D2D', bg:'#FFF5F5'};
   if (days >= 2 && attempts < 2) return {label:'⚡ Needs first contact', color:'#BA7517', bg:'#FFF8E6'};
   if (attempts === 0) return {label:'🆕 Not contacted', color:'#534AB7', bg:'#F5F3FF'};
