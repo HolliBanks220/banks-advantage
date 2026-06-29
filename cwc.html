@@ -316,17 +316,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-sub sub-navy" id="p-apv-ppu" style="font-size:9px;">- PPU vs non-PPU</div>
       </div>
     </div>
-    <!-- Bonus progress bar -->
-    <div id="bonus-progress-bar" style="display:none;background:#fff;border:1px solid #e2eaf2;border-radius:10px;padding:10px 14px;margin-bottom:6px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
-        <div style="font-size:11px;font-weight:600;color:#1D3557;">Bonus Progress — <span id="bonus-month-label"></span></div>
-        <div style="font-size:11px;font-weight:700;color:#138181;" id="bonus-pct-label"></div>
-      </div>
-      <div style="background:#f0f4f8;border-radius:6px;height:8px;overflow:hidden;margin-bottom:5px;">
-        <div id="bonus-bar-fill" style="height:100%;background:#138181;width:0%;border-radius:6px;transition:width 0.4s;"></div>
-      </div>
-      <div style="font-size:10px;color:#8fa8c0;" id="bonus-bar-label"></div>
-    </div>
+    <!-- bonus tracker removed -->
 
   <!-- MIA vs CIA comparison panel -->
   <div id="source-comparison" style="margin-top:4px;">
@@ -910,41 +900,6 @@ function renderScore() {
   document.getElementById('p-apv-ppu').textContent = fmt(ppuAvgAPV)+' PPU vs '+fmt(nonPPUAvgAPV)+' non-PPU';
 
   // Bonus progress bar — only show for 95%+ contract levels
-  const settings = JSON.parse(localStorage.getItem('cwc_settings')||'{}');
-  const contractLevel = parseInt(settings.contractLevel||105);
-  const bonusThreshold = BONUS_THRESHOLDS[contractLevel];
-  const bonusBarEl = document.getElementById('bonus-progress-bar');
-  if (bonusBarEl && bonusThreshold) {
-    bonusBarEl.style.display = 'block';
-    const now = new Date();
-    const targetMonth = new Date(now.getFullYear(), now.getMonth() + periodOffset, 1);
-    const curMonthKey = `${targetMonth.getFullYear()}-${String(targetMonth.getMonth()+1).padStart(2,'0')}`;
-    let netPlacedAPV = 0;
-    clients.forEach(c => {
-      (c.cases||[]).forEach(cs => {
-        (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
-          (tp.apps||[]).forEach(ap => {
-            if (ap && ['Placed','Paid'].includes(ap.status||'') && ap.placementMonth === curMonthKey) {
-              netPlacedAPV += (ap.premium||0);
-            }
-          });
-        });
-      });
-    });
-    const pct = Math.min(100, Math.round(netPlacedAPV/bonusThreshold*100));
-    const remaining = Math.max(0, bonusThreshold - netPlacedAPV);
-    const fillColor = pct >= 100 ? '#3B6D11' : pct >= 75 ? '#138181' : '#1D3557';
-    document.getElementById('bonus-bar-fill').style.width = pct+'%';
-    document.getElementById('bonus-bar-fill').style.background = fillColor;
-    document.getElementById('bonus-month-label').textContent = targetMonth.toLocaleDateString('en-US',{month:'long', year:'numeric'});
-    document.getElementById('bonus-pct-label').textContent = pct >= 100 ? '🎉 Bonus qualified!' : pct+'%';
-    document.getElementById('bonus-bar-label').textContent = pct >= 100
-      ? `$${Math.round(netPlacedAPV*0.05).toLocaleString()} estimated bonus`
-      : `$${fmt(remaining).replace('$','')} more to reach $${bonusThreshold.toLocaleString()} qualifier`;
-  } else if (bonusBarEl) {
-    bonusBarEl.style.display = 'none';
-  }
-
   renderSourceComparison(pStart, pEnd, label);
   renderAlerts();
 }
@@ -1520,7 +1475,6 @@ function renderSidebar() {
 
 // Apps tab view state
 let appsView = 'submitted'; // 'submitted' or 'placed'
-let currentMonthNetPlaced = 0; // updated by renderAppsTab placed view
 function setAppsView(v) {
   appsView = v;
   const sub = document.getElementById('apps-view-submitted');
@@ -1706,27 +1660,23 @@ function renderAppsTab() {
     if (summaryBar) summaryBar.style.display = 'none';
     if (placementBar) placementBar.style.display = 'block';
 
-    // Use periodOffset to navigate — arrows on board move this too
+    // For placed view, use calendar month boundaries based on the selected period
+    // Day/Week/Month → current calendar month
+    // Quarter → current calendar quarter  
+    // Year → current calendar year
     const now = new Date();
-    let placedStart, placedEnd, displayMonth;
+    let placedStart, placedEnd;
     if (view === 'year') {
-      const y = now.getFullYear() + periodOffset;
-      placedStart = new Date(y, 0, 1);
-      placedEnd = new Date(y, 11, 31, 23, 59, 59);
-      displayMonth = String(y);
+      placedStart = new Date(now.getFullYear(), 0, 1);
+      placedEnd = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
     } else if (view === 'quarter') {
-      const totalQ = Math.floor(now.getMonth() / 3) + periodOffset;
-      const y = now.getFullYear() + Math.floor(totalQ / 4);
-      const q = ((totalQ % 4) + 4) % 4;
-      placedStart = new Date(y, q * 3, 1);
-      placedEnd = new Date(y, q * 3 + 3, 0, 23, 59, 59);
-      displayMonth = `Q${q+1} ${y}`;
+      const q = Math.floor(now.getMonth() / 3);
+      placedStart = new Date(now.getFullYear(), q * 3, 1);
+      placedEnd = new Date(now.getFullYear(), q * 3 + 3, 0, 23, 59, 59);
     } else {
-      // Day/Week/Month — show specific calendar month, arrows move by month
-      const targetDate = new Date(now.getFullYear(), now.getMonth() + periodOffset, 1);
-      placedStart = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
-      placedEnd = new Date(targetDate.getFullYear(), targetDate.getMonth()+1, 0, 23, 59, 59);
-      displayMonth = targetDate.toLocaleDateString('en-US', {month:'long', year:'numeric'});
+      // Day, Week, Month all show current calendar month
+      placedStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      placedEnd = new Date(now.getFullYear(), now.getMonth()+1, 0, 23, 59, 59);
     }
 
     const placedApps = allApps.filter(ap => {
@@ -1740,9 +1690,8 @@ function renderAppsTab() {
       return d >= placedStart && d <= placedEnd;
     });
 
-    // Current calendar month based on offset
-    const targetForKey = new Date(now.getFullYear(), now.getMonth() + (view==='year'||view==='quarter'?0:periodOffset), 1);
-    const curMonthKey = `${targetForKey.getFullYear()}-${String(targetForKey.getMonth()+1).padStart(2,'0')}`;
+    // Current calendar month
+    const curMonthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
 
     // Group placed by month
     const byMonth = {};
@@ -1762,7 +1711,6 @@ function renderAppsTab() {
       return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
     }).reduce((a,ap) => a+(ap.premium||0), 0);
     const curNet = curGross - curLapsedAPV;
-    currentMonthNetPlaced = curNet; // store for bonus bar
     const totalSubmitted = allApps.filter(ap => {
       const d = new Date(ap.tpDate||0);
       return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
@@ -1773,7 +1721,7 @@ function renderAppsTab() {
 
     placementBar.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <div style="font-size:13px;font-weight:600;color:#1D3557;">${displayMonth}</div>
+        <div style="font-size:13px;font-weight:600;color:#1D3557;">${now.toLocaleDateString('en-US',{month:'long',year:'numeric'})}</div>
         ${placementRate!==null?`<div style="font-size:13px;font-weight:700;color:${rateColor};">${placementRate}% ${rateLabel}</div>`:''}
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px;">
