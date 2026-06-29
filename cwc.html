@@ -1695,15 +1695,41 @@ function renderAppsTab() {
     }).join('');
 
   } else {
-    // --- PLACED VIEW: by calendar month ---
+    // --- PLACED VIEW: by calendar month, filtered by selected period ---
     if (summaryBar) summaryBar.style.display = 'none';
     if (placementBar) placementBar.style.display = 'block';
 
-    const placedApps = allApps.filter(ap => ['Placed','Paid'].includes(ap.status||''));
-    const lapsedApps = allApps.filter(ap => ['Lapse','Cancel'].includes(ap.status||''));
+    // For placed view, use calendar month boundaries based on the selected period
+    // Day/Week/Month → current calendar month
+    // Quarter → current calendar quarter  
+    // Year → current calendar year
+    const now = new Date();
+    let placedStart, placedEnd;
+    if (view === 'year') {
+      placedStart = new Date(now.getFullYear(), 0, 1);
+      placedEnd = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+    } else if (view === 'quarter') {
+      const q = Math.floor(now.getMonth() / 3);
+      placedStart = new Date(now.getFullYear(), q * 3, 1);
+      placedEnd = new Date(now.getFullYear(), q * 3 + 3, 0, 23, 59, 59);
+    } else {
+      // Day, Week, Month all show current calendar month
+      placedStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      placedEnd = new Date(now.getFullYear(), now.getMonth()+1, 0, 23, 59, 59);
+    }
+
+    const placedApps = allApps.filter(ap => {
+      if (!['Placed','Paid'].includes(ap.status||'')) return false;
+      const d = getPlacementMonth(ap);
+      return d >= placedStart && d <= placedEnd;
+    });
+    const lapsedApps = allApps.filter(ap => {
+      if (!['Lapse','Cancel'].includes(ap.status||'')) return false;
+      const d = new Date(ap.tpDate||0);
+      return d >= placedStart && d <= placedEnd;
+    });
 
     // Current calendar month
-    const now = new Date();
     const curMonthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
 
     // Group placed by month
