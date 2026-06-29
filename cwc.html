@@ -240,15 +240,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="stat-row">
       <div class="stat" style="background:#EBF3FF;border:1px solid #B3D1F7;">
         <div class="stat-lbl" style="color:#1D3557;">Dial time</div>
-        <div class="stat-val" id="s-time-dial" style="color:#1D3557;font-size:18px;">0:00</div>
+        <div class="stat-val" id="s-time-dial" style="color:#1D3557;font-size:18px;cursor:pointer;" onclick="editTimerTime('dial')" title="Tap to correct">0:00</div>
       </div>
       <div class="stat" style="background:#F0FBF7;border:1px solid #9FE1CB;">
         <div class="stat-lbl" style="color:#138181;">Appt time</div>
-        <div class="stat-val" id="s-time-appt" style="color:#138181;font-size:18px;">0:00</div>
+        <div class="stat-val" id="s-time-appt" style="color:#138181;font-size:18px;cursor:pointer;" onclick="editTimerTime('appt')" title="Tap to correct">0:00</div>
       </div>
       <div class="stat" style="background:#F5F3FF;border:1px solid #C4BBEF;">
         <div class="stat-lbl" style="color:#534AB7;">Admin time</div>
-        <div class="stat-val" id="s-time-admin" style="color:#534AB7;font-size:18px;">0:00</div>
+        <div class="stat-val" id="s-time-admin" style="color:#534AB7;font-size:18px;cursor:pointer;" onclick="editTimerTime('admin')" title="Tap to correct">0:00</div>
       </div>
     </div>
     <div class="section-lbl">Production</div>
@@ -1077,6 +1077,29 @@ function timerFormat(secs) {
 function timerGetTodaySessions() {
   const stored = JSON.parse(localStorage.getItem('cwc_sessions_' + timerTodayKey()) || '[]');
   return stored;
+}
+
+function editTimerTime(activity) {
+  const labels = {dial:'Dial', appt:'Appt', admin:'Admin'};
+  const current = timerGetTotals()[activity] || 0;
+  const hh = Math.floor(current/3600);
+  const mm = Math.floor((current%3600)/60);
+  const currentStr = hh > 0 ? `${hh}:${String(mm).padStart(2,'0')}` : `${mm}`;
+  const input = prompt(`Correct ${labels[activity]} time (enter as H:MM or minutes):\nCurrent: ${timerFmt(current)}`, currentStr);
+  if (input === null) return;
+  let seconds = 0;
+  if (input.includes(':')) {
+    const parts = input.split(':');
+    seconds = parseInt(parts[0])*3600 + parseInt(parts[1]||0)*60;
+  } else {
+    seconds = parseInt(input) * 60;
+  }
+  if (isNaN(seconds) || seconds < 0) { alert('Invalid time format. Use H:MM or number of minutes.'); return; }
+  // Replace today's sessions for this activity with one corrected session
+  const sessions = timerGetTodaySessions().filter(s => s.activity !== activity);
+  if (seconds > 0) sessions.push({activity, seconds, ts: new Date().toISOString(), corrected: true});
+  timerSaveSessions(sessions);
+  timerUpdateDisplay();
 }
 
 function timerSaveSessions(sessions) {
