@@ -316,16 +316,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
     </div>
     <!-- Bonus progress bar -->
-    <div id="bonus-progress-bar" style="display:none;background:#fff;border:1px solid #e2eaf2;border-radius:10px;padding:10px 14px;margin-bottom:6px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
-        <div style="font-size:11px;font-weight:600;color:#1D3557;">Bonus Progress — <span id="bonus-month-label"></span></div>
-        <div style="font-size:11px;font-weight:700;color:#138181;" id="bonus-pct-label"></div>
-      </div>
-      <div style="background:#f0f4f8;border-radius:6px;height:8px;overflow:hidden;margin-bottom:5px;">
-        <div id="bonus-bar-fill" style="height:100%;background:#138181;width:0%;border-radius:6px;transition:width 0.4s;"></div>
-      </div>
-      <div style="font-size:10px;color:#8fa8c0;" id="bonus-bar-label"></div>
-    </div>
+    <!-- bonus tracker removed -->
 
   <!-- MIA vs CIA comparison panel -->
   <div id="source-comparison" style="margin-top:4px;">
@@ -936,32 +927,6 @@ function renderScore() {
   const settings = JSON.parse(localStorage.getItem('cwc_settings')||'{}');
   const contractLevel = parseInt(settings.contractLevel||105);
   const bonusThreshold = BONUS_THRESHOLDS[contractLevel];
-  const bonusBarEl = document.getElementById('bonus-progress-bar');
-  if (bonusBarEl && bonusThreshold) {
-    bonusBarEl.style.display = 'block';
-    // Net placed APV this production month
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const allPlacedAPV = clients.flatMap(c =>
-      (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).flatMap(tp =>
-        (tp.apps||[]).filter(ap => ['Placed','Paid'].includes(ap.status||''))
-          .map(ap => ap.premium||0)
-      ))
-    ).reduce((a,v)=>a+v,0);
-    const pct = Math.min(100, Math.round(allPlacedAPV/bonusThreshold*100));
-    const remaining = Math.max(0, bonusThreshold - allPlacedAPV);
-    const fillColor = pct >= 100 ? '#3B6D11' : pct >= 75 ? '#138181' : '#1D3557';
-    document.getElementById('bonus-bar-fill').style.width = pct+'%';
-    document.getElementById('bonus-bar-fill').style.background = fillColor;
-    document.getElementById('bonus-month-label').textContent = now.toLocaleDateString('en-US',{month:'long'});
-    document.getElementById('bonus-pct-label').textContent = pct >= 100 ? '🎉 Bonus qualified!' : pct+'%';
-    document.getElementById('bonus-bar-label').textContent = pct >= 100
-      ? `$${Math.round(allPlacedAPV*0.05).toLocaleString()} estimated bonus`
-      : `$${fmt(remaining).replace('$','')} more to reach $${bonusThreshold.toLocaleString()} qualifier`;
-  } else if (bonusBarEl) {
-    bonusBarEl.style.display = 'none';
-  }
-
   renderSourceComparison(pStart, pEnd, label);
   renderAlerts();
 }
@@ -1102,27 +1067,45 @@ function timerGetTodaySessions() {
   return stored;
 }
 
-function editTimerTime(activity) {
+async function editTimerTime(activity) {
+  if (view !== 'day') return;
   const labels = {dial:'Dial', appt:'Appt', admin:'Admin'};
-  const current = timerGetTotals()[activity] || 0;
-  const hh = Math.floor(current/3600);
-  const mm = Math.floor((current%3600)/60);
-  const currentStr = hh > 0 ? `${hh}:${String(mm).padStart(2,'0')}` : `${mm}`;
-  const input = prompt(`Correct ${labels[activity]} time (enter as H:MM or minutes):\nCurrent: ${timerFmt(current)}`, currentStr);
+  // Get current total from Supabase stats
+  const todayKey = timerTodayKey();
+  const statKey = 'time_' + activity + '_' + todayKey;
+  const currentSecs = stats.filter(s => s.stat_key === statKey).reduce((a,s) => a+s.value, 0);
+  const hh = Math.floor(currentSecs/3600);
+  const mm = Math.floor((currentSecs%3600)/60);
+  const currentStr = `${hh}:${String(mm).padStart(2,'0')}`;
+
+  const input = prompt(`Correct ${labels[activity]} time (H:MM):\nCurrent: ${currentStr}`, currentStr);
   if (input === null) return;
-  let seconds = 0;
-  if (input.includes(':')) {
-    const parts = input.split(':');
-    seconds = parseInt(parts[0])*3600 + parseInt(parts[1]||0)*60;
-  } else {
-    seconds = parseInt(input) * 60;
+  if (!input.includes(':')) { alert('Please enter time as H:MM (e.g. 3:00)'); return; }
+  const parts = input.split(':');
+  const seconds = parseInt(parts[0]||0)*3600 + parseInt(parts[1]||0)*60;
+  if (isNaN(seconds) || seconds < 0) { alert('Invalid format. Use H:MM like 3:00'); return; }
+
+  // Delete existing Supabase entries for this activity today
+  const toDelete = stats.filter(s => s.stat_key === statKey).map(s => s.id).filter(Boolean);
+  for (const id of toDelete) await sb.from('stats').delete().eq('id', id);
+  stats = stats.filter(s => s.stat_key !== statKey);
+
+  // Insert corrected entry
+  if (seconds > 0) {
+    const {data} = await sb.from('stats').insert({
+      stat_key: statKey,
+      value: seconds,
+      recorded_at: new Date().toISOString()
+    }).select();
+    if (data) stats.push(data[0]);
   }
-  if (isNaN(seconds) || seconds < 0) { alert('Invalid time format. Use H:MM or number of minutes.'); return; }
-  // Replace today's sessions for this activity with one corrected session
+
+  // Also update localStorage sessions
   const sessions = timerGetTodaySessions().filter(s => s.activity !== activity);
   if (seconds > 0) sessions.push({activity, seconds, ts: new Date().toISOString(), corrected: true});
   timerSaveSessions(sessions);
-  timerUpdateDisplay();
+
+  renderScore();
 }
 
 function timerSaveSessions(sessions) {
