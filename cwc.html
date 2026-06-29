@@ -316,7 +316,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-sub sub-navy" id="p-apv-ppu" style="font-size:9px;">- PPU vs non-PPU</div>
       </div>
     </div>
-    <!-- bonus tracker removed -->
+    <!-- Bonus progress bar -->
+    <div id="bonus-progress-bar" style="display:none;background:#fff;border:1px solid #e2eaf2;border-radius:10px;padding:10px 14px;margin-bottom:6px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+        <div style="font-size:11px;font-weight:600;color:#1D3557;">Bonus Progress — <span id="bonus-month-label"></span></div>
+        <div style="font-size:11px;font-weight:700;color:#138181;" id="bonus-pct-label"></div>
+      </div>
+      <div style="background:#f0f4f8;border-radius:6px;height:8px;overflow:hidden;margin-bottom:5px;">
+        <div id="bonus-bar-fill" style="height:100%;background:#138181;width:0%;border-radius:6px;transition:width 0.4s;"></div>
+      </div>
+      <div style="font-size:10px;color:#8fa8c0;" id="bonus-bar-label"></div>
+    </div>
 
   <!-- MIA vs CIA comparison panel -->
   <div id="source-comparison" style="margin-top:4px;">
@@ -900,6 +910,35 @@ function renderScore() {
   document.getElementById('p-apv-ppu').textContent = fmt(ppuAvgAPV)+' PPU vs '+fmt(nonPPUAvgAPV)+' non-PPU';
 
   // Bonus progress bar — only show for 95%+ contract levels
+  const settings = JSON.parse(localStorage.getItem('cwc_settings')||'{}');
+  const contractLevel = parseInt(settings.contractLevel||105);
+  const bonusThreshold = BONUS_THRESHOLDS[contractLevel];
+  const bonusBarEl = document.getElementById('bonus-progress-bar');
+  if (bonusBarEl && bonusThreshold) {
+    bonusBarEl.style.display = 'block';
+    // Net placed APV this production month
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const allPlacedAPV = clients.flatMap(c =>
+      (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).flatMap(tp =>
+        (tp.apps||[]).filter(ap => ['Placed','Paid'].includes(ap.status||''))
+          .map(ap => ap.premium||0)
+      ))
+    ).reduce((a,v)=>a+v,0);
+    const pct = Math.min(100, Math.round(allPlacedAPV/bonusThreshold*100));
+    const remaining = Math.max(0, bonusThreshold - allPlacedAPV);
+    const fillColor = pct >= 100 ? '#3B6D11' : pct >= 75 ? '#138181' : '#1D3557';
+    document.getElementById('bonus-bar-fill').style.width = pct+'%';
+    document.getElementById('bonus-bar-fill').style.background = fillColor;
+    document.getElementById('bonus-month-label').textContent = now.toLocaleDateString('en-US',{month:'long'});
+    document.getElementById('bonus-pct-label').textContent = pct >= 100 ? '🎉 Bonus qualified!' : pct+'%';
+    document.getElementById('bonus-bar-label').textContent = pct >= 100
+      ? `$${Math.round(allPlacedAPV*0.05).toLocaleString()} estimated bonus`
+      : `$${fmt(remaining).replace('$','')} more to reach $${bonusThreshold.toLocaleString()} qualifier`;
+  } else if (bonusBarEl) {
+    bonusBarEl.style.display = 'none';
+  }
+
   renderSourceComparison(pStart, pEnd, label);
   renderAlerts();
 }
@@ -1520,7 +1559,7 @@ async function setAppStatus(clientId, ci, ti, ai, newStatus) {
   if (!ap || !ap.apps || !ap.apps[ai]) return;
   ap.apps[ai].status = newStatus;
   // If marking Placed or Paid, stamp writtenDate from the touchpoint datetime (the sale date)
-  if ((newStatus==='Placed'||newStatus==='Paid') && !ap.apps[ai].writtenDate) {
+  if ((newStatus==='Issued'||newStatus==='Paid') && !ap.apps[ai].writtenDate) {
     ap.apps[ai].writtenDate = ap.datetime || ap.apps[ai].created || tp.datetime;
   }
   // Paid implies Placed — set placement month if not set
@@ -1583,7 +1622,7 @@ function renderAppsTab() {
     (ap.status||'').toLowerCase().includes(searchVal)
   );
 
-  const STATUS_ORDER = ['Written','Submitted','Approved','Issued','Placed','Paid','Free Look','Cancel','Lapse'];
+  const STATUS_ORDER = ['Written','Submitted','Approved','Issued','Paid','Free Look','Cancel','Lapse'];
   const STATUS_COLOR = {
     'Written':'#1D3557','Submitted':'#BA7517','Approved':'#534AB7',
     'Issued':'#138181','Placed':'#138181','Paid':'#3B6D11',
@@ -1613,7 +1652,8 @@ function renderAppsTab() {
 
     const totalAPV = submittedApps.reduce((a,ap) => a+(ap.premium||0), 0);
     const totalApps = submittedApps.length;
-    const notOPT = allApps.filter(ap => !ap.opted).length;
+    // OPT warning is all-time — show anything active not yet in OPT
+    const notOPT = allApps.filter(ap => activeStatuses.includes(ap.status||'Written') && !ap.opted).length;
 
     if (summaryBar) summaryBar.innerHTML = `
       <div style="color:rgba(255,255,255,0.6);font-size:10px;">${label}<br><strong style="font-size:16px;color:#fff;">${totalApps} apps</strong></div>
@@ -1660,7 +1700,6 @@ function renderAppsTab() {
     if (placementBar) placementBar.style.display = 'block';
 
     const now = new Date();
-    // Apply periodOffset so arrows navigate months
     const targetDate = new Date(now.getFullYear(), now.getMonth() + periodOffset, 1);
     let placedStart, placedEnd;
     if (view === 'year') {
@@ -1675,8 +1714,9 @@ function renderAppsTab() {
       placedEnd = new Date(targetDate.getFullYear(), targetDate.getMonth()+1, 0, 23, 59, 59);
     }
 
+    const PLACED_STATUSES = ['Issued','Paid'];
     const placedApps = allApps.filter(ap => {
-      if (!['Placed','Paid'].includes(ap.status||'')) return false;
+      if (!PLACED_STATUSES.includes(ap.status||'')) return false;
       const d = getPlacementMonth(ap);
       return d >= placedStart && d <= placedEnd;
     });
@@ -1686,7 +1726,7 @@ function renderAppsTab() {
       return d >= placedStart && d <= placedEnd;
     });
 
-    // Current calendar month based on offset
+    // Current calendar month
     const curMonthKey = `${targetDate.getFullYear()}-${String(targetDate.getMonth()+1).padStart(2,'0')}`;
 
     // Group placed by month
@@ -1758,7 +1798,7 @@ function renderAppsTab() {
             <div style="font-size:12px;color:#138181;font-weight:600;">${fmt(monthAPV)}</div>
           </div>
           ${apps.map(ap => {
-            const STATUS_OPTS = ['Submitted','Approved','Issued','Placed','Paid','Free Look','Lapse','Cancel'];
+            const STATUS_OPTS = ['Submitted','Approved','Issued','Paid','Free Look','Lapse','Cancel'];
             const currentStatus = ap.status || 'Placed';
             const statusColor = STATUS_COLOR[currentStatus] || '#138181';
             return `<div style="border:1px solid #e2eaf2;border-radius:10px;padding:10px 12px;margin-bottom:6px;background:#fff;">
@@ -3434,7 +3474,7 @@ function renderCasesHtml(c) {
           '<div style="font-size:10px;color:#5f7a99;">$' + (ap.premium||0).toLocaleString() + ' APV · ' + (ap.who||'Borrower') + '</div>' +
         '</div>' +
         '<select onchange="updateAppStatus(\''+c.id+'\','+ci+','+ap.ti+','+ap.ai+',this.value)" style="font-size:10px;border:1px solid #e2eaf2;border-radius:4px;padding:2px 4px;color:'+sc+';font-weight:600;background:#fff;">' +
-          ['Written','Submitted','Approved','Placed','Paid'].map(s => '<option' + (ap.status===s?' selected':'') + '>' + s + '</option>').join('') +
+          ['Written','Submitted','Approved','Issued','Paid'].map(s => '<option' + (ap.status===s?' selected':'') + '>' + s + '</option>').join('') +
         '</select>' +
       '</div>';
     }).join('') : '';
@@ -3759,7 +3799,7 @@ async function saveEditTouchpoint(id, ci, ti) {
 }
 
 // APPLICATION SYSTEM
-const APP_STATUSES = ['Written','Submitted','Approved','Placed','Paid'];
+const APP_STATUSES = ['Written','Submitted','Approved','Issued','Paid'];
 
 function carrierOptions(selected) {
   return getEnabledCarrierList().map(c => `<option${selected===c?' selected':''}>${c}</option>`).join('');
