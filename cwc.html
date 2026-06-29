@@ -1660,23 +1660,20 @@ function renderAppsTab() {
     if (summaryBar) summaryBar.style.display = 'none';
     if (placementBar) placementBar.style.display = 'block';
 
-    // For placed view, use calendar month boundaries based on the selected period
-    // Day/Week/Month → current calendar month
-    // Quarter → current calendar quarter  
-    // Year → current calendar year
     const now = new Date();
+    // Apply periodOffset so arrows navigate months
+    const targetDate = new Date(now.getFullYear(), now.getMonth() + periodOffset, 1);
     let placedStart, placedEnd;
     if (view === 'year') {
-      placedStart = new Date(now.getFullYear(), 0, 1);
-      placedEnd = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+      placedStart = new Date(targetDate.getFullYear(), 0, 1);
+      placedEnd = new Date(targetDate.getFullYear(), 11, 31, 23, 59, 59);
     } else if (view === 'quarter') {
-      const q = Math.floor(now.getMonth() / 3);
-      placedStart = new Date(now.getFullYear(), q * 3, 1);
-      placedEnd = new Date(now.getFullYear(), q * 3 + 3, 0, 23, 59, 59);
+      const q = Math.floor(targetDate.getMonth() / 3);
+      placedStart = new Date(targetDate.getFullYear(), q * 3, 1);
+      placedEnd = new Date(targetDate.getFullYear(), q * 3 + 3, 0, 23, 59, 59);
     } else {
-      // Day, Week, Month all show current calendar month
-      placedStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      placedEnd = new Date(now.getFullYear(), now.getMonth()+1, 0, 23, 59, 59);
+      placedStart = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
+      placedEnd = new Date(targetDate.getFullYear(), targetDate.getMonth()+1, 0, 23, 59, 59);
     }
 
     const placedApps = allApps.filter(ap => {
@@ -1690,8 +1687,8 @@ function renderAppsTab() {
       return d >= placedStart && d <= placedEnd;
     });
 
-    // Current calendar month
-    const curMonthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    // Current calendar month based on offset
+    const curMonthKey = `${targetDate.getFullYear()}-${String(targetDate.getMonth()+1).padStart(2,'0')}`;
 
     // Group placed by month
     const byMonth = {};
@@ -1721,7 +1718,7 @@ function renderAppsTab() {
 
     placementBar.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <div style="font-size:13px;font-weight:600;color:#1D3557;">${now.toLocaleDateString('en-US',{month:'long',year:'numeric'})}</div>
+        <div style="font-size:13px;font-weight:600;color:#1D3557;">${targetDate.toLocaleDateString('en-US',{month:'long',year:'numeric'})}</div>
         ${placementRate!==null?`<div style="font-size:13px;font-weight:700;color:${rateColor};">${placementRate}% ${rateLabel}</div>`:''}
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px;">
