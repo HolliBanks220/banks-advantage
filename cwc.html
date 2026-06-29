@@ -1622,13 +1622,18 @@ function renderAppsTab() {
     if (placementBar) placementBar.style.display = 'none';
 
     const activeStatuses = ['Written','Submitted','Approved','Issued'];
-    const submittedApps = allApps.filter(ap => {
+    // Period-filtered for summary stats
+    const periodApps = allApps.filter(ap => {
       const d = new Date(ap.tpDate||0);
       return d >= pStart && d <= pEnd;
-    }).sort((a,b) => new Date(b.tpDate||0) - new Date(a.tpDate||0));
+    });
+    // All apps (not period-filtered) for the list — sorted newest first
+    const submittedApps = allApps
+      .filter(ap => !['Lapse','Cancel'].includes(ap.status||''))
+      .sort((a,b) => new Date(b.tpDate||0) - new Date(a.tpDate||0));
 
-    const totalAPV = submittedApps.reduce((a,ap) => a+(ap.premium||0), 0);
-    const totalApps = submittedApps.length;
+    const totalAPV = periodApps.reduce((a,ap) => a+(ap.premium||0), 0);
+    const totalApps = periodApps.length;
     const notOPT = submittedApps.filter(ap => activeStatuses.includes(ap.status||'Written') && !ap.opted).length;
 
     if (summaryBar) summaryBar.innerHTML = `
