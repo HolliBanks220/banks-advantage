@@ -916,24 +916,40 @@ function renderScore() {
   const bonusBarEl = document.getElementById('bonus-progress-bar');
   if (bonusBarEl && bonusThreshold) {
     bonusBarEl.style.display = 'block';
-    // Net placed APV this production month
     const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const allPlacedAPV = clients.flatMap(c =>
-      (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).flatMap(tp =>
-        (tp.apps||[]).filter(ap => ['Placed','Paid'].includes(ap.status||''))
-          .map(ap => ap.premium||0)
-      ))
-    ).reduce((a,v)=>a+v,0);
-    const pct = Math.min(100, Math.round(allPlacedAPV/bonusThreshold*100));
-    const remaining = Math.max(0, bonusThreshold - allPlacedAPV);
+    const curMonthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+    // Use exact same logic as placed view - deduplicated by app id
+    const seenIds = new Set();
+    let netPlacedAPV = 0;
+    clients.forEach(c => {
+      (c.cases||[]).forEach(cs => {
+        (cs.touchpoints||[]).forEach(tp => {
+          (tp?.apps||[]).forEach(ap => {
+            if (!ap.id || seenIds.has(ap.id)) return;
+            seenIds.add(ap.id);
+            if (!['Placed','Paid'].includes(ap.status||'')) return;
+            // Check placement month
+            const monthKey = ap.placementMonth || (() => {
+              const d = new Date(ap.written_date||ap.writtenDate||0);
+              const day = d.getDate();
+              if (day >= 29) return `${d.getFullYear()}-${String(d.getMonth()+2).padStart(2,'0')}`;
+              return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+            })();
+            if (monthKey === curMonthKey) netPlacedAPV += (ap.premium||0);
+          });
+        });
+      });
+    });
+    const pct = Math.min(100, Math.round(netPlacedAPV/bonusThreshold*100));
+    const remaining = Math.max(0, bonusThreshold - netPlacedAPV);
     const fillColor = pct >= 100 ? '#3B6D11' : pct >= 75 ? '#138181' : '#1D3557';
     document.getElementById('bonus-bar-fill').style.width = pct+'%';
     document.getElementById('bonus-bar-fill').style.background = fillColor;
     document.getElementById('bonus-month-label').textContent = now.toLocaleDateString('en-US',{month:'long'});
     document.getElementById('bonus-pct-label').textContent = pct >= 100 ? '🎉 Bonus qualified!' : pct+'%';
     document.getElementById('bonus-bar-label').textContent = pct >= 100
-      ? `$${Math.round(allPlacedAPV*0.05).toLocaleString()} estimated bonus`
+      ? `$${Math.round(netPlacedAPV*0.05).toLocaleString()} estimated bonus`
       : `$${fmt(remaining).replace('$','')} more to reach $${bonusThreshold.toLocaleString()} qualifier`;
   } else if (bonusBarEl) {
     bonusBarEl.style.display = 'none';
