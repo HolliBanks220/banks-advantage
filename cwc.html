@@ -917,7 +917,23 @@ function renderScore() {
   if (bonusBarEl && bonusThreshold) {
     bonusBarEl.style.display = 'block';
     const now = new Date();
-    const netPlacedAPV = currentMonthNetPlaced || 0;
+    const curMonthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    const bonusSeen = new Set();
+    let netPlacedAPV = 0;
+    clients.forEach(c => {
+      (c.cases||[]).forEach(cs => {
+        (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
+          (tp.apps||[]).forEach(ap => {
+            if (!ap || !ap.id || bonusSeen.has(ap.id)) return;
+            bonusSeen.add(ap.id);
+            if (!['Placed','Paid'].includes(ap.status||'')) return;
+            const d = getPlacementMonth(ap);
+            const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+            if (key === curMonthKey) netPlacedAPV += (ap.premium||0);
+          });
+        });
+      });
+    });
     const pct = Math.min(100, Math.round(netPlacedAPV/bonusThreshold*100));
     const remaining = Math.max(0, bonusThreshold - netPlacedAPV);
     const fillColor = pct >= 100 ? '#3B6D11' : pct >= 75 ? '#138181' : '#1D3557';
