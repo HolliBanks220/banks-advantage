@@ -1070,8 +1070,10 @@ function timerGetTodaySessions() {
 async function editTimerTime(activity) {
   if (view !== 'day') return;
   const labels = {dial:'Dial', appt:'Appt', admin:'Admin'};
-  // Get current total from Supabase stats
-  const todayKey = timerTodayKey();
+  // Use the viewed day's date, not necessarily today
+  const viewedDay = new Date();
+  viewedDay.setDate(viewedDay.getDate() + periodOffset);
+  const todayKey = viewedDay.toISOString().slice(0,10);
   const statKey = 'time_' + activity + '_' + todayKey;
   const currentSecs = stats.filter(s => s.stat_key === statKey).reduce((a,s) => a+s.value, 0);
   const hh = Math.floor(currentSecs/3600);
@@ -1092,10 +1094,11 @@ async function editTimerTime(activity) {
 
   // Insert corrected entry
   if (seconds > 0) {
+    const recordedAt = new Date(viewedDay.getFullYear(), viewedDay.getMonth(), viewedDay.getDate(), 12, 0, 0).toISOString();
     const {data} = await sb.from('stats').insert({
       stat_key: statKey,
       value: seconds,
-      recorded_at: new Date().toISOString()
+      recorded_at: recordedAt
     }).select();
     if (data) stats.push(data[0]);
   }
