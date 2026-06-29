@@ -917,7 +917,8 @@ function renderScore() {
   if (bonusBarEl && bonusThreshold) {
     bonusBarEl.style.display = 'block';
     const now = new Date();
-    const curMonthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    const targetMonth = new Date(now.getFullYear(), now.getMonth() + periodOffset, 1);
+    const curMonthKey = `${targetMonth.getFullYear()}-${String(targetMonth.getMonth()+1).padStart(2,'0')}`;
     let netPlacedAPV = 0;
     clients.forEach(c => {
       (c.cases||[]).forEach(cs => {
@@ -935,7 +936,7 @@ function renderScore() {
     const fillColor = pct >= 100 ? '#3B6D11' : pct >= 75 ? '#138181' : '#1D3557';
     document.getElementById('bonus-bar-fill').style.width = pct+'%';
     document.getElementById('bonus-bar-fill').style.background = fillColor;
-    document.getElementById('bonus-month-label').textContent = now.toLocaleDateString('en-US',{month:'long'});
+    document.getElementById('bonus-month-label').textContent = targetMonth.toLocaleDateString('en-US',{month:'long', year:'numeric'});
     document.getElementById('bonus-pct-label').textContent = pct >= 100 ? '🎉 Bonus qualified!' : pct+'%';
     document.getElementById('bonus-bar-label').textContent = pct >= 100
       ? `$${Math.round(netPlacedAPV*0.05).toLocaleString()} estimated bonus`
@@ -1705,23 +1706,27 @@ function renderAppsTab() {
     if (summaryBar) summaryBar.style.display = 'none';
     if (placementBar) placementBar.style.display = 'block';
 
-    // For placed view, use calendar month boundaries based on the selected period
-    // Day/Week/Month → current calendar month
-    // Quarter → current calendar quarter  
-    // Year → current calendar year
+    // Use periodOffset to navigate — arrows on board move this too
     const now = new Date();
-    let placedStart, placedEnd;
+    let placedStart, placedEnd, displayMonth;
     if (view === 'year') {
-      placedStart = new Date(now.getFullYear(), 0, 1);
-      placedEnd = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+      const y = now.getFullYear() + periodOffset;
+      placedStart = new Date(y, 0, 1);
+      placedEnd = new Date(y, 11, 31, 23, 59, 59);
+      displayMonth = String(y);
     } else if (view === 'quarter') {
-      const q = Math.floor(now.getMonth() / 3);
-      placedStart = new Date(now.getFullYear(), q * 3, 1);
-      placedEnd = new Date(now.getFullYear(), q * 3 + 3, 0, 23, 59, 59);
+      const totalQ = Math.floor(now.getMonth() / 3) + periodOffset;
+      const y = now.getFullYear() + Math.floor(totalQ / 4);
+      const q = ((totalQ % 4) + 4) % 4;
+      placedStart = new Date(y, q * 3, 1);
+      placedEnd = new Date(y, q * 3 + 3, 0, 23, 59, 59);
+      displayMonth = `Q${q+1} ${y}`;
     } else {
-      // Day, Week, Month all show current calendar month
-      placedStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      placedEnd = new Date(now.getFullYear(), now.getMonth()+1, 0, 23, 59, 59);
+      // Day/Week/Month — show specific calendar month, arrows move by month
+      const targetDate = new Date(now.getFullYear(), now.getMonth() + periodOffset, 1);
+      placedStart = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
+      placedEnd = new Date(targetDate.getFullYear(), targetDate.getMonth()+1, 0, 23, 59, 59);
+      displayMonth = targetDate.toLocaleDateString('en-US', {month:'long', year:'numeric'});
     }
 
     const placedApps = allApps.filter(ap => {
@@ -1735,8 +1740,9 @@ function renderAppsTab() {
       return d >= placedStart && d <= placedEnd;
     });
 
-    // Current calendar month
-    const curMonthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    // Current calendar month based on offset
+    const targetForKey = new Date(now.getFullYear(), now.getMonth() + (view==='year'||view==='quarter'?0:periodOffset), 1);
+    const curMonthKey = `${targetForKey.getFullYear()}-${String(targetForKey.getMonth()+1).padStart(2,'0')}`;
 
     // Group placed by month
     const byMonth = {};
@@ -1767,7 +1773,7 @@ function renderAppsTab() {
 
     placementBar.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <div style="font-size:13px;font-weight:600;color:#1D3557;">${now.toLocaleDateString('en-US',{month:'long',year:'numeric'})}</div>
+        <div style="font-size:13px;font-weight:600;color:#1D3557;">${displayMonth}</div>
         ${placementRate!==null?`<div style="font-size:13px;font-weight:700;color:${rateColor};">${placementRate}% ${rateLabel}</div>`:''}
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px;">
