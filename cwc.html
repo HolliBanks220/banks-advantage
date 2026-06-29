@@ -1622,20 +1622,21 @@ function renderAppsTab() {
     if (placementBar) placementBar.style.display = 'none';
 
     const activeStatuses = ['Written','Submitted','Approved','Issued'];
-    // Period-filtered for both summary AND list
+    // Summary bar uses selected period — list always shows ALL active apps
+    const periodApps = allApps.filter(ap => {
+      const d = new Date(ap.tpDate||0);
+      return d >= pStart && d <= pEnd;
+    });
     const submittedApps = allApps
-      .filter(ap => {
-        const d = new Date(ap.tpDate||0);
-        return d >= pStart && d <= pEnd && !['Lapse','Cancel'].includes(ap.status||'');
-      })
+      .filter(ap => !['Lapse','Cancel'].includes(ap.status||''))
       .sort((a,b) => new Date(b.tpDate||0) - new Date(a.tpDate||0));
 
-    const totalAPV = submittedApps.reduce((a,ap) => a+(ap.premium||0), 0);
-    const totalApps = submittedApps.length;
+    const totalAPV = periodApps.reduce((a,ap) => a+(ap.premium||0), 0);
+    const totalApps = periodApps.length;
     const notOPT = submittedApps.filter(ap => activeStatuses.includes(ap.status||'Written') && !ap.opted).length;
 
     if (summaryBar) summaryBar.innerHTML = `
-      <div style="color:rgba(255,255,255,0.6);font-size:10px;">Apps<br><strong style="font-size:16px;color:#fff;">${totalApps}</strong></div>
+      <div style="color:rgba(255,255,255,0.6);font-size:10px;">${label}<br><strong style="font-size:16px;color:#fff;">${totalApps} apps</strong></div>
       <div style="color:rgba(255,255,255,0.6);font-size:10px;">APV<br><strong style="font-size:16px;color:#fff;">${fmt(totalAPV)}</strong></div>
       ${notOPT > 0 ? `<div style="color:#FAC775;font-size:10px;margin-left:auto;background:rgba(255,255,255,0.1);padding:4px 8px;border-radius:6px;">⚠️ ${notOPT} not in OPT</div>` : '<div style="color:#9FE1CB;font-size:10px;margin-left:auto;">✓ All in OPT</div>'}
     `;
