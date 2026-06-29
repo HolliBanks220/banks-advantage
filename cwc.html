@@ -737,12 +737,32 @@ function sumStat(key, start, end) {
 }
 
 async function setStat(key, total) {
-  // Always set stats against today only — never against week/month/quarter/year
-  const todayStart = new Date(); todayStart.setHours(0,0,0,0);
-  const todayEnd = new Date(); todayEnd.setHours(23,59,59,999);
-  const current = sumStat(key, todayStart, todayEnd);
-  const diff = Math.max(0, total) - current;
-  if (diff !== 0) await addStat(key, diff);
+  // Get the day being viewed (respects periodOffset in day view)
+  const {start: dayStart, end: dayEnd} = getPeriodBounds('activity');
+  // In non-day views, fall back to today
+  const now = new Date();
+  const useStart = view === 'day' ? dayStart : new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  const useEnd = view === 'day' ? dayEnd : new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+  // Delete all existing entries for this stat on this day
+  const existingIds = stats
+    .filter(s => s.stat_key === key && new Date(s.recorded_at) >= useStart && new Date(s.recorded_at) <= useEnd)
+    .map(s => s.id)
+    .filter(Boolean);
+
+  for (const id of existingIds) {
+    await sb.from('stats').delete().eq('id', id);
+  }
+  // Remove from local array
+  stats = stats.filter(s => !(s.stat_key === key && new Date(s.recorded_at) >= useStart && new Date(s.recorded_at) <= useEnd));
+
+  // Insert one clean entry with the correct total
+  if (total > 0) {
+    const recorded_at = new Date(useStart.getTime() + 12*60*60*1000).toISOString(); // noon of that day
+    const {data} = await sb.from('stats').insert([{stat_key: key, value: total, recorded_at}]).select();
+    if (data) stats.push(data[0]);
+  }
+  renderScore();
 }
 
 function startEdit(key, theme) {
