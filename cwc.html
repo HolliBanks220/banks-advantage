@@ -1607,7 +1607,7 @@ function renderAppsTab() {
           ...ap,
           ci, ti, ai,
           caseType: cs.type,
-          tpDate: ap.writtenDate || tp.datetime || cs.created || new Date().toISOString(),
+          tpDate: ap.writtenDate || (tp.outcome === 'sale' ? tp.datetime : null) || tp.datetime || cs.created,
           clientId: c.id,
           clientName: c.name,
           clientPhone: c.phone,
