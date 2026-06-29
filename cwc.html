@@ -1586,7 +1586,7 @@ function renderAppsTab() {
   const placementBar = document.getElementById('apps-placement-bar');
   if (!el) return;
 
-  const {start: pStart, end: pEnd} = getPeriodBounds('production');
+  const {start: pStart, end: pEnd, label} = getPeriodBounds('production');
   const searchVal = ((document.getElementById('apps-search')||{}).value||'').toLowerCase();
 
   // Collect all apps from all clients
@@ -1605,7 +1605,11 @@ function renderAppsTab() {
         }))
       )
     )
-  ).filter(ap => !searchVal || (ap.clientName||'').toLowerCase().includes(searchVal));
+  ).filter(ap => !searchVal || 
+    (ap.clientName||'').toLowerCase().includes(searchVal) ||
+    (ap.who||'').toLowerCase().includes(searchVal) ||
+    (ap.carrier||'').toLowerCase().includes(searchVal)
+  );
 
   const STATUS_ORDER = ['Written','Submitted','Approved','Issued','Placed','Paid','Free Look','Cancel','Lapse'];
   const STATUS_COLOR = {
@@ -1642,7 +1646,7 @@ function renderAppsTab() {
     `;
 
     if (!submittedApps.length) {
-      el.innerHTML = '<div style="font-size:13px;color:#a0b8cc;padding:30px 0;text-align:center;">No applications this period.</div>';
+      el.innerHTML = '<div style="font-size:13px;color:#a0b8cc;padding:30px 0;text-align:center;">No applications yet.</div>';
       return;
     }
 
