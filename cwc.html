@@ -1607,7 +1607,7 @@ function renderAppsTab() {
           ...ap,
           ci, ti, ai,
           caseType: cs.type,
-          tpDate: tp.datetime,
+          tpDate: ap.writtenDate || tp.datetime || cs.created || new Date().toISOString(),
           clientId: c.id,
           clientName: c.name,
           clientPhone: c.phone,
@@ -1640,8 +1640,13 @@ function renderAppsTab() {
     // List AND summary both filtered by selected period
     const submittedApps = allApps
       .filter(ap => {
-        const d = new Date(ap.tpDate||0);
-        return d >= pStart && d <= pEnd && !['Lapse','Cancel'].includes(ap.status||'');
+        if (!['Lapse','Cancel'].includes(ap.status||'')) {
+          const d = new Date(ap.tpDate||0);
+          const hasDate = d.getFullYear() > 2000;
+          // If no valid date, always show. If has date, filter by period.
+          return !hasDate || (d >= pStart && d <= pEnd);
+        }
+        return false;
       })
       .sort((a,b) => new Date(b.tpDate||0) - new Date(a.tpDate||0));
 
