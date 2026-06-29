@@ -738,13 +738,17 @@ function sumStat(key, start, end) {
 }
 
 async function setStat(key, total) {
-  const {start, end} = getPeriodBounds('activity');
-  const current = sumStat(key, start, end);
+  // Always set stats against today only — never against week/month/quarter/year
+  const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  const todayEnd = new Date(); todayEnd.setHours(23,59,59,999);
+  const current = sumStat(key, todayStart, todayEnd);
   const diff = Math.max(0, total) - current;
   if (diff !== 0) await addStat(key, diff);
 }
 
 function startEdit(key, theme) {
+  // Only allow editing in Day view
+  if (view !== 'day') return;
   const el = document.getElementById('s-'+key);
   const current = parseInt(el.textContent) || 0;
   const colorMap = {dark:'color:#fff;border-bottom:2px solid rgba(255,255,255,0.5)',navy:'color:#1D3557;border-bottom:2px solid #1D3557',amber:'color:#BA7517;border-bottom:2px solid #BA7517',red:'color:#A32D2D;border-bottom:2px solid #A32D2D'};
