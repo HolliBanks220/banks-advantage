@@ -1571,6 +1571,16 @@ async function setAppStatus(clientId, ci, ti, ai, newStatus) {
   renderAppsTab();
 }
 
+async function deleteApp(clientId, ci, ti, ai) {
+  if (!confirm('Delete this application? This cannot be undone.')) return;
+  const c = clients.find(x=>x.id===clientId); if (!c) return;
+  const tp = (((c.cases||[])[ci]||{}).touchpoints||[])[ti];
+  if (!tp || !tp.apps) return;
+  tp.apps.splice(ai, 1);
+  await sb.from('clients').update({cases: c.cases}).eq('id', clientId);
+  renderAppsTab();
+}
+
 async function toggleAppOPT(clientId, ci, ti, ai) {
   const c = clients.find(x=>x.id===clientId); if (!c) return;
   const ap = (((c.cases||[])[ci]||{}).touchpoints||[])[ti];
@@ -1627,18 +1637,18 @@ function renderAppsTab() {
     if (placementBar) placementBar.style.display = 'none';
 
     const activeStatuses = ['Written','Submitted','Approved','Issued'];
-    // Summary bar uses selected period — list always shows ALL active apps
-    const periodApps = allApps.filter(ap => {
-      const d = new Date(ap.tpDate||0);
-      return d >= pStart && d <= pEnd;
-    });
+    // List AND summary both filtered by selected period
     const submittedApps = allApps
-      .filter(ap => !['Lapse','Cancel'].includes(ap.status||''))
+      .filter(ap => {
+        const d = new Date(ap.tpDate||0);
+        return d >= pStart && d <= pEnd && !['Lapse','Cancel'].includes(ap.status||'');
+      })
       .sort((a,b) => new Date(b.tpDate||0) - new Date(a.tpDate||0));
 
-    const totalAPV = periodApps.reduce((a,ap) => a+(ap.premium||0), 0);
-    const totalApps = periodApps.length;
-    const notOPT = submittedApps.filter(ap => activeStatuses.includes(ap.status||'Written') && !ap.opted).length;
+    const totalAPV = submittedApps.reduce((a,ap) => a+(ap.premium||0), 0);
+    const totalApps = submittedApps.length;
+    // OPT warning is all-time — show anything active not yet in OPT
+    const notOPT = allApps.filter(ap => activeStatuses.includes(ap.status||'Written') && !ap.opted).length;
 
     if (summaryBar) summaryBar.innerHTML = `
       <div style="color:rgba(255,255,255,0.6);font-size:10px;">${label}<br><strong style="font-size:16px;color:#fff;">${totalApps} apps</strong></div>
@@ -1670,7 +1680,10 @@ function renderAppsTab() {
             <select onchange="setAppStatus('${ap.clientId}',${ap.ci},${ap.ti},${ap.ai},this.value)" style="font-size:11px;font-weight:600;color:${statusColor};background:${statusColor}18;border:1px solid ${statusColor}44;border-radius:8px;padding:3px 6px;cursor:pointer;outline:none;">
               ${STATUS_OPTS.map(s=>`<option value="${s}" ${s===currentStatus?'selected':''}>${s}</option>`).join('')}
             </select>
-            <button onclick="toggleAppOPT('${ap.clientId}',${ap.ci},${ap.ti},${ap.ai})" style="font-size:10px;border:1px solid ${ap.opted?'#3B6D11':'#d0dcea'};background:${ap.opted?'#EAF3DE':'#fff'};color:${ap.opted?'#3B6D11':'#5f7a99'};border-radius:6px;padding:3px 10px;cursor:pointer;white-space:nowrap;">${ap.opted?'✓ In OPT':'+ OPT'}</button>
+            <div style="display:flex;gap:4px;">
+              <button onclick="toggleAppOPT('${ap.clientId}',${ap.ci},${ap.ti},${ap.ai})" style="font-size:10px;border:1px solid ${ap.opted?'#3B6D11':'#d0dcea'};background:${ap.opted?'#EAF3DE':'#fff'};color:${ap.opted?'#3B6D11':'#5f7a99'};border-radius:6px;padding:3px 8px;cursor:pointer;white-space:nowrap;">${ap.opted?'✓ OPT':'+ OPT'}</button>
+              <button onclick="deleteApp('${ap.clientId}',${ap.ci},${ap.ti},${ap.ai})" style="font-size:10px;border:1px solid #f0c0c0;background:#fff5f5;color:#A32D2D;border-radius:6px;padding:3px 8px;cursor:pointer;">✕</button>
+            </div>
           </div>
         </div>
       </div>`;
