@@ -5,26 +5,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>CWC Tracker - Banks Advantage</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
-function syncBoardRight() {
-  const tr = document.getElementById('task-list-right');
-  const tm = document.getElementById('task-list');
-  if (tr && tm) tr.innerHTML = tm.innerHTML;
-  const cr = document.getElementById('sidebar-appts-right');
-  const cm = document.getElementById('sidebar-appts');
-  if (cr && cm) cr.innerHTML = cm.innerHTML;
-}
-function addTaskRight() {
-  const inp = document.getElementById('task-input-right');
-  const main = document.getElementById('task-input');
-  if (!inp || !main) return;
-  main.value = inp.value; inp.value = ''; addTask();
-}
-</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f4f8;min-height:100vh;padding:12px;}
 .wrap{max-width:420px;margin:0 auto;padding:0 0 2rem;}
+.page-outer{display:block;max-width:1400px;margin:0 auto;padding:0 12px;}
+@media(min-width:900px){
+  .page-outer{display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start;padding:0 16px;}
+  .wrap{max-width:100%;}
+  .right-sidebar-col{display:block!important;}
+}
+.right-sidebar-col{display:none;}
 .hdr{background:#1D3557;border-radius:12px;padding:14px 16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
 .hdr-title{font-size:16px;font-weight:500;color:#fff;}
 .hdr-sub{font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;}
@@ -39,12 +31,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .section-lbl{font-size:10px;font-weight:500;color:#1D3557;text-transform:uppercase;letter-spacing:0.07em;margin:12px 0 6px;}
 .stat-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:6px;}
 .stat-row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-bottom:6px;}
-.board-wrap{display:block;}
-.board-right-col{display:none;}
-@media(min-width:900px){
-  .board-wrap{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start;}
-  .board-right-col{display:block;}
-}
 .stat{border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:3px;}
 .stat-navy{background:#1D3557;} .stat-teal{background:#138181;}
 .stat-navy-lt{background:#E6F1FB;border:1px solid #B5D4F4;}
@@ -154,7 +140,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </head>
 <body>
 <div class="page-layout">
-<div class="wrap app-main" id="app">
+<div class="page-outer"><div class="wrap app-main" id="app">
   <div class="hdr">
     <div>
       <div class="hdr-title">Banks Advantage - CWC</div>
@@ -196,18 +182,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 
   <div id="tab-score">
-    <div class="board-wrap">
-    <div id="board-left-col">
     <div id="alerts-section" style="margin-bottom:4px;"></div>
-    <!-- Hero metric bar -->
-    <div id="hero-metric-bar" style="background:#f8fafc;border:1px solid #e2eaf2;border-radius:10px;padding:10px 12px;margin-bottom:6px;"></div>
-    <!-- Bonus bar (producers 95%+) -->
-    <div id="bonus-bar" style="display:none;"></div>
-    <!-- Mode + goals row -->
-    <div style="display:flex;gap:6px;margin-bottom:8px;">
-      <button onclick="openModeSelector()" style="flex:1;font-size:11px;background:#f0f4f8;border:1px solid #d0dcea;border-radius:6px;padding:5px 8px;color:#5f7a99;cursor:pointer;">⚡ Mode</button>
-      <button onclick="openGoalSetter()" style="flex:1;font-size:11px;background:#f0f4f8;border:1px solid #d0dcea;border-radius:6px;padding:5px 8px;color:#5f7a99;cursor:pointer;">🎯 Goals</button>
-    </div>
     <div class="section-lbl">Dialing activity</div>
     <div class="stat-row">
       <div class="stat stat-navy">
@@ -383,23 +358,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
   </div>
 
-    </div><!-- end board-left-col -->
-    <div class="board-right-col">
-      <div style="background:#fff;border:1px solid #e2eaf2;border-radius:12px;padding:12px;margin-bottom:12px;position:sticky;top:8px;">
-        <div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Tasks</div>
-        <div id="task-list-right"></div>
-        <div style="display:flex;gap:6px;margin-top:8px;">
-          <input type="text" id="task-input-right" placeholder="Add a task..." style="flex:1;font-size:12px;border:1px solid #e2eaf2;border-radius:6px;padding:6px 8px;outline:none;" onkeydown="if(event.key==='Enter')addTaskRight()">
-          <button onclick="addTaskRight()" style="background:#138181;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;">+</button>
-        </div>
-      </div>
-      <div style="background:#fff;border:1px solid #e2eaf2;border-radius:12px;padding:12px;">
-        <div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">[CAL] Today & Upcoming</div>
-        <div id="sidebar-appts-right"></div>
-      </div>
-    </div><!-- end board-right-col -->
-    </div><!-- end board-wrap -->
-
   <div id="tab-clients" style="display:none;">
     <div class="leads-hdr">
       <div style="font-size:13px;font-weight:500;color:#1D3557;" id="client-count">Loading...</div>
@@ -429,48 +387,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div id="appts-list"><div class="loading">Loading appointments...</div></div>
   </div>
   <div id="tab-apps" style="display:none;">
-    <div style="padding:8px 0 4px;">
-      <!-- View toggle -->
-      <div style="display:flex;gap:0;margin-bottom:10px;border:1px solid #d0dcea;border-radius:8px;overflow:hidden;">
-        <button id="apps-view-submitted" onclick="setAppsView('submitted')" style="flex:1;padding:8px;font-size:12px;font-weight:600;border:none;background:#1D3557;color:#fff;cursor:pointer;">Submitted</button>
-        <button id="apps-view-placed" onclick="setAppsView('placed')" style="flex:1;padding:8px;font-size:12px;font-weight:600;border:none;background:#fff;color:#5f7a99;cursor:pointer;">Placed</button>
-        <button id="apps-view-search" onclick="setAppsView('search')" style="flex:1;padding:8px;font-size:12px;font-weight:600;border:none;background:#fff;color:#5f7a99;cursor:pointer;">Search</button>
-      </div>
-      <!-- Submitted view filters -->
-      <div id="apps-submitted-filters" style="margin-bottom:8px;">
-        <div style="display:flex;gap:6px;flex-wrap:wrap;">
-          <select id="app-filter-status" onchange="renderAppsTab()" style="font-size:12px;border:1px solid #d0dcea;border-radius:6px;padding:5px 8px;color:#1D3557;">
-            <option value="Submitted">Submitted</option>
-            <option value="">All statuses</option>
-            <option value="Written">Written</option>
-            <option value="Approved">Approved</option>
-            <option value="Issued">Issued</option>
-            <option value="Placed">Placed</option>
-            <option value="Paid">Paid</option>
-            <option value="Free Look">Free Look</option>
-            <option value="Cancel">Cancel</option>
-            <option value="Lapse">Lapse</option>
-          </select>
-        </div>
-      </div>
-      <!-- Placed view filters -->
-      <div id="apps-placed-filters" style="display:none;margin-bottom:8px;">
-        <select id="app-filter-month" onchange="renderAppsTab()" style="font-size:12px;border:1px solid #d0dcea;border-radius:6px;padding:5px 8px;color:#1D3557;width:100%;">
+    <div style="padding:8px 0 12px;">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+        <select id="app-filter-status" onchange="renderAppsTab()" style="font-size:12px;border:1px solid #d0dcea;border-radius:6px;padding:5px 8px;color:#1D3557;">
+          <option value="">All statuses</option>
+          ${['Written','Submitted','Approved','Placed','Paid'].map(s=>`<option value="${s}">${s}</option>`).join('')}
+        </select>
+        <select id="app-filter-carrier" onchange="renderAppsTab()" style="font-size:12px;border:1px solid #d0dcea;border-radius:6px;padding:5px 8px;color:#1D3557;">
+          <option value="">All carriers</option>
+          ${Object.keys(CARRIERS).map(c=>`<option value="${c}">${c}</option>`).join('')}
+        </select>
+        <select id="app-filter-case" onchange="renderAppsTab()" style="font-size:12px;border:1px solid #d0dcea;border-radius:6px;padding:5px 8px;color:#1D3557;">
+          <option value="">All case types</option>
+          ${['Mortgage Protection','Retirement','Debt Free Life','Infinite Banking'].map(t=>`<option value="${t}">${t}</option>`).join('')}
         </select>
       </div>
-      <!-- Search view -->
-      <div id="apps-search-filters" style="display:none;margin-bottom:8px;">
-        <input type="text" id="apps-search-input" placeholder="Search by client name..." oninput="renderAppsTab()" style="width:100%;font-size:14px;border:1px solid #d0dcea;border-radius:8px;padding:8px 12px;box-sizing:border-box;">
-      </div>
-      <!-- Summary bar -->
-      <div id="apps-summary-bar" style="margin-bottom:8px;"></div>
-      <!-- Apps list -->
       <div id="apps-tab-list"></div>
     </div>
   </div>
 </div><!-- end wrap/app-main -->
 
-<div style="width:220px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;position:sticky;top:12px;">
+</div><!-- end wrap -->
+<div class="right-sidebar-col" style="position:sticky;top:12px;display:flex;flex-direction:column;gap:12px;">
   <div id="task-sidebar" style="background:#fff;border-radius:12px;border:1px solid #e2eaf2;padding:14px 12px;">
     <div style="font-size:10px;font-weight:600;color:#1D3557;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Tasks</div>
     <div id="task-list" style="margin-bottom:8px;"><div style="font-size:11px;color:#a0b8cc;">Loading...</div></div>
@@ -479,12 +417,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <button onclick="addTask()" style="background:#138181;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-weight:500;">+</button>
     </div>
   </div>
-  <div class="appt-sidebar" id="appt-sidebar">
+  <div class="appt-sidebar" id="appt-sidebar" style="display:block!important;">
     <div class="appt-sidebar-title">[Cal] Today & upcoming</div>
     <div id="sidebar-appts"><div style="font-size:11px;color:#a0b8cc;">No appointments</div></div>
   </div>
 </div>
-</div><!-- end page-layout -->
+</div><!-- end page-outer -->
 
 <script>
 //  SUPABASE CONFIG 
@@ -975,9 +913,6 @@ function renderScore() {
   renderSourceComparison(pStart, pEnd, label);
 
   renderAlerts();
-  renderHeroMetric();
-  renderBonusBar();
-  syncBoardRight();
 }
 
 function renderSourceComparison(pStart, pEnd, label) {
@@ -1549,263 +1484,47 @@ function renderSidebar() {
   }
 }
 
-// ── APPS TAB / BUSINESS TRACKER ─────────────────────────────────────────────
-window._appsView = 'submitted'; // 'submitted', 'placed', 'search'
-
-const APP_STATUSES_FULL = ['Written','Submitted','Approved','Issued','Placed','Paid','Free Look','Cancel','Lapse'];
-const STATUS_COLORS = {
-  'Written':'#1D3557','Submitted':'#BA7517','Approved':'#534AB7',
-  'Issued':'#138181','Placed':'#138181','Paid':'#3B6D11',
-  'Free Look':'#BA7517','Cancel':'#A32D2D','Lapse':'#A32D2D'
-};
-const STATUS_BGS = {
-  'Written':'#EEF1F6','Submitted':'#FEF3E2','Approved':'#EDE9FB',
-  'Issued':'#E6F9F3','Placed':'#E6F9F3','Paid':'#EAF3DE',
-  'Free Look':'#FEF3E2','Cancel':'#FFF5F5','Lapse':'#FFF5F5'
-};
-
-function setAppsView(view) {
-  window._appsView = view;
-  ['submitted','placed','search'].forEach(v => {
-    const btn = document.getElementById('apps-view-' + v);
-    const filters = document.getElementById('apps-' + v + '-filters');
-    if (btn) { btn.style.background = v===view?'#1D3557':'#fff'; btn.style.color = v===view?'#fff':'#5f7a99'; }
-    if (filters) filters.style.display = v===view?'block':'none';
-  });
-  renderAppsTab();
-}
-
-function getAllAppsFlat() {
-  return clients.flatMap(c =>
-    (c.cases||[]).flatMap((cs, ci) =>
-      (cs.touchpoints||[]).flatMap((tp, ti) =>
-        (tp.apps||[]).map((ap, ai) => ({
-          ...ap,
-          ci, ti, ai,
-          caseType: cs.type,
-          tpType: tp.type,
-          tpDate: tp.datetime,
-          clientId: c.id,
-          clientName: c.name,
-          clientPhone: c.phone,
-          _key: c.id + '_' + ci + '_' + ti + '_' + ai
-        }))
-      )
-    )
-  );
-}
-
 function renderAppsTab() {
   const el = document.getElementById('apps-tab-list');
-  const summaryEl = document.getElementById('apps-summary-bar');
   if (!el) return;
-  const view = window._appsView || 'submitted';
   const {start: pStart, end: pEnd} = getPeriodBounds('production');
-  const allApps = getAllAppsFlat();
+  const filterStatus = (document.getElementById('app-filter-status')||{value:''}).value;
+  const filterCarrier = (document.getElementById('app-filter-carrier')||{value:''}).value;
+  const filterCase = (document.getElementById('app-filter-case')||{value:''}).value;
 
-  let filtered = [];
+  const allApps = clients.flatMap(c =>
+    (c.cases||[]).flatMap((cs, ci) =>
+      (cs.touchpoints||[]).flatMap((tp, ti) => {
+        // Show all apps - use status/carrier/case filters instead of period
+        return (tp.apps||[]).map((ap, ai) => ({...ap, ci, ti, ai, caseType: cs.type, tpType: tp.type, tpDate: tp.datetime, clientId: c.id, clientName: c.name, clientPhone: c.phone}));
+      })
+    )
+  ).filter(ap =>
+    (!filterStatus || ap.status === filterStatus) &&
+    (!filterCarrier || ap.carrier === filterCarrier) &&
+    (!filterCase || ap.caseType === filterCase)
+  ).sort((a,b) => new Date(b.tpDate||0) - new Date(a.tpDate||0));
 
-  if (view === 'submitted') {
-    const filterStatus = (document.getElementById('app-filter-status')||{value:'Submitted'}).value || 'Submitted';
-    filtered = allApps.filter(ap => {
-      const d = new Date(ap.tpDate||0);
-      if (filterStatus === 'Submitted') return ap.status === 'Submitted' && d >= pStart && d <= pEnd;
-      return (!filterStatus || ap.status === filterStatus);
-    }).sort((a,b) => new Date(b.tpDate||0) - new Date(a.tpDate||0));
-
-    const totalAPV = filtered.reduce((a,ap) => a+(ap.premium||0), 0);
-    if (summaryEl) summaryEl.innerHTML = '<div style="font-size:12px;color:#5f7a99;padding:4px 0;">' +
-      filtered.length + ' apps · Total APV: <strong style="color:#1D3557;">$' + totalAPV.toLocaleString() + '</strong></div>';
-
-  } else if (view === 'placed') {
-    // Populate month selector
-    const monthSel = document.getElementById('app-filter-month');
-    if (monthSel && !monthSel.options.length) {
-      const now = new Date();
-      for (let i = -2; i <= 3; i++) {
-        const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
-        const label = d.toLocaleDateString('en-US',{month:'long',year:'numeric'});
-        const val = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
-        const opt = document.createElement('option');
-        opt.value = val; opt.textContent = label;
-        if (i === 0) opt.selected = true;
-        monthSel.appendChild(opt);
-      }
-    }
-    const selectedMonth = monthSel ? monthSel.value : '';
-    filtered = allApps.filter(ap => {
-      if (!['Placed','Paid','Lapse','Cancel'].includes(ap.status)) return false;
-      const pm = ap.placement_month || '';
-      if (selectedMonth && pm !== selectedMonth) return false;
-      return true;
-    }).sort((a,b) => new Date(b.tpDate||0) - new Date(a.tpDate||0));
-
-    const placed = filtered.filter(ap => ['Placed','Paid'].includes(ap.status));
-    const chargebacks = filtered.filter(ap => ['Lapse','Cancel'].includes(ap.status));
-    const grossPlaced = placed.reduce((a,ap) => a+(ap.premium||0), 0);
-    const chargebackAmt = chargebacks.reduce((a,ap) => a+(ap.chargeback_amt !== undefined ? ap.chargeback_amt : (ap.premium||0)), 0);
-    const netPlaced = grossPlaced - chargebackAmt;
-    const placementRate = grossPlaced > 0 ? Math.round((netPlaced/grossPlaced)*100) : 0;
-    const rateColor = placementRate >= 90 ? '#138181' : placementRate >= 85 ? '#27500A' : placementRate >= 75 ? '#639922' : placementRate >= 65 ? '#BA7517' : '#A32D2D';
-    const rateLabel = placementRate >= 90 ? 'Excellent' : placementRate >= 85 ? 'Great' : placementRate >= 75 ? 'Good' : placementRate >= 65 ? 'Acceptable' : 'Needs attention';
-
-    if (summaryEl) summaryEl.innerHTML =
-      '<div style="background:#f0f4f8;border-radius:8px;padding:10px 12px;margin-bottom:8px;">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
-          '<div style="font-size:11px;font-weight:600;color:#5f7a99;">NET PLACED</div>' +
-          '<div style="font-size:11px;font-weight:700;color:' + rateColor + ';background:' + rateColor + '15;padding:2px 8px;border-radius:10px;">' + placementRate + '% · ' + rateLabel + '</div>' +
-        '</div>' +
-        '<div style="display:flex;gap:12px;">' +
-          '<div><div style="font-size:9px;color:#8fa8c0;">GROSS</div><div style="font-size:15px;font-weight:700;color:#1D3557;">$' + grossPlaced.toLocaleString() + '</div></div>' +
-          '<div><div style="font-size:9px;color:#8fa8c0;">CHARGEBACKS</div><div style="font-size:15px;font-weight:700;color:#A32D2D;">-$' + chargebackAmt.toLocaleString() + '</div></div>' +
-          '<div><div style="font-size:9px;color:#8fa8c0;">NET</div><div style="font-size:15px;font-weight:700;color:' + rateColor + ';">$' + netPlaced.toLocaleString() + '</div></div>' +
-        '</div>' +
-      '</div>';
-
-  } else if (view === 'search') {
-    const q = (document.getElementById('apps-search-input')||{value:''}).value.toLowerCase().trim();
-    if (!q) { el.innerHTML = '<div style="font-size:13px;color:#a0b8cc;text-align:center;padding:20px 0;">Type a client name to search.</div>'; if(summaryEl) summaryEl.innerHTML=''; return; }
-    filtered = allApps.filter(ap => ap.clientName && ap.clientName.toLowerCase().includes(q))
-      .sort((a,b) => new Date(b.tpDate||0) - new Date(a.tpDate||0));
-    if (summaryEl) summaryEl.innerHTML = '<div style="font-size:12px;color:#5f7a99;padding:4px 0;">' + filtered.length + ' result' + (filtered.length!==1?'s':'') + '</div>';
-  }
-
-  if (!filtered.length) {
+  if (!allApps.length) {
     el.innerHTML = '<div style="font-size:13px;color:#a0b8cc;padding:20px 0;text-align:center;">No applications found.</div>';
     return;
   }
 
-  el.innerHTML = '';
-  filtered.forEach(ap => {
-    const statusColor = STATUS_COLORS[ap.status] || '#1D3557';
-    const statusBg = STATUS_BGS[ap.status] || '#EEF1F6';
+  const totalAPV = allApps.reduce((a,ap) => a+(ap.premium||0), 0);
+  el.innerHTML = `<div style="font-size:12px;color:#5f7a99;margin-bottom:10px;">${allApps.length} application${allApps.length!==1?'s':''} - Total APV: <strong style="color:#138181;">$${totalAPV.toLocaleString()}</strong></div>` +
+  allApps.map(ap => {
+    const statusColor = {'Paid':'#3B6D11','Placed':'#138181','Approved':'#534AB7','Submitted':'#BA7517','Written':'#1D3557'}[ap.status]||'#1D3557';
     const dt = ap.tpDate ? new Date(ap.tpDate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
-    const isLapseCancel = ['Lapse','Cancel'].includes(ap.status);
-    const chargebackAmt = ap.chargeback_amt !== undefined ? ap.chargeback_amt : (ap.premium||0);
-    const nextStatus = APP_STATUSES_FULL[APP_STATUSES_FULL.indexOf(ap.status)+1] || null;
-
-    const div = document.createElement('div');
-    div.style.cssText = 'border:1px solid ' + statusColor + '33;border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#fff;';
-
-    // Client info (clickable)
-    const infoDiv = document.createElement('div');
-    infoDiv.style.cssText = 'cursor:pointer;flex:1;';
-    infoDiv.innerHTML = '<div style="font-size:13px;font-weight:600;color:#1D3557;">' + ap.clientName + '</div>' +
-      '<div style="font-size:11px;color:#5f7a99;">' + (ap.carrier||'') + ' · ' + (ap.product||'') + '</div>' +
-      '<div style="font-size:11px;color:#8fa8c0;">APV $' + (ap.premium||0).toLocaleString() + ' · ' + (ap.who||'Borrower') + ' · ' + dt + '</div>';
-    infoDiv.addEventListener('click', (function(id){ return function(){ openClient(id); }; })(ap.clientId));
-
-    // Status dropdown
-    const sel = document.createElement('select');
-    sel.style.cssText = 'font-size:10px;font-weight:600;color:' + statusColor + ';background:' + statusBg + ';border:1px solid ' + statusColor + '44;border-radius:6px;padding:2px 4px;cursor:pointer;';
-    APP_STATUSES_FULL.forEach(s => {
-      const opt = document.createElement('option');
-      opt.value = s; opt.textContent = s; if (s===ap.status) opt.selected=true;
-      sel.appendChild(opt);
-    });
-    sel.addEventListener('change', (function(k){ return function(){ updateAppStatusFromList(k, this.value); }; })(ap._key));
-
-    // OPT checkbox
-    const optLbl = document.createElement('label');
-    optLbl.style.cssText = 'display:flex;align-items:center;gap:4px;cursor:pointer;font-size:10px;color:#5f7a99;margin-top:4px;';
-    const optChk = document.createElement('input');
-    optChk.type='checkbox'; optChk.checked=!!ap.uploaded_opt;
-    optChk.style.cssText='width:14px;height:14px;accent-color:#138181;';
-    optChk.addEventListener('change', (function(k){ return function(){ toggleAppUploaded(k, this.checked); }; })(ap._key));
-    optLbl.appendChild(optChk); optLbl.appendChild(document.createTextNode(' OPT'));
-
-    const rightDiv = document.createElement('div');
-    rightDiv.style.cssText = 'display:flex;flex-direction:column;align-items:flex-end;min-width:90px;';
-    rightDiv.appendChild(sel); rightDiv.appendChild(optLbl);
-
-    const topRow = document.createElement('div');
-    topRow.style.cssText = 'display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;gap:8px;';
-    topRow.appendChild(infoDiv); topRow.appendChild(rightDiv);
-    div.appendChild(topRow);
-
-    if (ap.placement_month) {
-      const pm = document.createElement('div');
-      pm.style.cssText='font-size:10px;color:#138181;margin-top:2px;';
-      pm.textContent='Placed: ' + ap.placement_month;
-      div.appendChild(pm);
-    }
-    if (isLapseCancel) {
-      const cb = document.createElement('div');
-      cb.style.cssText='font-size:10px;color:#A32D2D;margin-top:2px;';
-      cb.innerHTML='Chargeback: $' + chargebackAmt.toLocaleString() + ' ';
-      const cbBtn = document.createElement('button');
-      cbBtn.textContent='Edit'; cbBtn.style.cssText='font-size:9px;background:none;border:1px solid #F7C1C1;border-radius:4px;padding:1px 5px;color:#A32D2D;cursor:pointer;margin-left:4px;';
-      cbBtn.addEventListener('click', (function(k,a){ return function(){ editChargeback(k,a); }; })(ap._key,chargebackAmt));
-      cb.appendChild(cbBtn); div.appendChild(cb);
-    }
-    el.appendChild(div);
-  });
-}
-
-async function updateAppStatusFromList(key, newStatus) {
-  const [clientId, ci, ti, ai] = key.split('_');
-  const c = clients.find(x => x.id === clientId); if (!c) return;
-  const app = (c.cases[ci]?.touchpoints[ti]?.apps||[])[ai]; if (!app) return;
-  const oldStatus = app.status;
-  app.status = newStatus;
-
-  // If placed or paid, prompt for placement month
-  if (['Placed','Paid'].includes(newStatus) && !app.placement_month) {
-    const now = new Date();
-    const thisMonth = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
-    const nextMonth = new Date(now.getFullYear(), now.getMonth()+1, 1);
-    const nextMonthStr = nextMonth.getFullYear() + '-' + String(nextMonth.getMonth()+1).padStart(2,'0');
-    const followMonth = new Date(now.getFullYear(), now.getMonth()+2, 1);
-    const followMonthStr = followMonth.getFullYear() + '-' + String(followMonth.getMonth()+1).padStart(2,'0');
-
-    const choice = prompt(
-      'Which month does this place in?\n1 = ' + now.toLocaleString('default',{month:'long'}) +
-      '\n2 = ' + nextMonth.toLocaleString('default',{month:'long'}) +
-      '\n3 = ' + followMonth.toLocaleString('default',{month:'long'}) +
-      '\nOr type YYYY-MM for a specific month:', '1'
-    );
-    if (choice === '2') app.placement_month = nextMonthStr;
-    else if (choice === '3') app.placement_month = followMonthStr;
-    else if (choice && choice.match(/^\d{4}-\d{2}$/)) app.placement_month = choice;
-    else app.placement_month = thisMonth;
-  }
-
-  // If lapse/cancel, set chargeback default
-  if (['Lapse','Cancel'].includes(newStatus) && app.chargeback_amt === undefined) {
-    app.chargeback_amt = app.premium || 0;
-    app.chargeback_date = new Date().toISOString();
-  }
-
-  const cases = [...c.cases];
-  await sb.from('clients').update({cases}).eq('id', clientId);
-  c.cases = cases;
-  renderAppsTab();
-  renderScore();
-}
-
-async function toggleAppUploaded(key, checked) {
-  const [clientId, ci, ti, ai] = key.split('_');
-  const c = clients.find(x => x.id === clientId); if (!c) return;
-  const app = (c.cases[ci]?.touchpoints[ti]?.apps||[])[ai]; if (!app) return;
-  app.uploaded_opt = checked;
-  const cases = [...c.cases];
-  await sb.from('clients').update({cases}).eq('id', clientId);
-  c.cases = cases;
-}
-
-function editChargeback(key, currentAmt) {
-  const [clientId, ci, ti, ai] = key.split('_');
-  const c = clients.find(x => x.id === clientId); if (!c) return;
-  const app = (c.cases[ci]?.touchpoints[ti]?.apps||[])[ai]; if (!app) return;
-  const input = prompt('Edit chargeback amount (default is 100% of APV):', currentAmt);
-  if (input === null) return;
-  const newAmt = parseFloat(input);
-  if (isNaN(newAmt)) return;
-  app.chargeback_amt = newAmt;
-  const cases = [...c.cases];
-  sb.from('clients').update({cases}).eq('id', clientId);
-  c.cases = cases;
-  renderAppsTab();
+    return `<div style="border:1px solid #e2eaf2;border-radius:10px;padding:12px;margin-bottom:8px;background:#fff;cursor:pointer;" onclick="openClient('${ap.clientId}')">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <span style="font-size:13px;font-weight:600;color:#1D3557;">${ap.clientName}</span>
+        <span style="font-size:11px;font-weight:600;color:${statusColor};background:${statusColor}15;padding:2px 8px;border-radius:10px;">${ap.status}</span>
+      </div>
+      <div style="font-size:12px;color:#5f7a99;margin-bottom:2px;">${ap.carrier} - ${ap.product}</div>
+      <div style="font-size:11px;color:#8fa8c0;">APV: $${(ap.premium||0).toLocaleString()} - Face: $${(ap.face||0).toLocaleString()} - ${ap.who||'Borrower'}</div>
+      <div style="font-size:10px;color:#a0b8cc;margin-top:2px;">${ap.caseType} - ${dt}</div>
+    </div>`;
+  }).join('');
 }
 
 function renderAppts() {
@@ -4276,7 +3995,6 @@ async function dismissTask(id) {
 }
 
 function renderTasks() {
-  setTimeout(syncBoardRight, 100);
   const el = document.getElementById('task-list');
   if (el) {
     if (!tasks.length) {
@@ -4523,7 +4241,7 @@ function getBonusRate(carrierName, productName) {
 function openSettings() {
   const settings = getAgentSettings();
   const level = settings.contractLevel || 105;
-  const levels = [80, 85, 90, 95, 100, 105, 110, 115, 120, 125, 130];
+  const levels = [95, 100, 105, 110, 115, 120, 125, 130];
   const enabledCarriers = settings.enabledCarriers || {};
 
   const carrierList = getCarrierList();
@@ -4783,218 +4501,6 @@ function loadCustomCarriers() {
   });
 }
 
-
-// ── DASHBOARD MODES ──────────────────────────────────────────────────────────
-const DASHBOARD_MODES = {
-  new_agent:    { label: 'New Agent',       heroMetric: 'dials',   defaultLevels: [80] },
-  rising:       { label: 'Rising Producer', heroMetric: 'appts',   defaultLevels: [85,90] },
-  producer:     { label: 'Producer',        heroMetric: 'apv',     defaultLevels: [95,100,105,110,115,120,125,130] }
-};
-
-function getDashboardMode() {
-  const settings = getAgentSettings();
-  if (settings.dashboardMode) return settings.dashboardMode;
-  // Auto-detect from contract level
-  const level = settings.contractLevel || 105;
-  if (level <= 80) return 'new_agent';
-  if (level <= 90) return 'rising';
-  return 'producer';
-}
-
-function openModeSelector() {
-  const current = getDashboardMode();
-  showModal(
-    '<button class="close-x" onclick="closeModal()">x</button>' +
-    '<div class="modal-title">Dashboard mode</div>' +
-    '<div style="font-size:11px;color:#8fa8c0;margin-bottom:12px;">Choose what to focus on. This changes your hero metric and goal tracking.</div>' +
-    Object.entries(DASHBOARD_MODES).map(([key, mode]) => {
-      const isSelected = current === key;
-      const desc = key==='new_agent' ? 'Focus on dials. Build the habit.' :
-                   key==='rising' ? 'Focus on appointments set and shows.' :
-                   'Focus on APV and bonus progress.';
-      return '<div onclick="setDashboardMode(\'' + key + '\')" style="border:2px solid ' + (isSelected?'#138181':'#e2eaf2') + ';border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer;background:' + (isSelected?'#F0FBF7':'#fff') + ';">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;">' +
-          '<div style="font-size:13px;font-weight:600;color:#1D3557;">' + mode.label + '</div>' +
-          (isSelected ? '<div style="font-size:11px;color:#138181;font-weight:600;">✓ Active</div>' : '') +
-        '</div>' +
-        '<div style="font-size:11px;color:#5f7a99;margin-top:2px;">' + desc + '</div>' +
-      '</div>';
-    }).join('') +
-    '<div style="margin-top:8px;font-size:11px;color:#a0b8cc;">Default: auto-set by your contract level</div>'
-  );
-}
-
-function setDashboardMode(mode) {
-  const settings = getAgentSettings();
-  settings.dashboardMode = mode;
-  saveAgentSettings(settings);
-  closeModal();
-  renderHeroMetric();
-  renderBonusBar();
-}
-
-function renderHeroMetric() {
-  const el = document.getElementById('hero-metric-bar');
-  if (!el) return;
-  const mode = getDashboardMode();
-  const {start: aStart, end: aEnd} = getPeriodBounds('activity');
-  const {start: pStart, end: pEnd} = getPeriodBounds('production');
-
-  if (mode === 'new_agent') {
-    const dials = sumStat('dials', aStart, aEnd);
-    const goal = getGoal('dials');
-    const pct = goal ? Math.min(100, Math.round((dials/goal)*100)) : 0;
-    el.innerHTML =
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
-        '<div style="font-size:11px;font-weight:600;color:#1D3557;">🎯 Dials ' + (goal?'toward goal':'') + '</div>' +
-        '<div style="font-size:18px;font-weight:700;color:#1D3557;">' + dials + (goal?' / '+goal:'') + '</div>' +
-      '</div>' +
-      (goal ? progressBar(pct, '#1D3557') : '<div style="font-size:10px;color:#a0b8cc;">Tap ⚙️ to set a dials goal</div>');
-
-  } else if (mode === 'rising') {
-    const appts = sumStat('appts', aStart, aEnd);
-    const goal = getGoal('appts');
-    const pct = goal ? Math.min(100, Math.round((appts/goal)*100)) : 0;
-    el.innerHTML =
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
-        '<div style="font-size:11px;font-weight:600;color:#534AB7;">🎯 Appointments set</div>' +
-        '<div style="font-size:18px;font-weight:700;color:#534AB7;">' + appts + (goal?' / '+goal:'') + '</div>' +
-      '</div>' +
-      (goal ? progressBar(pct, '#534AB7') : '<div style="font-size:10px;color:#a0b8cc;">Tap ⚙️ to set an appts goal</div>');
-
-  } else {
-    // Producer - show APV written this period
-    const allApps = clients.flatMap(c =>
-      (c.cases||[]).flatMap(cs =>
-        (cs.touchpoints||[]).flatMap(tp =>
-          (tp.apps||[]).filter(ap => {
-            const d = new Date(tp.datetime||0);
-            return d >= pStart && d <= pEnd;
-          }).map(ap => ap.premium||0)
-        )
-      )
-    );
-    const apv = allApps.reduce((a,v) => a+v, 0);
-    const goal = getGoal('apv');
-    const pct = goal ? Math.min(100, Math.round((apv/goal)*100)) : 0;
-    el.innerHTML =
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
-        '<div style="font-size:11px;font-weight:600;color:#138181;">🎯 APV written</div>' +
-        '<div style="font-size:18px;font-weight:700;color:#138181;">$' + apv.toLocaleString() + (goal?' / $'+goal.toLocaleString():'') + '</div>' +
-      '</div>' +
-      (goal ? progressBar(pct, '#138181') : '<div style="font-size:10px;color:#a0b8cc;">Tap ⚙️ to set an APV goal</div>');
-  }
-}
-
-function progressBar(pct, color) {
-  const w = Math.min(100, pct);
-  const label = pct >= 100 ? '🎉 Goal hit!' : pct + '%';
-  return '<div style="background:#f0f4f8;border-radius:20px;height:10px;overflow:hidden;margin-bottom:2px;">' +
-    '<div style="background:' + color + ';width:' + w + '%;height:100%;border-radius:20px;transition:width 0.5s;"></div>' +
-  '</div>' +
-  '<div style="font-size:10px;color:' + color + ';text-align:right;">' + label + '</div>';
-}
-
-function renderBonusBar() {
-  const el = document.getElementById('bonus-bar');
-  if (!el) return;
-  const settings = getAgentSettings();
-  const level = settings.contractLevel || 105;
-  if (level < 95) { el.style.display = 'none'; return; }
-  el.style.display = 'block';
-
-  const threshold = BONUS_THRESHOLDS[level] || 25000;
-  // Get current month's net placed APV
-  const now = new Date();
-  const monthKey = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
-  const allApps = clients.flatMap(c =>
-    (c.cases||[]).flatMap(cs =>
-      (cs.touchpoints||[]).flatMap(tp =>
-        (tp.apps||[]).filter(ap => ['Placed','Paid'].includes(ap.status) && ap.placement_month === monthKey)
-          .map(ap => ap.premium||0)
-      )
-    )
-  );
-  const chargebacks = clients.flatMap(c =>
-    (c.cases||[]).flatMap(cs =>
-      (cs.touchpoints||[]).flatMap(tp =>
-        (tp.apps||[]).filter(ap => ['Lapse','Cancel'].includes(ap.status) && ap.chargeback_date && ap.chargeback_date.startsWith(now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0')))
-          .map(ap => ap.chargeback_amt !== undefined ? ap.chargeback_amt : (ap.premium||0))
-      )
-    )
-  );
-  const netPlaced = allApps.reduce((a,v) => a+v, 0) - chargebacks.reduce((a,v) => a+v, 0);
-  const pct = Math.min(100, Math.round((netPlaced/threshold)*100));
-  const remaining = Math.max(0, threshold - netPlaced);
-  const bonusColor = pct >= 100 ? '#3B6D11' : '#138181';
-
-  el.innerHTML =
-    '<div style="background:' + (pct>=100?'#EAF3DE':'#F0FBF7') + ';border:1px solid ' + bonusColor + '44;border-radius:8px;padding:8px 12px;margin-bottom:8px;">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
-        '<div style="font-size:10px;font-weight:600;color:' + bonusColor + ';text-transform:uppercase;letter-spacing:0.06em;">Bonus progress — ' + now.toLocaleString('default',{month:'long'}) + '</div>' +
-        '<div style="font-size:11px;font-weight:600;color:' + bonusColor + ';">$' + netPlaced.toLocaleString() + ' / $' + threshold.toLocaleString() + '</div>' +
-      '</div>' +
-      '<div style="background:#fff;border-radius:20px;height:8px;overflow:hidden;margin-bottom:3px;">' +
-        '<div style="background:' + bonusColor + ';width:' + pct + '%;height:100%;border-radius:20px;transition:width 0.5s;"></div>' +
-      '</div>' +
-      (pct >= 100 ?
-        '<div style="font-size:10px;color:#3B6D11;font-weight:600;">🎉 Bonus qualifier hit! Est. bonus: $' + Math.round(netPlaced * 0.05).toLocaleString() + '</div>' :
-        '<div style="font-size:10px;color:#5f7a99;">$' + remaining.toLocaleString() + ' more to qualify for bonus</div>'
-      ) +
-    '</div>';
-}
-
-function getGoal(metric) {
-  const settings = getAgentSettings();
-  return (settings.goals || {})[metric] || 0;
-}
-
-function openGoalSetter() {
-  const settings = getAgentSettings();
-  const goals = settings.goals || {};
-  const mode = getDashboardMode();
-  const metrics = mode==='new_agent' ? ['dials'] : mode==='rising' ? ['appts','dials'] : ['apv','appts','dials'];
-  const labels = {dials:'Dials goal', appts:'Appointments goal', apv:'APV goal ($)'};
-  const periods = {dials:'week', appts:'week', apv:'month'};
-
-  let html = '<button class="close-x" onclick="closeModal()">x</button>' +
-    '<div class="modal-title">Set goals</div>' +
-    '<div style="font-size:11px;color:#8fa8c0;margin-bottom:12px;">Goals show as progress bars on your board. Leave blank to hide.</div>';
-
-  metrics.forEach(m => {
-    html += '<div class="field"><label>' + labels[m] + ' (per ' + periods[m] + ')</label>' +
-      '<input type="number" id="goal-' + m + '" value="' + (goals[m]||'') + '" placeholder="e.g. ' + (m==='apv'?'10000':m==='appts'?'5':'100') + '" style="font-size:16px;"></div>';
-  });
-
-  html += '<button onclick="saveGoals([' + metrics.map(m => `'${m}'`).join(',') + '])" style="width:100%;background:#138181;color:#fff;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;margin-top:8px;">Save goals</button>';
-
-  showModal(html);
-}
-
-function saveGoals(metrics) {
-  const settings = getAgentSettings();
-  if (!settings.goals) settings.goals = {};
-  metrics.forEach(m => {
-    const val = parseInt((document.getElementById('goal-' + m)||{value:0}).value)||0;
-    settings.goals[m] = val;
-  });
-  saveAgentSettings(settings);
-  closeModal();
-  renderHeroMetric();
-  // Celebrate if goal hit
-  metrics.forEach(m => {
-    if (settings.goals[m] > 0) checkGoalCelebration(m);
-  });
-}
-
-function checkGoalCelebration(metric) {
-  // Called after any stat update - check if goal just hit
-  const goal = getGoal(metric);
-  if (!goal) return;
-  // Simple confetti burst
-  showSync('🎉 Goal hit! Amazing work!');
-  setTimeout(hideSync, 3000);
-}
 </script>
 </body>
 </html>
