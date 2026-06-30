@@ -1513,11 +1513,9 @@ function renderSidebar() {
         html += `<div class="appt-sidebar-divider" style="color:#BA7517;">Callbacks today</div>`;
         html += todayCallbacks.map(a => callbackCard(a)).join('');
       }
-      if (upcoming.length) html += upcoming.map(a => apptCard(a, false)).join('');
-      if (futureCallbacks.length) {
-        html += `<div class="appt-sidebar-divider" style="color:#BA7517;">Upcoming callbacks</div>`;
-        html += futureCallbacks.map(a => callbackCard(a)).join('');
-      }
+      // Merge future callbacks with upcoming appointments sorted chronologically
+      const allUpcoming = [...upcoming, ...futureCallbacks].sort((a,b) => new Date(a.datetime)-new Date(b.datetime));
+      if (allUpcoming.length) html += allUpcoming.map(a => a.isCallback ? callbackCard(a) : apptCard(a, false)).join('');
       if (todayPassed.length) {
         html += `<div class="appt-sidebar-divider">Earlier today</div>`;
         html += todayPassed.map(a => apptCard(a, true)).join('');
@@ -2045,6 +2043,8 @@ function getTimeSlotsCovered(c) {
 }
 
 function isReadyForText(c) {
+  // Clear if text already sent
+  if ((c.call_log||[]).some(cl => cl.outcome === 'Text sent')) return false;
   const attempts = getAttemptCount(c);
   const slots = getTimeSlotsCovered(c);
   return attempts >= 5 && slots.size >= 3;
