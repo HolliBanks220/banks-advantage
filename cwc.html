@@ -1958,18 +1958,22 @@ function statusBadge(s) { const m={'New':'b-New','Working':'b-Working','Appointm
 function dotClass(s) { if(s.outcome==='showed')return'jd-showed'; if(s.outcome==='noshow')return'jd-noshow'; if(s.outcome==='canceled')return'jd-cancel'; return'jd-pending'; }
 
 // ── TIMEZONE MAP ────────────────────────────────────────────────────────────
+// Offset from agent's local time (Eastern) to lead's local time
+// Eastern=0, Central=-1, Mountain=-2, Pacific=-3
+// TN is mostly Central (-1); AZ doesn't observe DST (-2 Mountain); NV is Pacific (-3)
 const STATE_TZ_OFFSET = {
   'CT':0,'ME':0,'MA':0,'NH':0,'NJ':0,'NY':0,'PA':0,'RI':0,'VT':0,'VA':0,
-  'DC':0,'MD':0,'DE':0,'FL':0,'GA':0,'NC':0,'SC':0,'WV':0,'OH':0,'MI':0,
-  'IN':0,'KY':0,'TN':0,'AL':0,'MS':0,'IL':0,'WI':0,'MO':0,'AR':0,'LA':0,
-  'MN':0,'IA':0,'KS':0,'NE':0,'SD':0,'ND':0,'OK':0,'TX':-1,'CO':-1,
-  'MT':-1,'WY':-1,'NM':-1,'AZ':-1,'UT':-1,'ID':-1,'WA':-2,'OR':-2,
-  'CA':-2,'NV':-2,'AK':-3,'HI':-5
+  'DC':0,'MD':0,'DE':0,'FL':0,'GA':0,'NC':0,'SC':0,'WV':0,'OH':0,'MI':0,'IN':0,'KY':0,
+  'TN':-1,'AL':-1,'MS':-1,'IL':-1,'WI':-1,'MO':-1,'AR':-1,'LA':-1,
+  'MN':-1,'IA':-1,'KS':-1,'NE':-1,'SD':-1,'ND':-1,'OK':-1,'TX':-1,
+  'CO':-2,'MT':-2,'WY':-2,'NM':-2,'AZ':-2,'UT':-2,'ID':-2,
+  'WA':-3,'OR':-3,'CA':-3,'NV':-3,
+  'AK':-4,'HI':-6
 };
 
 function getLeadLocalHour(c) {
   const now = new Date();
-  const offset = STATE_TZ_OFFSET[c.state] || 0;
+  const offset = (c.tz_offset !== undefined && c.tz_offset !== null) ? c.tz_offset : (STATE_TZ_OFFSET[c.state] || 0);
   const localHour = now.getHours() + offset;
   return ((localHour % 24) + 24) % 24;
 }
@@ -1977,6 +1981,74 @@ function getLeadLocalHour(c) {
 function isGoodTimeToCall(c) {
   const h = getLeadLocalHour(c);
   return h >= 8 && h <= 21;
+}
+
+// Returns current time slot for lead based on their local time
+function getCurrentSlotForLead(c) {
+  const h = getLeadLocalHour(c);
+  if (h >= 8 && h < 12) return 'morning';
+  if (h >= 12 && h < 17) return 'afternoon';
+  if (h >= 17 && h <= 21) return 'evening';
+  return null;
+}
+
+// How many call attempts today (by agent's local date)
+function getAttemptsToday(c) {
+  const today = new Date().toDateString();
+  return (c.call_log||[]).filter(cl => cl.dials > 0 && new Date(cl.ts).toDateString() === today).length;
+}
+
+// Hours since last attempt on this lead
+function getHoursSinceLastAttempt(c) {
+  const log = (c.call_log||[]).filter(cl => cl.dials > 0);
+  if (!log.length) return 999;
+  return (new Date() - new Date(log[log.length-1].ts)) / (1000*60*60);
+}
+
+// Which slots covered today for this lead
+function getSlotsCoveredToday(c) {
+  const today = new Date().toDateString();
+  const slots = new Set();
+  (c.call_log||[]).filter(cl => cl.dials > 0 && new Date(cl.ts).toDateString() === today).forEach(cl => {
+    const h = new Date(cl.ts).getHours();
+    if (h >= 8 && h < 12) slots.add('morning');
+    else if (h >= 12 && h < 17) slots.add('afternoon');
+    else if (h >= 17 && h <= 21) slots.add('evening');
+  });
+  return slots;
+}
+
+// Is the current slot already covered today for this lead?
+function currentSlotAlreadyCovered(c) {
+  const slot = getCurrentSlotForLead(c);
+  if (!slot) return true;
+  return getSlotsCoveredToday(c).has(slot);
+}
+
+// Is this lead on a break? (too soon to call again or too many attempts today)
+function isOnBreak(c) {
+  const days = getDaysSinceAssigned(c);
+  const hoursSinceLast = getHoursSinceLastAttempt(c);
+  const attemptsToday = getAttemptsToday(c);
+  if (hoursSinceLast < 2 && hoursSinceLast < 999) return true;
+  if (days <= 4 && attemptsToday >= 3) return true;
+  if (days > 4 && days <= 17 && attemptsToday >= 2) return true;
+  if (days > 17 && attemptsToday >= 1) return true;
+  return false;
+}
+
+// Capacity tracking — mark today as "caught up" in localStorage
+function markQueueCaughtUp() {
+  localStorage.setItem('cwc_caughtup_' + new Date().toDateString(), '1');
+}
+
+function getCaughtUpDaysThisWeek() {
+  let count = 0;
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    if (localStorage.getItem('cwc_caughtup_' + d.toDateString())) count++;
+  }
+  return count;
 }
 
 // ── URGENCY SCORING ─────────────────────────────────────────────────────────
@@ -2051,49 +2123,72 @@ function isReadyForText(c) {
 }
 
 // Urgency score — lower = more urgent, show first
+// Research-backed MP/insurance cadence: fresh leads get 3 slots/day, warm every 2-3 days
 function getUrgencyScore(c) {
+  const status = c.status || 'New';
+
+  // Bottom: inactive leads always sink
+  if (status === 'Dead') return 9000;
+  if (status === 'Closed') return 8900;
+  if (status === 'No sale') return 8800;
+  if (status === 'Appointment set') return 8000;
+
   const days = getDaysSinceAssigned(c);
   const attempts = getAttemptCount(c);
   const daysSinceLast = getDaysSinceLastAttempt(c);
   const noShowCount = getNoShowCount(c);
-  const goodTime = isGoodTimeToCall(c);
-  const tzPenalty = goodTime ? 0 : 100; // deprioritize if bad time in their timezone
+  const inWindow = isGoodTimeToCall(c);
+  const onBreak = isOnBreak(c);
+  const isCIA = (c.source || '').toUpperCase() === 'CIA';
 
-  // Tier 1: Callback today (score 0-9)
-  if (isCallbackToday(c)) return tzPenalty + 1;
+  const windowPenalty = inWindow ? 0 : 500;
+  const breakPenalty = onBreak ? 300 : 0;
+  const slotPenalty = (inWindow && currentSlotAlreadyCovered(c) && !onBreak) ? 50 : 0;
 
-  // Tier 2: Callback overdue (score 10-19)
-  if (isCallbackOverdue(c)) return tzPenalty + 10;
+  // Tier 1: Callback overdue
+  if (isCallbackOverdue(c)) return 1 + windowPenalty;
 
-  // Tier 3: No show needs follow-up
+  // Tier 2: Callback today
+  if (isCallbackToday(c)) return 10 + windowPenalty;
+
+  // Tier 3: No-show follow-up (research: follow up within 2-48hrs)
   const hrsSinceNS = getHoursSinceNoShow(c);
-  // 3x no show - final attempt window (3 days)
-  if (noShowCount >= 3 && hrsSinceNS >= 2 && hrsSinceNS <= 72) return tzPenalty + 22;
-  // 2x no show - shorter window (same day + next day)
-  if (noShowCount === 2 && hrsSinceNS >= 2 && hrsSinceNS <= 48) return tzPenalty + 21;
-  // 1x no show - standard window (2-4 hrs same day)
-  if (noShowCount === 1 && hrsSinceNS >= 2 && hrsSinceNS <= 48) return tzPenalty + 20;
+  if (noShowCount >= 3 && hrsSinceNS >= 2 && hrsSinceNS <= 72) return 22 + breakPenalty + windowPenalty;
+  if (noShowCount === 2 && hrsSinceNS >= 2 && hrsSinceNS <= 48) return 21 + breakPenalty + windowPenalty;
+  if (noShowCount === 1 && hrsSinceNS >= 2 && hrsSinceNS <= 48) return 20 + breakPenalty + windowPenalty;
 
-  // Tier 4: Urgent fresh — day 3-4, under 4 attempts (score 30-39)
-  if (days >= 3 && days <= 4 && attempts < 4) return tzPenalty + 30 + (4 - attempts);
+  // Tier 4: CIA not contacted — digital leads decay fast (research: 21x more likely within 5 min)
+  if (isCIA && attempts === 0 && days <= 1) return 30 + windowPenalty;
+  if (isCIA && attempts === 0 && days > 1) return 32 + windowPenalty;
 
-  // Tier 5: Fresh needs first contact — day 2+, under 2 attempts (score 40-49)
-  if (days >= 2 && attempts < 2) return tzPenalty + 40 + days;
+  // Tier 5: Urgent fresh — days 3-4, running out of fresh window
+  if (days >= 3 && days <= 4 && attempts < 4) return 40 + (4 - attempts) + breakPenalty + windowPenalty;
 
-  // Tier 6: 0 attempts (score 50-59)
-  if (attempts === 0) return tzPenalty + 50 + days;
+  // Tier 6: Fresh day 1-2 needs first contact
+  if (days <= 2 && attempts === 0) return 50 + windowPenalty;
 
-  // Tier 7: Warm overdue — last attempt 7+ days (score 60-69)
-  if (daysSinceLast >= 7) return tzPenalty + 60 + Math.max(0, 9 - Math.min(daysSinceLast - 7, 9));
+  // Tier 7: Fresh day 1-4 active dialing — needs more time slots covered
+  if (days <= 4) {
+    const slots = getTimeSlotsCovered(c);
+    const slotsNeeded = 3 - slots.size;
+    if (slotsNeeded > 0) return 60 + (3 - slotsNeeded) + breakPenalty + windowPenalty + slotPenalty;
+    return 79 + breakPenalty + windowPenalty;
+  }
 
-  // Tier 8: Warm due — last attempt 4-6 days (score 70-79)
-  if (daysSinceLast >= 4) return tzPenalty + 70 + Math.max(0, 9 - Math.min(daysSinceLast - 4, 9));
+  // Tier 8: Warm overdue — 7+ days no contact (research: should contact every 2-3 days)
+  if (days <= 17 && daysSinceLast >= 7) return 80 + Math.min(8, Math.floor(daysSinceLast - 7)) + breakPenalty + windowPenalty;
 
-  // Tier 9: Ready for text (score 80-89)
-  if (isReadyForText(c)) return tzPenalty + 80;
+  // Tier 9: Warm due — 4-6 days no contact
+  if (days <= 17 && daysSinceLast >= 4) return 90 + Math.min(8, Math.floor(daysSinceLast - 4)) + breakPenalty + windowPenalty;
 
-  // Tier 10: On track (score 90+)
-  return tzPenalty + 90 + daysSinceLast;
+  // Tier 10: Ready for text
+  if (isReadyForText(c)) return 100 + windowPenalty;
+
+  // Tier 11: Warm on track
+  if (days <= 17) return 110 + breakPenalty + windowPenalty;
+
+  // Tier 12: Open (17+ days) — surfaces only when active queue exhausted
+  return 200 + Math.min(99, Math.floor(daysSinceLast)) + windowPenalty;
 }
 
 function getUrgencyBadge(c) {
@@ -2149,61 +2244,81 @@ function getCallTimeBadge(c) {
 function renderAlerts() {
   const el = document.getElementById('alerts-section');
   if (!el) return;
-  const now = new Date();
 
-  const alerts = [];
+  const dialableLeads = clients.filter(c => {
+    const s = c.status || 'New';
+    return s !== 'Dead' && s !== 'Closed' && s !== 'No sale';
+  });
 
-  // Callback overdue
-  const cbOverdue = clients.filter(c => isCallbackOverdue(c) && c.status !== 'Dead');
-  if (cbOverdue.length) alerts.push({label: '📞 ' + cbOverdue.length + ' callback' + (cbOverdue.length>1?'s':'') + ' overdue', color:'#A32D2D', bg:'#FFF5F5', filter:'working'});
+  let dueNow = 0, resting = 0, upcoming = 0, overdue = 0;
 
-  // No show needs follow-up (broken down by count)
-  const ns1x = clients.filter(c => { const hrs = getHoursSinceNoShow(c); return hrs >= 2 && hrs <= 48 && c.status === 'No show' && getNoShowCount(c) === 1; });
-  const ns2x = clients.filter(c => { const hrs = getHoursSinceNoShow(c); return hrs >= 2 && hrs <= 48 && c.status === 'No show' && getNoShowCount(c) === 2; });
-  const ns3x = clients.filter(c => { const hrs = getHoursSinceNoShow(c); return hrs >= 2 && hrs <= 72 && c.status === 'No show' && getNoShowCount(c) >= 3; });
-  if (ns3x.length) alerts.push({label: '📵 ' + ns3x.length + ' lead' + (ns3x.length>1?'s':'') + ' — 3x no show (final attempt)', color:'#A32D2D', bg:'#FFF5F5', filter:'noshow'});
-  if (ns2x.length) alerts.push({label: '📵 ' + ns2x.length + ' lead' + (ns2x.length>1?'s':'') + ' — 2x no show follow-up', color:'#A32D2D', bg:'#FFF5F5', filter:'noshow'});
-  if (ns1x.length) alerts.push({label: '📵 ' + ns1x.length + ' no show' + (ns1x.length>1?'s':'') + ' need follow-up', color:'#A32D2D', bg:'#FFF5F5', filter:'noshow'});
-
-  // Urgent fresh
-  const urgentFresh = clients.filter(c => {
+  dialableLeads.forEach(c => {
+    const s = c.status || 'New';
+    if (s === 'Appointment set') return;
+    const inWindow = isGoodTimeToCall(c);
+    const onBreak = isOnBreak(c);
+    const score = getUrgencyScore(c);
     const days = getDaysSinceAssigned(c);
+    const daysSinceLast = getDaysSinceLastAttempt(c);
     const attempts = getAttemptCount(c);
-    return days >= 3 && days <= 4 && attempts < 4 && c.status !== 'Dead' && c.status !== 'Appointment set';
+    if (!inWindow && daysSinceLast > 1 && attempts > 0 && days <= 17) {
+      overdue++;
+    } else if (inWindow && !onBreak && score < 200) {
+      dueNow++;
+    } else if (onBreak || (inWindow && score >= 200)) {
+      resting++;
+    } else if (!inWindow) {
+      upcoming++;
+    }
   });
-  if (urgentFresh.length) alerts.push({label: '🔥 ' + urgentFresh.length + ' fresh lead' + (urgentFresh.length>1?'s':'') + ' running out of time', color:'#A32D2D', bg:'#FFF5F5', filter:'fresh'});
 
-  // Warm overdue
-  const warmOverdue = clients.filter(c => {
-    const days = getDaysSinceAssigned(c);
-    return days >= 5 && days <= 17 && getDaysSinceLastAttempt(c) >= 7 && c.status !== 'Dead' && c.status !== 'Appointment set';
-  });
-  if (warmOverdue.length) alerts.push({label: '⚠️ ' + warmOverdue.length + ' warm lead' + (warmOverdue.length>1?'s':'') + ' gone stale (7+ days)', color:'#BA7517', bg:'#FFF8E6', filter:'warm'});
+  const queueEmpty = dueNow === 0 && overdue === 0;
+  const totalActive = dueNow + resting + upcoming + overdue;
+  if (queueEmpty && totalActive > 0) markQueueCaughtUp();
+  const caughtUpDays = getCaughtUpDaysThisWeek();
 
-  // 0 attempts 24hrs
-  const noAttempts = clients.filter(c => {
-    const days = getDaysSinceAssigned(c);
-    return days >= 1 && getAttemptCount(c) === 0 && c.status !== 'Dead';
-  });
-  if (noAttempts.length) alerts.push({label: '🆕 ' + noAttempts.length + ' lead' + (noAttempts.length>1?'s':'') + ' never contacted (24h+)', color:'#534AB7', bg:'#F5F3FF', filter:'none'});
-
-  // Ready for text
-  const textReady = clients.filter(c => isReadyForText(c) && c.status !== 'Dead' && c.status !== 'Appointment set');
-  if (textReady.length) alerts.push({label: '📱 ' + textReady.length + ' lead' + (textReady.length>1?'s':'') + ' ready for a text', color:'#138181', bg:'#F0FBF7', filter:'textready'});
-
-  if (!alerts.length) {
-    el.innerHTML = '';
-    return;
+  let scorecardHtml = '';
+  if (queueEmpty && totalActive > 0) {
+    const capacityMsg = caughtUpDays >= 4
+      ? '<div style="font-size:11px;color:#3B6D11;background:#EAF3DE;border-radius:6px;padding:6px 10px;margin-top:6px;">You cleared your queue ' + caughtUpDays + ' days this week &mdash; you may be ready to increase your lead flow.</div>'
+      : '';
+    scorecardHtml = '<div style="background:#EAF3DE;border:1px solid #9FE1CB;border-radius:10px;padding:10px 14px;margin-bottom:8px;">' +
+      '<div style="font-size:13px;font-weight:600;color:#3B6D11;margin-bottom:2px;">&#127881; Queue clear!</div>' +
+      '<div style="font-size:11px;color:#2A5F2A;">' + (upcoming > 0 ? upcoming + ' lead' + (upcoming>1?'s':'') + ' upcoming in later slots' : 'All leads worked for now.') + (resting > 0 ? ' &middot; ' + resting + ' resting' : '') + '</div>' +
+      capacityMsg + '</div>';
+  } else {
+    const behindMsg = overdue >= 5
+      ? '<div style="font-size:11px;color:#A32D2D;background:#FFF5F5;border-radius:6px;padding:5px 10px;margin-top:6px;">&#9888; ' + overdue + ' leads missed today &mdash; consider pausing new lead orders until caught up.</div>'
+      : '';
+    scorecardHtml = '<div style="background:#F0F4F8;border:1px solid #d0dcea;border-radius:10px;padding:10px 14px;margin-bottom:8px;">' +
+      '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;text-align:center;">' +
+        '<div><div style="font-size:18px;font-weight:700;color:' + (dueNow>0?'#A32D2D':'#1D3557') + ';">' + dueNow + '</div><div style="font-size:9px;color:#5f7a99;text-transform:uppercase;letter-spacing:0.05em;">Due now</div></div>' +
+        '<div><div style="font-size:18px;font-weight:700;color:#BA7517;">' + overdue + '</div><div style="font-size:9px;color:#5f7a99;text-transform:uppercase;letter-spacing:0.05em;">Overdue</div></div>' +
+        '<div><div style="font-size:18px;font-weight:700;color:#8fa8c0;">' + resting + '</div><div style="font-size:9px;color:#5f7a99;text-transform:uppercase;letter-spacing:0.05em;">Resting</div></div>' +
+        '<div><div style="font-size:18px;font-weight:700;color:#534AB7;">' + upcoming + '</div><div style="font-size:9px;color:#5f7a99;text-transform:uppercase;letter-spacing:0.05em;">Upcoming</div></div>' +
+      '</div>' + behindMsg + '</div>';
   }
 
-  el.innerHTML = '<div style="margin-bottom:8px;">' +
-    alerts.map(a =>
-      '<div onclick="setFilterAlert(\''+a.filter+'\')" style="background:' + a.bg + ';border:1px solid ' + a.color + '33;border-radius:8px;padding:7px 10px;margin-bottom:4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">' +
-        '<span style="font-size:11px;font-weight:600;color:' + a.color + ';">' + a.label + '</span>' +
-        '<span style="font-size:10px;color:' + a.color + ';opacity:0.7;">tap to view →</span>' +
-      '</div>'
-    ).join('') +
-  '</div>';
+  const alerts = [];
+  const cbOvr = clients.filter(c => isCallbackOverdue(c) && c.status !== 'Dead');
+  if (cbOvr.length) alerts.push({label: cbOvr.length + ' callback' + (cbOvr.length>1?'s':'') + ' overdue', color:'#A32D2D', bg:'#FFF5F5', filter:'working'});
+  const ns3x = clients.filter(c => { const hrs = getHoursSinceNoShow(c); return hrs >= 2 && hrs <= 72 && c.status === 'No show' && getNoShowCount(c) >= 3; });
+  const ns2x = clients.filter(c => { const hrs = getHoursSinceNoShow(c); return hrs >= 2 && hrs <= 48 && c.status === 'No show' && getNoShowCount(c) === 2; });
+  const ns1x = clients.filter(c => { const hrs = getHoursSinceNoShow(c); return hrs >= 2 && hrs <= 48 && c.status === 'No show' && getNoShowCount(c) === 1; });
+  if (ns3x.length) alerts.push({label: ns3x.length + ' lead' + (ns3x.length>1?'s':'') + ' - 3x no show (final attempt)', color:'#A32D2D', bg:'#FFF5F5', filter:'noshow'});
+  if (ns2x.length) alerts.push({label: ns2x.length + ' lead' + (ns2x.length>1?'s':'') + ' - 2x no show follow-up', color:'#A32D2D', bg:'#FFF5F5', filter:'noshow'});
+  if (ns1x.length) alerts.push({label: ns1x.length + ' no show' + (ns1x.length>1?'s':'') + ' need follow-up', color:'#A32D2D', bg:'#FFF5F5', filter:'noshow'});
+  const urgFresh = clients.filter(c => { const d = getDaysSinceAssigned(c); return d >= 3 && d <= 4 && getAttemptCount(c) < 4 && c.status !== 'Dead' && c.status !== 'Appointment set'; });
+  if (urgFresh.length) alerts.push({label: urgFresh.length + ' fresh lead' + (urgFresh.length>1?'s':'') + ' running out of time', color:'#A32D2D', bg:'#FFF5F5', filter:'fresh'});
+  const noAtt = clients.filter(c => { const d = getDaysSinceAssigned(c); return d >= 1 && getAttemptCount(c) === 0 && c.status !== 'Dead'; });
+  if (noAtt.length) alerts.push({label: noAtt.length + ' lead' + (noAtt.length>1?'s':'') + ' never contacted (24h+)', color:'#534AB7', bg:'#F5F3FF', filter:'none'});
+  const txtRdy = clients.filter(c => isReadyForText(c) && c.status !== 'Dead' && c.status !== 'Appointment set');
+  if (txtRdy.length) alerts.push({label: txtRdy.length + ' lead' + (txtRdy.length>1?'s':'') + ' ready for a text', color:'#138181', bg:'#F0FBF7', filter:'textready'});
+
+  const alertsHtml = alerts.length ? '<div style="margin-bottom:8px;">' +
+    alerts.map(a => '<div onclick="setFilterAlert(\'' + a.filter + '\')" style="background:' + a.bg + ';border:1px solid ' + a.color + '33;border-radius:8px;padding:6px 10px;margin-bottom:4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:11px;font-weight:600;color:' + a.color + ';">' + a.label + '</span><span style="font-size:10px;color:' + a.color + ';opacity:0.7;">tap &rarr;</span></div>').join('') + '</div>' : '';
+
+  el.innerHTML = scorecardHtml + alertsHtml;
 }
 
 
