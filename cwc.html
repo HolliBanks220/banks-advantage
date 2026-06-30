@@ -835,7 +835,7 @@ function renderScore() {
     const d = new Date(s.datetime); return d >= pStart && d <= pEnd;
   }));
 
-  const tpSits = allTPs.filter(t => t.outcome==='sale'||t.outcome==='nosale'||t.outcome==='cont').length;
+  const tpSits = allTPs.filter(t => t.outcome==='sale'||t.outcome==='nosale').length;
   const legacySits = allSits.filter(s => s.outcome==='showed').length;
   const totalShowed = tpSits + legacySits;
   const totalNoShows = allTPs.filter(t=>t.outcome==='noshow').length + allSits.filter(s=>s.outcome==='noshow').length;
@@ -847,11 +847,11 @@ function renderScore() {
   const allCasesInPeriod = clients.flatMap(c => (c.cases||[]).filter(cs => {
     return (cs.touchpoints||[]).some(tp => {
       const d = new Date(tp.datetime);
-      return d >= pStart && d <= pEnd && (tp.outcome==='sale'||tp.outcome==='nosale'||tp.outcome==='cont');
+      return d >= pStart && d <= pEnd && (tp.outcome==='sale'||tp.outcome==='nosale');
     });
   }).map(cs => ({...cs, clientId: c.id})));
 
-  const hasPPUTouchpoint = cs => (cs.touchpoints||[]).some(tp => tp.type === 'PPU / Policy Pickup' && (tp.outcome==='sale'||tp.outcome==='nosale'||tp.outcome==='cont'));
+  const hasPPUTouchpoint = cs => (cs.touchpoints||[]).some(tp => tp.type === 'PPU / Policy Pickup' && (tp.outcome==='sale'||tp.outcome==='nosale'));
   const caseAPV = cs => (cs.touchpoints||[]).reduce((a,tp) => a+(tp.apps||[]).reduce((b,ap)=>b+(ap.premium||0),0), 0);
   const caseSold = cs => (cs.touchpoints||[]).some(tp => tp.outcome==='sale');
   const caseNoSale = cs => (cs.touchpoints||[]).some(tp => tp.outcome==='nosale') && !(cs.touchpoints||[]).some(tp=>tp.outcome==='sale');
@@ -899,7 +899,7 @@ function renderScore() {
   const closedCount = saleTPs.filter(t=>(t.apps||[]).length>0).length + satSits.filter(s=>(s.apps||[]).length>0).length;
   const apvPerSale = totalSales>0 ? totalAPV/totalSales : 0;
 
-  const totalShowed2 = allTPs.filter(t=>t.outcome==='sale'||t.outcome==='nosale'||t.outcome==='cont').length + legacySits;
+  const totalShowed2 = allTPs.filter(t=>t.outcome==='sale'||t.outcome==='nosale').length + legacySits;
 
   document.getElementById('p-first').textContent = periodAppts;
   document.getElementById('p-first-rate').textContent = pct(totalShowed2, periodAppts) + ' show rate';
@@ -1275,7 +1275,7 @@ function drillDown(type) {
     title = 'Sits - ' + label;
     leads = clients.filter(c =>
       (c.sits||[]).some(s => { const d=new Date(s.datetime); return d>=start&&d<=end&&s.outcome==='showed'; }) ||
-      (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&(tp.outcome==='sale'||tp.outcome==='nosale'||tp.outcome==='cont'); }))
+      (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&(tp.outcome==='sale'||tp.outcome==='nosale'); }))
     );
   } else if (type === 'noshow') {
     title = 'No shows - ' + label;
@@ -1302,7 +1302,7 @@ function drillDown(type) {
   } else if (type === 'ppu') {
     title = 'PPUs - ' + label;
     leads = clients.filter(c =>
-      (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&tp.type==='PPU / Policy Pickup'&&(tp.outcome==='sale'||tp.outcome==='nosale'||tp.outcome==='cont'); }))
+      (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&tp.type==='PPU / Policy Pickup'&&(tp.outcome==='sale'||tp.outcome==='nosale'); }))
     );
   } else if (type === 'callbacks') {
     title = 'Callbacks - ' + label;
@@ -3468,6 +3468,7 @@ function renderCasesHtml(c) {
     const cls = CASE_TYPE_CLASS[cs.type] || 'mp';
     // Only show resolved touchpoints in history (not pending)
     const resolvedTps = (cs.touchpoints||[]).filter(tp => tp.outcome && tp.outcome.toLowerCase() !== 'pending');
+    const actualSits = resolvedTps.filter(tp => tp.outcome==='sale'||tp.outcome==='nosale').length;
     const statusColors = {'Closed Won':'#3B6D11','Closed Lost':'#A32D2D','Reset':'#534AB7','Open':'#138181'};
     const hdrColor = cls==='ret'?'#138181':(cls==='dfl'||cls==='ib')?'#534AB7':'#1D3557';
 
@@ -3515,7 +3516,7 @@ function renderCasesHtml(c) {
       '<div style="background:' + hdrColor + ';color:#fff;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="toggleCaseBody(this)">' +
         '<div>' +
           '<div style="font-size:12px;font-weight:600;">' + cs.type + '</div>' +
-          '<div style="font-size:10px;opacity:0.65;">' + resolvedTps.length + ' sit' + (resolvedTps.length!==1?'s':'') + ' logged</div>' +
+          '<div style="font-size:10px;opacity:0.65;">' + actualSits + ' sit' + (actualSits!==1?'s':'') + ' logged</div>' +
         '</div>' +
         '<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:rgba(255,255,255,0.2);">' + (cs.status||'Open') + '</span>' +
       '</div>' +
