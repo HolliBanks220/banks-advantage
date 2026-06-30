@@ -2084,10 +2084,10 @@ function getUrgencyScore(c) {
   if (attempts === 0) return tzPenalty + 50 + days;
 
   // Tier 7: Warm overdue — last attempt 7+ days (score 60-69)
-  if (daysSinceLast >= 7) return tzPenalty + 60 + Math.min(daysSinceLast, 9);
+  if (daysSinceLast >= 7) return tzPenalty + 60 + Math.max(0, 9 - Math.min(daysSinceLast - 7, 9));
 
   // Tier 8: Warm due — last attempt 4-6 days (score 70-79)
-  if (daysSinceLast >= 4) return tzPenalty + 70 + Math.min(daysSinceLast, 9);
+  if (daysSinceLast >= 4) return tzPenalty + 70 + Math.max(0, 9 - Math.min(daysSinceLast - 4, 9));
 
   // Tier 9: Ready for text (score 80-89)
   if (isReadyForText(c)) return tzPenalty + 80;
