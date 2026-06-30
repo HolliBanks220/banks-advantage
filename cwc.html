@@ -2375,7 +2375,10 @@ function openClient(id, keepDialCount) {
   </div>
   <div class="section-lbl" style="margin-top:4px;">Cases</div>
   ${renderCasesHtml(c)}
-  <button class="sec-btn" onclick="openNewCase('${id}')">+ New case</button>
+  <div style="display:flex;gap:8px;margin-bottom:12px;">
+    <button class="sec-btn" style="flex:1;" onclick="openNewCase('${id}')">+ New case</button>
+    <button class="sec-btn" style="flex:1;background:#E8F7F5;color:#138181;border-color:#138181;" onclick="openASREntry('${id}')">⭐ + ASR</button>
+  </div>
   <div class="section-lbl" style="margin-top:12px;">Applications</div>
   ${renderAppsSection(c)}`);
 }
@@ -2559,6 +2562,20 @@ async function confirmSitOutcome(id, ci, outcome) {
 
 function showResetPromptAfterOutcome(id, outcomeLabel) {
   const c = clients.find(x=>x.id===id); if (!c) return;
+  const isSale = outcomeLabel !== 'No Sale';
+  showModal('<button class="close-x" onclick="closeModal();openClient(\''+id+'\');renderScore();renderSidebar();">x</button>' +
+    '<div class="modal-title">' + outcomeLabel + ' logged ✓</div>' +
+    '<div class="modal-sub">' + c.name + '</div>' +
+    (isSale ? '<div style="font-size:13px;color:#3B6D11;font-weight:600;margin-bottom:12px;">🎉 Great work!</div>' : '') +
+    '<div style="font-size:13px;color:#1D3557;margin-bottom:16px;">Did you get a referral?</div>' +
+    '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
+      '<button onclick="closeModal();openASREntry(\''+id+'\')" style="flex:1;background:#138181;color:#fff;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:500;cursor:pointer;">⭐ Yes — log ASR</button>' +
+      '<button onclick="showResetOnly(\''+id+'\',\''+outcomeLabel+'\')" style="flex:1;background:#f0f4f8;color:#1D3557;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:500;cursor:pointer;">No referral</button>' +
+    '</div>');
+}
+
+function showResetOnly(id, outcomeLabel) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
   showModal('<button class="close-x" onclick="closeModal();openClient(\''+id+'\');renderScore();renderSidebar();">x</button>' +
     '<div class="modal-title">' + outcomeLabel + ' logged ✓</div>' +
     '<div class="modal-sub">' + c.name + '</div>' +
@@ -2567,6 +2584,63 @@ function showResetPromptAfterOutcome(id, outcomeLabel) {
       '<button onclick="closeModal();openResetToPicker(\''+id+'\')" style="flex:1;background:#BA7517;color:#fff;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:500;cursor:pointer;">↺ Yes — reset now</button>' +
       '<button onclick="closeModal();openClient(\''+id+'\');renderScore();renderSidebar();" style="flex:1;background:#5f7a99;color:#fff;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:500;cursor:pointer;">No — done</button>' +
     '</div>');
+}
+
+function openASREntry(referrerId) {
+  const c = clients.find(x=>x.id===referrerId); if (!c) return;
+  showModal(`<button class="close-x" onclick="showResetOnly('${referrerId}','Outcome logged')">x</button>
+    <div class="modal-title">Log ASR</div>
+    <div class="modal-sub">Referred by ${c.name}</div>
+    <div class="field"><label>Referred person's name *</label><input type="text" id="asr-name" placeholder="Full name" style="width:100%;padding:8px;border:1px solid #d0dcea;border-radius:6px;font-size:13px;"></div>
+    <div class="field"><label>Phone number *</label><input type="tel" id="asr-phone" placeholder="Phone number" style="width:100%;padding:8px;border:1px solid #d0dcea;border-radius:6px;font-size:13px;"></div>
+    <div class="field"><label>Relationship to ${c.name}</label><input type="text" id="asr-relationship" placeholder="e.g. neighbor, coworker, sibling" style="width:100%;padding:8px;border:1px solid #d0dcea;border-radius:6px;font-size:13px;"></div>
+    <div class="field"><label>Why did they think of them?</label><textarea id="asr-notes" placeholder="e.g. Just bought a house, mentioned they need coverage" style="width:100%;padding:8px;border:1px solid #d0dcea;border-radius:6px;font-size:13px;height:70px;"></textarea></div>
+    <button class="save-btn" style="background:#138181;" onclick="saveASR('${referrerId}')">Save & Create Lead</button>`);
+}
+
+async function saveASR(referrerId) {
+  const name = (document.getElementById('asr-name').value||'').trim();
+  const phone = (document.getElementById('asr-phone').value||'').trim();
+  const relationship = (document.getElementById('asr-relationship').value||'').trim();
+  const notes = (document.getElementById('asr-notes').value||'').trim();
+  const referrer = clients.find(x=>x.id===referrerId);
+
+  if (!name) { alert('Please enter the referred person\'s name.'); return; }
+  if (!phone) { alert('Please enter a phone number.'); return; }
+
+  const asrNote = `ASR from ${referrer?.name||''}${relationship?' ('+relationship+')':''}${notes?'. '+notes:''}`;
+
+  // Create new lead
+  const newLead = {
+    name,
+    phone,
+    source: 'ASR',
+    status: 'New',
+    assigned_date: new Date().toISOString().slice(0,10),
+    notes: asrNote,
+    health_notes: '',
+    policy_notes: '',
+    call_log: [],
+    sits: [],
+    cases: [],
+    state: referrer?.state || ''
+  };
+
+  const {data, error} = await sb.from('clients').insert([newLead]).select();
+  if (error) { alert('Error saving ASR: ' + error.message); return; }
+  if (data) clients.push(data[0]);
+
+  // Also log the ASR on the referrer's record in notes
+  if (referrer) {
+    const existingNotes = referrer.notes || '';
+    referrer.notes = existingNotes + (existingNotes?'\n':'') + `ASR → ${name} (${phone})${relationship?' - '+relationship:''}`;
+    await sb.from('clients').update({notes: referrer.notes}).eq('id', referrerId);
+  }
+
+  closeModal();
+  showResetOnly(referrerId, 'Outcome logged');
+  renderClients();
+  alert(`✓ ${name} added as a new ASR lead!`);
 }
 
 function openAddAppsForCase(id, ci) {
