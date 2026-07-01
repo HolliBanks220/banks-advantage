@@ -1910,8 +1910,6 @@ function setFilterAlert(f) {
   showTab('clients', document.querySelector('.tab[onclick*="clients"]'));
 
   if (f === 'textready') {
-    // Special case: show all leads that are ready for text, sorted by urgency
-    // Override the rendered list temporarily
     const el = document.getElementById('clients-list');
     const textReadyLeads = clients.filter(c => isReadyForText(c) && c.status !== 'Dead' && c.status !== 'Appointment set')
       .sort((a,b) => getUrgencyScore(a) - getUrgencyScore(b));
@@ -1925,7 +1923,7 @@ function setFilterAlert(f) {
           <div>
             <div class="client-name">${c.name||'Unknown'}${fresh?'<span class="fresh-tag">fresh</span>':''}</div>
             <div class="client-meta">${c.phone||''} - ${c.state||''} - ${Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24))}d - ${(c.call_log||[]).length} att${getNoShowBadge(c)}</div>
-            <div style="font-size:9px;font-weight:600;color:#138181;background:#F0FBF7;border-radius:4px;padding:2px 6px;margin-top:3px;display:inline-block;">📱 Ready for text</div>
+            <div style="font-size:9px;font-weight:600;color:#138181;background:#F0FBF7;border-radius:4px;padding:2px 6px;margin-top:3px;display:inline-block;">Ready for text</div>
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
             <span class="${badgeClass(c.source)}">${c.source||''}</span>
@@ -1938,10 +1936,9 @@ function setFilterAlert(f) {
     return;
   }
 
-  // Normal filter
-  const btn = document.querySelector('.filter-btn[onclick*="' + f + '"]') ||
-               document.querySelector('.filter-btn2[onclick*="' + f + '"]');
-  setFilter(f, btn);
+  // Default: go to Active filter (the dialing queue)
+  const btn = document.querySelector('.filter-btn[onclick*="active"]');
+  setFilter('active', btn);
 }
 
 function setFilter(f, btn) {
@@ -2128,14 +2125,39 @@ function getHoursSinceNoShow(c) {
   return (new Date() - new Date(noShows[noShows.length-1].ts)) / (1000*60*60);
 }
 
+function getScheduledCallback(c) {
+  // Returns the most recent scheduled callback entry, or null
+  return [...(c.call_log||[])].reverse().find(cl => cl.outcome === 'Callback' && cl.callback_dt) || null;
+}
+
 function isCallbackOverdue(c) {
-  const lastCb = [...(c.call_log||[])].reverse().find(cl => cl.outcome === 'Callback' && cl.callback_dt);
+  const lastCb = getScheduledCallback(c);
   if (!lastCb) return false;
+  // Overdue = scheduled time has passed
   return new Date(lastCb.callback_dt) < new Date();
 }
 
+function isCallbackDueNow(c) {
+  // Due now = within 2 minutes of scheduled time, OR overdue
+  const lastCb = getScheduledCallback(c);
+  if (!lastCb) return false;
+  const cbTime = new Date(lastCb.callback_dt);
+  const now = new Date();
+  const minutesUntil = (cbTime - now) / (1000 * 60);
+  return minutesUntil <= 2; // includes negative (overdue)
+}
+
+function isCallbackFuture(c) {
+  // Has a scheduled callback that is more than 2 minutes away
+  const lastCb = getScheduledCallback(c);
+  if (!lastCb) return false;
+  const cbTime = new Date(lastCb.callback_dt);
+  const minutesUntil = (cbTime - new Date()) / (1000 * 60);
+  return minutesUntil > 2;
+}
+
 function isCallbackToday(c) {
-  const lastCb = [...(c.call_log||[])].reverse().find(cl => cl.outcome === 'Callback' && cl.callback_dt);
+  const lastCb = getScheduledCallback(c);
   if (!lastCb) return false;
   return new Date(lastCb.callback_dt).toDateString() === new Date().toDateString();
 }
@@ -2210,11 +2232,14 @@ function getUrgencyScore(c) {
   const hrs = Math.min(hoursSinceLast, 999);
   const timeFraction = hrs >= 999 ? 0.99 : Math.min(0.99, hrs / 100);
 
-  // Tier 1: Callback overdue
+  // Tier 1: Callback overdue (missed it)
   if (isCallbackOverdue(c)) return 1 + windowPenalty;
 
-  // Tier 2: Callback today
-  if (isCallbackToday(c)) return 10 + windowPenalty;
+  // Tier 2: Callback due now (within 2 minutes of scheduled time)
+  if (isCallbackDueNow(c)) return 10 + windowPenalty;
+
+  // Future scheduled callback — sits quietly, doesn't surface until 2 min before
+  if (isCallbackFuture(c)) return 150 + windowPenalty;
 
   // Tier 3: No-show follow-up
   const hrsSinceNS = getHoursSinceNoShow(c);
@@ -2407,7 +2432,7 @@ function getFilteredClients(q='') {
     const isNoShow = c.status === 'No show';
     const hasOpenCase = (c.cases||[]).some(cs => cs.status === 'Open' && (cs.touchpoints||[]).length > 0);
     let matchF = false;
-    if (activeFilter==='active') matchF = c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale';
+    if (activeFilter==='active') matchF = c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale' && c.status !== 'Appointment set' && !isCallbackFuture(c);
     else if (activeFilter==='all') matchF = true;
     else if (activeFilter==='fresh') matchF = days <= 4 && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale';
     else if (activeFilter==='warm') matchF = days >= 5 && days <= 17 && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale';
