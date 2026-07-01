@@ -2125,6 +2125,17 @@ function getHoursSinceNoShow(c) {
   return (new Date() - new Date(noShows[noShows.length-1].ts)) / (1000*60*60);
 }
 
+// Has there been a call or text attempt AFTER the most recent no-show?
+function hasFollowedUpAfterNoShow(c) {
+  const noShows = (c.call_log||[]).filter(cl => cl.outcome === 'No show');
+  if (!noShows.length) return false;
+  const lastNsTime = new Date(noShows[noShows.length-1].ts);
+  return (c.call_log||[]).some(cl => {
+    if (new Date(cl.ts) <= lastNsTime) return false;
+    return cl.dials > 0 || cl.outcome === 'Text sent' || cl.outcome === 'No answer';
+  });
+}
+
 function getScheduledCallback(c) {
   // Returns the most recent scheduled callback entry, or null
   return [...(c.call_log||[])].reverse().find(cl => cl.outcome === 'Callback' && cl.callback_dt) || null;
@@ -2241,11 +2252,14 @@ function getUrgencyScore(c) {
   // Future scheduled callback — sits quietly, doesn't surface until 2 min before
   if (isCallbackFuture(c)) return 150 + windowPenalty;
 
-  // Tier 3: No-show follow-up
+  // Tier 3: No-show follow-up — only urgent if no follow-up attempt made yet since no-show
   const hrsSinceNS = getHoursSinceNoShow(c);
-  if (noShowCount >= 3 && hrsSinceNS >= 2 && hrsSinceNS <= 72) return 22 - timeFraction + breakPenalty + windowPenalty;
-  if (noShowCount === 2 && hrsSinceNS >= 2 && hrsSinceNS <= 48) return 21 - timeFraction + breakPenalty + windowPenalty;
-  if (noShowCount === 1 && hrsSinceNS >= 2 && hrsSinceNS <= 48) return 20 - timeFraction + breakPenalty + windowPenalty;
+  const followedUp = hasFollowedUpAfterNoShow(c);
+  if (!followedUp) {
+    if (noShowCount >= 3 && hrsSinceNS >= 2 && hrsSinceNS <= 72) return 22 - timeFraction + breakPenalty + windowPenalty;
+    if (noShowCount === 2 && hrsSinceNS >= 2 && hrsSinceNS <= 48) return 21 - timeFraction + breakPenalty + windowPenalty;
+    if (noShowCount === 1 && hrsSinceNS >= 2 && hrsSinceNS <= 48) return 20 - timeFraction + breakPenalty + windowPenalty;
+  }
 
   // Tier 4: High-value uncontacted leads — CIA and MIA both get day 1-2 urgency boost
   // CIA: digital, decays fast. MIA: $75 mailer, high deliberate intent. Both deserve immediate attention.
@@ -2311,8 +2325,8 @@ function getUrgencyBadge(c) {
     return {label:'\uD83D\uDD25 Call now', color:'#A32D2D', bg:'#FFF5F5', fire:false};
   }
 
-  // No show
-  if (noShowCount >= 1 && hrsSinceNS >= 2 && hrsSinceNS <= 72) {
+  // No show — only urgent if no follow-up attempt made since the no-show
+  if (noShowCount >= 1 && hrsSinceNS >= 2 && hrsSinceNS <= 72 && !hasFollowedUpAfterNoShow(c)) {
     return {label:'\uD83D\uDD25 Call now', color:'#A32D2D', bg:'#FFF5F5', fire:false};
   }
 
