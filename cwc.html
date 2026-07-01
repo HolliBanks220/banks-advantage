@@ -1910,8 +1910,6 @@ function setFilterAlert(f) {
   showTab('clients', document.querySelector('.tab[onclick*="clients"]'));
 
   if (f === 'textready') {
-    // Special case: show all leads that are ready for text, sorted by urgency
-    // Override the rendered list temporarily
     const el = document.getElementById('clients-list');
     const textReadyLeads = clients.filter(c => isReadyForText(c) && c.status !== 'Dead' && c.status !== 'Appointment set')
       .sort((a,b) => getUrgencyScore(a) - getUrgencyScore(b));
@@ -1925,7 +1923,7 @@ function setFilterAlert(f) {
           <div>
             <div class="client-name">${c.name||'Unknown'}${fresh?'<span class="fresh-tag">fresh</span>':''}</div>
             <div class="client-meta">${c.phone||''} - ${c.state||''} - ${Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24))}d - ${(c.call_log||[]).length} att${getNoShowBadge(c)}</div>
-            <div style="font-size:9px;font-weight:600;color:#138181;background:#F0FBF7;border-radius:4px;padding:2px 6px;margin-top:3px;display:inline-block;">📱 Ready for text</div>
+            <div style="font-size:9px;font-weight:600;color:#138181;background:#F0FBF7;border-radius:4px;padding:2px 6px;margin-top:3px;display:inline-block;">Ready for text</div>
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
             <span class="${badgeClass(c.source)}">${c.source||''}</span>
@@ -1938,7 +1936,7 @@ function setFilterAlert(f) {
     return;
   }
 
-  // Default: go to Active filter
+  // Default: go to Active filter (the dialing queue)
   const btn = document.querySelector('.filter-btn[onclick*="active"]');
   setFilter('active', btn);
 }
@@ -2128,26 +2126,33 @@ function getHoursSinceNoShow(c) {
 }
 
 function getScheduledCallback(c) {
+  // Returns the most recent scheduled callback entry, or null
   return [...(c.call_log||[])].reverse().find(cl => cl.outcome === 'Callback' && cl.callback_dt) || null;
 }
 
 function isCallbackOverdue(c) {
   const lastCb = getScheduledCallback(c);
   if (!lastCb) return false;
+  // Overdue = scheduled time has passed
   return new Date(lastCb.callback_dt) < new Date();
 }
 
 function isCallbackDueNow(c) {
+  // Due now = within 2 minutes of scheduled time, OR overdue
   const lastCb = getScheduledCallback(c);
   if (!lastCb) return false;
-  const minutesUntil = (new Date(lastCb.callback_dt) - new Date()) / (1000 * 60);
-  return minutesUntil <= 2;
+  const cbTime = new Date(lastCb.callback_dt);
+  const now = new Date();
+  const minutesUntil = (cbTime - now) / (1000 * 60);
+  return minutesUntil <= 2; // includes negative (overdue)
 }
 
 function isCallbackFuture(c) {
+  // Has a scheduled callback that is more than 2 minutes away
   const lastCb = getScheduledCallback(c);
   if (!lastCb) return false;
-  const minutesUntil = (new Date(lastCb.callback_dt) - new Date()) / (1000 * 60);
+  const cbTime = new Date(lastCb.callback_dt);
+  const minutesUntil = (cbTime - new Date()) / (1000 * 60);
   return minutesUntil > 2;
 }
 
@@ -2230,10 +2235,10 @@ function getUrgencyScore(c) {
   // Tier 1: Callback overdue (missed it)
   if (isCallbackOverdue(c)) return 1 + windowPenalty;
 
-  // Tier 2: Callback due now (within 2 min of scheduled time)
+  // Tier 2: Callback due now (within 2 minutes of scheduled time)
   if (isCallbackDueNow(c)) return 10 + windowPenalty;
 
-  // Future scheduled callback — sits quietly below active queue until 2 min before
+  // Future scheduled callback — sits quietly, doesn't surface until 2 min before
   if (isCallbackFuture(c)) return 150 + windowPenalty;
 
   // Tier 3: No-show follow-up
@@ -2350,110 +2355,7 @@ function getNextSlotTime(c) {
   return null;
 }
 
-function getNextApptInfo() {
-  const now = new Date();
-  const todayStr = now.toDateString();
-  let soonest = null;
-  clients.forEach(c => {
-    if (c.status === 'Appointment set') {
-      (c.cases||[]).forEach(cs => {
-        (cs.touchpoints||[]).forEach(tp => {
-          if (tp && tp.outcome === 'pending' && tp.datetime) {
-            const dt = new Date(tp.datetime);
-            if (dt.toDateString() === todayStr && (!soonest || dt < soonest)) soonest = dt;
-          }
-        });
-      });
-    }
-    const cb = getScheduledCallback(c);
-    if (cb && cb.callback_dt) {
-      const dt = new Date(cb.callback_dt);
-      if (dt.toDateString() === todayStr && (!soonest || dt < soonest)) soonest = dt;
-    }
-  });
-  if (!soonest) return null;
-  return { dt: soonest, minsUntil: Math.round((soonest - now) / (1000 * 60)) };
-}
-
 function renderAlerts() {
-  const el = document.getElementById('alerts-section');
-  if (!el) return;
-
-  const dialableLeads = clients.filter(c => {
-    const s = c.status || 'New';
-    return s !== 'Dead' && s !== 'Closed' && s !== 'No sale' && s !== 'Appointment set';
-  });
-
-  let dueNow = 0, overdue = 0;
-  let earliestUpcomingAgentHour = null;
-  let earliestUpcomingLabel = null;
-
-  dialableLeads.forEach(c => {
-    const inWindow = isGoodTimeToCall(c);
-    const onBreak = isOnBreak(c);
-    const score = getUrgencyScore(c);
-    const days = getDaysSinceAssigned(c);
-    const daysSinceLast = getDaysSinceLastAttempt(c);
-    const attempts = getAttemptCount(c);
-    if (!inWindow && daysSinceLast > 1 && attempts > 0 && days <= 17) {
-      overdue++;
-    } else if (inWindow && !onBreak && score < 200) {
-      dueNow++;
-    } else if (!inWindow && !onBreak && score < 200) {
-      const next = getNextSlotTime(c);
-      if (next && (earliestUpcomingAgentHour === null || next.agentHour < earliestUpcomingAgentHour)) {
-        earliestUpcomingAgentHour = next.agentHour;
-        earliestUpcomingLabel = next.label;
-      }
-    }
-  });
-
-  const queueEmpty = dueNow === 0 && overdue === 0;
-  if (queueEmpty && dialableLeads.length > 0) markQueueCaughtUp();
-  const caughtUpDays = getCaughtUpDaysThisWeek();
-
-  // Appointment countdown
-  const apptInfo = getNextApptInfo();
-  let apptPart, apptFire = '';
-  if (!apptInfo) {
-    apptPart = 'no appts today';
-  } else if (apptInfo.minsUntil <= 0) {
-    apptPart = 'appt NOW'; apptFire = ' &#128293;';
-  } else if (apptInfo.minsUntil <= 30) {
-    apptPart = 'appt in ' + apptInfo.minsUntil + ' min'; apptFire = ' &#128293;';
-  } else if (apptInfo.minsUntil <= 120) {
-    const h = Math.floor(apptInfo.minsUntil/60), m = apptInfo.minsUntil%60;
-    apptPart = 'appt in ' + (h>0?h+'h ':'') + (m>0?m+'m':'');
-  } else {
-    apptPart = 'appt at ' + apptInfo.dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-  }
-
-  let html = '';
-  if (queueEmpty && dialableLeads.length > 0) {
-    let msg = 'Queue clear';
-    if (earliestUpcomingLabel) msg += ' &middot; next leads at ' + earliestUpcomingLabel;
-    if (caughtUpDays >= 4) msg += ' &middot; consider increasing lead flow';
-    msg += ' &middot; ' + apptPart + apptFire;
-    html = '<div onclick="setFilterAlert(\'active\')" style="background:#EAF3DE;border:1px solid #9FE1CB;border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:600;color:#3B6D11;">' + msg + '</div>';
-  } else {
-    let parts = [];
-    if (dueNow > 0) parts.push(dueNow + ' lead' + (dueNow>1?'s':'') + ' due now');
-    if (overdue > 0) parts.push(overdue + ' overdue');
-    if (earliestUpcomingLabel && dueNow === 0) parts.push('next at ' + earliestUpcomingLabel);
-    parts.push(apptPart + apptFire);
-    const color = overdue > 0 ? '#A32D2D' : '#1D3557';
-    const bg = overdue > 0 ? '#FFF5F5' : '#EBF3FF';
-    const border = overdue > 0 ? '#F5A0A0' : '#B3D1F7';
-    html = '<div onclick="setFilterAlert(\'active\')" style="background:' + bg + ';border:1px solid ' + border + ';border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:600;color:' + color + ';">' + parts.join(' &middot; ') + '</div>';
-  }
-
-  const txtRdy = clients.filter(c => isReadyForText(c) && c.status !== 'Dead' && c.status !== 'Appointment set');
-  if (txtRdy.length) {
-    html += '<div onclick="setFilterAlert(\'textready\')" style="background:#F0FBF7;border:1px solid #9FE1CB33;border-radius:8px;padding:5px 12px;margin-top:4px;cursor:pointer;font-size:11px;font-weight:600;color:#138181;">' + txtRdy.length + ' lead' + (txtRdy.length>1?'s':'') + ' ready for a text &rarr;</div>';
-  }
-
-  el.innerHTML = html;
-}
   const el = document.getElementById('alerts-section');
   if (!el) return;
 
@@ -2491,6 +2393,34 @@ function renderAlerts() {
   const queueEmpty = dueNow === 0 && overdue === 0;
   if (queueEmpty && dialableLeads.length > 0) markQueueCaughtUp();
   const caughtUpDays = getCaughtUpDaysThisWeek();
+
+  let html = '';
+
+  if (queueEmpty && dialableLeads.length > 0) {
+    // Caught up state
+    let msg = 'Queue clear';
+    if (earliestUpcomingLabel) msg += ' · next leads available at ' + earliestUpcomingLabel;
+    if (caughtUpDays >= 4) msg += ' · consider increasing lead flow';
+    html = '<div onclick="showTab(\'clients\', document.querySelector(\'.tab:nth-child(2)\'))" style="background:#EAF3DE;border:1px solid #9FE1CB;border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:600;color:#3B6D11;">' + msg + '</div>';
+  } else if (dueNow > 0 || overdue > 0) {
+    let parts = [];
+    if (dueNow > 0) parts.push(dueNow + ' lead' + (dueNow>1?'s':'') + ' due now');
+    if (overdue > 0) parts.push(overdue + ' overdue');
+    if (earliestUpcomingLabel && dueNow === 0) parts.push('next available at ' + earliestUpcomingLabel);
+    const color = overdue > 0 ? '#A32D2D' : '#1D3557';
+    const bg = overdue > 0 ? '#FFF5F5' : '#EBF3FF';
+    const border = overdue > 0 ? '#F5A0A0' : '#B3D1F7';
+    html = '<div onclick="showTab(\'clients\', document.querySelector(\'.tab:nth-child(2)\'))" style="background:' + bg + ';border:1px solid ' + border + ';border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:600;color:' + color + ';">' + parts.join(' · ') + '</div>';
+  }
+
+  // Text ready — keep this one as a separate small alert since it requires different action
+  const txtRdy = clients.filter(c => isReadyForText(c) && c.status !== 'Dead' && c.status !== 'Appointment set');
+  if (txtRdy.length) {
+    html += '<div onclick="setFilterAlert(\'textready\')" style="background:#F0FBF7;border:1px solid #9FE1CB33;border-radius:8px;padding:5px 12px;margin-top:4px;cursor:pointer;font-size:11px;font-weight:600;color:#138181;">' + txtRdy.length + ' lead' + (txtRdy.length>1?'s':'') + ' ready for a text &rarr;</div>';
+  }
+
+  el.innerHTML = html;
+}
 
 
 
