@@ -468,8 +468,10 @@ document.getElementById('hdr-date').textContent = new Date().toLocaleDateString(
 async function init() {
   initTimer();
   showSync('Loading your data...');
-  await Promise.all([loadClients(), loadStats(), loadTasksFromDB(), loadAgentSettings()]);
+  await Promise.all([loadClients(), loadStats(), loadAgentSettings()]);
   loadCustomCarriers();
+  // Load tasks separately so a failure can't block the rest of init
+  loadTasksFromDB().then(() => renderTasks()).catch(() => renderTasks());
   if (clients.length === 0 && !seeded) {
     seeded = true;
     showSync('Setting up your leads...');
