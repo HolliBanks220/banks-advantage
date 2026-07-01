@@ -2283,30 +2283,52 @@ function getUrgencyScore(c) {
   return 200 + Math.min(99, Math.floor(daysSinceLast)) - timeFraction + windowPenalty;
 }
 function getUrgencyBadge(c) {
-  // Never show urgency alerts for closed or dead leads
-  if (['Closed','Dead'].includes(c.status)) return null;
-  // Never show "needs contact" alerts for leads with active open cases
+  if (['Closed','Dead','No sale'].includes(c.status)) return null;
+  if (c.status === 'Appointment set') return null;
+
   const hasActiveCase = (c.cases||[]).some(cs => cs.status === 'Open');
-  
   const days = getDaysSinceAssigned(c);
   const attempts = getAttemptCount(c);
   const daysSinceLast = getDaysSinceLastAttempt(c);
   const noShowCount = getNoShowCount(c);
   const hrsSinceNS = getHoursSinceNoShow(c);
+  const isCIA = (c.source||'').toUpperCase() === 'CIA';
+  const isMIA = (c.source||'').toUpperCase() === 'MIA';
 
-  if (isCallbackToday(c)) return {label:'📞 Callback today', color:'#BA7517', bg:'#FFF8E6'};
-  if (isCallbackOverdue(c)) return {label:'⚠️ Callback overdue', color:'#A32D2D', bg:'#FFF5F5'};
-  if (noShowCount >= 3 && hrsSinceNS >= 2 && hrsSinceNS <= 72) return {label:'📵 3x NS — final attempt', color:'#A32D2D', bg:'#FFF5F5'};
-  if (noShowCount === 2 && hrsSinceNS >= 2 && hrsSinceNS <= 48) return {label:'📵 2x NS — follow up now', color:'#A32D2D', bg:'#FFF5F5'};
-  if (noShowCount === 1 && hrsSinceNS >= 2 && hrsSinceNS <= 48) return {label:'📵 Follow up now', color:'#A32D2D', bg:'#FFF5F5'};
+  // Callbacks
+  if (isCallbackOverdue(c)) return {label:'Callback overdue', color:'#A32D2D', bg:'#FFF5F5'};
+  if (isCallbackDueNow(c))  return {label:'Callback due now', color:'#BA7517', bg:'#FFF8E6'};
+
+  // No shows
+  if (noShowCount >= 3 && hrsSinceNS >= 2 && hrsSinceNS <= 72) return {label:'3x no show — final attempt', color:'#A32D2D', bg:'#FFF5F5'};
+  if (noShowCount === 2 && hrsSinceNS >= 2 && hrsSinceNS <= 48) return {label:'2x no show — follow up', color:'#A32D2D', bg:'#FFF5F5'};
+  if (noShowCount === 1 && hrsSinceNS >= 2 && hrsSinceNS <= 48) return {label:'No show — follow up', color:'#A32D2D', bg:'#FFF5F5'};
+
   // Skip contact alerts for leads with active cases
   if (hasActiveCase) return null;
-  if (days >= 3 && days <= 4 && attempts < 4) return {label:'🔥 Urgent — last fresh days', color:'#A32D2D', bg:'#FFF5F5'};
-  if (days >= 2 && attempts < 2) return {label:'⚡ Needs first contact', color:'#BA7517', bg:'#FFF8E6'};
-  if (attempts === 0) return {label:'🆕 Not contacted', color:'#534AB7', bg:'#F5F3FF'};
-  if (daysSinceLast >= 7) return {label:'⚠️ Overdue — ' + Math.floor(daysSinceLast) + 'd no contact', color:'#A32D2D', bg:'#FFF5F5'};
-  if (daysSinceLast >= 4) return {label:'📋 Due for follow-up', color:'#BA7517', bg:'#FFF8E6'};
-  if (isReadyForText(c)) return {label:'📱 Ready for text', color:'#138181', bg:'#F0FBF7'};
+
+  // High value uncontacted
+  if ((isCIA || isMIA) && attempts === 0 && days <= 1) return {label:'New lead — call now', color:'#A32D2D', bg:'#FFF5F5'};
+  if ((isCIA || isMIA) && attempts === 0 && days > 1)  return {label:'Not contacted — call now', color:'#A32D2D', bg:'#FFF5F5'};
+
+  // Never contacted (any source)
+  if (attempts === 0) return {label:'Not contacted', color:'#534AB7', bg:'#F5F3FF'};
+
+  // Urgent fresh — days 3-4 running out
+  if (days >= 3 && days <= 4 && attempts < 6) return {label:'Last fresh days', color:'#A32D2D', bg:'#FFF5F5'};
+
+  // Warm overdue
+  if (days <= 17 && daysSinceLast >= 7) return {label:'Overdue — ' + Math.floor(daysSinceLast) + 'd no contact', color:'#A32D2D', bg:'#FFF5F5'};
+
+  // Warm due
+  if (days <= 17 && daysSinceLast >= 4) return {label:'Due for follow-up', color:'#BA7517', bg:'#FFF8E6'};
+
+  // Ready for text
+  if (isReadyForText(c)) return {label:'Ready for text', color:'#138181', bg:'#F0FBF7'};
+
+  // On break (called recently)
+  if (isOnBreak(c)) return {label:'Resting', color:'#8fa8c0', bg:'#F0F4F8'};
+
   return null;
 }
 
