@@ -480,12 +480,15 @@ async function init() {
   }
   hideSync();
   renderScore();
-  try { renderSidebar(); } catch(e) { console.error('renderSidebar error:', e); }
   renderTasks();
-  try { renderAlerts(); } catch(e) { console.error('renderAlerts error:', e); }
+  // Small delay to ensure all async data is settled before rendering sidebar/alerts
+  setTimeout(() => {
+    try { renderSidebar(); } catch(e) { console.error('renderSidebar:', e); }
+    try { renderAlerts(); } catch(e) { console.error('renderAlerts:', e); }
+  }, 500);
   if (document.getElementById('tab-clients').style.display !== 'none') renderClients();
   startRealtimeSync();
-  setInterval(() => { 
+  setInterval(() => {
     try { renderAlerts(); } catch(e) {}
     try { renderSidebar(); } catch(e) {}
   }, 60000);
@@ -1530,7 +1533,7 @@ function renderSidebar() {
   const sidebar = document.getElementById('sidebar-appts');
   if (sidebar) {
     if (!upcoming.length && !todayCallbacks.length && !futureCallbacks.length) {
-      sidebar.innerHTML = '<div style="font-size:11px;color:#a0b8cc;padding:4px 2px;">No appointments today (found ' + allAppts.length + ' total, ' + deduped.length + ' unique)</div>';
+      sidebar.innerHTML = '<div style="font-size:11px;color:#a0b8cc;padding:4px 2px;">No appointments today</div>';
     } else {
       let html = '';
       if (todayCallbacks.length) {
@@ -2263,14 +2266,14 @@ function getUrgencyScore(c) {
 
   const windowPenalty = inWindow ? 0 : 500;
   const breakPenalty = onBreak ? 300 : 0;
-
-  // Resting leads sink below ALL active leads — they need a break, don't surface until ready
-  if (onBreak && attempts > 0) return 150 + timeFraction + windowPenalty;
   const slotPenalty = (inWindow && currentSlotAlreadyCovered(c) && !onBreak) ? 50 : 0;
 
   // timeFraction: more hours since last contact = lower score = higher in list. Capped at 0.99.
   const hrs = Math.min(hoursSinceLast, 999);
   const timeFraction = hrs >= 999 ? 0.99 : Math.min(0.99, hrs / 100);
+
+  // Resting leads sink below ALL active leads — they need a break, don't surface until ready
+  if (onBreak && attempts > 0) return 150 + timeFraction + windowPenalty;
 
   // Tier 1: Callback overdue (missed it)
   if (isCallbackOverdue(c)) return 1 + windowPenalty;
