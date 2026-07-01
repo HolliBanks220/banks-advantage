@@ -2237,6 +2237,9 @@ function getUrgencyScore(c) {
 
   const windowPenalty = inWindow ? 0 : 500;
   const breakPenalty = onBreak ? 300 : 0;
+
+  // Resting leads sink below ALL active leads — they need a break, don't surface until ready
+  if (onBreak && attempts > 0) return 150 + timeFraction + windowPenalty;
   const slotPenalty = (inWindow && currentSlotAlreadyCovered(c) && !onBreak) ? 50 : 0;
 
   // timeFraction: more hours since last contact = lower score = higher in list. Capped at 0.99.
@@ -2335,8 +2338,8 @@ function getUrgencyBadge(c) {
     return {label:'\uD83D\uDCAC Text needed', color:'#138181', bg:'#F0FBF7', fire:false};
   }
 
-  // Overdue — red fire
-  const isOverdue = daysSinceLast >= 3;
+  // Genuinely overdue — 7+ days no contact = fire
+  const isOverdue = daysSinceLast >= 7;
   if (isOverdue) {
     return {label:'\uD83D\uDD25 Call now', color:'#A32D2D', bg:'#FFF5F5', fire:false};
   }
