@@ -4384,13 +4384,14 @@ function updateAppCompDisplay(i) {
   const carrier = (document.getElementById('app-carrier-'+i)||{value:''}).value;
   const productVal = (document.getElementById('app-product-'+i)||{value:''}).value;
   const apv = parseFloat((document.getElementById('app-apv-'+i)||{value:0}).value)||0;
+  const age = parseInt((document.getElementById('app-age-'+i)||{value:''}).value)||null;
   const compEl = document.getElementById('app-comp-display-'+i);
   if (!compEl) return;
   
   if (!carrier || !productVal || !apv) { compEl.innerHTML = ''; return; }
   
   const productName = productVal.split('|')[0];
-  const comp = calcAppComp(carrier, productName, apv);
+  const comp = calcAppComp(carrier, productName, apv, null, undefined, age);
   
   if (comp) {
     const advStr = comp.isAsEarned ? 'As earned' : '$' + Math.round(comp.advance).toLocaleString() + ' adv';
@@ -4417,7 +4418,7 @@ async function saveAppsToTouchpoint(id, ci, ti) {
     if (carrier && apv > 0) {
       const age = parseInt((document.getElementById('app-age-'+idx)||{value:''}).value)||null;
       const productName = product.split('|')[0];
-      const comp = carrier && productName && apv ? calcAppComp(carrier, productName, apv) : null;
+      const comp = carrier && productName && apv ? calcAppComp(carrier, productName, apv, null, undefined, age) : null;
       apps.push({
         carrier, product: productName, face, premium: apv, who, age,
         status:'Written', written_date: new Date().toISOString(), id: Date.now()+idx,
@@ -4876,13 +4877,40 @@ function getEnabledProducts(carrierName) {
 }
 
 // Get comp rate for a specific carrier/product at agent's contract level
-function getCompRate(carrierName, productName, contractLevel) {
+function getCompRate(carrierName, productName, contractLevel, clientAge) {
   const level = contractLevel || getContractLevel();
   const carrier = COMP_DATA[carrierName];
   if (!carrier) return null;
-  const product = carrier.products.find(p => p.name === productName);
-  if (!product) return null;
-  return product.rates[level] || null;
+
+  // Get all products matching this name
+  const matches = carrier.products.filter(p => p.name === productName);
+  if (!matches.length) return null;
+
+  let product = null;
+
+  if (matches.length === 1 || !clientAge) {
+    // Only one row or no age provided — use first match
+    product = matches[0];
+  } else {
+    // Multiple rows with age ranges — find the one matching clientAge
+    const age = parseInt(clientAge);
+    product = matches.find(p => {
+      const range = p.range || '';
+      // Parse age ranges like "Ages 40 - 59", "Ages 60 - 80", "Ages 81 - 85"
+      const m = range.match(/(\d+)\s*[-–]\s*(\d+)/);
+      if (m) return age >= parseInt(m[1]) && age <= parseInt(m[2]);
+      // Handle "Ages 0 - 75", "Ages 76 - 79", etc.
+      const mLte = range.match(/<=\s*(\d+)/);
+      if (mLte) return age <= parseInt(mLte[1]);
+      const mGte = range.match(/>=\s*(\d+)/);
+      if (mGte) return age >= parseInt(mGte[1]);
+      return false;
+    });
+    // Fall back to first match if no age range matched
+    if (!product) product = matches[0];
+  }
+
+  return product.rates[String(level)] || null;
 }
 
 // Calculate comp for an application
@@ -4897,8 +4925,8 @@ function getCarrierAdvance(carrierName) {
   return 75; // everyone else
 }
 
-function calcAppComp(carrierName, productName, apv, contractLevel, forceAdvancePct) {
-  const rate = getCompRate(carrierName, productName, contractLevel);
+function calcAppComp(carrierName, productName, apv, contractLevel, forceAdvancePct, clientAge) {
+  const rate = getCompRate(carrierName, productName, contractLevel, clientAge);
   if (!rate) return null;
   const grossComp = (apv * rate) / 100;
   const advance = getCarrierAdvance(carrierName);
