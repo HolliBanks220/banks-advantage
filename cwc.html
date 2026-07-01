@@ -2306,6 +2306,11 @@ function getUrgencyBadge(c) {
     return {label:'\u23F8 Resting', color:'#8fa8c0', bg:'#F0F4F8', fire:false};
   }
 
+  // Never contacted — always urgent fire
+  if (attempts === 0) {
+    return {label:'\uD83D\uDD25 Call now', color:'#A32D2D', bg:'#FFF5F5', fire:false};
+  }
+
   // No show
   if (noShowCount >= 1 && hrsSinceNS >= 2 && hrsSinceNS <= 72) {
     return {label:'\uD83D\uDD25 Call now', color:'#A32D2D', bg:'#FFF5F5', fire:false};
@@ -2317,7 +2322,7 @@ function getUrgencyBadge(c) {
   }
 
   // Overdue — red fire
-  const isOverdue = (attempts > 0 && daysSinceLast >= 3) || (attempts === 0 && days >= 2);
+  const isOverdue = daysSinceLast >= 3;
   if (isOverdue) {
     return {label:'\uD83D\uDD25 Call now', color:'#A32D2D', bg:'#FFF5F5', fire:false};
   }
