@@ -480,13 +480,15 @@ async function init() {
   }
   hideSync();
   renderScore();
-  renderSidebar();
+  try { renderSidebar(); } catch(e) { console.error('renderSidebar error:', e); }
   renderTasks();
-  renderAlerts();
+  try { renderAlerts(); } catch(e) { console.error('renderAlerts error:', e); }
   if (document.getElementById('tab-clients').style.display !== 'none') renderClients();
   startRealtimeSync();
-  // Refresh alerts every 60 seconds so countdown stays current
-  setInterval(() => { renderAlerts(); renderSidebar(); }, 60000);
+  setInterval(() => { 
+    try { renderAlerts(); } catch(e) {}
+    try { renderSidebar(); } catch(e) {}
+  }, 60000);
 }
 
 function startRealtimeSync() {
@@ -4837,6 +4839,13 @@ async function addTaskFromModal() {
 }
 
 // GO
+window.onerror = function(msg, src, line, col, err) {
+  const el = document.getElementById('alerts-section');
+  if (el && !el.innerHTML) {
+    el.innerHTML = '<div style="background:#FFF5F5;border:1px solid #F5A0A0;border-radius:8px;padding:6px 10px;font-size:11px;color:#A32D2D;">Error: ' + msg + ' (line ' + line + ')</div>';
+  }
+  console.error('JS Error:', msg, 'line:', line, err);
+};
 document.addEventListener('DOMContentLoaded', function() { init(); });
 if (document.readyState !== 'loading') { init(); }
 
