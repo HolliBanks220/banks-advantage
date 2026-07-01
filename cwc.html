@@ -480,8 +480,11 @@ async function init() {
   renderScore();
   renderSidebar();
   renderTasks();
+  renderAlerts();
   if (document.getElementById('tab-clients').style.display !== 'none') renderClients();
   startRealtimeSync();
+  // Refresh alerts every 60 seconds so countdown stays current
+  setInterval(() => { renderAlerts(); renderSidebar(); }, 60000);
 }
 
 function startRealtimeSync() {
@@ -541,8 +544,19 @@ async function loadStats() {
 }
 
 async function loadTasksFromDB() {
-  const { data, error } = await sb.from('tasks').select('*').order('created_at', { ascending: true });
-  if (!error && data) tasks = data;
+  try {
+    const { data, error } = await sb.from('tasks').select('*').order('created_at', { ascending: true });
+    if (!error && data) {
+      tasks = data;
+    } else if (error) {
+      console.warn('Tasks load error:', error.message);
+      // Try localStorage fallback
+      const local = localStorage.getItem('cwc_tasks');
+      if (local) tasks = JSON.parse(local);
+    }
+  } catch(e) {
+    console.warn('Tasks exception:', e);
+  }
 }
 
 async function seedLeads() {
