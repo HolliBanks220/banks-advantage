@@ -1993,24 +1993,20 @@ function getCurrentSlotForLead(c) {
 // How many call attempts today (by agent's local date)
 function getAttemptsToday(c) {
   const today = new Date().toDateString();
-  // Count any outreach today: dials OR text sent OR any meaningful outcome
   return (c.call_log||[]).filter(cl => {
     if (new Date(cl.ts).toDateString() !== today) return false;
     return cl.dials > 0 || cl.outcome === 'Text sent' || cl.outcome === 'No answer' || cl.outcome === 'Callback';
   }).length;
 }
 
-// Hours since last ANY contact on this lead (calls, texts, outcomes)
 function getHoursSinceLastAttempt(c) {
   const log = (c.call_log||[]);
   if (!log.length) return 999;
-  // Use the most recent call_log entry of any meaningful type
   const meaningful = log.filter(cl => cl.dials > 0 || cl.outcome === 'Text sent' || cl.outcome === 'No answer');
   if (!meaningful.length) return 999;
   return (new Date() - new Date(meaningful[meaningful.length-1].ts)) / (1000*60*60);
 }
 
-// Which slots covered today for this lead
 function getSlotsCoveredToday(c) {
   const today = new Date().toDateString();
   const slots = new Set();
@@ -2023,26 +2019,66 @@ function getSlotsCoveredToday(c) {
   return slots;
 }
 
-// Is the current slot already covered today for this lead?
 function currentSlotAlreadyCovered(c) {
   const slot = getCurrentSlotForLead(c);
   if (!slot) return true;
   return getSlotsCoveredToday(c).has(slot);
 }
 
-// Is this lead on a break? (too soon to call again or too many attempts today)
+// Has this lead ever had a callback logged (scheduled or open-ended)?
+function hasCallbackContact(c) {
+  return (c.call_log||[]).some(cl => cl.outcome === 'Callback');
+}
+
+// Is there a pending open-ended callback (no specific date/time set)?
+function hasOpenEndedCallback(c) {
+  const cbs = (c.call_log||[]).filter(cl => cl.outcome === 'Callback');
+  if (!cbs.length) return false;
+  const last = cbs[cbs.length-1];
+  return !last.callback_dt;
+}
+
+// Hours since an open-ended callback was logged
+function getHoursSinceOpenCallback(c) {
+  const cbs = (c.call_log||[]).filter(cl => cl.outcome === 'Callback' && !cl.callback_dt);
+  if (!cbs.length) return 999;
+  return (new Date() - new Date(cbs[cbs.length-1].ts)) / (1000*60*60);
+}
+
+// Is this lead on a break?
+// After any callback contact: use warm rules (max 2/day, min 2hrs)
+// Fresh never-answered: max 3/day
+// Warm: max 2/day
+// Open: max 1/day
 function isOnBreak(c) {
   const days = getDaysSinceAssigned(c);
   const hoursSinceLast = getHoursSinceLastAttempt(c);
   const attemptsToday = getAttemptsToday(c);
+
+  // Min 2 hours between any attempts
   if (hoursSinceLast < 2 && hoursSinceLast < 999) return true;
+
+  // Open-ended callback: give 24hrs breathing room before resuming
+  if (hasOpenEndedCallback(c) && getHoursSinceOpenCallback(c) < 24) return true;
+
+  // After any callback contact: warm rules apply (max 2/day) regardless of age
+  if (hasCallbackContact(c)) {
+    if (attemptsToday >= 2) return true;
+    return false;
+  }
+
+  // Never-answered fresh (days 1-4): max 3/day
   if (days <= 4 && attemptsToday >= 3) return true;
+
+  // Warm (days 5-17): max 2/day
   if (days > 4 && days <= 17 && attemptsToday >= 2) return true;
+
+  // Open (17+): max 1/day
   if (days > 17 && attemptsToday >= 1) return true;
+
   return false;
 }
 
-// Capacity tracking — mark today as "caught up" in localStorage
 function markQueueCaughtUp() {
   localStorage.setItem('cwc_caughtup_' + new Date().toDateString(), '1');
 }
@@ -2056,14 +2092,13 @@ function getCaughtUpDaysThisWeek() {
   return count;
 }
 
-// ── URGENCY SCORING ─────────────────────────────────────────────────────────
+// ── URGENCY SCORING ──────────────────────────────────────────────────────────
 function getNoShowCount(c) {
   return (c.call_log||[]).filter(cl => cl.outcome === 'No show').length;
 }
 
 function getAttemptCount(c) {
   const callLogAttempts = (c.call_log||[]).filter(cl => cl.dials > 0).length;
-  // Also count resolved case touchpoints as contact attempts
   const caseAttempts = (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).filter(tp => tp && tp.outcome && tp.outcome !== 'pending')).length;
   return Math.max(callLogAttempts, caseAttempts > 0 ? callLogAttempts + caseAttempts : 0, callLogAttempts);
 }
@@ -2073,11 +2108,9 @@ function getDaysSinceAssigned(c) {
 }
 
 function getDaysSinceLastAttempt(c) {
-  // Include all meaningful outreach: calls, texts, any logged outcome
   const log = (c.call_log||[]);
   const meaningful = log.filter(cl => cl.dials > 0 || cl.outcome === 'Text sent' || cl.outcome === 'No answer');
   const callLogDate = meaningful.length ? new Date(meaningful[meaningful.length-1].ts) : null;
-  // Also check case touchpoints
   const tpDates = (c.cases||[]).flatMap(cs =>
     (cs.touchpoints||[]).filter(tp => tp && tp.outcome && tp.outcome !== 'pending')
       .map(tp => new Date(tp.created || tp.datetime || 0))
@@ -2092,8 +2125,7 @@ function getDaysSinceLastAttempt(c) {
 function getHoursSinceNoShow(c) {
   const noShows = (c.call_log||[]).filter(cl => cl.outcome === 'No show');
   if (!noShows.length) return 999;
-  const last = new Date(noShows[noShows.length-1].ts);
-  return (new Date() - last) / (1000*60*60);
+  return (new Date() - new Date(noShows[noShows.length-1].ts)) / (1000*60*60);
 }
 
 function isCallbackOverdue(c) {
@@ -2119,16 +2151,36 @@ function getTimeSlotsCovered(c) {
   return slots;
 }
 
-function isReadyForText(c) {
-  // Clear if text already sent
-  if ((c.call_log||[]).some(cl => cl.outcome === 'Text sent')) return false;
-  const attempts = getAttemptCount(c);
-  const slots = getTimeSlotsCovered(c);
-  return attempts >= 5 && slots.size >= 3;
+// How many texts have been sent (1-4)
+function getTextsSentCount(c) {
+  return (c.call_log||[]).filter(cl => cl.outcome === 'Text sent').length;
 }
 
-// Urgency score — lower = more urgent, show first
-// Research-backed MP/insurance cadence: fresh leads get 3 slots/day, warm every 2-3 days
+function isReadyForText(c) {
+  const textsSent = getTextsSentCount(c);
+  // All 4 texts sent = no more text triggers
+  if (textsSent >= 4) return false;
+  const attempts = getAttemptCount(c);
+  const slots = getTimeSlotsCovered(c);
+  // Text 1: after 5 attempts across 3 slots
+  if (textsSent === 0 && attempts >= 5 && slots.size >= 3) return true;
+  // Text 2: after 10 attempts
+  if (textsSent === 1 && attempts >= 10) return true;
+  // Text 3: end of fresh phase (~12 attempts)
+  if (textsSent === 2 && attempts >= 12) return true;
+  // Text 4: end of warm phase (days 17+)
+  if (textsSent === 3 && getDaysSinceAssigned(c) >= 17) return true;
+  return false;
+}
+
+// Should this lead be suggested for Nurture?
+function isNurtureReady(c) {
+  if (c.status === 'Nurture' || c.status === 'Dead' || c.status === 'Closed' || c.status === 'No sale') return false;
+  return getAttemptCount(c) >= 12 && getTextsSentCount(c) >= 4;
+}
+
+// Research-backed urgency score
+// Lower = more urgent. timeFraction tiebreaker: more hours since last contact = lower score = higher in list
 function getUrgencyScore(c) {
   const status = c.status || 'New';
 
@@ -2136,6 +2188,7 @@ function getUrgencyScore(c) {
   if (status === 'Closed') return 8900;
   if (status === 'No sale') return 8800;
   if (status === 'Appointment set') return 8000;
+  if (status === 'Nurture') return 7000; // Nurture leads sink below active, surface on schedule separately
 
   const days = getDaysSinceAssigned(c);
   const attempts = getAttemptCount(c);
@@ -2145,13 +2198,15 @@ function getUrgencyScore(c) {
   const inWindow = isGoodTimeToCall(c);
   const onBreak = isOnBreak(c);
   const isCIA = (c.source || '').toUpperCase() === 'CIA';
+  const isMIA = (c.source || '').toUpperCase() === 'MIA';
+  const prefersText = c.prefers_text === true;
+  const hadCallback = hasCallbackContact(c);
 
   const windowPenalty = inWindow ? 0 : 500;
   const breakPenalty = onBreak ? 300 : 0;
   const slotPenalty = (inWindow && currentSlotAlreadyCovered(c) && !onBreak) ? 50 : 0;
 
-  // Within-tier tiebreaker: more hours since last contact = lower score = higher in list
-  // Capped at 0.99 so it never crosses into an adjacent tier
+  // timeFraction: more hours since last contact = lower score = higher in list. Capped at 0.99.
   const hrs = Math.min(hoursSinceLast, 999);
   const timeFraction = hrs >= 999 ? 0.99 : Math.min(0.99, hrs / 100);
 
@@ -2167,34 +2222,36 @@ function getUrgencyScore(c) {
   if (noShowCount === 2 && hrsSinceNS >= 2 && hrsSinceNS <= 48) return 21 - timeFraction + breakPenalty + windowPenalty;
   if (noShowCount === 1 && hrsSinceNS >= 2 && hrsSinceNS <= 48) return 20 - timeFraction + breakPenalty + windowPenalty;
 
-  // Tier 4: CIA not contacted
-  if (isCIA && attempts === 0 && days <= 1) return 30 - timeFraction + windowPenalty;
-  if (isCIA && attempts === 0 && days > 1)  return 32 - timeFraction + windowPenalty;
+  // Tier 4: High-value uncontacted leads — CIA and MIA both get day 1-2 urgency boost
+  // CIA: digital, decays fast. MIA: $75 mailer, high deliberate intent. Both deserve immediate attention.
+  if ((isCIA || isMIA) && attempts === 0 && days <= 1) return 30 - timeFraction + windowPenalty;
+  if ((isCIA || isMIA) && attempts === 0 && days > 1)  return 32 - timeFraction + windowPenalty;
 
-  // Tier 5: Urgent fresh days 3-4
-  if (days >= 3 && days <= 4 && attempts < 4) return 40 + (4 - attempts) - timeFraction + breakPenalty + windowPenalty;
+  // Tier 5: Urgent fresh days 3-4 (running out of fresh window)
+  if (days >= 3 && days <= 4 && attempts < 4 && !hadCallback) return 40 + (4 - attempts) - timeFraction + breakPenalty + windowPenalty;
 
   // Tier 6: Fresh day 1-2 no contact
   if (days <= 2 && attempts === 0) return 50 - timeFraction + windowPenalty;
 
-  // Tier 7: Fresh day 1-4 active dialing
-  if (days <= 4) {
+  // Tier 7: Fresh day 1-4 active dialing (needs more slots covered)
+  // After callback contact: skip to warm cadence (Tier 8/9) regardless of age
+  if (days <= 4 && !hadCallback) {
     const slots = getTimeSlotsCovered(c);
     const slotsNeeded = 3 - slots.size;
     if (slotsNeeded > 0) return 60 + (3 - slotsNeeded) - timeFraction + breakPenalty + windowPenalty + slotPenalty;
     return 79 - timeFraction + breakPenalty + windowPenalty;
   }
 
-  // Tier 8: Warm overdue 7+ days
-  if (days <= 17 && daysSinceLast >= 7) return 80 + Math.min(8, Math.floor(daysSinceLast - 7)) - timeFraction + breakPenalty + windowPenalty;
+  // Tier 8: Warm overdue 7+ days (includes post-callback leads and day 5-17)
+  if (daysSinceLast >= 7) return 80 + Math.min(8, Math.floor(daysSinceLast - 7)) - timeFraction + breakPenalty + windowPenalty;
 
   // Tier 9: Warm due 4-6 days
-  if (days <= 17 && daysSinceLast >= 4) return 90 + Math.min(8, Math.floor(daysSinceLast - 4)) - timeFraction + breakPenalty + windowPenalty;
+  if (daysSinceLast >= 4) return 90 + Math.min(8, Math.floor(daysSinceLast - 4)) - timeFraction + breakPenalty + windowPenalty;
 
   // Tier 10: Ready for text
   if (isReadyForText(c)) return 100 - timeFraction + windowPenalty;
 
-  // Tier 11: Warm on track
+  // Tier 11: Warm on track (days 5-17, recently contacted)
   if (days <= 17) return 110 - timeFraction + breakPenalty + windowPenalty;
 
   // Tier 12: Open 17+ days — only surfaces when active queue exhausted
