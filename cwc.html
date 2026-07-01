@@ -1530,7 +1530,7 @@ function renderSidebar() {
   const sidebar = document.getElementById('sidebar-appts');
   if (sidebar) {
     if (!upcoming.length && !todayCallbacks.length && !futureCallbacks.length) {
-      sidebar.innerHTML = '<div style="font-size:11px;color:#a0b8cc;padding:4px 2px;">No appointments today</div>';
+      sidebar.innerHTML = '<div style="font-size:11px;color:#a0b8cc;padding:4px 2px;">No appointments today (found ' + allAppts.length + ' total, ' + deduped.length + ' unique)</div>';
     } else {
       let html = '';
       if (todayCallbacks.length) {
