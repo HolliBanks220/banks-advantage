@@ -2283,55 +2283,58 @@ function getUrgencyScore(c) {
   return 200 + Math.min(99, Math.floor(daysSinceLast)) - timeFraction + windowPenalty;
 }
 function getUrgencyBadge(c) {
-  if (['Closed','Dead','No sale'].includes(c.status)) return null;
-  if (c.status === 'Appointment set') return null;
+  const status = c.status || 'New';
 
-  const hasActiveCase = (c.cases||[]).some(cs => cs.status === 'Open');
-  const days = getDaysSinceAssigned(c);
+  if (['Closed','Dead','No sale'].includes(status)) return null;
+  if (status === 'Appointment set') return {label:'Appt set', color:'#138181', bg:'#E1F5EE', fire:false};
+
+  const inWindow = isGoodTimeToCall(c);
+  const onBreak = isOnBreak(c);
   const attempts = getAttemptCount(c);
+  const days = getDaysSinceAssigned(c);
   const daysSinceLast = getDaysSinceLastAttempt(c);
   const noShowCount = getNoShowCount(c);
   const hrsSinceNS = getHoursSinceNoShow(c);
-  const isCIA = (c.source||'').toUpperCase() === 'CIA';
-  const isMIA = (c.source||'').toUpperCase() === 'MIA';
 
-  // Callbacks
-  if (isCallbackOverdue(c)) return {label:'Callback overdue', color:'#A32D2D', bg:'#FFF5F5'};
-  if (isCallbackDueNow(c))  return {label:'Callback due now', color:'#BA7517', bg:'#FFF8E6'};
+  // Callback due or overdue
+  if (isCallbackOverdue(c) || isCallbackDueNow(c)) {
+    return {label:'\uD83D\uDD04 Callback', color:'#BA7517', bg:'#FFF8E6', fire:false};
+  }
 
-  // No shows
-  if (noShowCount >= 3 && hrsSinceNS >= 2 && hrsSinceNS <= 72) return {label:'3x no show — final attempt', color:'#A32D2D', bg:'#FFF5F5'};
-  if (noShowCount === 2 && hrsSinceNS >= 2 && hrsSinceNS <= 48) return {label:'2x no show — follow up', color:'#A32D2D', bg:'#FFF5F5'};
-  if (noShowCount === 1 && hrsSinceNS >= 2 && hrsSinceNS <= 48) return {label:'No show — follow up', color:'#A32D2D', bg:'#FFF5F5'};
+  // Resting — on break
+  if (onBreak && attempts > 0) {
+    return {label:'\u23F8 Resting', color:'#8fa8c0', bg:'#F0F4F8', fire:false};
+  }
 
-  // Skip contact alerts for leads with active cases
-  if (hasActiveCase) return null;
+  // No show
+  if (noShowCount >= 1 && hrsSinceNS >= 2 && hrsSinceNS <= 72) {
+    return {label:'\uD83D\uDD25 Call now', color:'#A32D2D', bg:'#FFF5F5', fire:false};
+  }
 
-  // High value uncontacted
-  if ((isCIA || isMIA) && attempts === 0 && days <= 1) return {label:'New lead — call now', color:'#A32D2D', bg:'#FFF5F5'};
-  if ((isCIA || isMIA) && attempts === 0 && days > 1)  return {label:'Not contacted — call now', color:'#A32D2D', bg:'#FFF5F5'};
+  // Text needed
+  if (isReadyForText(c)) {
+    return {label:'\uD83D\uDCAC Text needed', color:'#138181', bg:'#F0FBF7', fire:false};
+  }
 
-  // Never contacted (any source)
-  if (attempts === 0) return {label:'Not contacted', color:'#534AB7', bg:'#F5F3FF'};
+  // Overdue — red fire
+  const isOverdue = (attempts > 0 && daysSinceLast >= 3) || (attempts === 0 && days >= 2);
+  if (isOverdue) {
+    return {label:'\uD83D\uDD25 Call now', color:'#A32D2D', bg:'#FFF5F5', fire:false};
+  }
 
-  // Urgent fresh — days 3-4 running out
-  if (days >= 3 && days <= 4 && attempts < 6) return {label:'Last fresh days', color:'#A32D2D', bg:'#FFF5F5'};
+  // Open 17+ days
+  if (days > 17) {
+    return {label:'Open', color:'#5f7a99', bg:'#EBF3FF', fire:false};
+  }
 
-  // Warm overdue
-  if (days <= 17 && daysSinceLast >= 7) return {label:'Overdue — ' + Math.floor(daysSinceLast) + 'd no contact', color:'#A32D2D', bg:'#FFF5F5'};
+  // Due now and in window — green dot
+  if (inWindow && !onBreak) {
+    return {label:'\uD83D\uDFE2 Call now', color:'#138181', bg:'#E1F5EE', fire:false};
+  }
 
-  // Warm due
-  if (days <= 17 && daysSinceLast >= 4) return {label:'Due for follow-up', color:'#BA7517', bg:'#FFF8E6'};
-
-  // Ready for text
-  if (isReadyForText(c)) return {label:'Ready for text', color:'#138181', bg:'#F0FBF7'};
-
-  // On break (called recently)
-  if (isOnBreak(c)) return {label:'Resting', color:'#8fa8c0', bg:'#F0F4F8'};
-
-  return null;
+  // Upcoming — outside window
+  return {label:'\u23F0 Upcoming', color:'#8fa8c0', bg:'#F0F4F8', fire:false};
 }
-
 function getNoShowBadge(c) {
   const count = getNoShowCount(c);
   if (count === 0) return '';
@@ -2427,8 +2430,11 @@ function renderAlerts() {
     // (not dependent on window — this is about neglected leads regardless of time of day)
     if (attempts > 0 && days <= 17 && daysSinceLast >= 3) {
       overdue++;
+    // Text-ready leads count as due now — they need action too
     } else if (inWindow && !onBreak && score < 200) {
       dueNow++;
+    } else if (isReadyForText(c) && !onBreak) {
+      dueNow++; // text-ready folds into due now
     } else if (!inWindow && !onBreak && score < 200) {
       const next = getNextSlotTime(c);
       if (next && (earliestUpcomingAgentHour === null || next.agentHour < earliestUpcomingAgentHour)) {
@@ -2475,11 +2481,6 @@ function renderAlerts() {
     const bg = overdue > 0 ? '#FFF5F5' : '#EBF3FF';
     const border = overdue > 0 ? '#F5A0A0' : '#B3D1F7';
     html = '<div onclick="setFilterAlert(\'active\')" style="background:' + bg + ';border:1px solid ' + border + ';border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:600;color:' + color + ';">' + parts.join(' &middot; ') + '</div>';
-  }
-
-  const txtRdy = clients.filter(c => isReadyForText(c) && c.status !== 'Dead' && c.status !== 'Appointment set');
-  if (txtRdy.length) {
-    html += '<div onclick="setFilterAlert(\'textready\')" style="background:#F0FBF7;border:1px solid #9FE1CB33;border-radius:8px;padding:5px 12px;margin-top:4px;cursor:pointer;font-size:11px;font-weight:600;color:#138181;">' + txtRdy.length + ' lead' + (txtRdy.length>1?'s':'') + ' ready for a text &rarr;</div>';
   }
 
   el.innerHTML = html;
