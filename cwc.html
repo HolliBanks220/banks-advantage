@@ -1485,13 +1485,15 @@ function renderSidebar() {
   const deduped = allAppts.filter((a, i, arr) =>
     arr.findIndex(b => b.clientId === a.clientId && b.datetime === a.datetime) === i
   );
-  const upcoming = deduped
-    .filter(a => new Date(a.datetime) >= now)
-    .sort((a,b) => new Date(a.datetime)-new Date(b.datetime))
-    .slice(0,15);
-  const todayPassed = deduped
-    .filter(a => { const dt = new Date(a.datetime); return dt < now && dt.toDateString() === todayStr; })
+  // Show all today's appointments + future ones (up to 15 total)
+  const todayAppts = deduped
+    .filter(a => new Date(a.datetime).toDateString() === todayStr)
     .sort((a,b) => new Date(a.datetime)-new Date(b.datetime));
+  const futureAppts = deduped
+    .filter(a => { const dt = new Date(a.datetime); return dt > now && dt.toDateString() !== todayStr; })
+    .sort((a,b) => new Date(a.datetime)-new Date(b.datetime));
+  const upcoming = [...todayAppts, ...futureAppts].slice(0,15);
+  const todayPassed = []; // folded into upcoming now
 
   function apptCard(a, passed) {
     const dt = new Date(a.datetime);
@@ -1525,7 +1527,7 @@ function renderSidebar() {
 
   const sidebar = document.getElementById('sidebar-appts');
   if (sidebar) {
-    if (!upcoming.length && !todayPassed.length && !todayCallbacks.length && !futureCallbacks.length) {
+    if (!upcoming.length && !todayCallbacks.length && !futureCallbacks.length) {
       sidebar.innerHTML = '<div style="font-size:11px;color:#a0b8cc;padding:4px 2px;">No appointments today</div>';
     } else {
       let html = '';
