@@ -2625,7 +2625,21 @@ function openClient(id, keepDialCount) {
     <span style="color:#5f7a99;font-size:13px;">- ${c.state||''} - <span class="${badgeClass(c.source)}">${c.source||''}</span></span>
   </div>
   ${c.address?`<div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">[Addr] ${c.address}</div>`:''}
-  ${c.appt_datetime?`<div style="margin-bottom:8px;"><div onclick="openSitOutcome('${id}')" style="font-size:12px;font-weight:600;color:#138181;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:6px;padding:5px 10px;margin-bottom:4px;cursor:pointer;display:block;">[Cal] ${new Date(c.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(c.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}${c.appt_notes?' — '+c.appt_notes:''} <span style="font-size:10px;opacity:0.6;">tap to log outcome</span></div><button onclick="openMoveAppt('${id}')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Move appointment</button></div>`:''}
+  ${c.appt_datetime?(()=>{
+    const isCallback = isCallbackToday(c) || isCallbackDueNow(c) || isCallbackFuture(c);
+    const hasOpenCase = (c.cases||[]).some(cs => cs.status === 'Open');
+    const apptLabel = new Date(c.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + new Date(c.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + (c.appt_notes?' — '+c.appt_notes:'');
+    if (isCallback) {
+      // Callback — show time but no log outcome prompt
+      return '<div style="margin-bottom:8px;"><div style="font-size:12px;font-weight:600;color:#BA7517;background:#FFF8E6;border:1px solid #F5D78E;border-radius:6px;padding:5px 10px;margin-bottom:4px;display:block;">[Callback] ' + apptLabel + '</div><button onclick="openMoveAppt(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit time</button></div>';
+    } else if (hasOpenCase) {
+      // Real appointment — show log outcome prompt
+      return '<div style="margin-bottom:8px;"><div onclick="openSitOutcome(\'' + id + '\')" style="font-size:12px;font-weight:600;color:#138181;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:6px;padding:5px 10px;margin-bottom:4px;cursor:pointer;display:block;">[Appt] ' + apptLabel + ' <span style="font-size:10px;opacity:0.6;">tap to log outcome</span></div><button onclick="openMoveAppt(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit time</button></div>';
+    } else {
+      // Appointment but no open case — just show time with edit
+      return '<div style="margin-bottom:8px;"><div style="font-size:12px;font-weight:600;color:#138181;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:6px;padding:5px 10px;margin-bottom:4px;display:block;">[Appt] ' + apptLabel + '</div><button onclick="openMoveAppt(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit time</button></div>';
+    }
+  })():''}
   <div class="dial-row">
     <span class="dial-lbl">Dials:</span>
     <button class="dial-cnt-btn on" id="dcb-1" onclick="setDialCount(1)">1x</button>
@@ -3020,16 +3034,15 @@ function buildWeekGrid_OLD(excludeId) {
 function openMoveAppt(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const current = new Date(c.appt_datetime);
-  const local = new Date(current.getTime() - current.getTimezoneOffset()*60000);
-  const dtVal = local.toISOString().slice(0,16);
+  const dtVal = new Date(current.getTime() - current.getTimezoneOffset()*60000).toISOString().slice(0,16);
   showModal(`<button class="close-x" onclick="closeModal()">x</button>
-  <div class="modal-title">Move appointment</div>
+  <div class="modal-title">Edit appointment time</div>
   <div class="modal-sub">${c.name}</div>
-  <div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:6px 10px;margin-bottom:10px;">No stats will be logged - this just moves the time.</div>
+  <div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:6px 10px;margin-bottom:10px;">Correcting a mistake — no stats logged, no reschedule tracked.</div>
   ${buildWeekGrid(id)}
   <div class="field"><label>New date & time</label><input type="datetime-local" id="move-dt" value="${dtVal}" style="font-size:16px;"></div>
   <div class="field"><label>Notes (optional)</label><input type="text" id="move-notes" value="${c.appt_notes||''}" placeholder="Notes..."></div>
-  <button class="save-btn" style="background:#138181;" onclick="confirmMoveAppt('${id}')">Move appointment</button>`);
+  <button class="save-btn" style="background:#138181;" onclick="confirmMoveAppt('${id}')">Save correction</button>`);
 }
 
 async function confirmMoveAppt(id) {
@@ -3038,7 +3051,7 @@ async function confirmMoveAppt(id) {
   if (!dtVal) return;
   const notes = document.getElementById('move-notes').value.trim();
   const localDate = new Date(dtVal);
-  const newDt = new Date(localDate.getTime() - localDate.getTimezoneOffset()*60000).toISOString();
+  const newDt = localDate.toISOString();
 
   // Also update the pending touchpoint in the open case to match new datetime
   const cases = (c.cases||[]).map(cs => {
@@ -3065,9 +3078,17 @@ function openReschedulePicker(id) {
   showModal(`<button class="close-x" onclick="closeModal()">x</button>
   <div class="modal-title">Reschedule appointment</div>
   <div class="modal-sub">${c.name}</div>
+  <div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:6px 10px;margin-bottom:10px;">Use this when they no-showed or called to reschedule. Tracked for reports.</div>
+  <div class="field"><label>Reason</label>
+    <select id="resched-reason" style="width:100%;padding:8px;border-radius:6px;border:1px solid #d0dcea;font-size:14px;">
+      <option value="noshow">No show</option>
+      <option value="client_request">Client requested reschedule</option>
+      <option value="other">Other</option>
+    </select>
+  </div>
   ${buildWeekGrid(id)}
   <div class="field"><label>New date & time</label><input type="datetime-local" id="appt-dt" value="${dt}" style="font-size:16px;"></div>
-  <div class="field"><label>Notes (optional)</label><input type="text" id="appt-note-field" placeholder="e.g. No show - rescheduled, confirmed via text..."></div>
+  <div class="field"><label>Notes (optional)</label><input type="text" id="appt-note-field" placeholder="e.g. confirmed via text..."></div>
   <button class="save-btn" style="background:#534AB7;" onclick="confirmReschedule('${id}')">Confirm reschedule</button>`);
 }
 
@@ -3076,10 +3097,14 @@ async function confirmReschedule(id) {
   const dtVal = document.getElementById('appt-dt').value;
   if (!dtVal) return;
   const apptNotes = (document.getElementById('appt-note-field')||{value:''}).value.trim();
-  const apptDatetime = new Date(dtVal).toISOString();
+  const reason = (document.getElementById('resched-reason')||{value:'other'}).value;
+  const [year,month,day] = dtVal.split('T')[0].split('-').map(Number);
+  const [hours,minutes] = dtVal.split('T')[1].split(':').map(Number);
+  const apptDatetime = new Date(year, month-1, day, hours, minutes).toISOString();
   const dialCount = window._dialCount || 1;
-  const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(),outcome:'Rescheduled',dials:dialCount,appt_datetime:apptDatetime,appt_notes:apptNotes}];
-  // Also update the pending touchpoint datetime in the open case
+  // Log to call_log for report tracking only — does NOT affect sits/sales/convos
+  const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(), outcome:'Rescheduled', reason, dials:dialCount, appt_datetime:apptDatetime, appt_notes:apptNotes}];
+  // Update pending touchpoint datetime — no outcome change, stays pending
   const cases = (c.cases||[]).map(cs => {
     if (cs.status !== 'Open') return cs;
     const touchpoints = (cs.touchpoints||[]).map(tp => {
@@ -3090,18 +3115,16 @@ async function confirmReschedule(id) {
   });
 
   showSync('Saving...');
-  await sb.from('clients').update({call_log:callLog,status:'Appointment set',appt_datetime:apptDatetime,appt_notes:apptNotes,cases}).eq('id',id);
+  await sb.from('clients').update({call_log:callLog, status:'Appointment set', appt_datetime:apptDatetime, appt_notes:apptNotes, cases}).eq('id',id);
   c.call_log=callLog; c.status='Appointment set'; c.appt_datetime=apptDatetime; c.appt_notes=apptNotes; c.cases=cases;
-  await addStat('dials',dialCount); await addStat('convos',1); // No appt stat - reschedule is same appt moved
+  await addStat('dials', dialCount); // No convos, no appt stat — reschedule is not a new sit
   window._dialCount=1; window._dialCountSet=false; hideSync(); closeModal();
 
   const searchVal = document.getElementById('client-search') ? document.getElementById('client-search').value : '';
   const filteredList = getFilteredClients(searchVal);
   const currentIdx = filteredList.findIndex(cl => cl.id === id);
   const nextLead = filteredList[currentIdx + 1] || filteredList[currentIdx - 1];
-
-  renderClients(searchVal);
-  renderScore(); renderSidebar();
+  renderClients(searchVal); renderScore(); renderSidebar();
   if (nextLead) setTimeout(() => openClient(nextLead.id), 300);
 }
 
