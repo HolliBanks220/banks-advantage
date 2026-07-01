@@ -545,17 +545,23 @@ async function loadStats() {
 
 async function loadTasksFromDB() {
   try {
-    const { data, error } = await sb.from('tasks').select('*').order('created_at', { ascending: true });
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000));
+    const query = sb.from('tasks').select('*').order('created_at', { ascending: true });
+    const { data, error } = await Promise.race([query, timeout]);
     if (!error && data) {
       tasks = data;
     } else if (error) {
       console.warn('Tasks load error:', error.message);
-      // Try localStorage fallback
       const local = localStorage.getItem('cwc_tasks');
       if (local) tasks = JSON.parse(local);
     }
   } catch(e) {
-    console.warn('Tasks exception:', e);
+    console.warn('Tasks load failed:', e.message);
+    // Fall back to localStorage
+    try {
+      const local = localStorage.getItem('cwc_tasks');
+      if (local) tasks = JSON.parse(local);
+    } catch(e2) {}
   }
 }
 
