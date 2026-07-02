@@ -1404,8 +1404,19 @@ function getClientAppts(c) {
   // appointments — legacy records stored follow-up dates in appt_datetime.
   if (c.status === 'Follow-up') return appts;
 
+  // Terminal statuses contribute nothing: the appointment already resolved
+  if (['Closed','No sale','Dead','No show'].includes(c.status)) return appts;
+
   // Primary: use appt_datetime as the main appointment indicator
   if (c.appt_datetime) {
+    // If a touchpoint at this time already has a LOGGED outcome, the appointment
+    // happened and was recorded — it disappears from the sidebar.
+    const apptMs = new Date(c.appt_datetime).getTime();
+    const outcomeLogged = (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp =>
+      tp && tp.outcome && tp.outcome !== 'pending' && tp.datetime &&
+      Math.abs(new Date(tp.datetime).getTime() - apptMs) < 5 * 60 * 1000
+    ));
+    if (!outcomeLogged) {
     // Find the matching touchpoint for context (case type, tp type)
     let matchedCase = null;
     let matchedTp = null;
@@ -1436,6 +1447,7 @@ function getClientAppts(c) {
       clientAddress: c.address,
       clientStatus: c.status
     });
+    }
   }
 
   // Secondary: add any OTHER pending touchpoints from open cases that are NOT the primary appt
@@ -1480,6 +1492,7 @@ function renderSidebar() {
 
   // Unresolved scheduled callbacks (resolved ones already acted on — don't re-list)
   const callbackItems = clients.filter(c => {
+    if (['Closed','Dead','No sale'].includes(c.status)) return false;
     const lastCb = getScheduledCallback(c);
     return lastCb && !isCallbackResolved(c);
   }).map(c => {
@@ -1537,8 +1550,7 @@ function renderSidebar() {
     const dt = new Date(a.datetime);
     const isToday = dt.toDateString() === todayStr;
     const dateStr = isToday ? '' : dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' - ';
-    const hasTime = dt.getHours() !== 9 || dt.getMinutes() !== 0;
-    const timeStr = hasTime ? dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : '';
+    const timeStr = dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
     return `<div class="appt-sidebar-item" style="background:#FFFBF0;border:1px solid #FAC775;" onclick="openClient('${a.clientId}')">
       <div style="font-size:12px;font-weight:500;color:#1D3557;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.clientName}</div>
       <div style="font-size:11px;color:#BA7517;font-weight:500;margin-top:1px;">📞 ${dateStr}${timeStr}</div>
@@ -1564,10 +1576,22 @@ function renderSidebar() {
       sidebar.innerHTML = '<div style="font-size:11px;color:#a0b8cc;padding:4px 2px;">No appointments today</div>';
     } else {
       let html = '';
-      html += upcoming.map(a => a.isCallback ? callbackCard(a) : a.isFollowUp ? followUpCard(a) : apptCard(a, false)).join('');
-      if (todayPassed.length) {
-        html += `<div class="appt-sidebar-divider">Earlier today</div>`;
-        html += todayPassed.map(a => apptCard(a, true)).join('');
+      const todayList = upcoming.filter(a => new Date(a.datetime).toDateString() === todayStr);
+      const laterList = upcoming.filter(a => new Date(a.datetime).toDateString() !== todayStr);
+      const renderItem = (a) => {
+        if (a.isCallback) return callbackCard(a);
+        if (a.isFollowUp) return followUpCard(a);
+        // Passed but unlogged: loud red — this appointment still needs its outcome
+        const passed = new Date(a.datetime) < now;
+        return apptCard(a, passed);
+      };
+      if (todayList.length) {
+        html += `<div class="appt-sidebar-divider">Today</div>`;
+        html += todayList.map(renderItem).join('');
+      }
+      if (laterList.length) {
+        html += `<div class="appt-sidebar-divider">Upcoming</div>`;
+        html += laterList.map(renderItem).join('');
       }
       sidebar.innerHTML = html;
     }
@@ -2289,7 +2313,7 @@ function isCallbackResolved(c) {
   const cbTime = new Date(log[cbIdx].callback_dt);
   return log.some((cl, i) => {
     if (i <= cbIdx) return false;
-    if (cl.outcome === 'Appt set' || cl.outcome === 'No show' || cl.outcome === 'Not interested') return true;
+    if (cl.outcome === 'Appt set' || cl.outcome === 'No show' || cl.outcome === 'Not interested' || cl.outcome === 'Follow-up scheduled' || cl.outcome === 'Sale' || cl.outcome === 'No sale' || cl.outcome === 'Continuation') return true;
     const attempted = cl.dials > 0 || cl.outcome === 'Text sent' || cl.outcome === 'No answer' || cl.outcome === 'Conversation';
     return attempted && new Date(cl.ts) >= cbTime;
   });
