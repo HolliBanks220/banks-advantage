@@ -65,6 +65,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:500;}
 .b-CIA{background:#E6F1FB;color:#0C447C;} .b-MIA{background:#E1F5EE;color:#085041;}
 .b-New{background:#E1F5EE;color:#085041;} .b-Working{background:#E6F1FB;color:#0C447C;}
+.b-Followup{background:#F3EEFF;color:#534AB7;}
 .b-Appt{background:#FAEEDA;color:#633806;} .b-Closed{background:#EAF3DE;color:#27500A;}
 .b-Dead{background:#FCEBEB;color:#501313;}
 .b-No{background:#F3EEFB;color:#5B2D8E;}
@@ -1978,7 +1979,7 @@ function setFilter(f, btn) {
 
 //  CLIENT LIST 
 function badgeClass(src) { return 'badge b-' + (src||'').split(' ')[0]; }
-function statusBadge(s) { const m={'New':'b-New','Working':'b-Working','Appointment set':'b-Appt','Closed':'b-Closed','No sale':'b-No','No show':'b-Noshow','Dead':'b-Dead'}; return 'badge '+(m[s]||'b-New'); }
+function statusBadge(s) { const m={'New':'b-New','Working':'b-Working','Appointment set':'b-Appt','Closed':'b-Closed','No sale':'b-No','No show':'b-Noshow','Dead':'b-Dead','Follow-up':'b-Followup'}; return 'badge '+(m[s]||'b-New'); }
 function dotClass(s) { if(s.outcome==='showed')return'jd-showed'; if(s.outcome==='noshow')return'jd-noshow'; if(s.outcome==='canceled')return'jd-cancel'; return'jd-pending'; }
 
 // ── TIMEZONE MAP ────────────────────────────────────────────────────────────
@@ -2275,6 +2276,9 @@ function getUrgencyScore(c) {
   // Resting leads sink below ALL active leads — they need a break, don't surface until ready
   if (onBreak && attempts > 0) return 150 + timeFraction + windowPenalty;
 
+  // Follow-up leads — post-appointment client follow-up, below active dialing, above Open
+  if (status === 'Follow-up') return 120 + timeFraction;
+
   // Tier 1: Callback overdue (missed it)
   if (isCallbackOverdue(c)) return 1 + windowPenalty;
 
@@ -2333,6 +2337,7 @@ function getUrgencyBadge(c) {
 
   if (['Closed','Dead','No sale'].includes(status)) return null;
   if (status === 'Appointment set') return {label:'Appt set', color:'#138181', bg:'#E1F5EE', fire:false};
+  if (status === 'Follow-up') return {label:'📋 Follow-up', color:'#534AB7', bg:'#F3EEFF', fire:false};
 
   const inWindow = isGoodTimeToCall(c);
   const onBreak = isOnBreak(c);
@@ -2548,8 +2553,7 @@ function getFilteredClients(q='') {
     const isNoShow = c.status === 'No show';
     const hasOpenCase = (c.cases||[]).some(cs => cs.status === 'Open' && (cs.touchpoints||[]).length > 0);
     let matchF = false;
-    if (activeFilter==='active') matchF = c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale' && c.status !== 'Appointment set' && !isCallbackFuture(c);
-    else if (activeFilter==='all') matchF = true;
+    if (activeFilter==='active') matchF = c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale' && c.status !== 'Appointment set' && !isCallbackFuture(c);    else if (activeFilter==='all') matchF = true;
     else if (activeFilter==='fresh') matchF = days <= 4 && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale';
     else if (activeFilter==='warm') matchF = days >= 5 && days <= 17 && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale';
     else if (activeFilter==='open') matchF = days > 17 && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale';
@@ -2679,16 +2683,16 @@ function openClient(id, keepDialCount) {
   ${c.address?`<div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">[Addr] ${c.address}</div>`:''}
   ${c.appt_datetime?(()=>{
     const isCallback = isCallbackToday(c) || isCallbackDueNow(c) || isCallbackFuture(c);
+    const isFollowUp = c.status === 'Follow-up';
     const hasOpenCase = (c.cases||[]).some(cs => cs.status === 'Open');
-    const apptLabel = new Date(c.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + new Date(c.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + (c.appt_notes?' — '+c.appt_notes:'');
-    if (isCallback) {
-      // Callback — show time but no log outcome prompt
+    const apptLabel = new Date(c.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + new Date(c.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + (c.appt_notes?' - '+c.appt_notes:'');
+    if (isFollowUp) {
+      return '<div style="margin-bottom:8px;"><div style="font-size:12px;font-weight:600;color:#534AB7;background:#F3EEFF;border:1px solid #C4AAFF;border-radius:6px;padding:5px 10px;margin-bottom:4px;display:block;">Follow-up: ' + apptLabel + '</div><div style="display:flex;gap:6px;"><button onclick="openFollowUpPicker(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit</button><button onclick="doneFollowUp(\'' + id + '\')" style="font-size:10px;background:#534AB7;color:#fff;border:none;border-radius:6px;padding:3px 10px;cursor:pointer;">Done</button></div></div>';
+    } else if (isCallback) {
       return '<div style="margin-bottom:8px;"><div style="font-size:12px;font-weight:600;color:#BA7517;background:#FFF8E6;border:1px solid #F5D78E;border-radius:6px;padding:5px 10px;margin-bottom:4px;display:block;">[Callback] ' + apptLabel + '</div><button onclick="openMoveAppt(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit time</button></div>';
     } else if (hasOpenCase) {
-      // Real appointment — show log outcome prompt
       return '<div style="margin-bottom:8px;"><div onclick="openSitOutcome(\'' + id + '\')" style="font-size:12px;font-weight:600;color:#138181;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:6px;padding:5px 10px;margin-bottom:4px;cursor:pointer;display:block;">[Appt] ' + apptLabel + ' <span style="font-size:10px;opacity:0.6;">tap to log outcome</span></div><button onclick="openMoveAppt(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit time</button></div>';
     } else {
-      // Appointment but no open case — just show time with edit
       return '<div style="margin-bottom:8px;"><div style="font-size:12px;font-weight:600;color:#138181;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:6px;padding:5px 10px;margin-bottom:4px;display:block;">[Appt] ' + apptLabel + '</div><button onclick="openMoveAppt(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit time</button></div>';
     }
   })():''}
@@ -2702,7 +2706,8 @@ function openClient(id, keepDialCount) {
     ${isReadyForText(c)?`<button class="call-btn" style="background:#1D3557;color:#fff;border:2px solid #138181;" onclick="quickLogAndText('${id}')">No answer + 📱</button>`:`<button class="call-btn cb-navy" onclick="quickLog('${id}','No answer','dials')">No answer</button>`}
     <button class="call-btn cb-green" onclick="openApptPicker('${id}')">Appt set</button>
     <button class="call-btn cb-amber" onclick="openCallbackPicker('${id}')">Callback</button>
-    <button class="call-btn" style="background:#534AB7;color:#fff;" onclick="openReschedulePicker('${id}')">Reschedule</button>
+    <button class="call-btn" style="background:#534AB7;color:#fff;" onclick="openFollowUpPicker('${id}')">+ Follow-up</button>
+    <button class="call-btn" style="background:#534AB7;color:#fff;opacity:0.7;" onclick="openReschedulePicker('${id}')">Reschedule</button>
     <button class="call-btn" style="background:#BA7517;color:#fff;" onclick="openResetToPicker('${id}')">↺ Reset to</button>
     <button class="call-btn cb-red" onclick="quickLog('${id}','Not interested','dead')">Not interested</button>
   </div>
@@ -3121,6 +3126,79 @@ async function confirmMoveAppt(id) {
   c.appt_notes = notes;
   c.cases = cases;
   hideSync(); closeModal(); openClient(id); renderSidebar();
+}
+
+function openFollowUpPicker(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const d = new Date(); d.setDate(d.getDate()+1); d.setHours(10,0,0,0);
+  const dt = toLocalDT(d);
+  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  <div class="modal-title">Schedule follow-up</div>
+  <div class="modal-sub">${c.name}</div>
+  <div style="font-size:11px;color:#5f7a99;background:#F3EEFF;border-radius:6px;padding:6px 10px;margin-bottom:10px;">Post-appointment follow-up — not a new appointment. No sit logged.</div>
+  <div class="field"><label>What is this follow-up about?</label>
+    <input type="text" id="followup-note" placeholder="e.g. App status, policy delivery, underwriting question..." style="width:100%;box-sizing:border-box;">
+  </div>
+  <div class="field"><label>Follow-up date & time (optional)</label>
+    <input type="datetime-local" id="followup-dt" value="${dt}" style="font-size:16px;">
+  </div>
+  <button class="save-btn" style="background:#534AB7;" onclick="confirmFollowUp('${id}')">Save follow-up</button>`);
+}
+
+async function confirmFollowUp(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const note = (document.getElementById('followup-note')||{value:''}).value.trim();
+  const dtVal = document.getElementById('followup-dt').value;
+  let followupDt = null;
+  if (dtVal) {
+    const [year,month,day] = dtVal.split('T')[0].split('-').map(Number);
+    const [hours,minutes] = dtVal.split('T')[1].split(':').map(Number);
+    followupDt = new Date(year, month-1, day, hours, minutes).toISOString();
+  }
+  const callLog = [...(c.call_log||[]), {
+    ts: new Date().toISOString(),
+    outcome: 'Follow-up scheduled',
+    note,
+    followup_dt: followupDt,
+    dials: 0
+  }];
+  showSync('Saving...');
+  await sb.from('clients').update({
+    status: 'Follow-up',
+    call_log: callLog,
+    appt_notes: note,
+    appt_datetime: followupDt
+  }).eq('id', id);
+  c.status = 'Follow-up';
+  c.call_log = callLog;
+  c.appt_notes = note;
+  c.appt_datetime = followupDt;
+  hideSync(); closeModal();
+  const searchVal = document.getElementById('client-search') ? document.getElementById('client-search').value : '';
+  renderClients(searchVal); renderScore(); renderSidebar();
+}
+
+async function doneFollowUp(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const callLog = [...(c.call_log||[]), {
+    ts: new Date().toISOString(),
+    outcome: 'Follow-up complete',
+    dials: 0
+  }];
+  showSync('Saving...');
+  await sb.from('clients').update({
+    status: 'Working',
+    call_log: callLog,
+    appt_datetime: null,
+    appt_notes: ''
+  }).eq('id', id);
+  c.status = 'Working';
+  c.call_log = callLog;
+  c.appt_datetime = null;
+  c.appt_notes = '';
+  hideSync(); closeModal();
+  const searchVal = document.getElementById('client-search') ? document.getElementById('client-search').value : '';
+  renderClients(searchVal); renderScore(); renderSidebar();
 }
 
 function openReschedulePicker(id) {
