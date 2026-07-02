@@ -3749,19 +3749,9 @@ async function autoSaveField(id, field, value) {
 //  QUICK LOG 
 function openCallbackPicker(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
-  const alreadyCallbacked = (c.call_log||[]).some(cl => cl.outcome === 'Callback');
-  if (alreadyCallbacked) {
-    // Already has a callback - just advance, no stats
-    const searchVal = document.getElementById('client-search') ? document.getElementById('client-search').value : '';
-    const filteredList = getFilteredClients(searchVal);
-    const currentIdx = filteredList.findIndex(cl => cl.id === id);
-    const nextLead = getNextLead(id, searchVal);
-    window._dialCount = 1;
-    closeModal();
-    renderClients(searchVal);
-    if (nextLead) setTimeout(() => openClient(nextLead.id), 300);
-    return;
-  }
+  // The picker ALWAYS opens. A lead who had a callback before can absolutely
+  // schedule another one — the old silent skip-and-advance made repeat
+  // callbacks impossible to book.
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
   const tomorrowStr = tomorrow.toISOString().slice(0,10);
   showModal('<button class="close-x" onclick="closeModal()">x</button>' +
