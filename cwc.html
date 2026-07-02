@@ -2430,6 +2430,9 @@ function getUrgencyScore(c) {
   const isMIA = (c.source || '').toUpperCase() === 'MIA';
   const prefersText = c.prefers_text === true;
   const hadCallback = hasCallbackContact(c);
+  // A no-show also graduates a lead out of fresh cadence: they've engaged,
+  // they know who you are — warm rhythm (every 2-3 days), not 3 touches/day.
+  const hasEngaged = hadCallback || noShowCount > 0;
 
   const windowPenalty = inWindow ? 0 : 500;
   const breakPenalty = onBreak ? 300 : 0;
@@ -2481,14 +2484,14 @@ function getUrgencyScore(c) {
   if ((isCIA || isMIA) && attempts === 0 && days > 1)  return 32 - timeFraction + windowPenalty + touchedTodayPenalty;
 
   // Tier 5: Urgent fresh days 3-4 (running out of fresh window)
-  if (days >= 3 && days <= 4 && attempts < 4 && !hadCallback) return 40 + (4 - attempts) - timeFraction + breakPenalty + windowPenalty + touchedTodayPenalty;
+  if (days >= 3 && days <= 4 && attempts < 4 && !hasEngaged) return 40 + (4 - attempts) - timeFraction + breakPenalty + windowPenalty + touchedTodayPenalty;
 
   // Tier 6: Fresh day 1-2 no contact
   if (days <= 2 && attempts === 0) return 50 - timeFraction + windowPenalty + touchedTodayPenalty;
 
   // Tier 7: Fresh day 1-4 active dialing (needs more slots covered)
   // After callback contact: skip to warm cadence (Tier 8/9) regardless of age
-  if (days <= 4 && !hadCallback) {
+  if (days <= 4 && !hasEngaged) {
     const slots = getTimeSlotsCovered(c);
     const slotsNeeded = 3 - slots.size;
     if (slotsNeeded > 0) return 60 + (3 - slotsNeeded) - timeFraction + breakPenalty + windowPenalty + slotPenalty + touchedTodayPenalty;
@@ -2846,6 +2849,19 @@ function openClient(id, keepDialCount) {
   ${c.address?`<div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">[Addr] ${c.address}</div>`:''}
   ${(c.appt_datetime || getScheduledFollowUp(c))?(()=>{
     const fu = getScheduledFollowUp(c);
+    // Banner must match reality: if the appointment's outcome is already logged
+    // (sale / no sale / no-show touchpoint, or a No show call_log entry at that
+    // time), the 'tap to log outcome' banner is resolved business — hide it.
+    if (c.appt_datetime && c.status !== 'Follow-up') {
+      const apptMs = new Date(c.appt_datetime).getTime();
+      const tpLogged = (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp =>
+        tp && tp.outcome && tp.outcome !== 'pending' && tp.datetime &&
+        Math.abs(new Date(tp.datetime).getTime() - apptMs) < 5 * 60 * 1000
+      ));
+      const nsLogged = (c.call_log||[]).some(cl => cl.outcome === 'No show' &&
+        Math.abs(new Date(cl.ts).getTime() - apptMs) < 5 * 60 * 1000);
+      if (tpLogged || nsLogged) return '';
+    }
     const isCallback = isCallbackToday(c) || isCallbackDueNow(c) || isCallbackFuture(c);
     const isFollowUp = c.status === 'Follow-up' && fu;
     const hasOpenCase = (c.cases||[]).some(cs => cs.status === 'Open');
