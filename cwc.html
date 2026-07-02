@@ -615,8 +615,12 @@ function lastFridayOfMonth(year, month) {
 }
 
 function getProductionMonthBounds(calYear, calMonth) {
-  const prevLastFri = lastFridayOfMonth(calYear, calMonth - 1 < 0 ? 11 : calMonth - 1);
-  if (calMonth === 0) prevLastFri.setFullYear(calYear - 1);
+  // For January, the previous month is December of the PRIOR year. The year must be
+  // part of the last-Friday calculation itself. Computing December's last Friday in the
+  // wrong year and then rewinding the year shifts the day of week and corrupts the boundary.
+  const prevYear = calMonth === 0 ? calYear - 1 : calYear;
+  const prevMonth = calMonth === 0 ? 11 : calMonth - 1;
+  const prevLastFri = lastFridayOfMonth(prevYear, prevMonth);
   const start = new Date(prevLastFri);
   start.setDate(prevLastFri.getDate() + 1);
   start.setHours(0, 0, 0, 0);
@@ -1591,7 +1595,11 @@ function getPlacementMonth(ap) {
   const written = new Date(ap.writtenDate || ap.tpDate || Date.now());
   const day = written.getDate();
   if (day >= 29) {
-    // Default: next month
+    // Carrier backdating setting: if enabled for this carrier, policies written the
+    // 29th-31st are backdated to the 28th and place in the SAME month.
+    // Otherwise (default): future-dated to the 1st of the next month.
+    const backdates = ((getAgentSettings().backdateOverrides || {})[ap.carrier]) === true;
+    if (backdates) return new Date(written.getFullYear(), written.getMonth(), 1);
     return new Date(written.getFullYear(), written.getMonth()+1, 1);
   }
   return new Date(written.getFullYear(), written.getMonth(), 1);
@@ -1618,7 +1626,7 @@ async function setAppStatus(clientId, ci, ti, ai, newStatus) {
   ap.apps[ai].status = newStatus;
   // If marking Placed or Paid, stamp writtenDate from the touchpoint datetime (the sale date)
   if ((newStatus==='Issued'||newStatus==='Paid') && !ap.apps[ai].writtenDate) {
-    ap.apps[ai].writtenDate = ap.datetime || ap.apps[ai].created || tp.datetime;
+    ap.apps[ai].writtenDate = ap.datetime || ap.apps[ai].created || new Date().toISOString();
   }
   // Paid implies Placed — set placement month if not set
   if (newStatus==='Paid' && !ap.apps[ai].placementMonth) {
@@ -1800,14 +1808,14 @@ function renderAppsTab() {
     const curMonthApps = byMonth[curMonthKey] || [];
     const curGross = curMonthApps.reduce((a,ap) => a+(ap.premium||0), 0);
     const curLapsedAPV = lapsedApps.filter(ap => {
-      // Lapsed in current calendar month
+      // Lapsed in the month being viewed (not always today's month)
       const d = new Date(ap.tpDate||0);
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      return d.getFullYear() === targetDate.getFullYear() && d.getMonth() === targetDate.getMonth();
     }).reduce((a,ap) => a+(ap.premium||0), 0);
     const curNet = curGross - curLapsedAPV;
     const totalSubmitted = allApps.filter(ap => {
       const d = new Date(ap.tpDate||0);
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      return d.getFullYear() === targetDate.getFullYear() && d.getMonth() === targetDate.getMonth();
     }).reduce((a,ap) => a+(ap.premium||0), 0);
     const placementRate = totalSubmitted > 0 ? Math.round(curNet/totalSubmitted*100) : null;
     const rateColor = placementRate === null ? '#5f7a99' : placementRate >= 90 ? '#3B6D11' : placementRate >= 85 ? '#138181' : placementRate >= 75 ? '#BA7517' : placementRate >= 65 ? '#BA7517' : '#A32D2D';
@@ -5239,9 +5247,15 @@ function openProductManager(carrierName) {
   const carrier = COMP_DATA[carrierName];
   if (!carrier) return;
 
+  const backdateOn = ((settings.backdateOverrides || {})[carrierName]) === true;
   const html = '<button class="close-x" id="pm-back-btn">←</button>' +
     '<div class="modal-title">' + carrierName + '</div>' +
     '<div style="font-size:11px;color:#8fa8c0;margin-bottom:8px;">Toggle products to show/hide in app entry.</div>' +
+    '<div style="background:' + (backdateOn?'#F0FBF7':'#f7fafc') + ';border:1px solid ' + (backdateOn?'#9FE1CB':'#e2eaf2') + ';border-radius:8px;padding:8px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
+      '<div style="flex:1;"><div style="font-size:12px;font-weight:600;color:#1D3557;">End of month backdating</div>' +
+      '<div style="font-size:10px;color:#8fa8c0;">On: apps written the 29th-31st are backdated to the 28th and place in the same month. Off: they place on the 1st of the next month.</div></div>' +
+      '<input type="checkbox" id="pm-backdate-toggle" ' + (backdateOn?'checked':'') + ' style="width:18px;height:18px;accent-color:#138181;flex-shrink:0;">' +
+    '</div>' +
     '<div style="display:flex;gap:6px;margin-bottom:10px;">' +
       '<button id="pm-enable-all" style="flex:1;background:#138181;color:#fff;border:none;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;">Enable all</button>' +
       '<button id="pm-disable-all" style="flex:1;background:#f0f4f8;color:#5f7a99;border:none;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;">Disable all</button>' +
@@ -5251,6 +5265,7 @@ function openProductManager(carrierName) {
   showModal(html);
 
   document.getElementById('pm-back-btn').addEventListener('click', openCarrierManager);
+  document.getElementById('pm-backdate-toggle').addEventListener('change', function(){ toggleCarrierBackdate(carrierName, this.checked); });
   document.getElementById('pm-enable-all').addEventListener('click', function(){ toggleAllProducts(carrierName, true); });
   document.getElementById('pm-disable-all').addEventListener('click', function(){ toggleAllProducts(carrierName, false); });
 
@@ -5296,6 +5311,14 @@ function toggleAllProducts(carrierName, enabled) {
   }
   saveAgentSettings(settings);
   openProductManager(carrierName);
+}
+
+function toggleCarrierBackdate(carrierName, enabled) {
+  const settings = getAgentSettings();
+  if (!settings.backdateOverrides) settings.backdateOverrides = {};
+  if (enabled) settings.backdateOverrides[carrierName] = true;
+  else delete settings.backdateOverrides[carrierName];
+  saveAgentSettings(settings);
 }
 
 function setCarrierAdvanceOverride(carrierName, value) {
