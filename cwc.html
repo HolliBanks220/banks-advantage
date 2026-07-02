@@ -3471,7 +3471,7 @@ async function confirmReschedule(id) {
   const searchVal = document.getElementById('client-search') ? document.getElementById('client-search').value : '';
   const filteredList = getFilteredClients(searchVal);
   const currentIdx = filteredList.findIndex(cl => cl.id === id);
-  const nextLead = filteredList[currentIdx + 1] || filteredList[currentIdx - 1];
+  const nextLead = getNextLead(id, searchVal);
   renderClients(searchVal); renderScore(); renderSidebar();
   if (nextLead) setTimeout(() => openClient(nextLead.id), 300);
 }
@@ -3598,7 +3598,7 @@ async function confirmResetTo(id) {
 
   const allActive = clients.filter(cl => cl.status === 'New' || cl.status === 'Working');
   const idx = allActive.findIndex(cl => cl.id === id);
-  const nextLead = allActive[idx + 1] || allActive[idx - 1];
+  const nextLead = getNextLead(id, (document.getElementById('client-search')||{}).value||'');
   if (nextLead) setTimeout(() => openClient(nextLead.id), 300);
 }
 
@@ -3672,7 +3672,7 @@ async function confirmAppt(id) {
   const searchVal = document.getElementById('client-search') ? document.getElementById('client-search').value : '';
   const filteredList = getFilteredClients(searchVal);
   const currentIdx = filteredList.findIndex(cl => cl.id === id);
-  const nextLead = filteredList[currentIdx + 1] || filteredList[currentIdx - 1];
+  const nextLead = getNextLead(id, searchVal);
 
   renderClients(searchVal);
   renderScore(); renderSidebar();
@@ -3755,7 +3755,7 @@ function openCallbackPicker(id) {
     const searchVal = document.getElementById('client-search') ? document.getElementById('client-search').value : '';
     const filteredList = getFilteredClients(searchVal);
     const currentIdx = filteredList.findIndex(cl => cl.id === id);
-    const nextLead = filteredList[currentIdx + 1] || filteredList[currentIdx - 1];
+    const nextLead = getNextLead(id, searchVal);
     window._dialCount = 1;
     closeModal();
     renderClients(searchVal);
@@ -3799,7 +3799,7 @@ async function confirmCallback(id, hasDate) {
   const searchVal = document.getElementById('client-search') ? document.getElementById('client-search').value : '';
   const filteredList = getFilteredClients(searchVal);
   const currentIdx = filteredList.findIndex(cl => cl.id === id);
-  const nextLead = filteredList[currentIdx + 1] || filteredList[currentIdx - 1];
+  const nextLead = getNextLead(id, searchVal);
 
   const ts = new Date().toISOString();
   const callLog = [...(c.call_log||[]), {ts, outcome:'Callback', dials:dialCount, callback_dt:callbackDt, callback_note:callbackNote}];
@@ -3920,6 +3920,16 @@ function getContextualTemplates(c) {
   return TEXT_TEMPLATES.filter(t => t.stage.includes(stage) && !sentIds.includes(t.id));
 }
 
+
+
+// Save & next ALWAYS goes to the top of the re-sorted queue (excluding the lead
+// just finished). Neighbor-by-index handed you whoever sat next to where your
+// finished lead LANDED after re-scoring — often a resting lead. The next lead
+// is whoever matters most right now, period.
+function getNextLead(finishedId, searchVal) {
+  const list = getFilteredClients(searchVal || '');
+  return list.find(cl => cl.id !== finishedId) || null;
+}
 
 // ── EDITABLE TEXT TEMPLATES ─────────────────────────────────────────────────
 // Personal defaults live in agent settings (per-agent when rolled out to team).
@@ -4064,7 +4074,7 @@ async function copyAndLogText(id, tplId) {
   const searchVal = document.getElementById('client-search') ? document.getElementById('client-search').value : '';
   const filteredList = getFilteredClients(searchVal);
   const currentIdx = filteredList.findIndex(cl => cl.id === id);
-  const nextLead = filteredList[currentIdx + 1] || filteredList[currentIdx - 1];
+  const nextLead = getNextLead(id, searchVal);
 
   closeModal();
   renderClients(searchVal);
@@ -4094,7 +4104,7 @@ async function quickLog(id, outcome, statKey) {
   const searchVal = document.getElementById('client-search') ? document.getElementById('client-search').value : '';
   const filteredList = getFilteredClients(searchVal);
   const currentIdx = filteredList.findIndex(cl => cl.id === id);
-  const nextLead = filteredList[currentIdx + 1] || filteredList[currentIdx - 1];
+  const nextLead = getNextLead(id, searchVal);
 
   // If this is a repeat Callback (already has one in call log), just advance - no stats
   const alreadyCallbacked = outcome === 'Callback' && (c.call_log||[]).some(cl => cl.outcome === 'Callback');
