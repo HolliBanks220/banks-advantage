@@ -2447,14 +2447,17 @@ function getNextSlotTime(c) {
 function getNextApptInfo() {
   const now = new Date();
   const todayStr = now.toDateString();
-  let soonest = null;
+  // 15 min grace: an appointment that just started still shows NOW,
+  // but anything older is stale and must not hijack the countdown all day
+  const staleCutoff = new Date(now.getTime() - 15*60000);
+  let soonest = null, soonestType = null;
   clients.forEach(c => {
     if (c.status === 'Appointment set') {
       (c.cases||[]).forEach(cs => {
         (cs.touchpoints||[]).forEach(tp => {
           if (tp && tp.outcome === 'pending' && tp.datetime) {
             const dt = new Date(tp.datetime);
-            if (dt.toDateString() === todayStr && (!soonest || dt < soonest)) soonest = dt;
+            if (dt.toDateString() === todayStr && dt >= staleCutoff && (!soonest || dt < soonest)) { soonest = dt; soonestType = 'appt'; }
           }
         });
       });
@@ -2462,11 +2465,11 @@ function getNextApptInfo() {
     const cb = getScheduledCallback(c);
     if (cb && cb.callback_dt) {
       const dt = new Date(cb.callback_dt);
-      if (dt.toDateString() === todayStr && (!soonest || dt < soonest)) soonest = dt;
+      if (dt.toDateString() === todayStr && dt >= staleCutoff && (!soonest || dt < soonest)) { soonest = dt; soonestType = 'callback'; }
     }
   });
   if (!soonest) return null;
-  return { dt: soonest, minsUntil: Math.round((soonest - now) / (1000 * 60)) };
+  return { dt: soonest, type: soonestType, minsUntil: Math.round((soonest - now) / (1000 * 60)) };
 }
 
 function renderAlerts() {
@@ -2515,17 +2518,18 @@ function renderAlerts() {
   // Appointment countdown
   const apptInfo = getNextApptInfo();
   let apptPart, apptFire = '';
+  const apptLabel = apptInfo && apptInfo.type === 'callback' ? 'callback' : 'appt';
   if (!apptInfo) {
     apptPart = 'no appts today';
   } else if (apptInfo.minsUntil <= 0) {
-    apptPart = 'appt NOW'; apptFire = ' &#128293;';
+    apptPart = apptLabel + ' NOW'; apptFire = ' &#128293;';
   } else if (apptInfo.minsUntil <= 30) {
-    apptPart = 'appt in ' + apptInfo.minsUntil + ' min'; apptFire = ' &#128293;';
+    apptPart = apptLabel + ' in ' + apptInfo.minsUntil + ' min'; apptFire = ' &#128293;';
   } else if (apptInfo.minsUntil <= 120) {
     const h = Math.floor(apptInfo.minsUntil/60), m = apptInfo.minsUntil%60;
-    apptPart = 'appt in ' + (h>0?h+'h ':'') + (m>0?m+'m':'');
+    apptPart = apptLabel + ' in ' + (h>0?h+'h ':'') + (m>0?m+'m':'');
   } else {
-    apptPart = 'appt at ' + apptInfo.dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    apptPart = apptLabel + ' at ' + apptInfo.dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
   }
 
   let html = '';
