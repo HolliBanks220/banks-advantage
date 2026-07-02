@@ -2458,7 +2458,7 @@ function getUrgencyScore(c) {
   if (isFollowUpDue(c)) return 10 + dtFrac(getScheduledFollowUp(c).datetime) + windowPenalty;
 
   // Resting leads sink below ALL active leads — they need a break, don't surface until ready
-  if (onBreak && attempts > 0) return 150 + timeFraction + windowPenalty;
+  if (onBreak && attempts > 0) return 150 + (0.99 - timeFraction) + windowPenalty; // longest-rested first
 
   // Future scheduled follow-up — sits quietly until 2 min before (excluded from Active)
   if (isFollowUpFuture(c)) return 152 + timeFraction;
@@ -2651,12 +2651,11 @@ function renderAlerts() {
     // (not dependent on window — this is about neglected leads regardless of time of day)
     if (attempts > 0 && days <= 17 && daysSinceLast >= 3) {
       overdue++;
-    // Text-ready leads count as due now — they need action too
-    } else if (inWindow && !onBreak && score < 200) {
+    } else if (score < 150) {
+      // ONE definition of actionable: the same score band that sorts the queue
+      // and that Save & next serves. The banner can never contradict the list.
       dueNow++;
-    } else if (isReadyForText(c) && !onBreak && score < 200) {
-      dueNow++; // text-ready folds into due now (Open leads excluded)
-    } else if (!inWindow && !onBreak && score < 200) {
+    } else if (score >= 500 && score < 650) {
       const next = getNextSlotTime(c);
       if (next && (earliestUpcomingAgentHour === null || next.agentHour < earliestUpcomingAgentHour)) {
         earliestUpcomingAgentHour = next.agentHour;
@@ -3918,7 +3917,14 @@ function getContextualTemplates(c) {
 // is whoever matters most right now, period.
 function getNextLead(finishedId, searchVal) {
   const list = getFilteredClients(searchVal || '');
-  return list.find(cl => cl.id !== finishedId) || null;
+  const candidates = list.filter(cl => cl.id !== finishedId);
+  // ONE definition of actionable, derived from the same score that sorts the
+  // queue: <150 = actionable now (commitments, no-show recovery, fresh/warm
+  // due, text-ready). 200-499 = Open leads, callable when the queue is clear.
+  // 150-199 = resting/future — never served. 500+ = out of window — never served.
+  return candidates.find(cl => getUrgencyScore(cl) < 150)
+      || candidates.find(cl => { const s = getUrgencyScore(cl); return s >= 200 && s < 500; })
+      || null;
 }
 
 // ── EDITABLE TEXT TEMPLATES ─────────────────────────────────────────────────
