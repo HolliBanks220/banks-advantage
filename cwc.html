@@ -1400,6 +1400,10 @@ function getClientAppts(c) {
   const appts = [];
   const now = new Date();
 
+  // Follow-up clients are rendered by the dedicated follow-up stream, never as
+  // appointments — legacy records stored follow-up dates in appt_datetime.
+  if (c.status === 'Follow-up') return appts;
+
   // Primary: use appt_datetime as the main appointment indicator
   if (c.appt_datetime) {
     // Find the matching touchpoint for context (case type, tp type)
@@ -1474,40 +1478,42 @@ function renderSidebar() {
   const now = new Date();
   const todayStr = now.toDateString();
 
-  // Get scheduled callbacks for today
-  const todayCallbacks = clients.filter(c => {
-    const lastCb = [...(c.call_log||[])].reverse().find(cl => cl.outcome === 'Callback' && cl.callback_dt);
-    if (!lastCb) return false;
-    const cbDt = new Date(lastCb.callback_dt);
-    return cbDt.toDateString() === todayStr;
+  // Unresolved scheduled callbacks (resolved ones already acted on — don't re-list)
+  const callbackItems = clients.filter(c => {
+    const lastCb = getScheduledCallback(c);
+    return lastCb && !isCallbackResolved(c);
   }).map(c => {
-    const lastCb = [...(c.call_log||[])].reverse().find(cl => cl.outcome === 'Callback' && cl.callback_dt);
+    const lastCb = getScheduledCallback(c);
     return {clientId: c.id, clientName: c.name, datetime: lastCb.callback_dt, note: lastCb.callback_note||'Callback', isCallback: true};
-  }).sort((a,b) => new Date(a.datetime)-new Date(b.datetime));
+  });
 
-  // Get future callbacks (not today)
-  const futureCallbacks = clients.filter(c => {
-    const lastCb = [...(c.call_log||[])].reverse().find(cl => cl.outcome === 'Callback' && cl.callback_dt);
-    if (!lastCb) return false;
-    const cbDt = new Date(lastCb.callback_dt);
-    return cbDt > now && cbDt.toDateString() !== todayStr;
-  }).map(c => {
-    const lastCb = [...(c.call_log||[])].reverse().find(cl => cl.outcome === 'Callback' && cl.callback_dt);
-    return {clientId: c.id, clientName: c.name, datetime: lastCb.callback_dt, note: lastCb.callback_note||'Callback', isCallback: true};
-  }).sort((a,b) => new Date(a.datetime)-new Date(b.datetime));
+  // Scheduled follow-ups — chronological under their day, like everything else
+  const followUpItems = clients.filter(c => c.status === 'Follow-up').map(c => {
+    const fu = getScheduledFollowUp(c);
+    if (!fu || !fu.datetime) return null;
+    return {clientId: c.id, clientName: c.name, datetime: fu.datetime, note: fu.note||'', isFollowUp: true};
+  }).filter(Boolean);
+
+  const todayCallbacks = callbackItems.filter(a => new Date(a.datetime).toDateString() === todayStr);
+  const futureCallbacks = callbackItems.filter(a => { const dt = new Date(a.datetime); return dt > now && dt.toDateString() !== todayStr; });
 
   const allAppts = getAllAppts();
   const deduped = allAppts.filter((a, i, arr) =>
     arr.findIndex(b => b.clientId === a.clientId && b.datetime === a.datetime) === i
   );
-  // Show all today's appointments + future ones (up to 15 total)
-  const todayAppts = deduped
-    .filter(a => new Date(a.datetime).toDateString() === todayStr)
-    .sort((a,b) => new Date(a.datetime)-new Date(b.datetime));
-  const futureAppts = deduped
-    .filter(a => { const dt = new Date(a.datetime); return dt > now && dt.toDateString() !== todayStr; })
-    .sort((a,b) => new Date(a.datetime)-new Date(b.datetime));
-  const upcoming = [...todayAppts, ...futureAppts].slice(0,15);
+  // ONE chronological stream: today's items first (appts + callbacks + follow-ups by time),
+  // then future items by time. Whatever is next in your day is next in the sidebar.
+  const todayItems = [
+    ...deduped.filter(a => new Date(a.datetime).toDateString() === todayStr),
+    ...todayCallbacks,
+    ...followUpItems.filter(a => new Date(a.datetime).toDateString() === todayStr)
+  ].sort((a,b) => new Date(a.datetime)-new Date(b.datetime));
+  const futureItems = [
+    ...deduped.filter(a => { const dt = new Date(a.datetime); return dt > now && dt.toDateString() !== todayStr; }),
+    ...futureCallbacks,
+    ...followUpItems.filter(a => { const dt = new Date(a.datetime); return dt > now && dt.toDateString() !== todayStr; })
+  ].sort((a,b) => new Date(a.datetime)-new Date(b.datetime));
+  const upcoming = [...todayItems, ...futureItems].slice(0,15);
   const todayPassed = []; // folded into upcoming now
 
   function apptCard(a, passed) {
@@ -1540,19 +1546,25 @@ function renderSidebar() {
     </div>`;
   }
 
+  function followUpCard(a) {
+    const dt = new Date(a.datetime);
+    const isToday = dt.toDateString() === todayStr;
+    const dateStr = isToday ? '' : dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' - ';
+    const timeStr = dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    return `<div class="appt-sidebar-item" style="background:#F3EEFF;border:1px solid #C4AAFF;" onclick="openClient('${a.clientId}')">
+      <div style="font-size:12px;font-weight:500;color:#1D3557;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.clientName}</div>
+      <div style="font-size:11px;color:#534AB7;font-weight:500;margin-top:1px;">📋 ${dateStr}${timeStr}</div>
+      <div style="font-size:10px;color:#8fa8c0;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.note||'Follow-up'}</div>
+    </div>`;
+  }
+
   const sidebar = document.getElementById('sidebar-appts');
   if (sidebar) {
-    if (!upcoming.length && !todayCallbacks.length && !futureCallbacks.length) {
+    if (!upcoming.length) {
       sidebar.innerHTML = '<div style="font-size:11px;color:#a0b8cc;padding:4px 2px;">No appointments today</div>';
     } else {
       let html = '';
-      if (todayCallbacks.length) {
-        html += `<div class="appt-sidebar-divider" style="color:#BA7517;">Callbacks today</div>`;
-        html += todayCallbacks.map(a => callbackCard(a)).join('');
-      }
-      // Merge future callbacks with upcoming appointments sorted chronologically
-      const allUpcoming = [...upcoming, ...futureCallbacks].sort((a,b) => new Date(a.datetime)-new Date(b.datetime));
-      if (allUpcoming.length) html += allUpcoming.map(a => a.isCallback ? callbackCard(a) : apptCard(a, false)).join('');
+      html += upcoming.map(a => a.isCallback ? callbackCard(a) : a.isFollowUp ? followUpCard(a) : apptCard(a, false)).join('');
       if (todayPassed.length) {
         html += `<div class="appt-sidebar-divider">Earlier today</div>`;
         html += todayPassed.map(a => apptCard(a, true)).join('');
@@ -2111,6 +2123,21 @@ function isOnBreak(c) {
   // Min 2 hours between any attempts
   if (hoursSinceLast < 2 && hoursSinceLast < 999) return true;
 
+  // ONE TOUCH PER SLOT: touched this slot (lead-local time) → rest until the next
+  // slot opens. Ends same-lead cycling every 2 hours; spreads touches across the day.
+  if (attemptsToday >= 1 && days <= 17 && currentSlotAlreadyCovered(c)) return true;
+
+  // POST-NO-SHOW: recovery touch made → rest until tomorrow, then max ONE touch
+  // that day, then normal warm cadence takes over.
+  const nsLog = (c.call_log||[]).filter(cl => cl.outcome === 'No show');
+  if (nsLog.length && hasFollowedUpAfterNoShow(c)) {
+    const nsDay = new Date(nsLog[nsLog.length-1].ts);
+    const now = new Date();
+    if (nsDay.toDateString() === now.toDateString()) return true; // rest of no-show day
+    const dayAfter = new Date(nsDay); dayAfter.setDate(dayAfter.getDate()+1);
+    if (dayAfter.toDateString() === now.toDateString() && attemptsToday >= 1) return true; // one touch next day
+  }
+
   // Open-ended callback: give 24hrs breathing room before resuming
   if (hasOpenEndedCallback(c) && getHoursSinceOpenCallback(c) < 24) return true;
 
@@ -2193,6 +2220,55 @@ function hasFollowedUpAfterNoShow(c) {
   return log.some((cl, i) => {
     if (i <= lastNsIdx) return false;
     return cl.dials > 0 || cl.outcome === 'Text sent' || cl.outcome === 'No answer' || cl.outcome === 'Conversation' || cl.outcome === 'Callback';
+  });
+}
+
+// ── FOLLOW-UP SINGLE SOURCE OF TRUTH ────────────────────────────────────────
+// One accessor that display, edit, sidebar, and urgency ALL read.
+// Canonical record: the latest 'Follow-up scheduled' call_log entry not yet
+// completed. Falls back to appt_datetime for legacy records saved before this.
+function getScheduledFollowUp(c) {
+  const log = c.call_log||[];
+  let fuIdx = -1;
+  log.forEach((cl, i) => { if (cl.outcome === 'Follow-up scheduled') fuIdx = i; });
+  if (fuIdx !== -1) {
+    for (let i = fuIdx + 1; i < log.length; i++) {
+      if (log[i].outcome === 'Follow-up complete') return null;
+    }
+    return { datetime: log[fuIdx].followup_dt || null, note: log[fuIdx].note || '', logIdx: fuIdx };
+  }
+  // Legacy fallback: Follow-up status with only appt_datetime set
+  if (c.status === 'Follow-up' && c.appt_datetime) return { datetime: c.appt_datetime, note: c.appt_notes || '', logIdx: -1 };
+  return null;
+}
+
+function isFollowUpFuture(c) {
+  if (c.status !== 'Follow-up') return false;
+  const fu = getScheduledFollowUp(c);
+  if (!fu || !fu.datetime) return false;
+  return (new Date(fu.datetime) - new Date()) / 60000 > 2;
+}
+
+function isFollowUpDue(c) {
+  if (c.status !== 'Follow-up') return false;
+  const fu = getScheduledFollowUp(c);
+  if (!fu || !fu.datetime) return false;
+  if (isFollowUpResolved(c)) return false;
+  return (new Date(fu.datetime) - new Date()) / 60000 <= 2; // includes overdue
+}
+
+// A due/overdue follow-up is resolved once acted on: any meaningful attempt
+// after the follow-up entry and at/after its scheduled time. Same release
+// principle as callbacks — one touch unpins it.
+function isFollowUpResolved(c) {
+  const fu = getScheduledFollowUp(c);
+  if (!fu || !fu.datetime) return false;
+  const log = c.call_log||[];
+  const fuTime = new Date(fu.datetime);
+  return log.some((cl, i) => {
+    if (fu.logIdx >= 0 && i <= fu.logIdx) return false;
+    const attempted = cl.dials > 0 || cl.outcome === 'Text sent' || cl.outcome === 'No answer' || cl.outcome === 'Conversation';
+    return attempted && new Date(cl.ts) >= fuTime;
   });
 }
 
@@ -2342,17 +2418,26 @@ function getUrgencyScore(c) {
   const hrs = Math.min(hoursSinceLast, 999);
   const timeFraction = hrs >= 999 ? 0.99 : Math.min(0.99, hrs / 100);
 
+  // Earlier-scheduled-wins tiebreaker for same-tier commitments
+  const dtFrac = (dt) => Math.min(0.9, Math.max(0, (new Date(dt).getTime() % 1e10) / 1.2e10));
+
+  // Tier 1: Overdue commitments — callback or follow-up whose time has passed, unattempted.
+  // Promises beat rest: these outrank the resting check on purpose.
+  if (isCallbackOverdue(c)) return 1 + dtFrac(getScheduledCallback(c).callback_dt) + windowPenalty;
+  if (isFollowUpDue(c) && new Date(getScheduledFollowUp(c).datetime) < new Date()) return 1 + dtFrac(getScheduledFollowUp(c).datetime) + windowPenalty;
+
+  // Tier 2: Commitments due now (within 2 minutes of scheduled time)
+  if (isCallbackDueNow(c)) return 10 + dtFrac(getScheduledCallback(c).callback_dt) + windowPenalty;
+  if (isFollowUpDue(c)) return 10 + dtFrac(getScheduledFollowUp(c).datetime) + windowPenalty;
+
   // Resting leads sink below ALL active leads — they need a break, don't surface until ready
   if (onBreak && attempts > 0) return 150 + timeFraction + windowPenalty;
 
-  // Follow-up leads — post-appointment client follow-up, below active dialing, above Open
+  // Future scheduled follow-up — sits quietly until 2 min before (excluded from Active)
+  if (isFollowUpFuture(c)) return 152 + timeFraction;
+
+  // Follow-up with no scheduled time, or already acted on — gentle mid-list presence
   if (status === 'Follow-up') return 120 + timeFraction;
-
-  // Tier 1: Callback overdue (missed it)
-  if (isCallbackOverdue(c)) return 1 + windowPenalty;
-
-  // Tier 2: Callback due now (within 2 minutes of scheduled time)
-  if (isCallbackDueNow(c)) return 10 + windowPenalty;
 
   // Future scheduled callback — sits quietly, doesn't surface until 2 min before
   if (isCallbackFuture(c)) return 150 + windowPenalty;
@@ -2403,66 +2488,44 @@ function getUrgencyScore(c) {
 }
 function getUrgencyBadge(c) {
   const status = c.status || 'New';
-
   if (['Closed','Dead','No sale'].includes(status)) return null;
-  if (status === 'Appointment set') {
-    if (isApptImminent(c)) return {label:'\uD83D\uDD25 APPT NOW', color:'#A32D2D', bg:'#FFE9E9', fire:true};
-    return {label:'Appt set', color:'#138181', bg:'#E1F5EE', fire:false};
-  }
-  if (status === 'Follow-up') return {label:'📋 Follow-up', color:'#534AB7', bg:'#F3EEFF', fire:false};
 
-  const inWindow = isGoodTimeToCall(c);
-  const onBreak = isOnBreak(c);
-  const attempts = getAttemptCount(c);
-  const days = getDaysSinceAssigned(c);
-  const daysSinceLast = getDaysSinceLastAttempt(c);
-  const noShowCount = getNoShowCount(c);
-  const hrsSinceNS = getHoursSinceNoShow(c);
+  // Badge derives from the SAME score that sorts the list, so what you see
+  // always matches the order. Fire and call-now labels only appear in the
+  // actionable band — never stranded halfway down the list.
+  const score = getUrgencyScore(c);
 
-  // Callback due or overdue
-  if (isCallbackOverdue(c) || isCallbackDueNow(c)) {
+  if (score <= -1000) return {label:'\uD83D\uDD25 APPT NOW', color:'#A32D2D', bg:'#FFE9E9', fire:true};
+  if (status === 'Appointment set') return {label:'Appt set', color:'#138181', bg:'#E1F5EE', fire:false};
+
+  if (score < 20) {
+    if (isFollowUpDue(c)) return {label:'\uD83D\uDCCB Follow-up due', color:'#534AB7', bg:'#F3EEFF', fire:false};
     return {label:'\uD83D\uDD04 Callback', color:'#BA7517', bg:'#FFF8E6', fire:false};
   }
 
-  // Resting — on break
-  if (onBreak && attempts > 0) {
-    return {label:'\u23F8 Resting', color:'#8fa8c0', bg:'#F0F4F8', fire:false};
-  }
+  // No-show recovery window
+  if (score < 30) return {label:'\uD83D\uDD25 Call now', color:'#A32D2D', bg:'#FFF5F5', fire:false};
 
-  // Never contacted — always urgent fire
-  if (attempts === 0) {
-    return {label:'\uD83D\uDD25 Call now', color:'#A32D2D', bg:'#FFF5F5', fire:false};
-  }
-
-  // No show — only urgent if no follow-up attempt made since the no-show
-  if (noShowCount >= 1 && hrsSinceNS >= 2 && hrsSinceNS <= 72 && !hasFollowedUpAfterNoShow(c)) {
-    return {label:'\uD83D\uDD25 Call now', color:'#A32D2D', bg:'#FFF5F5', fire:false};
-  }
-
-  // Text needed
-  if (isReadyForText(c)) {
-    return {label:'\uD83D\uDCAC Text needed', color:'#138181', bg:'#F0FBF7', fire:false};
-  }
-
-  // Genuinely overdue — 7+ days no contact = fire
-  const isOverdue = daysSinceLast >= 7;
-  if (isOverdue) {
-    return {label:'\uD83D\uDD25 Call now', color:'#A32D2D', bg:'#FFF5F5', fire:false};
-  }
-
-  // Open 17+ days
-  if (days > 17) {
-    return {label:'Open', color:'#5f7a99', bg:'#EBF3FF', fire:false};
-  }
-
-  // Due now and in window — green dot
-  if (inWindow && !onBreak) {
+  // Actionable band: in window, not resting
+  if (score < 120) {
+    if (isReadyForText(c)) return {label:'\uD83D\uDCAC Text needed', color:'#138181', bg:'#F0FBF7', fire:false};
+    if (getAttemptCount(c) === 0 || getDaysSinceLastAttempt(c) >= 7) return {label:'\uD83D\uDD25 Call now', color:'#A32D2D', bg:'#FFF5F5', fire:false};
     return {label:'\uD83D\uDFE2 Call now', color:'#138181', bg:'#E1F5EE', fire:false};
   }
 
-  // Upcoming — outside window
-  return {label:'\u23F0 Upcoming', color:'#8fa8c0', bg:'#F0F4F8', fire:false};
+  if (status === 'Follow-up') return {label:'\uD83D\uDCCB Follow-up', color:'#534AB7', bg:'#F3EEFF', fire:false};
+
+  if (score < 200) {
+    if (isOnBreak(c) && getAttemptCount(c) > 0) return {label:'\u23F8 Resting', color:'#8fa8c0', bg:'#F0F4F8', fire:false};
+    return {label:'\u23F0 Upcoming', color:'#8fa8c0', bg:'#F0F4F8', fire:false};
+  }
+
+  // Out of the lead's calling window (score carries the +500 penalty)
+  if (!isGoodTimeToCall(c)) return {label:'\u23F0 Upcoming', color:'#8fa8c0', bg:'#F0F4F8', fire:false};
+
+  return {label:'Open', color:'#5f7a99', bg:'#EBF3FF', fire:false};
 }
+
 function getNoShowBadge(c) {
   const count = getNoShowCount(c);
   if (count === 0) return '';
@@ -2564,8 +2627,8 @@ function renderAlerts() {
     // Text-ready leads count as due now — they need action too
     } else if (inWindow && !onBreak && score < 200) {
       dueNow++;
-    } else if (isReadyForText(c) && !onBreak) {
-      dueNow++; // text-ready folds into due now
+    } else if (isReadyForText(c) && !onBreak && score < 200) {
+      dueNow++; // text-ready folds into due now (Open leads excluded)
     } else if (!inWindow && !onBreak && score < 200) {
       const next = getNextSlotTime(c);
       if (next && (earliestUpcomingAgentHour === null || next.agentHour < earliestUpcomingAgentHour)) {
@@ -2629,7 +2692,7 @@ function getFilteredClients(q='') {
     const isNoShow = c.status === 'No show';
     const hasOpenCase = (c.cases||[]).some(cs => cs.status === 'Open' && (cs.touchpoints||[]).length > 0);
     let matchF = false;
-    if (activeFilter==='active') matchF = (c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale' && c.status !== 'Appointment set' && !isCallbackFuture(c)) || isApptImminent(c);    else if (activeFilter==='all') matchF = true;
+    if (activeFilter==='active') matchF = (c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale' && c.status !== 'Appointment set' && !isCallbackFuture(c) && !isFollowUpFuture(c)) || isApptImminent(c);    else if (activeFilter==='all') matchF = true;
     else if (activeFilter==='fresh') matchF = days <= 4 && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale';
     else if (activeFilter==='warm') matchF = days >= 5 && days <= 17 && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale';
     else if (activeFilter==='open') matchF = days > 17 && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale';
@@ -2757,14 +2820,18 @@ function openClient(id, keepDialCount) {
     <span style="color:#5f7a99;font-size:13px;">- ${c.state||''} - <span class="${badgeClass(c.source)}">${c.source||''}</span></span>
   </div>
   ${c.address?`<div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">[Addr] ${c.address}</div>`:''}
-  ${c.appt_datetime?(()=>{
+  ${(c.appt_datetime || getScheduledFollowUp(c))?(()=>{
+    const fu = getScheduledFollowUp(c);
     const isCallback = isCallbackToday(c) || isCallbackDueNow(c) || isCallbackFuture(c);
-    const isFollowUp = c.status === 'Follow-up';
+    const isFollowUp = c.status === 'Follow-up' && fu;
     const hasOpenCase = (c.cases||[]).some(cs => cs.status === 'Open');
-    const apptLabel = new Date(c.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + new Date(c.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + (c.appt_notes?' - '+c.appt_notes:'');
     if (isFollowUp) {
-      return '<div style="margin-bottom:8px;"><div style="font-size:12px;font-weight:600;color:#534AB7;background:#F3EEFF;border:1px solid #C4AAFF;border-radius:6px;padding:5px 10px;margin-bottom:4px;display:block;">Follow-up: ' + apptLabel + '</div><div style="display:flex;gap:6px;"><button onclick="openFollowUpPicker(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit</button><button onclick="doneFollowUp(\'' + id + '\')" style="font-size:10px;background:#534AB7;color:#fff;border:none;border-radius:6px;padding:3px 10px;cursor:pointer;">Done</button></div></div>';
-    } else if (isCallback) {
+      const fuLabel = fu.datetime ? new Date(fu.datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + new Date(fu.datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + (fu.note?' - '+fu.note:'') : (fu.note || 'No date set');
+      return '<div style="margin-bottom:8px;"><div style="font-size:12px;font-weight:600;color:#534AB7;background:#F3EEFF;border:1px solid #C4AAFF;border-radius:6px;padding:5px 10px;margin-bottom:4px;display:block;">Follow-up: ' + fuLabel + '</div><div style="display:flex;gap:6px;"><button onclick="openFollowUpPicker(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit</button><button onclick="doneFollowUp(\'' + id + '\')" style="font-size:10px;background:#534AB7;color:#fff;border:none;border-radius:6px;padding:3px 10px;cursor:pointer;">Done</button></div></div>';
+    }
+    if (!c.appt_datetime) return '';
+    const apptLabel = new Date(c.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + new Date(c.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + (c.appt_notes?' - '+c.appt_notes:'');
+    if (isCallback) {
       return '<div style="margin-bottom:8px;"><div style="font-size:12px;font-weight:600;color:#BA7517;background:#FFF8E6;border:1px solid #F5D78E;border-radius:6px;padding:5px 10px;margin-bottom:4px;display:block;">[Callback] ' + apptLabel + '</div><button onclick="openMoveAppt(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit time</button></div>';
     } else if (hasOpenCase) {
       return '<div style="margin-bottom:8px;"><div onclick="openSitOutcome(\'' + id + '\')" style="font-size:12px;font-weight:600;color:#138181;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:6px;padding:5px 10px;margin-bottom:4px;cursor:pointer;display:block;">[Appt] ' + apptLabel + ' <span style="font-size:10px;opacity:0.6;">tap to log outcome</span></div><button onclick="openMoveAppt(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit time</button></div>';
@@ -3206,14 +3273,20 @@ async function confirmMoveAppt(id) {
 
 function openFollowUpPicker(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
-  const d = new Date(); d.setDate(d.getDate()+1); d.setHours(10,0,0,0);
+  // Edit reads the SAME source as display: the scheduled follow-up, if one exists.
+  // Only a brand-new follow-up gets the tomorrow-10am default.
+  const existing = getScheduledFollowUp(c);
+  let d;
+  if (existing && existing.datetime) { d = new Date(existing.datetime); }
+  else { d = new Date(); d.setDate(d.getDate()+1); d.setHours(10,0,0,0); }
+  const existingNote = existing ? existing.note : '';
   const dt = toLocalDT(d);
   showModal(`<button class="close-x" onclick="closeModal()">x</button>
-  <div class="modal-title">Schedule follow-up</div>
+  <div class="modal-title">${existing ? 'Edit follow-up' : 'Schedule follow-up'}</div>
   <div class="modal-sub">${c.name}</div>
   <div style="font-size:11px;color:#5f7a99;background:#F3EEFF;border-radius:6px;padding:6px 10px;margin-bottom:10px;">Post-appointment follow-up — not a new appointment. No sit logged.</div>
   <div class="field"><label>What is this follow-up about?</label>
-    <input type="text" id="followup-note" placeholder="e.g. App status, policy delivery, underwriting question..." style="width:100%;box-sizing:border-box;">
+    <input type="text" id="followup-note" value="${(existingNote||'').replace(/"/g,'&quot;')}" placeholder="e.g. App status, policy delivery, underwriting question..." style="width:100%;box-sizing:border-box;">
   </div>
   <div class="field"><label>Follow-up date & time (optional)</label>
     <input type="datetime-local" id="followup-dt" value="${dt}" style="font-size:16px;">
@@ -3239,22 +3312,45 @@ async function confirmFollowUp(id) {
     dials: 0
   }];
   showSync('Saving...');
+  // Follow-up lives ONLY in the call_log record. The appointment is over —
+  // appt_datetime is cleared so the follow-up never masquerades as an appointment.
   await sb.from('clients').update({
     status: 'Follow-up',
     call_log: callLog,
-    appt_notes: note,
-    appt_datetime: followupDt
+    appt_notes: '',
+    appt_datetime: null
   }).eq('id', id);
   c.status = 'Follow-up';
   c.call_log = callLog;
-  c.appt_notes = note;
-  c.appt_datetime = followupDt;
+  c.appt_notes = '';
+  c.appt_datetime = null;
   hideSync(); closeModal();
   const searchVal = document.getElementById('client-search') ? document.getElementById('client-search').value : '';
   renderClients(searchVal); renderScore(); renderSidebar();
 }
 
-async function doneFollowUp(id) {
+function doneFollowUp(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  // Policy delivery usually takes a few rounds — offer to chain the next one
+  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  <div class="modal-title">Follow-up done</div>
+  <div class="modal-sub">${c.name}</div>
+  <div style="font-size:12px;color:#5f7a99;margin-bottom:12px;">Is there another follow-up needed, or is this client all set?</div>
+  <button class="save-btn" style="background:#534AB7;margin-bottom:8px;" onclick="completeAndScheduleNext('${id}')">Done, schedule next follow-up</button>
+  <button class="save-btn" style="background:#138181;" onclick="finishFollowUp('${id}')">Done, all set</button>`);
+}
+
+async function completeAndScheduleNext(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const callLog = [...(c.call_log||[]), {ts: new Date().toISOString(), outcome: 'Follow-up complete', dials: 0}];
+  showSync('Saving...');
+  await sb.from('clients').update({ call_log: callLog }).eq('id', id);
+  c.call_log = callLog;
+  hideSync();
+  openFollowUpPicker(id);
+}
+
+async function finishFollowUp(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const callLog = [...(c.call_log||[]), {
     ts: new Date().toISOString(),
