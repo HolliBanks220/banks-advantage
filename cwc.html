@@ -492,6 +492,11 @@ async function init() {
   setInterval(() => {
     try { renderAlerts(); } catch(e) {}
     try { renderSidebar(); } catch(e) {}
+    // Keep the dial queue constantly resorting (appt pins, callbacks coming due, windows opening)
+    try {
+      const tab = document.getElementById('tab-clients');
+      if (tab && tab.style.display !== 'none') renderClients((document.getElementById('client-search')||{}).value||'');
+    } catch(e) {}
   }, 60000);
 }
 
@@ -2011,9 +2016,20 @@ function getLeadLocalHour(c) {
   return ((localHour % 24) + 24) % 24;
 }
 
+// Lead-local hour of a PAST timestamp (for bucketing historical calls into the lead's slots)
+function getLeadLocalHourAt(c, ts) {
+  const d = new Date(ts);
+  const offset = (c.tz_offset !== undefined && c.tz_offset !== null) ? c.tz_offset : (STATE_TZ_OFFSET[c.state] || 0);
+  const localHour = d.getHours() + offset;
+  return ((localHour % 24) + 24) % 24;
+}
+
 function isGoodTimeToCall(c) {
   const h = getLeadLocalHour(c);
-  return h >= 8 && h <= 21;
+  // Window: 8:00am - 9:30pm lead local time
+  if (h < 8 || h > 21) return false;
+  if (h === 21 && new Date().getMinutes() >= 30) return false;
+  return true;
 }
 
 // Returns current time slot for lead based on their local time
@@ -2046,7 +2062,7 @@ function getSlotsCoveredToday(c) {
   const today = new Date().toDateString();
   const slots = new Set();
   (c.call_log||[]).filter(cl => cl.dials > 0 && new Date(cl.ts).toDateString() === today).forEach(cl => {
-    const h = new Date(cl.ts).getHours();
+    const h = getLeadLocalHourAt(c, cl.ts); // bucket by the LEAD's local time
     if (h >= 8 && h < 12) slots.add('morning');
     else if (h >= 12 && h < 17) slots.add('afternoon');
     else if (h >= 17 && h <= 21) slots.add('evening');
@@ -2214,7 +2230,7 @@ function isCallbackToday(c) {
 function getTimeSlotsCovered(c) {
   const slots = new Set();
   (c.call_log||[]).forEach(cl => {
-    const h = new Date(cl.ts).getHours();
+    const h = getLeadLocalHourAt(c, cl.ts); // bucket by the LEAD's local time
     if (h >= 8 && h < 12) slots.add('morning');
     else if (h >= 12 && h < 17) slots.add('afternoon');
     else if (h >= 17 && h <= 21) slots.add('evening');
@@ -2250,10 +2266,26 @@ function isNurtureReady(c) {
   return getAttemptCount(c) >= 12 && getTextsSentCount(c) >= 4;
 }
 
+// Is this lead's appointment imminent? (2 min before start, or started and not yet logged, today only)
+// Pinned to the very top of the list until the outcome is logged.
+function isApptImminent(c) {
+  if (c.status !== 'Appointment set') return false;
+  const now = new Date();
+  const todayStr = now.toDateString();
+  return (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => {
+    if (!tp || tp.outcome !== 'pending' || !tp.datetime) return false;
+    const dt = new Date(tp.datetime);
+    return dt.toDateString() === todayStr && now >= new Date(dt.getTime() - 2*60000);
+  }));
+}
+
 // Research-backed urgency score
 // Lower = more urgent. timeFraction tiebreaker: more hours since last contact = lower score = higher in list
 function getUrgencyScore(c) {
   const status = c.status || 'New';
+
+  // Imminent appointment beats EVERYTHING — switch gears, run the appointment
+  if (isApptImminent(c)) return -1000;
 
   if (status === 'Dead') return 9000;
   if (status === 'Closed') return 8900;
@@ -2328,8 +2360,8 @@ function getUrgencyScore(c) {
   // Tier 8: Warm overdue 7+ days (includes post-callback leads and day 5-17)
   if (daysSinceLast >= 7) return 80 + Math.min(8, Math.floor(daysSinceLast - 7)) - timeFraction + breakPenalty + windowPenalty;
 
-  // Tier 9: Warm due 4-6 days
-  if (daysSinceLast >= 4) return 90 + Math.min(8, Math.floor(daysSinceLast - 4)) - timeFraction + breakPenalty + windowPenalty;
+  // Tier 9: Warm due 3-6 days (locked cadence: warm = every 2-3 days, so due on day 3)
+  if (daysSinceLast >= 3) return 90 + Math.min(8, Math.floor(daysSinceLast - 3)) - timeFraction + breakPenalty + windowPenalty;
 
   // Tier 10: Ready for text
   if (isReadyForText(c)) return 100 - timeFraction + windowPenalty;
@@ -2344,7 +2376,10 @@ function getUrgencyBadge(c) {
   const status = c.status || 'New';
 
   if (['Closed','Dead','No sale'].includes(status)) return null;
-  if (status === 'Appointment set') return {label:'Appt set', color:'#138181', bg:'#E1F5EE', fire:false};
+  if (status === 'Appointment set') {
+    if (isApptImminent(c)) return {label:'\uD83D\uDD25 APPT NOW', color:'#A32D2D', bg:'#FFE9E9', fire:true};
+    return {label:'Appt set', color:'#138181', bg:'#E1F5EE', fire:false};
+  }
   if (status === 'Follow-up') return {label:'📋 Follow-up', color:'#534AB7', bg:'#F3EEFF', fire:false};
 
   const inWindow = isGoodTimeToCall(c);
@@ -2565,7 +2600,7 @@ function getFilteredClients(q='') {
     const isNoShow = c.status === 'No show';
     const hasOpenCase = (c.cases||[]).some(cs => cs.status === 'Open' && (cs.touchpoints||[]).length > 0);
     let matchF = false;
-    if (activeFilter==='active') matchF = c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale' && c.status !== 'Appointment set' && !isCallbackFuture(c);    else if (activeFilter==='all') matchF = true;
+    if (activeFilter==='active') matchF = (c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale' && c.status !== 'Appointment set' && !isCallbackFuture(c)) || isApptImminent(c);    else if (activeFilter==='all') matchF = true;
     else if (activeFilter==='fresh') matchF = days <= 4 && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale';
     else if (activeFilter==='warm') matchF = days >= 5 && days <= 17 && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale';
     else if (activeFilter==='open') matchF = days > 17 && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale';
