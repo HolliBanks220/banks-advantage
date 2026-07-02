@@ -3048,6 +3048,12 @@ async function confirmSitOutcome(id, ci, outcome) {
   } else if (outcome === 'nosale') {
     // Offer reset after no sale
     showResetPromptAfterOutcome(id, 'No Sale');
+  } else if (outcome === 'noshow') {
+    // No-show: immediately offer the recovery text — fastest text wins the reschedule
+    closeModal();
+    renderScore();
+    renderSidebar();
+    setTimeout(() => openTextModal(id, 'post_noshow'), 400);
   } else {
     closeModal();
     openClient(id);
@@ -3874,13 +3880,56 @@ function getContextualTemplates(c) {
   return TEXT_TEMPLATES.filter(t => t.stage.includes(stage) && !sentIds.includes(t.id));
 }
 
-function openTextModal(id) {
+
+// ── EDITABLE TEXT TEMPLATES ─────────────────────────────────────────────────
+// Personal defaults live in agent settings (per-agent when rolled out to team).
+// {name} in a saved default inserts the client's first name.
+function getTemplateText(t, c) {
+  const overrides = getAgentSettings().textTemplateOverrides || {};
+  const firstName = (c.name||'').split(' ')[0];
+  if (overrides[t.id]) return overrides[t.id].replace(/\{name\}/g, firstName);
+  return t.text(c);
+}
+
+function saveTemplateDefault(tplId, clientId) {
+  const c = clients.find(x=>x.id===clientId);
+  const txtEl = document.getElementById('tpl-txt-' + tplId);
+  if (!txtEl) return;
+  let text = txtEl.value;
+  const firstName = (c && c.name ? (c.name||'').split(' ')[0] : '');
+  if (firstName) text = text.split(firstName).join('{name}');
+  const settings = getAgentSettings();
+  if (!settings.textTemplateOverrides) settings.textTemplateOverrides = {};
+  settings.textTemplateOverrides[tplId] = text;
+  saveAgentSettings(settings);
+  showSync('Saved as your default');
+  setTimeout(hideSync, 1400);
+}
+
+function restoreTemplateDefault(tplId, clientId) {
+  if (!confirm('This replaces your custom version with the system original. Continue?')) return;
+  const settings = getAgentSettings();
+  if (settings.textTemplateOverrides) delete settings.textTemplateOverrides[tplId];
+  saveAgentSettings(settings);
+  showSync('Restored system default');
+  setTimeout(() => { hideSync(); openTextModal(clientId, tplId); }, 700);
+}
+
+function openTextModal(id, focusTplId) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const stage = getLeadTextStage(c);
   const sentTexts = getSentTexts(c);
   const sentIds = sentTexts.map(cl => cl.template_id);
-  const available = TEXT_TEMPLATES.filter(t => t.stage.includes(stage) && !sentIds.includes(t.id));
+  let available = TEXT_TEMPLATES.filter(t => t.stage.includes(stage) && !sentIds.includes(t.id));
+  // A focused template (e.g. post no-show popup) is always shown and opened first
+  if (focusTplId && !available.some(t => t.id === focusTplId)) {
+    const focused = TEXT_TEMPLATES.find(t => t.id === focusTplId);
+    if (focused) available = [focused, ...available];
+  } else if (focusTplId) {
+    available = [...available].sort((a,b) => (a.id===focusTplId?-1:0) - (b.id===focusTplId?-1:0));
+  }
   const sent = TEXT_TEMPLATES.filter(t => sentIds.includes(t.id));
+  const overrides = getAgentSettings().textTemplateOverrides || {};
 
   let html = '<button class="close-x" onclick="closeModal()">x</button>' +
     '<div class="modal-title">Text templates</div>' +
@@ -3890,11 +3939,15 @@ function openTextModal(id) {
     html += '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Recommended for now</div>';
     html += available.map((t, i) =>
       '<div id="tpl-' + t.id + '" style="border:1px solid #e2eaf2;border-radius:8px;padding:8px 10px;margin-bottom:6px;cursor:pointer;" onclick="expandTemplate(\''+id+'\',\''+t.id+'\')">' +
-        '<div style="font-size:11px;font-weight:600;color:#1D3557;margin-bottom:4px;">' + t.label + '</div>' +
-        '<div style="font-size:11px;color:#5f7a99;">' + t.text(c) + '</div>' +
+        '<div style="font-size:11px;font-weight:600;color:#1D3557;margin-bottom:4px;">' + t.label + (overrides[t.id] ? ' <span style="font-size:9px;color:#534AB7;background:#F3EEFF;border-radius:4px;padding:1px 5px;">customized</span>' : '') + '</div>' +
+        '<div style="font-size:11px;color:#5f7a99;">' + getTemplateText(t, c) + '</div>' +
         '<div id="tpl-edit-' + t.id + '" style="display:none;margin-top:8px;">' +
-          '<textarea id="tpl-txt-' + t.id + '" style="width:100%;min-height:80px;font-size:12px;border:1px solid #9FE1CB;border-radius:6px;padding:6px;font-family:inherit;">' + t.text(c) + '</textarea>' +
-          '<button onclick="copyAndLogText(\''+id+'\',\''+t.id+'\')" style="width:100%;background:#138181;color:#fff;border:none;border-radius:8px;padding:10px;font-size:12px;font-weight:600;cursor:pointer;margin-top:6px;">Copy & Log</button>' +
+          '<textarea id="tpl-txt-' + t.id + '" onclick="event.stopPropagation()" style="width:100%;min-height:80px;font-size:12px;border:1px solid #9FE1CB;border-radius:6px;padding:6px;font-family:inherit;box-sizing:border-box;">' + getTemplateText(t, c) + '</textarea>' +
+          '<button onclick="event.stopPropagation();copyAndLogText(\''+id+'\',\''+t.id+'\')" style="width:100%;background:#138181;color:#fff;border:none;border-radius:8px;padding:10px;font-size:12px;font-weight:600;cursor:pointer;margin-top:6px;">Copy & Log</button>' +
+          '<div style="display:flex;gap:6px;margin-top:6px;">' +
+            '<button onclick="event.stopPropagation();saveTemplateDefault(\''+t.id+'\',\''+id+'\')" style="flex:1;background:none;border:1px solid #C4AAFF;border-radius:6px;padding:6px;font-size:10px;color:#534AB7;cursor:pointer;">Save as my default</button>' +
+            (overrides[t.id] ? '<button onclick="event.stopPropagation();restoreTemplateDefault(\''+t.id+'\',\''+id+'\')" style="flex:1;background:none;border:1px solid #d0dcea;border-radius:6px;padding:6px;font-size:10px;color:#5f7a99;cursor:pointer;">Restore default</button>' : '') +
+          '</div>' +
         '</div>' +
       '</div>'
     ).join('');
@@ -3912,12 +3965,13 @@ function openTextModal(id) {
           '<div style="font-size:11px;font-weight:600;color:#8fa8c0;">' + t.label + '</div>' +
           '<div style="font-size:10px;color:#a0b8cc;">Sent ' + sentDate + '</div>' +
         '</div>' +
-        '<div style="font-size:11px;color:#a0b8cc;margin-top:2px;">' + t.text(c) + '</div>' +
+        '<div style="font-size:11px;color:#a0b8cc;margin-top:2px;">' + ((sentEntry && sentEntry.text_sent) ? sentEntry.text_sent : getTemplateText(t, c)) + '</div>' +
       '</div>';
     }).join('');
   }
 
   showModal(html);
+  if (focusTplId) setTimeout(() => expandTemplate(id, focusTplId), 50);
 }
 
 function expandTemplate(id, tplId) {
@@ -4042,6 +4096,11 @@ async function quickLog(id, outcome, statKey) {
   renderScore();
   if (outcome === 'No answer') {
     openClient(id, true);
+  } else if (outcome === 'No show') {
+    // No-show: immediately offer the recovery text — fastest text wins the reschedule
+    closeModal();
+    renderClients(searchVal);
+    setTimeout(() => openTextModal(id, 'post_noshow'), 400);
   } else {
     closeModal();
     renderClients(searchVal);
@@ -4425,6 +4484,10 @@ async function saveTouchpoint(id, ci) {
   if (outcome === 'sale') {
     const newTi = c.cases[ci].touchpoints.length - 1;
     openAddAppToTouchpoint(id, ci, newTi);
+  } else if (outcome === 'noshow') {
+    // No-show: immediately offer the recovery text — fastest text wins the reschedule
+    closeModal(); renderScore(); renderSidebar();
+    setTimeout(() => openTextModal(id, 'post_noshow'), 400);
   } else {
     closeModal(); openClient(id); renderScore(); renderSidebar();
   }
