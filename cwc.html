@@ -811,19 +811,24 @@ function startEdit(key, theme) {
 // 4 scheduled today = 1 sit + 3 no-shows still shows 4. Derived from touchpoints
 // (permanent record); appt_datetime fallback covers legacy records only.
 function countApptsScheduled(start, end) {
+  // Appointments = sits + no-shows + still-pending, built FROM the same records
+  // the sit and no-show counters read. 4 scheduled = 1 sit + 3 no-shows + 0
+  // pending reconciles by construction; the numbers can never drift apart.
   let n = 0;
+  const inR = (dt) => { const d = new Date(dt); return d >= start && d <= end; };
   clients.forEach(c => {
-    let matched = 0;
+    let sits = 0, noshowsTp = 0, pending = 0;
     (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
-      if (!tp || !tp.datetime) return;
-      const d = new Date(tp.datetime);
-      if (d >= start && d <= end) matched++;
+      if (!tp || !tp.datetime || !inR(tp.datetime)) return;
+      if (tp.outcome === 'sale' || tp.outcome === 'nosale') sits++;
+      else if (tp.outcome === 'noshow') noshowsTp++;
+      else if (tp.outcome === 'pending') pending++;
     }));
-    if (!matched && c.appt_datetime) {
-      const d = new Date(c.appt_datetime);
-      if (d >= start && d <= end) matched = 1;
-    }
-    n += matched;
+    // Sits recorded only in the sits array (no matching touchpoint)
+    if (!sits) sits = (c.sits||[]).filter(s => s.outcome === 'showed' && s.datetime && inR(s.datetime)).length;
+    // No-shows recorded only in call_log (timestamp backdated to appt time)
+    const noshowsLog = (c.call_log||[]).filter(cl => cl.outcome === 'No show' && inR(cl.ts)).length;
+    n += sits + Math.max(noshowsTp, noshowsLog) + pending;
   });
   return n;
 }
