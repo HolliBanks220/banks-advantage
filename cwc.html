@@ -2095,11 +2095,26 @@ function getLeadLocalHourAt(c, ts) {
   return ((localHour % 24) + 24) % 24;
 }
 
+// Calling window for this lead, lead-local hours [start, end).
+// Per-lead override (shift work) beats age defaults beats standard.
+// 2nd shift works afternoons/evenings -> call 10am-2pm, before their workday.
+// 3rd shift works overnights -> call 4pm-8pm, after sleep, before work.
+// Age defaults: 70+ ends 7pm, 65-69 ends 8pm, else standard 8am-9:30pm.
+function getCallWindow(c) {
+  if (c.call_window === 'second_shift') return {start: 10, end: 14, halfHourEnd: false};
+  if (c.call_window === 'third_shift') return {start: 16, end: 20, halfHourEnd: false};
+  const age = parseInt(c.age) || 0;
+  if (age >= 70) return {start: 8, end: 19, halfHourEnd: false};
+  if (age >= 65) return {start: 8, end: 20, halfHourEnd: false};
+  return {start: 8, end: 22, halfHourEnd: true}; // standard, ends 9:30pm
+}
+
 function isGoodTimeToCall(c) {
   const h = getLeadLocalHour(c);
-  // Window: 8:00am - 9:30pm lead local time
-  if (h < 8 || h > 21) return false;
-  if (h === 21 && new Date().getMinutes() >= 30) return false;
+  const w = getCallWindow(c);
+  if (h < w.start || h >= w.end) return false;
+  // Standard window ends 9:30pm: hour 21 allowed only until :29
+  if (w.halfHourEnd && h === w.end - 1 && new Date().getMinutes() >= 30) return false;
   return true;
 }
 
@@ -2469,7 +2484,11 @@ function getUrgencyScore(c) {
   // they know who you are — warm rhythm (every 2-3 days), not 3 touches/day.
   const hasEngaged = hadCallback || noShowCount > 0;
 
-  const windowPenalty = inWindow ? 0 : 500;
+  // 65+ leads (no shift override) get an evening bias: still callable, but they
+  // surface in the morning queue while younger leads fill the evening.
+  const _age = parseInt(c.age) || 0;
+  const seniorEveningBias = (!c.call_window && _age >= 65 && getCurrentSlotForLead(c) === 'evening') ? 25 : 0;
+  const windowPenalty = (inWindow ? 0 : 500) + seniorEveningBias;
   const breakPenalty = onBreak ? 300 : 0;
   const slotPenalty = (inWindow && currentSlotAlreadyCovered(c) && !onBreak) ? 50 : 0;
   // Breadth-first: every attempt today pushes this lead down so untouched leads
@@ -2611,26 +2630,17 @@ function getCallTimeBadge(c) {
 }
 
 function getNextSlotTime(c) {
-  // Returns the hour (agent local) when the next calling slot opens for this lead
+  // Returns the hour (agent local) when this lead's own window next opens
   const h = getLeadLocalHour(c);
-  const offset = (c.tz_offset !== undefined && c.tz_offset !== null) ? c.tz_offset : (STATE_TZ_OFFSET[c.state] || 0);
-  // If before morning slot
-  if (h < 8) return { agentHour: new Date().getHours() + (8 - h), label: '8am' };
-  // If in morning, next is afternoon
-  if (h >= 8 && h < 12) return null; // already in a window
-  // If between morning and afternoon
-  if (h >= 12 && h < 12) return { agentHour: new Date().getHours() + (12 - h), label: '12pm' };
-  // If in afternoon, already in window
-  if (h >= 12 && h < 17) return null;
-  // If between afternoon and evening
-  if (h >= 17 && h <= 21) return null; // in evening window
-  // After evening — next morning
-  if (h > 21) {
-    const hoursUntil = (24 - h) + 8;
-    const agentHour = new Date().getHours() + hoursUntil;
-    return { agentHour, label: 'tomorrow 8am' };
+  const w = getCallWindow(c);
+  const fmt = (hr) => { const x = ((hr % 24) + 24) % 24; return x === 0 ? '12am' : x < 12 ? x + 'am' : x === 12 ? '12pm' : (x - 12) + 'pm'; };
+  if (h >= w.start && h < w.end) return null; // already in their window
+  if (h < w.start) {
+    return { agentHour: new Date().getHours() + (w.start - h), label: fmt(w.start) };
   }
-  return null;
+  // Past their window: next opening is tomorrow at their start
+  const hoursUntil = (24 - h) + w.start;
+  return { agentHour: new Date().getHours() + hoursUntil, label: 'tomorrow ' + fmt(w.start) };
 }
 
 function getNextApptInfo() {
@@ -2939,6 +2949,11 @@ function openClient(id, keepDialCount) {
   <div style="padding-left:4px;margin-bottom:12px;">${callHistory||'<div style="font-size:12px;color:#a0b8cc;">No calls yet.</div>'}</div>
   <div class="section-lbl">Notes</div>
   <div class="field"><label>Property address</label><input type="text" id="cn-address" value="${c.address||''}" placeholder="123 Main St, City, ST 00000" onchange="autoSaveField('${id}','address',this.value)"></div>
+  <div class="field"><label>Call window</label><select id="cn-callwindow" onchange="autoSaveField('${id}','call_window',this.value||null)">
+    <option value=""${!c.call_window?' selected':''}>Standard (age-aware)</option>
+    <option value="second_shift"${c.call_window==='second_shift'?' selected':''}>2nd shift - call 10am-2pm their time</option>
+    <option value="third_shift"${c.call_window==='third_shift'?' selected':''}>3rd shift - call 4pm-8pm their time</option>
+  </select></div>
   ${c.age?`<div style="font-size:12px;color:#1D3557;font-weight:500;margin-bottom:6px;">Age: ${c.age}</div>`:''}
   <div class="field"><textarea id="cn-notes" style="min-height:120px;" oninput="scheduleAutoSave('${id}')">${c.notes||''}</textarea></div>
   <div class="field"><label>Health notes</label><textarea id="cn-health" style="min-height:120px;" oninput="scheduleAutoSave('${id}')">${c.health_notes||''}</textarea></div>
