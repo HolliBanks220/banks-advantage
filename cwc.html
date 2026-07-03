@@ -807,13 +807,34 @@ function startEdit(key, theme) {
 }
 
 //  SCOREBOARD 
+// Appointments SCHEDULED for the period (by appointment date, any outcome).
+// 4 scheduled today = 1 sit + 3 no-shows still shows 4. Derived from touchpoints
+// (permanent record); appt_datetime fallback covers legacy records only.
+function countApptsScheduled(start, end) {
+  let n = 0;
+  clients.forEach(c => {
+    let matched = 0;
+    (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+      if (!tp || !tp.datetime) return;
+      const d = new Date(tp.datetime);
+      if (d >= start && d <= end) matched++;
+    }));
+    if (!matched && c.appt_datetime) {
+      const d = new Date(c.appt_datetime);
+      if (d >= start && d <= end) matched = 1;
+    }
+    n += matched;
+  });
+  return n;
+}
+
 function renderScore() {
   const {start: aStart, end: aEnd, label} = getPeriodBounds('activity');
   const {start: pStart, end: pEnd} = getPeriodBounds('production');
   document.getElementById('period-label').textContent = label;
 
   const dials=sumStat('dials',aStart,aEnd), convos=sumStat('convos',aStart,aEnd);
-  const appts=sumStat('appts',aStart,aEnd), callbacks=sumStat('callbacks',aStart,aEnd), dead=sumStat('dead',aStart,aEnd);
+  const appts=countApptsScheduled(aStart,aEnd), callbacks=sumStat('callbacks',aStart,aEnd), dead=sumStat('dead',aStart,aEnd);
   const texts=sumStat('texts',aStart,aEnd);
   const resolved = appts + dead;
   ['dials','convos','appts','callbacks','dead'].forEach((k,i) => {
