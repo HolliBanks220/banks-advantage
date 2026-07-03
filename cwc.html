@@ -953,10 +953,26 @@ function renderScore() {
 
   const saleTPs = allTPs.filter(t=>t.outcome==='sale');
   const satSits = allSits.filter(s=>s.outcome==='showed');
-  const totalAPV = saleTPs.reduce((a,t)=>a+(t.apps||[]).reduce((b,ap)=>b+(ap.premium||0),0),0)
-    + satSits.reduce((a,s)=>a+(s.apps||[]).reduce((b,ap)=>b+(ap.premium||0),0),0);
-  const totalApps = saleTPs.reduce((a,t)=>a+(t.apps||[]).length,0)
-    + satSits.reduce((a,s)=>a+(s.apps||[]).length,0);
+  // Apps count in the week they were WRITTEN (writtenDate first, touchpoint/sit
+  // date fallback) — regardless of touchpoint outcome. An app written during a
+  // follow-up or continuation is still an app written. Matches the Business tab.
+  const periodApps = [];
+  clients.forEach(c => {
+    (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+      (tp.apps||[]).forEach(ap => {
+        const d = new Date(ap.writtenDate || tp.datetime || cs.created || 0);
+        if (d >= pStart && d <= pEnd) periodApps.push(ap);
+      });
+    }));
+    (c.sits||[]).forEach(s => {
+      (s.apps||[]).forEach(ap => {
+        const d = new Date(ap.writtenDate || s.datetime || 0);
+        if (d >= pStart && d <= pEnd) periodApps.push(ap);
+      });
+    });
+  });
+  const totalAPV = periodApps.reduce((a,ap)=>a+(ap.premium||0),0);
+  const totalApps = periodApps.length;
   const closedCount = saleTPs.filter(t=>(t.apps||[]).length>0).length + satSits.filter(s=>(s.apps||[]).length>0).length;
   const apvPerSale = totalSales>0 ? totalAPV/totalSales : 0;
 
