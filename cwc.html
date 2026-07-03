@@ -1301,11 +1301,20 @@ function drillDown(type) {
 
   if (type === 'appts') {
     title = 'Appointments - ' + label;
-    leads = clients.filter(c => {
-      if (!c.appt_datetime) return false;
-      const d = new Date(c.appt_datetime);
-      return d >= start && d <= end;
-    }).sort((a,b) => new Date(a.appt_datetime) - new Date(b.appt_datetime));
+    // Count from touchpoints (the permanent record of an appointment, held or
+    // pending) — appt_datetime is mutable and gets cleared by follow-ups/outcomes.
+    const apptTime = (c) => {
+      let t = null;
+      (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+        if (!tp || !tp.datetime) return;
+        const d = new Date(tp.datetime);
+        if (d >= start && d <= end && (!t || d < t)) t = d;
+      }));
+      if (!t && c.appt_datetime) { const d = new Date(c.appt_datetime); if (d >= start && d <= end) t = d; }
+      return t;
+    };
+    leads = clients.filter(c => apptTime(c) !== null)
+      .sort((a,b) => apptTime(a) - apptTime(b));
   } else if (type === 'showed') {
     title = 'Sits - ' + label;
     leads = clients.filter(c =>
