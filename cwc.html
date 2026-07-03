@@ -1437,7 +1437,7 @@ function getClientAppts(c) {
 
     appts.push({
       datetime: c.appt_datetime,
-      notes: c.appt_notes || (matchedCase ? matchedCase.type + (matchedTp ? ' - ' + matchedTp.type : '') : ''),
+      notes: c.appt_notes || '', // no fallback to case type — the type label already shows it
       caseType: matchedCase ? matchedCase.type : '',
       tpType: matchedTp ? matchedTp.type : '',
       clientId: c.id,
@@ -1464,7 +1464,7 @@ function getClientAppts(c) {
       if (Math.abs(tpTime - primaryTime) > 5 * 60 * 1000) {
         appts.push({
           datetime: nextTp.datetime,
-          notes: nextTp.notes || (cs.type + ' - ' + nextTp.type),
+          notes: nextTp.notes || '',
           caseType: cs.type,
           tpType: nextTp.type,
           clientId: c.id,
@@ -2738,7 +2738,12 @@ function getFilteredClients(q='') {
 function renderClients(q='') {
   const el = document.getElementById('clients-list');
   const list = getFilteredClients(q);
-  document.getElementById('client-count').textContent = clients.length + ' leads - ' + list.length + ' shown';
+  // Header speaks the working reality: filter count + callable-now, total demoted
+  const callableNow = list.filter(c => getUrgencyScore(c) < 150).length;
+  const filterLabel = activeFilter === 'active' ? 'active' : activeFilter === 'all' ? 'total' : activeFilter;
+  document.getElementById('client-count').textContent = activeFilter === 'all'
+    ? list.length + ' leads total'
+    : list.length + ' ' + filterLabel + ' \u00B7 ' + callableNow + ' callable now';
   if (!list.length) { el.innerHTML='<div class="empty">No leads match.</div>'; return; }
   el.innerHTML = list.map(c => {
     const fresh = isFresh(c);
