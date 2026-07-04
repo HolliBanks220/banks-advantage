@@ -3147,8 +3147,7 @@ function openClient(id, keepDialCount) {
     <button class="sec-btn" style="flex:1;" onclick="openNewCase('${id}')">+ New case</button>
     <button class="sec-btn" style="flex:1;background:#E8F7F5;color:#138181;border-color:#138181;" onclick="openASREntry('${id}')">⭐ + ASR</button>
   </div>
-  <div class="section-lbl" style="margin-top:12px;">Applications</div>
-  ${renderAppsSection(c)}`);
+`);
 }
 
 // ── SIT OUTCOME SYSTEM ──────────────────────────────────────────────────────
@@ -4623,6 +4622,39 @@ function toggleCaseBody(el) {
   if (body) body.style.display = body.style.display === 'none' ? 'block' : '';
 }
 
+function openReviveTp(id, ci, ti) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const tp = ((c.cases||[])[ci]||{}).touchpoints[ti];
+  if (!tp) return;
+  const d = new Date(); d.setDate(d.getDate()+1); d.setHours(10,0,0,0);
+  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  <div class="modal-title">Revive appointment</div>
+  <div class="modal-sub">${c.name} - ${tp.type||'appointment'}</div>
+  <div style="font-size:11px;color:#5f7a99;background:#F3EEFF;border-radius:6px;padding:6px 10px;margin-bottom:10px;">Same appointment, new time. The no-show stays in history; no new appointment is logged to your dial stats.</div>
+  <div class="field"><label>New date & time</label>
+    <input type="datetime-local" id="revive-dt" value="${toLocalDT(d)}" style="font-size:16px;width:100%;box-sizing:border-box;" onclick="try{this.showPicker()}catch(e){}">
+  </div>
+  <button class="save-btn" style="background:#534AB7;" onclick="confirmReviveTp('${id}',${ci},${ti})">Revive</button>`);
+}
+
+async function confirmReviveTp(id, ci, ti) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const dtVal = document.getElementById('revive-dt').value;
+  if (!dtVal) return;
+  const newDt = new Date(dtVal).toISOString(); // input parses as local
+  const cases = JSON.parse(JSON.stringify(c.cases||[]));
+  const srcTp = cases[ci].touchpoints[ti];
+  const pendingTp = {type: srcTp.type || 'Initial', datetime: newDt, outcome:'pending', notes:'', apps:[], created: new Date().toISOString(), revived_from: srcTp.datetime || null};
+  cases[ci].touchpoints.push(pendingTp);
+  cases[ci].status = 'Open';
+  const callLog = [...(c.call_log||[]), {ts: new Date().toISOString(), outcome: 'Rescheduled', reason: 'revived no-show', callback_dt: null, dials: 0}];
+  showSync('Reviving...');
+  await sb.from('clients').update({cases, status:'Appointment set', appt_datetime: newDt, appt_notes: (srcTp.type||'') + ' (revived)', call_log: callLog}).eq('id', id);
+  Object.assign(c, {cases, status:'Appointment set', appt_datetime: newDt, appt_notes: (srcTp.type||'') + ' (revived)', call_log: callLog});
+  hideSync(); closeModal();
+  openClient(id); renderScore(); renderSidebar();
+}
+
 function renderCasesHtml(c) {
   const cases = c.cases || [];
   if (!cases.length) return '<div style="font-size:12px;color:#a0b8cc;margin-bottom:8px;">No cases yet.</div>';
@@ -4635,8 +4667,9 @@ function renderCasesHtml(c) {
     const statusColors = {'Closed Won':'#3B6D11','Closed Lost':'#A32D2D','Reset':'#534AB7','Open':'#138181'};
     const hdrColor = cls==='ret'?'#138181':(cls==='dfl'||cls==='ib')?'#534AB7':'#1D3557';
 
-    // History log
-    const historyHtml = resolvedTps.length ? resolvedTps.slice().reverse().map(tp => {
+    // History log (carry original index so no-shows can be revived)
+    const resolvedWithIdx = (cs.touchpoints||[]).map((tp,ti)=>({tp,ti})).filter(x => x.tp && x.tp.outcome && x.tp.outcome.toLowerCase() !== 'pending');
+    const historyHtml = resolvedTps.length ? resolvedWithIdx.slice().reverse().map(({tp, ti}) => {
       const dt = new Date(tp.datetime);
       const dtStr = dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' + dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
       const outcomeLabel = tp.outcome==='sale'?'Sale':tp.outcome==='nosale'?'No Sale':tp.outcome==='noshow'?'No Show':tp.outcome==='cont'?'Continuation':'';
@@ -4657,6 +4690,7 @@ function renderCasesHtml(c) {
           (flags.length?'<div style="font-size:10px;color:#5f7a99;">' + flags.join(' · ') + '</div>':'') +
           (tp.notes?'<div style="font-size:10px;color:#8fa8c0;font-style:italic;">' + tp.notes + '</div>':'') +
         '</div>' +
+        (tp.outcome==='noshow'?'<button onclick="event.stopPropagation();openReviveTp(\''+c.id+'\','+ci+','+ti+')" style="font-size:9px;background:none;border:1px solid #C4AAFF;border-radius:5px;padding:2px 8px;color:#534AB7;cursor:pointer;flex-shrink:0;">Revive</button>':'') +
       '</div>';
     }).filter(Boolean).join('') : '';
 
