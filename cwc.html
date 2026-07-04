@@ -842,9 +842,9 @@ function countApptsScheduled(start, end) {
     let sits = 0, noshowsTp = 0, pending = 0;
     (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
       if (!tp || !tp.datetime || !inR(tp.datetime)) return;
-      if (tp.outcome === 'sale' || tp.outcome === 'nosale') sits++;
+      if (tp.outcome === 'sale' || tp.outcome === 'nosale' || tp.outcome === 'cont') sits++;
       else if (tp.outcome === 'noshow') noshowsTp++;
-      else if (tp.outcome === 'pending') pending++;
+      else if (tp.outcome === 'pending' && !isGhostPending(cs.touchpoints, tp)) pending++;
     }));
     // Sits recorded only in the sits array (no matching touchpoint)
     if (!sits) sits = (c.sits||[]).filter(s => s.outcome === 'showed' && s.datetime && inR(s.datetime)).length;
@@ -874,14 +874,15 @@ function collectProduction(start, end) {
   clients.forEach(c => {
     (c.cases||[]).forEach(cs => {
       const tps = (cs.touchpoints||[]);
-      const resolvedSits = tps.filter(tp => tp && (tp.outcome === 'sale' || tp.outcome === 'nosale'));
+      const resolvedSits = tps.filter(tp => tp && (tp.outcome === 'sale' || tp.outcome === 'nosale' || tp.outcome === 'cont'));
 
       tps.forEach((tp, ti) => {
         if (!tp || !inR(tp.datetime)) return;
+        if (isGhostPending(tps, tp)) return; // duplicate ghost from old bug
         const type = tp.type || 'Initial';
         if (!P.byType[type]) P.byType[type] = {booked:0, showed:0, noShow:0};
         P.byType[type].booked++;
-        if (tp.outcome === 'sale' || tp.outcome === 'nosale') {
+        if (tp.outcome === 'sale' || tp.outcome === 'nosale' || tp.outcome === 'cont') {
           P.showed++; P.byType[type].showed++;
           // Finalized vs needs more work: a later pending tp = the conversation continues
           const hasLaterPending = tps.some((t2, tj) => tj > ti && t2 && t2.outcome === 'pending');
@@ -901,7 +902,7 @@ function collectProduction(start, end) {
           const bucket = tp.type === 'Step 1' ? 's1' : tp.type === 'Step 2' ? 's2' : tp.type === 'Step 3' ? 's3' : null;
           if (!bucket) return;
           P.funnel[bucket].booked++;
-          if (tp.outcome === 'sale' || tp.outcome === 'nosale') P.funnel[bucket].showed++;
+          if (tp.outcome === 'sale' || tp.outcome === 'nosale' || tp.outcome === 'cont') P.funnel[bucket].showed++;
         });
         if (cs.status === 'Closed' && resolvedSits.some(tp => inR(tp.datetime))) P.funnel.closed++;
       }
@@ -1008,7 +1009,7 @@ function renderScore() {
     const d = new Date(s.datetime); return d >= pStart && d <= pEnd;
   }));
 
-  const tpSits = allTPs.filter(t => t.outcome==='sale'||t.outcome==='nosale').length;
+  const tpSits = allTPs.filter(t => t.outcome==='sale'||t.outcome==='nosale'||t.outcome==='cont').length;
   const legacySits = allSits.filter(s => s.outcome==='showed').length;
   const totalShowed = tpSits + legacySits;
   const totalNoShows = allTPs.filter(t=>t.outcome==='noshow').length + allSits.filter(s=>s.outcome==='noshow').length;
@@ -1491,7 +1492,7 @@ function drillDown(type) {
     title = 'Sits - ' + label;
     leads = clients.filter(c =>
       (c.sits||[]).some(s => { const d=new Date(s.datetime); return d>=start&&d<=end&&s.outcome==='showed'; }) ||
-      (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&(tp.outcome==='sale'||tp.outcome==='nosale'); }))
+      (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&(tp.outcome==='sale'||tp.outcome==='nosale'||tp.outcome==='cont'); }))
     );
   } else if (type === 'noshow') {
     title = 'No shows - ' + label;
@@ -2469,7 +2470,7 @@ function getScheduledFollowUp(c) {
   log.forEach((cl, i) => { if (cl.outcome === 'Follow-up scheduled') fuIdx = i; });
   if (fuIdx !== -1) {
     for (let i = fuIdx + 1; i < log.length; i++) {
-      if (log[i].outcome === 'Follow-up complete') return null;
+      if (log[i].outcome === 'Follow-up complete' || log[i].outcome === 'Follow-up canceled') return null;
     }
     return { datetime: log[fuIdx].followup_dt || null, note: log[fuIdx].note || '', logIdx: fuIdx };
   }
@@ -2605,6 +2606,14 @@ function isNurtureReady(c) {
   return getAttemptCount(c) >= 12 && getTextsSentCount(c) >= 4;
 }
 
+// A pending touchpoint whose case already has a RESOLVED touchpoint at the
+// same time (within 5 min) is a ghost left by the old duplicate-creation bug.
+function isGhostPending(tps, tp) {
+  if (!tp || tp.outcome !== 'pending' || !tp.datetime) return false;
+  const t = new Date(tp.datetime).getTime();
+  return (tps||[]).some(o => o && o !== tp && o.outcome && o.outcome !== 'pending' && o.datetime && Math.abs(new Date(o.datetime).getTime() - t) < 5 * 60000);
+}
+
 // Is this lead's appointment imminent? (2 min before start, or started and not yet logged, today only)
 // Pinned to the very top of the list until the outcome is logged.
 function isApptImminent(c) {
@@ -2613,6 +2622,7 @@ function isApptImminent(c) {
   const todayStr = now.toDateString();
   return (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => {
     if (!tp || tp.outcome !== 'pending' || !tp.datetime) return false;
+    if (isGhostPending(cs.touchpoints, tp)) return false;
     const dt = new Date(tp.datetime);
     return dt.toDateString() === todayStr && now >= new Date(dt.getTime() - 2*60000);
   }));
@@ -3083,7 +3093,7 @@ function openClient(id, keepDialCount) {
     const hasOpenCase = (c.cases||[]).some(cs => cs.status === 'Open');
     if (isFollowUp) {
       const fuLabel = fu.datetime ? new Date(fu.datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + new Date(fu.datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + (fu.note?' - '+fu.note:'') : (fu.note || 'No date set');
-      return '<div style="margin-bottom:8px;"><div style="font-size:12px;font-weight:600;color:#534AB7;background:#F3EEFF;border:1px solid #C4AAFF;border-radius:6px;padding:5px 10px;margin-bottom:4px;display:block;">Follow-up: ' + fuLabel + '</div><div style="display:flex;gap:6px;"><button onclick="openFollowUpPicker(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit</button><button onclick="doneFollowUp(\'' + id + '\')" style="font-size:10px;background:#534AB7;color:#fff;border:none;border-radius:6px;padding:3px 10px;cursor:pointer;">Done</button></div></div>';
+      return '<div style="margin-bottom:8px;"><div style="font-size:12px;font-weight:600;color:#534AB7;background:#F3EEFF;border:1px solid #C4AAFF;border-radius:6px;padding:5px 10px;margin-bottom:4px;display:block;">Follow-up: ' + fuLabel + '</div><div style="display:flex;gap:6px;"><button onclick="openFollowUpPicker(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit</button><button onclick="doneFollowUp(\'' + id + '\')" style="font-size:10px;background:#534AB7;color:#fff;border:none;border-radius:6px;padding:3px 10px;cursor:pointer;">Done</button><button onclick="removeFollowUp(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #E8B4B4;border-radius:6px;padding:3px 10px;color:#A32D2D;cursor:pointer;">Remove</button></div></div>';
     }
     if (!c.appt_datetime) return '';
     const apptLabel = new Date(c.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + new Date(c.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + (c.appt_notes?' - '+c.appt_notes:'');
@@ -3206,9 +3216,10 @@ function showContModal(id, ci) {
   // Continuation REASON powers the production ledger: show rate by type,
   // cost/gain of continuing, and the retirement step funnel
   const isRetirement = ci !== null && ci !== undefined && ((c.cases||[])[ci]||{}).type === 'Retirement';
+  // No 'Follow-up' here: follow-ups are post-sale only (client card button)
   const reasons = isRetirement
-    ? ['Step 2','Step 3','PPU / Policy Pickup','Think about it','Follow-up']
-    : ['PPU / Policy Pickup','Think about it','Follow-up','Policy Review'];
+    ? ['Step 2','Step 3','PPU / Policy Pickup','Think about it']
+    : ['PPU / Policy Pickup','Think about it','Policy Review'];
   const reasonOpts = reasons.map((r,i) => '<option value="' + r + '"' + (i===0?' selected':'') + '>' + r + '</option>').join('');
   showModal('<button class="close-x" onclick="closeModal()">x</button>' +
     '<div class="modal-title">Continuation</div>' +
@@ -3259,16 +3270,32 @@ async function confirmSitOutcome(id, ci, outcome) {
   // Use the appt datetime as the sit datetime
   const sitDatetime = c.appt_datetime || now.toISOString();
 
-  // Create touchpoint record
-  const tp = {
-    type: ppu ? 'PPU / Policy Pickup' : 'Initial',
-    datetime: sitDatetime,
-    outcome,
-    ppu,
-    notes: sitNotes,
-    apps: [],
-    created: now.toISOString()
-  };
+  // RESOLVE the existing pending touchpoint if one matches this appointment —
+  // creating a parallel record left a pending ghost that kept APPT NOW firing
+  // and double-counted the appointment.
+  let tp = null;
+  const sitMs = new Date(sitDatetime).getTime();
+  const existingTps = cases[targetCi].touchpoints || [];
+  let pendIdx = existingTps.findIndex(t => t && t.outcome === 'pending' && t.datetime && Math.abs(new Date(t.datetime).getTime() - sitMs) < 6 * 3600000);
+  if (pendIdx === -1) pendIdx = existingTps.findIndex(t => t && t.outcome === 'pending');
+  if (pendIdx !== -1) {
+    tp = existingTps[pendIdx];
+    tp.outcome = outcome;
+    tp.ppu = ppu;
+    tp.notes = sitNotes;
+    if (!tp.apps) tp.apps = [];
+    tp._resolvedExisting = true;
+  } else {
+    tp = {
+      type: ppu ? 'PPU / Policy Pickup' : 'Initial',
+      datetime: sitDatetime,
+      outcome,
+      ppu,
+      notes: sitNotes,
+      apps: [],
+      created: now.toISOString()
+    };
+  }
 
   // Update case status
   if (outcome === 'sale') cases[targetCi].status = 'Closed Won';
@@ -3278,11 +3305,14 @@ async function confirmSitOutcome(id, ci, outcome) {
 
   // Add continuation touchpoint for next appt
   if (outcome === 'cont' && nextDt) {
-    const pendingTp = {type: contReason || (ppu ? 'PPU / Policy Pickup' : 'Follow-up'), datetime: nextDt, outcome:'pending', notes:'', apps:[], created:now.toISOString()};
-    cases[targetCi].touchpoints = [...(cases[targetCi].touchpoints||[]), tp, pendingTp];
-  } else {
+    const pendingTp = {type: contReason || (ppu ? 'PPU / Policy Pickup' : 'Continuation'), datetime: nextDt, outcome:'pending', notes:'', apps:[], created:now.toISOString()};
+    cases[targetCi].touchpoints = tp._resolvedExisting
+      ? [...(cases[targetCi].touchpoints||[]), pendingTp]
+      : [...(cases[targetCi].touchpoints||[]), tp, pendingTp];
+  } else if (!tp._resolvedExisting) {
     cases[targetCi].touchpoints = [...(cases[targetCi].touchpoints||[]), tp];
   }
+  delete tp._resolvedExisting;
 
   // Update lead status and appt
   let newStatus = c.status;
@@ -3643,6 +3673,18 @@ async function completeAndScheduleNext(id) {
   c.call_log = callLog;
   hideSync();
   openFollowUpPicker(id);
+}
+
+async function removeFollowUp(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  if (!confirm('Remove this follow-up? Use this to undo a mistake - the client goes back to Working status.')) return;
+  const callLog = [...(c.call_log||[]), {ts: new Date().toISOString(), outcome: 'Follow-up canceled', dials: 0}];
+  showSync('Removing...');
+  await sb.from('clients').update({ status: 'Working', call_log: callLog, appt_datetime: null, appt_notes: '' }).eq('id', id);
+  c.status = 'Working'; c.call_log = callLog; c.appt_datetime = null; c.appt_notes = '';
+  hideSync(); closeModal();
+  const searchVal = document.getElementById('client-search') ? document.getElementById('client-search').value : '';
+  renderClients(searchVal); renderScore(); renderSidebar();
 }
 
 async function finishFollowUp(id) {
@@ -4870,6 +4912,21 @@ async function saveTouchpoint(id, ci) {
   }
 }
 
+async function deleteTouchpoint(id, ci, ti) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const tp = ((c.cases||[])[ci]||{}).touchpoints[ti];
+  if (!tp) return;
+  const label = (tp.type||'touchpoint') + (tp.datetime ? ' on ' + new Date(tp.datetime).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '');
+  if (!confirm('Delete this ' + label + '? Any apps attached to it will also be removed. This cannot be undone.')) return;
+  const cases = JSON.parse(JSON.stringify(c.cases||[]));
+  cases[ci].touchpoints.splice(ti, 1);
+  showSync('Deleting...');
+  await sb.from('clients').update({cases}).eq('id', id);
+  c.cases = cases;
+  hideSync(); closeModal();
+  openClient(id); renderScore(); renderSidebar();
+}
+
 function openEditTouchpoint(id, ci, ti) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const tp = c.cases[ci].touchpoints[ti];
@@ -4898,6 +4955,7 @@ function openEditTouchpoint(id, ci, ti) {
   <div class="field"><label>ASRs</label><input type="text" id="etp-asrs" value="${tp.asrs||''}" placeholder="Names / numbers..."></div>
   <div class="field"><label>Notes</label><textarea id="etp-notes">${tp.notes||''}</textarea></div>
   <button class="save-btn" onclick="saveEditTouchpoint('${id}',${ci},${ti})">Save</button>
+  <button style="width:100%;margin-top:8px;background:none;border:1px solid #E8B4B4;border-radius:8px;padding:9px;font-size:12px;color:#A32D2D;cursor:pointer;" onclick="deleteTouchpoint('${id}',${ci},${ti})">Delete this touchpoint</button>
   ${tp.outcome==='sale'?'<button class="save-btn" style="background:#138181;margin-top:6px;" onclick="closeModal();openAddAppToTouchpoint(\''+ id +'\','+ ci +','+ ti +')">+ Add applications</button>':''}
   <button onclick="deleteTouchpoint('${id}',${ci},${ti})" style="width:100%;margin-top:6px;background:none;border:1px solid #F7C1C1;border-radius:8px;padding:10px;font-size:12px;color:#A32D2D;cursor:pointer;">Delete this touchpoint</button>`);
 }
