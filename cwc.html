@@ -301,6 +301,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-val val-green" id="p-closed">0</div>
         <div class="stat-sub sub-green" id="p-close-rate">-</div>
       </div>
+    <div id="production-panel" style="background:#fff;border-radius:12px;padding:12px 14px;margin-top:8px;box-shadow:0 1px 3px rgba(29,53,87,0.08);"></div>
     </div>
     <!-- APV summary row - compact -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
@@ -3101,7 +3102,7 @@ function openClient(id, keepDialCount) {
     <button class="dial-cnt-btn" id="dcb-3" onclick="setDialCount(3)">3x</button>
   </div>
   <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;">
-    ${isReadyForText(c)?`<button class="call-btn" style="background:#1D3557;color:#fff;border:2px solid #138181;" onclick="quickLogAndText('${id}')">No answer + 📱</button>`:`<button class="call-btn cb-navy" onclick="quickLog('${id}','No answer','dials')">No answer</button>`}
+    <button class="call-btn cb-navy" onclick="quickLog('${id}','No answer','dials')">No answer</button>${isReadyForText(c)?`<button class="call-btn" style="background:#1D3557;color:#fff;border:2px solid #138181;" onclick="quickLogAndText('${id}')">No answer + 📱</button>`:''}
     <button class="call-btn cb-green" onclick="openApptPicker('${id}')">Appt set</button>
     <button class="call-btn cb-amber" onclick="openCallbackPicker('${id}')">Callback</button>
     <button class="call-btn" style="background:#534AB7;color:#fff;" onclick="openFollowUpPicker('${id}')">+ Follow-up</button>
@@ -3909,11 +3910,19 @@ async function confirmAppt(id) {
   }
 
   const dialCount = window._dialCount || 1;
-  const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(),outcome:'Appt set',dials:dialCount,appt_datetime:apptDatetime,appt_notes:apptNotes}];
+  // HARD RULE: follow-ups NEVER log an 'Appt set'. Moving a follow-up through
+  // this picker records a follow-up reschedule, not a new appointment win —
+  // the dial ledger's appts-set number derives from 'Appt set' entries only.
+  const isFollowUpMove = c.status === 'Follow-up';
+  const logEntry = isFollowUpMove
+    ? {ts:new Date().toISOString(),outcome:'Follow-up scheduled',followup_dt:apptDatetime,note:apptNotes,dials:0}
+    : {ts:new Date().toISOString(),outcome:'Appt set',dials:dialCount,appt_datetime:apptDatetime,appt_notes:apptNotes};
+  const callLog = [...(c.call_log||[]), logEntry];
+  const newStatusAfter = isFollowUpMove ? 'Follow-up' : 'Appointment set';
   showSync('Saving...');
-  await sb.from('clients').update({call_log:callLog,status:'Appointment set',appt_datetime:apptDatetime,appt_notes:apptNotes,cases}).eq('id',id);
-  c.call_log=callLog; c.status='Appointment set'; c.appt_datetime=apptDatetime; c.appt_notes=apptNotes; c.cases=cases;
-  await addStat('dials',dialCount); await addStat('appts',1); await addStat('convos',1);
+  await sb.from('clients').update({call_log:callLog,status:newStatusAfter,appt_datetime:isFollowUpMove?null:apptDatetime,appt_notes:isFollowUpMove?'':apptNotes,cases}).eq('id',id);
+  c.call_log=callLog; c.status=newStatusAfter; c.appt_datetime=isFollowUpMove?null:apptDatetime; c.appt_notes=isFollowUpMove?'':apptNotes; c.cases=cases;
+  if (!isFollowUpMove) { await addStat('dials',dialCount); await addStat('appts',1); await addStat('convos',1); }
   window._dialCount=1; hideSync(); closeModal();
 
   // Capture next lead before re-rendering
@@ -4065,7 +4074,18 @@ const TEXT_TEMPLATES = [
     id: 'initial',
     label: 'Text 1 - Initial outreach (day one)',
     stage: ['never_spoken'],
-    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli getting back to you about your mortgage protection request. Can you give me a quick call when you get a chance?`
+    text: (c) => {
+      const fn = (c.name||'').split(' ')[0];
+      // Street name only — "your home on Old Buckingham Rd" feels like a
+      // neighbor; the full address feels like a skip tracer.
+      let street = '';
+      if (c.address) {
+        const firstPart = c.address.split(',')[0].trim();
+        street = firstPart.replace(/^[\d\s-]+/, '').trim();
+      }
+      const homeRef = street ? `your home on ${street}` : 'your home';
+      return `Hi ${fn}, this is Holli getting back to you about the protection info you requested for ${homeRef}. Can you give me a quick call when you get a chance?`;
+    }
   },
   {
     id: 'missing',
@@ -4079,7 +4099,7 @@ const TEXT_TEMPLATES = [
     stage: ['never_spoken', 'spoken'],
     text: (c) => {
       const fn = (c.name||'').split(' ')[0];
-      if (c.source === 'CIA') return `Hi ${fn}, this is Holli. Still working to get your info to you - who were you thinking of when you filled out the request online?`;
+      if (c.source === 'CIA') return `Hi ${fn}, this is Holli. Still working to get your info to you - who were you thinking of when you called in about your mortgage?`;
       if (c.source === 'MIA') return `Hi ${fn}, this is Holli. Still working to get your info to you - who were you thinking of when you responded to that notice about your mortgage?`;
       return `Hi ${fn}, this is Holli. Still working to get your info to you - who were you thinking of when you sent in your request?`;
     }
@@ -4182,7 +4202,14 @@ function getLeadTextStage(c) {
   const isAtApptTime = minsToAppt >= -30 && minsToAppt <= 120;
   const nsCount = getNoShowCount(c);
 
-  if (isNoShow) return nsCount >= 3 ? 'noshow_3x' : nsCount === 2 ? 'noshow_2x' : 'noshow';
+  // No-show stage only lives as long as the recovery window (72 hrs). After
+  // that, a lead who no-showed weeks ago is just someone you've had contact
+  // with — recovery language would read as bizarre.
+  const nsEntries = (c.call_log||[]).filter(cl => cl.outcome === 'No show');
+  const lastNsTs = nsEntries.length ? new Date(nsEntries[nsEntries.length-1].ts) : null;
+  const nsRecent = lastNsTs && (new Date() - lastNsTs) / 3600000 <= 72;
+  if (isNoShow && nsRecent) return nsCount >= 3 ? 'noshow_3x' : nsCount === 2 ? 'noshow_2x' : 'noshow';
+  if (isNoShow && !nsRecent) return hasConvo ? 'spoken' : 'spoken'; // they engaged — appointment happened to be missed
   if (hasAppt && isAtApptTime) return 'appt';
   if (hasAppt && minsToAppt > 120) return 'appt_upcoming';
   if (hasConvo) return 'spoken';
