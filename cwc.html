@@ -4114,7 +4114,16 @@ const TEXT_TEMPLATES = [
     id: 'ghosting',
     label: 'Ghosting (requested info)',
     stage: ['spoken'],
-    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, it's Holli. You'd asked for info on protecting ${c.address||'your home'} - did something change, or is life just busy?`
+    text: (c) => {
+      const fn = (c.name||'').split(' ')[0];
+      let street = '';
+      if (c.address) {
+        const firstPart = c.address.split(',')[0].trim();
+        street = firstPart.replace(/^[\d\s-]+/, '').trim();
+      }
+      const homeRef = street ? `your home on ${street}` : 'your home';
+      return `Hi ${fn}, it's Holli. You'd asked for info on protecting ${homeRef} - did something change, or is life just busy?`;
+    }
   },
   {
     id: 'appt_confirm',
