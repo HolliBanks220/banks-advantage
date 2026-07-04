@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">A
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>CWC Tracker - Banks Advantage</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -196,11 +196,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         </div>
       </div>
       <div class="stat stat-navy-lt">
-        <div class="stat-lbl lbl-navy">Appts booked</div>
-        <div class="hint-lt">Tap to edit</div>
-        <div class="stat-val val-navy" id="s-appts" onclick="startEdit('appts','navy')">0</div>
+        <div class="stat-lbl lbl-navy">Appts set</div>
+        <div class="hint-lt">From logged outcomes</div>
+        <div class="stat-val val-navy" id="s-appts">0</div>
         <div class="stat-btns">
-          <button class="tap-btn tap-lt-navy" onclick="addStat('appts',1)">+1</button>
         </div>
       </div>
       <div class="stat stat-red">
@@ -855,14 +854,104 @@ function countApptsScheduled(start, end) {
   return n;
 }
 
+
+// ── PRODUCTION LEDGER ────────────────────────────────────────────────────────
+// One collector, one pass over touchpoints dated in the period. Sits here are
+// EVENTS (every scheduled meeting counts) — completely independent of the dial
+// ledger's "appts set". Reasons on continuations power show-rate-by-type,
+// the cost/gain of continuing, and the retirement step funnel.
+function collectProduction(start, end) {
+  const P = {
+    showed: 0, noShow: 0, pending: 0,
+    finalized: 0, needsWork: 0,
+    byType: {},   // type -> {booked, showed, noShow}
+    funnel: { s1: {booked:0, showed:0}, s2: {booked:0, showed:0}, s3: {booked:0, showed:0}, closed: 0 },
+    oneSitCases: {closed:0, total:0}, multiSitCases: {closed:0, total:0}
+  };
+  const inR = (dt) => { if (!dt) return false; const d = new Date(dt); return d >= start && d <= end; };
+
+  clients.forEach(c => {
+    (c.cases||[]).forEach(cs => {
+      const tps = (cs.touchpoints||[]);
+      const resolvedSits = tps.filter(tp => tp && (tp.outcome === 'sale' || tp.outcome === 'nosale'));
+
+      tps.forEach((tp, ti) => {
+        if (!tp || !inR(tp.datetime)) return;
+        const type = tp.type || 'Initial';
+        if (!P.byType[type]) P.byType[type] = {booked:0, showed:0, noShow:0};
+        P.byType[type].booked++;
+        if (tp.outcome === 'sale' || tp.outcome === 'nosale') {
+          P.showed++; P.byType[type].showed++;
+          // Finalized vs needs more work: a later pending tp = the conversation continues
+          const hasLaterPending = tps.some((t2, tj) => tj > ti && t2 && t2.outcome === 'pending');
+          if (hasLaterPending) P.needsWork++; else P.finalized++;
+        } else if (tp.outcome === 'noshow') {
+          P.noShow++; P.byType[type].noShow++;
+        } else if (tp.outcome === 'pending') {
+          P.pending++;
+        }
+      });
+
+      // Retirement funnel (all-time within the period window for booked/showed;
+      // closed = case closed won any time its close tp lands in period)
+      if (cs.type === 'Retirement') {
+        tps.forEach(tp => {
+          if (!tp || !inR(tp.datetime)) return;
+          const bucket = tp.type === 'Step 1' ? 's1' : tp.type === 'Step 2' ? 's2' : tp.type === 'Step 3' ? 's3' : null;
+          if (!bucket) return;
+          P.funnel[bucket].booked++;
+          if (tp.outcome === 'sale' || tp.outcome === 'nosale') P.funnel[bucket].showed++;
+        });
+        if (cs.status === 'Closed' && resolvedSits.some(tp => inR(tp.datetime))) P.funnel.closed++;
+      }
+
+      // Cost/gain of continuing: closed-won rate for one-sit vs multi-sit cases
+      // (cases whose last activity falls in the period)
+      if (resolvedSits.length && resolvedSits.some(tp => inR(tp.datetime)) && (cs.status === 'Closed' || cs.status === 'Closed Lost')) {
+        const bucket = resolvedSits.length === 1 ? P.oneSitCases : P.multiSitCases;
+        bucket.total++;
+        if (cs.status === 'Closed') bucket.closed++;
+      }
+    });
+  });
+  return P;
+}
+
+function renderProduction() {
+  const el = document.getElementById('production-panel');
+  if (!el) return;
+  const {start: pStart, end: pEnd} = getPeriodBounds('production');
+  const P = collectProduction(pStart, pEnd);
+  const pct = (a,b) => b > 0 ? Math.round(a/b*100) + '%' : '-';
+  const typeLine = Object.entries(P.byType)
+    .filter(([t,v]) => v.showed + v.noShow > 0)
+    .map(([t,v]) => t + ' ' + pct(v.showed, v.showed + v.noShow))
+    .join(' \u00B7 ') || 'No resolved sits yet';
+  const oneSit = pct(P.oneSitCases.closed, P.oneSitCases.total);
+  const multiSit = pct(P.multiSitCases.closed, P.multiSitCases.total);
+  el.innerHTML = `
+    <div style="font-size:11px;font-weight:700;color:#1D3557;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Production</div>
+    <div style="font-size:12px;color:#1D3557;margin-bottom:4px;"><strong>${P.showed}</strong> showed \u00B7 <strong>${P.noShow}</strong> no-show \u00B7 <strong>${P.pending}</strong> pending
+      <span style="color:#8fa8c0;">|</span> show rate <strong>${pct(P.showed, P.showed + P.noShow)}</strong></div>
+    <div style="font-size:12px;color:#1D3557;margin-bottom:4px;">Finalized <strong>${P.finalized}</strong> \u00B7 Needs more work <strong>${P.needsWork}</strong></div>
+    <div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">Show by type: ${typeLine}</div>
+    <div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">Retirement: S1 ${P.funnel.s1.showed}/${P.funnel.s1.booked} \u2192 S2 ${P.funnel.s2.showed}/${P.funnel.s2.booked} \u2192 S3 ${P.funnel.s3.showed}/${P.funnel.s3.booked} \u2192 Closed ${P.funnel.closed}</div>
+    <div style="font-size:11px;color:#5f7a99;">Close rate: one-sit ${oneSit} \u00B7 after continuation ${multiSit}</div>
+  `;
+}
+
 function renderScore() {
   const {start: aStart, end: aEnd, label} = getPeriodBounds('activity');
   const {start: pStart, end: pEnd} = getPeriodBounds('production');
   document.getElementById('period-label').textContent = label;
 
   const dials=sumStat('dials',aStart,aEnd), convos=sumStat('convos',aStart,aEnd);
-  const appts=countApptsScheduled(aStart,aEnd), callbacks=sumStat('callbacks',aStart,aEnd), dead=sumStat('dead',aStart,aEnd);
+  // DIAL LEDGER: appointments SET (phone results), derived from logged outcomes.
+  // Continuations, reschedules, and retirement steps never touch this number.
+  const appts = clients.reduce((n,c) => n + (c.call_log||[]).filter(cl => cl.outcome === 'Appt set' && new Date(cl.ts) >= aStart && new Date(cl.ts) <= aEnd).length, 0);
+  const callbacks=sumStat('callbacks',aStart,aEnd), dead=sumStat('dead',aStart,aEnd);
   const texts=sumStat('texts',aStart,aEnd);
+  try { renderProduction(); } catch(e) { console.error('renderProduction:', e); }
   const resolved = appts + dead;
   ['dials','convos','appts','callbacks','dead'].forEach((k,i) => {
     const el = document.getElementById('s-'+k);
@@ -1250,12 +1339,15 @@ function timerStop() {
 }
 
 async function timerSaveToSupabase(session) {
+  const rec = {
+    stat_key: 'time_' + session.activity + '_' + timerTodayKey(),
+    value: session.seconds,
+    recorded_at: session.end
+  };
+  // Local stats array first so the board reflects it instantly (DB write follows)
+  try { stats.push(rec); } catch(e) {}
   try {
-    await sb.from('stats').insert({
-      stat_key: 'time_' + session.activity + '_' + timerTodayKey(),
-      value: session.seconds,
-      recorded_at: session.end
-    });
+    await sb.from('stats').insert(rec);
   } catch(e) {}
 }
 
@@ -1343,6 +1435,21 @@ function timerAdjustSession(idx) {
 
 function initTimer() {
   timerUpdateStatusLabel();
+  // HEARTBEAT: bank the running session every 60s. Sessions used to save only
+  // on stop — a continuous dial session never saved, and a page reload (e.g.
+  // deploying) vaporized the whole morning. Now a reload costs at most 1 minute.
+  setInterval(() => {
+    try {
+      const t = window._timer;
+      if (!t.activity || !t.startTime) return;
+      const elapsed = Math.floor((Date.now() - t.startTime) / 1000);
+      if (elapsed < 30) return;
+      const activity = t.activity;
+      timerStop();          // saves the chunk (local + Supabase)
+      timerStart(activity); // clock keeps running seamlessly
+      renderScore();        // board ticks live
+    } catch(e) {}
+  }, 60000);
 }
 
 function showTab(t, btn) {
@@ -3095,15 +3202,19 @@ function showContModal(id, ci) {
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+7); tomorrow.setHours(10,0,0,0);
   const contDt = toLocalDT(tomorrow);
   window._sitPPU = false;
+  // Continuation REASON powers the production ledger: show rate by type,
+  // cost/gain of continuing, and the retirement step funnel
+  const isRetirement = ci !== null && ci !== undefined && ((c.cases||[])[ci]||{}).type === 'Retirement';
+  const reasons = isRetirement
+    ? ['Step 2','Step 3','PPU / Policy Pickup','Think about it','Follow-up']
+    : ['PPU / Policy Pickup','Think about it','Follow-up','Policy Review'];
+  const reasonOpts = reasons.map((r,i) => '<option value="' + r + '"' + (i===0?' selected':'') + '>' + r + '</option>').join('');
   showModal('<button class="close-x" onclick="closeModal()">x</button>' +
     '<div class="modal-title">Continuation</div>' +
     '<div class="modal-sub">' + c.name + '</div>' +
     buildWeekGrid(id, 'cont-wg-'+id) +
+    '<div class="field"><label>What is the next meeting?</label><select id="cont-reason" style="width:100%;font-size:14px;">' + reasonOpts + '</select></div>' +
     '<div class="field"><label>Next appointment date & time</label><input type="datetime-local" id="cont-next-dt" onclick="try{this.showPicker()}catch(e){}" value="' + contDt + '" style="font-size:16px;"></div>' +
-    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">' +
-      '<input type="checkbox" id="cont-ppu" onchange="window._sitPPU=this.checked" style="width:16px;height:16px;accent-color:#138181;">' +
-      '<label for="cont-ppu" style="font-size:13px;color:#1D3557;font-weight:500;">PPU / Policy Pickup</label>' +
-    '</div>' +
     '<div class="field"><label>Notes</label><textarea id="cont-notes" placeholder="Notes about this sit..." style="min-height:60px;"></textarea></div>' +
     '<button class="save-btn" style="background:#534AB7;" onclick="confirmSitOutcome(\''+id+'\','+ci+',\'cont\')">Save continuation</button>');
 }
@@ -3116,6 +3227,9 @@ async function confirmSitOutcome(id, ci, outcome) {
   let nextDt = null;
   let contNotes = '';
   let ppu = window._sitPPU || false;
+  let contReason = null;
+  const reasonEl = document.getElementById('cont-reason');
+  if (reasonEl) { contReason = reasonEl.value; ppu = contReason === 'PPU / Policy Pickup'; }
   if (outcome === 'cont') {
     const dtEl = document.getElementById('cont-next-dt');
     const notesEl = document.getElementById('cont-notes');
@@ -3163,7 +3277,7 @@ async function confirmSitOutcome(id, ci, outcome) {
 
   // Add continuation touchpoint for next appt
   if (outcome === 'cont' && nextDt) {
-    const pendingTp = {type: ppu ? 'PPU / Policy Pickup' : 'Follow-up', datetime: nextDt, outcome:'pending', notes:'', apps:[], created:now.toISOString()};
+    const pendingTp = {type: contReason || (ppu ? 'PPU / Policy Pickup' : 'Follow-up'), datetime: nextDt, outcome:'pending', notes:'', apps:[], created:now.toISOString()};
     cases[targetCi].touchpoints = [...(cases[targetCi].touchpoints||[]), tp, pendingTp];
   } else {
     cases[targetCi].touchpoints = [...(cases[targetCi].touchpoints||[]), tp];
