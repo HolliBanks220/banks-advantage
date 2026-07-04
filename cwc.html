@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">A
 <title>CWC Tracker - Banks Advantage</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -2479,10 +2479,11 @@ function isReadyForText(c) {
   if (textsSent >= 4) return false;
   const attempts = getAttemptCount(c);
   const slots = getTimeSlotsCovered(c);
-  // Text 1: after 5 attempts across 3 slots
-  if (textsSent === 0 && attempts >= 5 && slots.size >= 3) return true;
-  // Text 2: after 10 attempts
-  if (textsSent === 1 && attempts >= 10) return true;
+  // Text 1: day one — after 3 attempts across 2 slots (call-then-text
+  // roughly doubles contact rates; waiting to day 2 wastes the hottest window)
+  if (textsSent === 0 && attempts >= 3 && slots.size >= 2) return true;
+  // Text 2: after 6 attempts
+  if (textsSent === 1 && attempts >= 6) return true;
   // Text 3: end of fresh phase (~12 attempts)
   if (textsSent === 2 && attempts >= 12) return true;
   // Text 4: end of warm phase (days 17+)
@@ -2882,13 +2883,16 @@ function openClient(id, keepDialCount) {
   const c = clients.find(x => x.id === id);
   if (!c) return;
   if (!keepDialCount) { window._dialCount = 1; window._dialCountSet = false; }
-  // Auto-detect activity type based on appt window
-  if (timerIsApptWindow(c)) {
+  // Appt mode ONLY for the genuinely imminent appointment (same 2-min pin rule
+  // as the queue). The old +/-hours window on mutable appt_datetime hijacked the
+  // clock: one poisoned card flipped the timer and nothing flipped it back.
+  if (isApptImminent(c)) {
     timerStart('appt');
-  } else if (!window._timer.activity || window._timer.activity === 'dial') {
-    // Keep dial time if already dialing, or start admin for prep
+  } else {
+    // On the Leads tab, dial is the default everything returns to — opening any
+    // regular lead self-heals a stuck appt/admin clock.
     const inLeadsTab = document.getElementById('tab-clients').style.display !== 'none';
-    if (!inLeadsTab) timerStart('admin');
+    timerStart(inLeadsTab ? 'dial' : 'admin');
   }
   const sits = c.sits || [];
   const callLog = c.call_log || [];
@@ -3059,7 +3063,10 @@ function openSitOutcomeForCase(id, ci) {
 }
 
 function showSitOutcomeModal(id, ci) {
-  timerStart('admin'); // logging outcome = admin time
+  {
+    const inLeadsTab = document.getElementById('tab-clients') && document.getElementById('tab-clients').style.display !== 'none';
+    timerStart(inLeadsTab ? 'dial' : 'admin'); // on Leads tab, outcomes are part of the dial session
+  }
   const c = clients.find(x=>x.id===id); if (!c) return;
   const cs = ci !== null ? c.cases[ci] : null;
   const apptDt = c.appt_datetime ? new Date(c.appt_datetime) : new Date();
@@ -3803,7 +3810,8 @@ async function confirmAppt(id) {
 
   renderClients(searchVal);
   renderScore(); renderSidebar();
-  if (nextLead) setTimeout(() => openClient(nextLead.id), 300);
+  // Booked: offer the confirmation text instead of jumping to the next lead
+  setTimeout(() => openTextModal(id, 'appt_confirm'), 400);
 }
 
 //  DIAL COUNT 
@@ -3941,69 +3949,108 @@ async function confirmCallback(id, hasDate) {
 const TEXT_TEMPLATES = [
   {
     id: 'initial',
-    label: 'Initial outreach',
+    label: 'Text 1 - Initial outreach (day one)',
     stage: ['never_spoken'],
-    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli getting back to you. Can you give me a quick call when you get a chance?`
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli getting back to you about your mortgage protection request. Can you give me a quick call when you get a chance?`
   },
   {
     id: 'missing',
-    label: 'Missing each other',
+    label: 'Text 2 - Missing each other',
     stage: ['never_spoken', 'spoken'],
-    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli again. Looks like we keep missing each other — is text better for you?`
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, Holli again. Looks like we keep missing each other - is text easier for you?`
   },
   {
     id: 'impacted',
-    label: "Who's impacted",
+    label: 'Text 3 - Who were you thinking of',
     stage: ['never_spoken', 'spoken'],
-    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli again. I've been reaching out to get your mortgage protection options to you. Who would be impacted if there was a loss of income in your home?`
+    text: (c) => {
+      const fn = (c.name||'').split(' ')[0];
+      if (c.source === 'CIA') return `Hi ${fn}, this is Holli. Still working to get your info to you - who were you thinking of when you filled out the request online?`;
+      if (c.source === 'MIA') return `Hi ${fn}, this is Holli. Still working to get your info to you - who were you thinking of when you responded to that notice about your mortgage?`;
+      return `Hi ${fn}, this is Holli. Still working to get your info to you - who were you thinking of when you sent in your request?`;
+    }
+  },
+  {
+    id: 'cold',
+    label: 'Text 4 - Going cold',
+    stage: ['never_spoken'],
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli. Is protecting your home and equity for your loved ones still a priority? No pressure either way - just don't want to keep calling if the timing's wrong.`
+  },
+  {
+    id: 'ghosting',
+    label: 'Ghosting (requested info)',
+    stage: ['spoken'],
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, it's Holli. You'd asked for info on protecting ${c.address||'your home'} - did something change, or is life just busy?`
+  },
+  {
+    id: 'appt_confirm',
+    label: 'Booking confirmation',
+    stage: ['appt_upcoming', 'appt'],
+    text: (c) => {
+      const fn = (c.name||'').split(' ')[0];
+      const dt = c.appt_datetime ? new Date(c.appt_datetime) : null;
+      const when = dt ? dt.toLocaleDateString('en-US',{weekday:'long'}) + ' at ' + dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : 'our scheduled time';
+      return `Hi ${fn}, Holli here. You're all set for ${when}. Takes about 15 minutes - I'll call you then. If anything changes, just text me back.`;
+    }
+  },
+  {
+    id: 'morning_of',
+    label: 'Morning-of reminder',
+    stage: ['appt_upcoming'],
+    text: (c) => {
+      const fn = (c.name||'').split(' ')[0];
+      const dt = c.appt_datetime ? new Date(c.appt_datetime) : null;
+      const when = dt ? dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : 'our scheduled time';
+      return `Hi ${fn}, it's Holli - looking forward to our call today at ${when}. Talk soon!`;
+    }
   },
   {
     id: 'appt_now',
     label: 'At appointment time',
-    stage: ['appt'],
-    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli. We have an appointment right now — are you still available for a quick call?`
+    stage: ['appt', 'noshow'],
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli. We have an appointment right now - are you still available for a quick call?`
   },
   {
     id: 'post_noshow',
-    label: 'Post no-show',
+    label: 'No-show - right-now recovery',
     stage: ['noshow'],
-    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli. We missed our appointment today — I have some time open this week. When works best for you?`
-  },
-  {
-    id: 'ghosting',
-    label: 'Ghosting (spoke before)',
-    stage: ['spoken'],
-    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli. Is protecting ${c.address||'your home'} still a priority for you? When\'s a good time to connect?`
-  },
-  {
-    id: 'cold',
-    label: 'Never spoken, going cold',
-    stage: ['never_spoken'],
-    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli. I\'ve been trying to reach you — is it still a priority to protect your home and equity for your loved ones?`
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, it's Holli. Just tried you for our appointment - life happens! I'm free for the next hour if you can still hop on.`
   },
   {
     id: 'missed_appt',
-    label: 'Missed call at appt time',
+    label: 'No-show - reschedule',
     stage: ['appt', 'noshow'],
-    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli. I tried calling for our appointment — what\'s your schedule looking like these next couple of days?`
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, Holli here. We missed each other earlier - I held some time this week. What day works better?`
   },
   {
     id: 'noshow_2x',
     label: '2nd no-show follow-up',
     stage: ['noshow_2x'],
-    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli. We\'ve missed each other a couple of times now — I still want to make sure you have the information you need. Is there a better time for us to connect?`
-  },
-  {
-    id: 'noshow_2x_text',
-    label: 'Text if no answer (2nd no-show)',
-    stage: ['noshow_2x'],
-    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli. I\'ve tried reaching you a couple of times — is it still a priority to protect your home and equity for your loved ones?`
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, it's Holli. We've missed each other a couple times now - I still want to make sure you have what you requested. Morning or evening better for you?`
   },
   {
     id: 'noshow_3x',
     label: 'Final attempt (3rd no-show)',
     stage: ['noshow_3x'],
-    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli. I\'ve made several attempts to connect — is protecting ${c.address||'your home'} still something you want to take care of? This will be my last reach out unless I hear back.`
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli. I've made several attempts to get your information to you. If it's no longer a priority, no hard feelings - this'll be my last reach out unless I hear back.`
+  },
+  {
+    id: 'nurture_30',
+    label: 'Nurture - 30 day',
+    stage: ['nurture'],
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, Holli here. Circling back - anything change with the house or family that makes this worth revisiting?`
+  },
+  {
+    id: 'nurture_60',
+    label: 'Nurture - 60 day',
+    stage: ['nurture'],
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, it's Holli. Rates and options shift - happy to run updated numbers if you're curious.`
+  },
+  {
+    id: 'nurture_90',
+    label: 'Nurture - 90 day',
+    stage: ['nurture'],
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, Holli. Last check-in from me - if protecting your home ever moves back up the list, you have my number.`
   }
 ];
 
@@ -4023,6 +4070,7 @@ function getLeadTextStage(c) {
 
   if (isNoShow) return nsCount >= 3 ? 'noshow_3x' : nsCount === 2 ? 'noshow_2x' : 'noshow';
   if (hasAppt && isAtApptTime) return 'appt';
+  if (hasAppt && minsToAppt > 120) return 'appt_upcoming';
   if (hasConvo) return 'spoken';
   return 'never_spoken';
 }
@@ -4275,6 +4323,11 @@ async function quickLog(id, outcome, statKey) {
     closeModal();
     renderClients(searchVal);
     setTimeout(() => openTextModal(id, 'post_noshow'), 400);
+  } else if (outcome === 'Appt set') {
+    // Booked: offer the confirmation text — reminder texts are the most proven no-show reducer
+    closeModal();
+    renderClients(searchVal);
+    setTimeout(() => openTextModal(id, 'appt_confirm'), 400);
   } else {
     closeModal();
     renderClients(searchVal);
