@@ -396,6 +396,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
       <!-- Summary bar (shown in submitted view) -->
       <div id="apps-summary-bar" style="background:#1D3557;border-radius:10px;padding:10px 14px;margin-bottom:10px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;"></div>
+      <div id="slingshot-panel" style="display:none;background:#fff;border:1px solid #e2eaf2;border-radius:10px;padding:12px 14px;margin-bottom:10px;"></div>
       <!-- Placement rate bar (shown in placed view) -->
       <div id="apps-placement-bar" style="display:none;background:#fff;border:1px solid #e2eaf2;border-radius:10px;padding:12px 14px;margin-bottom:10px;"></div>
       <div id="apps-tab-list"></div>
@@ -855,6 +856,98 @@ function countApptsScheduled(start, end) {
   return n;
 }
 
+
+
+// ── BONUS / PROMOTION TRACKER (level-aware, team-ready) ────────────────────
+// 95%+ agents: Producer Bonus qualification — write 2+ weeks in the month AND
+// hit personal net placed threshold for the level. Qualification is purely
+// net placed numbers (payout math deliberately not built yet).
+// Sub-95 agents: Slingshot promotion race — the monthly requirement met EACH
+// qualifying month (2 consecutive), or requirement + $2,500 in one month.
+const PRODUCER_BONUS_REQ = { 95: 15000, 100: 20000, 105: 25000, 110: 30000, 115: 35000, 120: 45000, 125: 55000, 130: 55000 };
+const SLINGSHOT = { 80: {next: 85, req: 2500}, 85: {next: 90, req: 5000}, 90: {next: 95, req: 10000} };
+
+function getNetPlacedForMonth(year, month) {
+  let placed = 0, lapsed = 0;
+  clients.forEach(c => {
+    (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+      (tp.apps||[]).forEach(ap => {
+        const pm = getPlacementMonth({...ap, tpDate: ap.writtenDate || tp.datetime});
+        if (!pm || pm.getFullYear() !== year || pm.getMonth() !== month) return;
+        if (['Placed','Issued','Paid'].includes(ap.status||'')) placed += (ap.premium||0);
+        if (['Lapse','Cancel'].includes(ap.status||'')) lapsed += (ap.premium||0);
+      });
+    }));
+  });
+  return placed - lapsed;
+}
+
+function getWritingWeeks(year, month) {
+  // Weeks (Sat-Fri) in the calendar month with at least one app written
+  const weeks = new Map();
+  clients.forEach(c => {
+    (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+      (tp.apps||[]).forEach(ap => {
+        const d = new Date(ap.writtenDate || tp.datetime || 0);
+        if (d.getFullYear() !== year || d.getMonth() !== month) return;
+        const sat = new Date(d); sat.setDate(d.getDate() - ((d.getDay() + 1) % 7));
+        weeks.set(sat.toDateString(), true);
+      });
+    }));
+  });
+  return weeks.size;
+}
+
+function renderSlingshot() {
+  const el = document.getElementById('slingshot-panel');
+  if (!el) return;
+  const level = parseInt(getContractLevel()) || 105;
+  const now = new Date();
+  const thisNet = getNetPlacedForMonth(now.getFullYear(), now.getMonth());
+  const fmt = (n) => '$' + Math.round(n).toLocaleString();
+  const pctBar = (val, target, color) => {
+    const pct = Math.min(100, Math.max(0, target > 0 ? val / target * 100 : 0));
+    return '<div style="background:#f0f4f8;border-radius:6px;height:8px;overflow:hidden;margin-top:3px;"><div style="width:' + pct.toFixed(0) + '%;height:100%;background:' + color + ';"></div></div>';
+  };
+
+  if (level >= 95) {
+    // PRODUCER BONUS qualification
+    const req = PRODUCER_BONUS_REQ[level] || PRODUCER_BONUS_REQ[130];
+    const weeks = getWritingWeeks(now.getFullYear(), now.getMonth());
+    const weeksOk = weeks >= 2;
+    const netOk = thisNet >= req;
+    const qualified = weeksOk && netOk;
+    el.style.display = 'block';
+    el.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+        '<div style="font-size:11px;font-weight:700;color:#1D3557;text-transform:uppercase;letter-spacing:0.5px;">Producer Bonus \u00B7 Level ' + level + '</div>' +
+        (qualified
+          ? '<div style="font-size:11px;font-weight:700;color:#3B6D11;background:#EDF7E6;border-radius:12px;padding:2px 10px;">QUALIFIED \u2713</div>'
+          : '<div style="font-size:10px;color:#8fa8c0;">' + now.toLocaleDateString('en-US',{month:'long'}) + '</div>') +
+      '</div>' +
+      '<div style="font-size:12px;color:#1D3557;">Net placed: <strong>' + fmt(thisNet) + '</strong> of ' + fmt(req) + (netOk ? ' \u2713' : ' (' + fmt(req - thisNet) + ' to go)') + '</div>' +
+      pctBar(thisNet, req, netOk ? '#3B6D11' : '#138181') +
+      '<div style="font-size:11px;color:' + (weeksOk ? '#3B6D11' : '#BA7517') + ';margin-top:6px;">Writing weeks: ' + weeks + '/2 minimum' + (weeksOk ? ' \u2713' : '') + '</div>';
+    return;
+  }
+
+  const rung = SLINGSHOT[level];
+  if (!rung) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastNet = getNetPlacedForMonth(prev.getFullYear(), prev.getMonth());
+  const onePathTarget = rung.req + 2500;
+  const lastHit = lastNet >= rung.req;
+  const twoPathLine = lastHit
+    ? 'Last month hit ' + fmt(rung.req) + ' \u2713 \u2014 place ' + fmt(Math.max(0, rung.req - thisNet)) + ' more this month to promote'
+    : 'Two-month path: ' + fmt(rung.req) + ' net placed EACH month, 2 consecutive (last month: ' + fmt(lastNet) + ')';
+  el.innerHTML =
+    '<div style="font-size:11px;font-weight:700;color:#1D3557;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Slingshot: ' + level + ' \u2192 ' + rung.next + '</div>' +
+    '<div style="font-size:12px;color:#1D3557;">One-month path: <strong>' + fmt(thisNet) + '</strong> of ' + fmt(onePathTarget) + ' net placed' + (thisNet >= onePathTarget ? ' \u2014 PROMOTED \uD83C\uDF89' : ' (' + fmt(onePathTarget - thisNet) + ' to go)') + '</div>' +
+    pctBar(thisNet, onePathTarget, '#138181') +
+    '<div style="font-size:11px;color:#5f7a99;margin-top:6px;">' + twoPathLine + '</div>' +
+    (lastHit ? pctBar(thisNet, rung.req, '#534AB7') : '');
+}
 
 // ── PRODUCTION LEDGER ────────────────────────────────────────────────────────
 // One collector, one pass over touchpoints dated in the period. Sits here are
@@ -1882,6 +1975,7 @@ async function toggleAppOPT(clientId, ci, ti, ai) {
 function renderAppsTab() {
   const el = document.getElementById('apps-tab-list');
   const summaryBar = document.getElementById('apps-summary-bar');
+  try { renderSlingshot(); } catch(e) { console.error('slingshot:', e); }
   const placementBar = document.getElementById('apps-placement-bar');
   if (!el) return;
 
