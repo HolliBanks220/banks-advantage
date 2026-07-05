@@ -2073,8 +2073,10 @@ function renderAppsTab() {
         if (!['Lapse','Cancel'].includes(ap.status||'')) {
           const d = new Date(ap.tpDate||0);
           const hasDate = d.getFullYear() > 2000;
-          // If no valid date, always show. If has date, filter by period.
-          return !hasDate || (d >= pStart && d <= pEnd);
+          // Undated apps only show in the CURRENT period (they were leaking
+          // into every period viewed, inflating comp totals everywhere)
+          if (!hasDate) return periodOffset === 0;
+          return d >= pStart && d <= pEnd;
         }
         return false;
       })
@@ -2137,6 +2139,7 @@ function renderAppsTab() {
               const suspicious = comp.grossComp > (ap.premium||0) * 1.35;
               return `<div style="font-size:11px;color:${suspicious ? '#A32D2D' : '#3B6D11'};margin-top:1px;font-weight:500;">${comp.rate}% \u00B7 ${fmt(comp.grossComp)} comp \u00B7 ${fmt(upfront)} upfront${comp.isAsEarned ? ' (as-earned, 1st month)' : ''}${suspicious ? ' \u26A0\uFE0F comp exceeds premium \u00D7 rate ceiling \u2014 check this app' : ''}</div>`;
             })()}
+            <button onclick="openEditApp('${ap.clientId}',${ap.ci},${ap.ti},${ap.ai})" style="margin-top:4px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:2px 10px;font-size:10px;color:#5f7a99;cursor:pointer;">Edit app</button>
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
             <select onchange="setAppStatus('${ap.clientId}',${ap.ci},${ap.ti},${ap.ai},this.value)" style="font-size:11px;font-weight:600;color:${statusColor};background:${statusColor}18;border:1px solid ${statusColor}44;border-radius:8px;padding:3px 6px;cursor:pointer;outline:none;">
@@ -2274,7 +2277,7 @@ function renderAppsTab() {
               <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
                 <div style="flex:1;min-width:0;cursor:pointer;" onclick="openClient('${ap.clientId}')">
                   <div style="font-size:12px;font-weight:600;color:#1D3557;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ap.clientName}</div>
-                  <div style="font-size:11px;color:#5f7a99;">${ap.carrier||''} · ${fmt(ap.premium||0)}</div>
+                  <div style="font-size:11px;color:#5f7a99;"><strong style="color:#1D3557;">$${((ap.premium||0)/12).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}/mo</strong> · ${ap.carrier||''} · ${fmt(ap.premium||0)} APV</div>
                 </div>
                 <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
                   <select onchange="setAppStatus('${ap.clientId}',${ap.ci},${ap.ti},${ap.ai},this.value)" style="font-size:10px;font-weight:600;color:${statusColor};background:${statusColor}18;border:1px solid ${statusColor}44;border-radius:8px;padding:2px 5px;cursor:pointer;outline:none;">
@@ -5431,7 +5434,7 @@ function renderAppsSection(c) {
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
         <div>
           <div style="font-size:12px;font-weight:600;color:#1D3557;">${ap.carrier} - ${ap.product}</div>
-          <div style="font-size:11px;color:#5f7a99;margin-top:1px;">$${(ap.premium||0).toLocaleString()} APV · $${(ap.face||0).toLocaleString()} face · ${ap.who||'Borrower'}</div>
+          <div style="font-size:11px;color:#5f7a99;margin-top:1px;"><strong style="color:#1D3557;">$${((ap.premium||0)/12).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}/mo</strong> · $${(ap.premium||0).toLocaleString()} APV · $${(ap.face||0).toLocaleString()} face · ${ap.who||'Borrower'}</div>
           <div style="font-size:10px;color:#a0b8cc;margin-top:1px;">${dt}</div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
@@ -5872,6 +5875,14 @@ function getCompRate(carrierName, productName, contractLevel, clientAge, product
   const carrier = COMP_DATA[carrierName];
   if (!carrier) return null;
 
+  // Heal pipe-corrupted records: an older edit flow stored 'Product|Range'
+  // as the product name, breaking the lookup entirely.
+  if (productName && productName.includes('|')) {
+    const parts = productName.split('|');
+    productName = parts[0];
+    if (!productRange) productRange = parts[1] || null;
+  }
+
   // Get all products matching this name
   const matches = carrier.products.filter(p => p.name === productName);
   if (!matches.length) return null;
@@ -5887,8 +5898,12 @@ function getCompRate(carrierName, productName, contractLevel, clientAge, product
   // Age matching only applies to rows whose range is actually about age
   const ageRows = matches.filter(p => /age/i.test(p.range||''));
 
+  // Rows differ by TERM (not age) and the app doesn't say which term:
+  // refusing to guess beats a confidently wrong number. Caller shows
+  // "tap Edit to fix product/range" instead.
+  if (matches.length > 1 && !ageRows.length) return null;
+
   if (matches.length === 1 || !clientAge || !ageRows.length) {
-    // Only one row, no age provided, or rows differ by term not age — use first match
     product = matches[0];
   } else {
     const searchRows = ageRows;
