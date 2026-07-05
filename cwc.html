@@ -1032,7 +1032,51 @@ function renderProduction() {
     <div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">Show by type: ${typeLine}</div>
     <div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">Retirement: S1 ${P.funnel.s1.showed}/${P.funnel.s1.booked} \u2192 S2 ${P.funnel.s2.showed}/${P.funnel.s2.booked} \u2192 S3 ${P.funnel.s3.showed}/${P.funnel.s3.booked} \u2192 Closed ${P.funnel.closed}</div>
     <div style="font-size:11px;color:#5f7a99;">Close rate: one-sit ${oneSit} \u00B7 after continuation ${multiSit}</div>
+    ${renderCaseClock()}
   `;
+}
+
+// ── CASE CLOCK ──────────────────────────────────────────────────────────────
+// All-time closed-won cases: how long they take, and whether slower closes
+// change the APV. Days = case open (created or first touchpoint) to the
+// closing sale touchpoint.
+function renderCaseClock() {
+  const buckets = [
+    {label: 'Same-day', max: 2, n: 0, apv: 0},
+    {label: '2-14 days', max: 15, n: 0, apv: 0},
+    {label: '15+ days', max: Infinity, n: 0, apv: 0}
+  ];
+  let totalDays = 0, totalN = 0;
+  const byType = {};
+  clients.forEach(c => {
+    (c.cases||[]).forEach(cs => {
+      const tps = cs.touchpoints||[];
+      const saleTp = [...tps].reverse().find(tp => tp && tp.outcome === 'sale' && tp.datetime);
+      if (!saleTp) return;
+      const openDt = new Date(cs.created || (tps[0] && tps[0].datetime) || saleTp.datetime);
+      const days = Math.max(0, (new Date(saleTp.datetime) - openDt) / 86400000);
+      const apv = tps.reduce((a,tp) => a+(tp.apps||[]).reduce((b,ap)=>b+(ap.premium||0),0), 0);
+      totalDays += days; totalN++;
+      const b = buckets.find(x => days < x.max);
+      b.n++; b.apv += apv;
+      const t = cs.type || 'Other';
+      if (!byType[t]) byType[t] = {days: 0, n: 0};
+      byType[t].days += days; byType[t].n++;
+    });
+  });
+  if (!totalN) return '';
+  const fmt$ = (n) => '$' + Math.round(n).toLocaleString();
+  const bucketLine = buckets.filter(b => b.n > 0)
+    .map(b => b.label + ': ' + b.n + ' close' + (b.n!==1?'s':'') + ' avg ' + fmt$(b.apv / b.n))
+    .join(' \u00B7 ');
+  const typeLine = Object.entries(byType)
+    .map(([t,v]) => t + ' ' + (v.days / v.n).toFixed(1) + 'd')
+    .join(' \u00B7 ');
+  return '<div style="border-top:1px solid #f0f4f8;margin-top:8px;padding-top:8px;">' +
+    '<div style="font-size:11px;font-weight:700;color:#1D3557;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Case clock <span style="font-weight:400;color:#8fa8c0;text-transform:none;">(all-time closed)</span></div>' +
+    '<div style="font-size:12px;color:#1D3557;margin-bottom:3px;">Avg days to close: <strong>' + (totalDays / totalN).toFixed(1) + '</strong> across ' + totalN + ' closes \u00B7 by type: ' + typeLine + '</div>' +
+    '<div style="font-size:11px;color:#5f7a99;">APV by speed \u2014 ' + bucketLine + '</div>' +
+  '</div>';
 }
 
 function renderScore() {
@@ -1182,10 +1226,8 @@ function renderScore() {
   const closedCount = saleTPs.filter(t=>(t.apps||[]).length>0).length + satSits.filter(s=>(s.apps||[]).length>0).length;
   const apvPerSale = totalSales>0 ? totalAPV/totalSales : 0;
 
-  const totalShowed2 = allTPs.filter(t=>t.outcome==='sale'||t.outcome==='nosale').length + legacySits;
-
   document.getElementById('p-first').textContent = periodAppts;
-  document.getElementById('p-first-rate').textContent = pct(totalShowed2, periodAppts) + ' show rate';
+  document.getElementById('p-first-rate').textContent = pct(totalShowed, periodAppts) + ' show rate'; // totalShowed includes continuation sits
   document.getElementById('p-showed').textContent = totalShowed;
   document.getElementById('p-sit-rate').textContent = totalSales + totalNoSales > 0 ? pct(totalSales, totalSales + totalNoSales) + ' close rate' : '- close rate';
   document.getElementById('p-noshow').textContent = totalNoShows;
