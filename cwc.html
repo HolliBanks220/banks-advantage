@@ -301,8 +301,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-val val-green" id="p-closed">0</div>
         <div class="stat-sub sub-green" id="p-close-rate">-</div>
       </div>
-    <div id="production-panel" style="background:#fff;border-radius:12px;padding:12px 14px;margin-top:8px;box-shadow:0 1px 3px rgba(29,53,87,0.08);"></div>
     </div>
+    <div id="production-panel" style="background:#fff;border-radius:12px;padding:12px 16px;margin-bottom:6px;box-shadow:0 1px 3px rgba(29,53,87,0.08);"></div>
     <!-- APV summary row - compact -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
       <div class="stat stat-teal">
@@ -392,6 +392,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div style="display:flex;gap:6px;margin-bottom:10px;align-items:center;">
         <button id="apps-view-submitted" onclick="setAppsView('submitted')" style="flex:1;padding:7px;font-size:12px;font-weight:600;border-radius:8px;border:none;background:#1D3557;color:#fff;cursor:pointer;">Submitted</button>
         <button id="apps-view-placed" onclick="setAppsView('placed')" style="flex:1;padding:7px;font-size:12px;font-weight:600;border-radius:8px;border:2px solid #e2eaf2;background:#fff;color:#5f7a99;cursor:pointer;">Placed</button>
+        <button id="apps-view-commissions" onclick="setAppsView('commissions')" style="flex:1;padding:7px;font-size:12px;font-weight:600;border-radius:8px;border:2px solid #e2eaf2;background:#fff;color:#5f7a99;cursor:pointer;">Commissions</button>
         <input id="apps-search" oninput="renderAppsTab()" placeholder="Search by client, insured, carrier or status..." style="flex:1.5;padding:7px 10px;font-size:12px;border:1px solid #d0dcea;border-radius:8px;color:#1D3557;outline:none;">
       </div>
       <!-- Summary bar (shown in submitted view) -->
@@ -1017,6 +1018,9 @@ function renderProduction() {
   if (!el) return;
   const {start: pStart, end: pEnd} = getPeriodBounds('production');
   const P = collectProduction(pStart, pEnd);
+  // A wall of zeros helps nobody — the panel only appears when the period has activity
+  if (P.showed + P.noShow + P.pending === 0) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
   const pct = (a,b) => b > 0 ? Math.round(a/b*100) + '%' : '-';
   const typeLine = Object.entries(P.byType)
     .filter(([t,v]) => v.showed + v.noShow > 0)
@@ -1025,14 +1029,13 @@ function renderProduction() {
   const oneSit = pct(P.oneSitCases.closed, P.oneSitCases.total);
   const multiSit = pct(P.multiSitCases.closed, P.multiSitCases.total);
   el.innerHTML = `
-    <div style="font-size:11px;font-weight:700;color:#1D3557;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Production</div>
-    <div style="font-size:12px;color:#1D3557;margin-bottom:4px;"><strong>${P.showed}</strong> showed \u00B7 <strong>${P.noShow}</strong> no-show \u00B7 <strong>${P.pending}</strong> pending
-      <span style="color:#8fa8c0;">|</span> show rate <strong>${pct(P.showed, P.showed + P.noShow)}</strong></div>
-    <div style="font-size:12px;color:#1D3557;margin-bottom:4px;">Finalized <strong>${P.finalized}</strong> \u00B7 Needs more work <strong>${P.needsWork}</strong></div>
-    <div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">Show by type: ${typeLine}</div>
-    <div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">Retirement: S1 ${P.funnel.s1.showed}/${P.funnel.s1.booked} \u2192 S2 ${P.funnel.s2.showed}/${P.funnel.s2.booked} \u2192 S3 ${P.funnel.s3.showed}/${P.funnel.s3.booked} \u2192 Closed ${P.funnel.closed}</div>
-    <div style="font-size:11px;color:#5f7a99;">Close rate: one-sit ${oneSit} \u00B7 after continuation ${multiSit}</div>
-    ${renderCaseClock()}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 20px;">
+      <div style="grid-column:1/-1;font-size:11px;font-weight:700;color:#1D3557;text-transform:uppercase;letter-spacing:0.5px;">Production detail</div>
+      <div style="font-size:12px;color:#1D3557;"><strong>${P.showed}</strong> showed \u00B7 <strong>${P.noShow}</strong> no-show \u00B7 <strong>${P.pending}</strong> pending <span style="color:#8fa8c0;">|</span> show rate <strong>${pct(P.showed, P.showed + P.noShow)}</strong></div>
+      <div style="font-size:12px;color:#1D3557;">Finalized <strong>${P.finalized}</strong> \u00B7 Needs more work <strong>${P.needsWork}</strong> <span style="color:#8fa8c0;">|</span> close: one-sit <strong>${oneSit}</strong> \u00B7 after cont. <strong>${multiSit}</strong></div>
+      <div style="font-size:11px;color:#5f7a99;">Show by type: ${typeLine}</div>
+      <div style="font-size:11px;color:#5f7a99;">Retirement: S1 ${P.funnel.s1.showed}/${P.funnel.s1.booked} \u2192 S2 ${P.funnel.s2.showed}/${P.funnel.s2.booked} \u2192 S3 ${P.funnel.s3.showed}/${P.funnel.s3.booked} \u2192 Closed ${P.funnel.closed}</div>
+    </div>
   `;
 }
 
@@ -1072,10 +1075,10 @@ function renderCaseClock() {
   const typeLine = Object.entries(byType)
     .map(([t,v]) => t + ' ' + (v.days / v.n).toFixed(1) + 'd')
     .join(' \u00B7 ');
-  return '<div style="border-top:1px solid #f0f4f8;margin-top:8px;padding-top:8px;">' +
-    '<div style="font-size:11px;font-weight:700;color:#1D3557;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Case clock <span style="font-weight:400;color:#8fa8c0;text-transform:none;">(all-time closed)</span></div>' +
-    '<div style="font-size:12px;color:#1D3557;margin-bottom:3px;">Avg days to close: <strong>' + (totalDays / totalN).toFixed(1) + '</strong> across ' + totalN + ' closes \u00B7 by type: ' + typeLine + '</div>' +
-    '<div style="font-size:11px;color:#5f7a99;">APV by speed \u2014 ' + bucketLine + '</div>' +
+  return '<div style="border-top:1px solid #f0f4f8;margin-top:8px;padding-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px 20px;">' +
+    '<div style="grid-column:1/-1;font-size:11px;font-weight:700;color:#1D3557;text-transform:uppercase;letter-spacing:0.5px;">Case clock <span style="font-weight:400;color:#8fa8c0;text-transform:none;">(all-time closed)</span></div>' +
+    '<div style="font-size:12px;color:#1D3557;">Avg days to close: <strong>' + (totalDays / totalN).toFixed(1) + '</strong> across ' + totalN + ' \u00B7 ' + typeLine + '</div>' +
+    '<div style="font-size:11px;color:#5f7a99;">APV by speed: ' + bucketLine + '</div>' +
   '</div>';
 }
 
@@ -1938,8 +1941,10 @@ function setAppsView(v) {
   appsView = v;
   const sub = document.getElementById('apps-view-submitted');
   const pl = document.getElementById('apps-view-placed');
+  const cm = document.getElementById('apps-view-commissions');
   if (sub) { sub.style.background = v==='submitted'?'#1D3557':'#fff'; sub.style.color = v==='submitted'?'#fff':'#5f7a99'; sub.style.border = v==='submitted'?'none':'2px solid #e2eaf2'; }
   if (pl)  { pl.style.background  = v==='placed'?'#138181':'#fff';   pl.style.color  = v==='placed'?'#fff':'#5f7a99';  pl.style.border  = v==='placed'?'none':'2px solid #e2eaf2'; }
+  if (cm)  { cm.style.background  = v==='commissions'?'#3B6D11':'#fff'; cm.style.color = v==='commissions'?'#fff':'#5f7a99'; cm.style.border = v==='commissions'?'none':'2px solid #e2eaf2'; }
   renderAppsTab();
 }
 
