@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b708</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b709</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -5475,7 +5475,8 @@ function openEditApp(id, ci, ti, ai) {
   <div class="field"><label>Carrier</label><select id="edit-app-carrier" onchange="updateEditAppProducts()">${carrierOptions(ap.carrier)}</select></div>
   <div class="field"><label>Product</label><select id="edit-app-product">${productOptions(ap.carrier, ap.product + (ap.product_range ? '|' + ap.product_range : ''))}</select></div>
   <div class="field"><label>Face amount</label><input type="number" id="edit-app-face" value="${ap.face||''}" placeholder="e.g. 250000" style="font-size:16px;"></div>
-  <div class="field"><label>Annual premium (APV)</label><input type="number" id="edit-app-apv" value="${ap.premium||''}" placeholder="e.g. 1200" style="font-size:16px;"></div>
+  <div class="field"><label>Monthly premium ($ and cents — the number you quote)</label><input type="number" step="0.01" id="edit-app-monthly" value="${ap.premium ? (ap.premium/12).toFixed(2) : ''}" placeholder="e.g. 95.20" style="font-size:16px;" oninput="const a=document.getElementById('edit-app-apv-display'); if(a) a.textContent = this.value ? '= $' + (parseFloat(this.value)*12).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' APV' : '';">
+  <div id="edit-app-apv-display" style="font-size:10px;color:#5f7a99;margin-top:3px;">${ap.premium ? '= $' + ap.premium.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' APV' : ''}</div></div>
   <div class="field"><label>Who</label><input type="text" id="edit-app-who" value="${ap.who||'Borrower'}"></div>
   <div class="field"><label>Status</label><select id="edit-app-status">${APP_STATUSES.map(s=>`<option${ap.status===s?' selected':''}>${s}</option>`).join('')}</select></div>
   <button class="save-btn" onclick="saveEditApp('${id}',${ci},${ti},${ai})">Save</button>
@@ -5497,7 +5498,8 @@ async function saveEditApp(id, ci, ti, ai) {
   ap.product = prodVal.split('|')[0];
   ap.product_range = prodVal.split('|')[1] || null;
   ap.face = parseFloat(document.getElementById('edit-app-face').value)||0;
-  ap.premium = parseFloat(document.getElementById('edit-app-apv').value)||0;
+  const _mo = parseFloat(document.getElementById('edit-app-monthly').value)||0;
+  ap.premium = Math.round(_mo * 12 * 100) / 100; // APV = monthly x 12, cents preserved
   ap.who = document.getElementById('edit-app-who').value.trim()||'Borrower';
   ap.status = document.getElementById('edit-app-status').value;
   // Recompute comp with the corrected matching — editing an app repairs its stored comp
@@ -5908,7 +5910,9 @@ const CARRIER_ALIASES = {
   'mutual trust life': 'Pan American Life (MTL)'
 };
 const PRODUCT_ALIASES = {
-  'qsfp': 'Whole Life Insurance to Age 110'
+  'qsfp': 'Whole Life Insurance to Age 110',
+  'adb': 'Accident Protection',
+  'giwl': 'Guaranteed Life Insurance'
 };
 function resolveCarrierKey(name) {
   if (!name) return name;
