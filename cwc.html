@@ -5870,10 +5870,46 @@ function getEnabledProducts(carrierName) {
 }
 
 // Get comp rate for a specific carrier/product at agent's contract level
+// Apps may store legacy carrier names ('American Amicable', 'Mutual of
+// Omaha', 'Corebridge'...) while COMP_DATA keys differ ('AmAm & Occidental',
+// 'MOO'...). Without resolution, comp lookups failed silently for those apps.
+const CARRIER_ALIASES = {
+  'american amicable': 'AmAm & Occidental',
+  'amam': 'AmAm & Occidental',
+  'occidental': 'AmAm & Occidental',
+  'mutual of omaha': 'MOO',
+  'corebridge': 'Corebridge Financial (AIG)',
+  'aig': 'Corebridge Financial (AIG)',
+  'banner life': 'Legal & General (LGA)',
+  'banner': 'Legal & General (LGA)',
+  'lga': 'Legal & General (LGA)',
+  'united home life': 'UHL',
+  'national life group': 'NLG & LSW',
+  'north american': 'North American (NACOLAH)',
+  'mutual trust life': 'Pan American Life (MTL)'
+};
+const PRODUCT_ALIASES = {
+  'qsfp': 'Whole Life Insurance to Age 110'
+};
+function resolveCarrierKey(name) {
+  if (!name) return name;
+  if (COMP_DATA[name]) return name;
+  const k = name.toLowerCase().trim();
+  if (CARRIER_ALIASES[k]) return CARRIER_ALIASES[k];
+  const keys = Object.keys(COMP_DATA);
+  return keys.find(x => x.toLowerCase() === k)
+      || keys.find(x => x.toLowerCase().includes(k) || k.includes(x.toLowerCase()))
+      || name;
+}
+
 function getCompRate(carrierName, productName, contractLevel, clientAge, productRange) {
   const level = contractLevel || getContractLevel();
+  carrierName = resolveCarrierKey(carrierName);
   const carrier = COMP_DATA[carrierName];
   if (!carrier) return null;
+  if (productName && PRODUCT_ALIASES[(productName||'').toLowerCase().trim()]) {
+    productName = PRODUCT_ALIASES[productName.toLowerCase().trim()];
+  }
 
   // Heal pipe-corrupted records: an older edit flow stored 'Product|Range'
   // as the product name, breaking the lookup entirely.
@@ -5930,6 +5966,7 @@ function getCompRate(carrierName, productName, contractLevel, clientAge, product
 
 // Calculate comp for an application
 function getCarrierAdvance(carrierName) {
+  carrierName = resolveCarrierKey(carrierName);
   // Check for user override first
   const settings = getAgentSettings();
   const overrides = settings.advanceOverrides || {};
