@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b705</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b706</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -5451,6 +5451,20 @@ function renderAppsSection(c) {
   }).join('');
 }
 
+async function deleteApp(id, ci, ti, ai) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const ap = ((((c.cases||[])[ci]||{}).touchpoints||[])[ti]||{}).apps[ai];
+  if (!ap) return;
+  if (!confirm('Delete this ' + (ap.carrier||'') + ' ' + (ap.product||'app') + ' ($' + (ap.premium||0).toLocaleString() + ' APV)? This cannot be undone.')) return;
+  const cases = JSON.parse(JSON.stringify(c.cases||[]));
+  cases[ci].touchpoints[ti].apps.splice(ai, 1);
+  showSync('Deleting...');
+  await sb.from('clients').update({cases}).eq('id', id);
+  c.cases = cases;
+  hideSync(); closeModal();
+  renderAppsTab(); renderScore();
+}
+
 function openEditApp(id, ci, ti, ai) {
   const c = clients.find(x=>x.id===id); if(!c) return;
   const ap = c.cases[ci].touchpoints[ti].apps[ai];
@@ -5464,7 +5478,8 @@ function openEditApp(id, ci, ti, ai) {
   <div class="field"><label>Annual premium (APV)</label><input type="number" id="edit-app-apv" value="${ap.premium||''}" placeholder="e.g. 1200" style="font-size:16px;"></div>
   <div class="field"><label>Who</label><input type="text" id="edit-app-who" value="${ap.who||'Borrower'}"></div>
   <div class="field"><label>Status</label><select id="edit-app-status">${APP_STATUSES.map(s=>`<option${ap.status===s?' selected':''}>${s}</option>`).join('')}</select></div>
-  <button class="save-btn" onclick="saveEditApp('${id}',${ci},${ti},${ai})">Save</button>`);
+  <button class="save-btn" onclick="saveEditApp('${id}',${ci},${ti},${ai})">Save</button>
+  <button style="width:100%;margin-top:8px;background:none;border:1px solid #E8B4B4;border-radius:8px;padding:9px;font-size:12px;color:#A32D2D;cursor:pointer;" onclick="deleteApp('${id}',${ci},${ti},${ai})">Delete this app</button>`);
 }
 
 function updateEditAppProducts() {
