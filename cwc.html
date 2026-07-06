@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b713</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -525,10 +525,54 @@ function checkApptInterrupt() {
 }
 setInterval(checkApptInterrupt, 15000);
 
-// Background safety: the tracker in a hidden tab bills nothing.
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) { try { timerStop(); timerUpdateStatusLabel(); } catch(e) {} }
-});
+// IDLE GUARD: open on the desk is not billable hours. Admin stops after 3
+// idle minutes, dial after 5. Appt time is exempt — a phone call looks idle.
+// Any interaction resumes the right clock for wherever you are.
+window._lastInteraction = Date.now();
+['pointerdown','keydown','wheel','touchstart'].forEach(ev =>
+  document.addEventListener(ev, () => {
+    window._lastInteraction = Date.now();
+    try {
+      const t = window._timer;
+      if (t && !t.activity && !document.hidden) {
+        const inLeads = document.getElementById('tab-clients') && document.getElementById('tab-clients').style.display !== 'none';
+        const cardOpen = !!document.querySelector('#modal-ov .modal') && window._openClientId;
+        if (cardOpen) {
+          const c = clients.find(x => x.id === window._openClientId);
+          timerStart(c && isApptImminent(c) ? 'appt' : (inLeads ? 'dial' : 'admin'));
+          timerUpdateStatusLabel();
+        } else if (inLeads && window._dialArmed) {
+          timerStart('dial');
+          timerUpdateStatusLabel();
+        }
+      }
+    } catch(e) {}
+  }, {passive: true})
+);
+setInterval(() => {
+  try {
+    const t = window._timer;
+    if (!t || t.activity !== 'admin') return; // ONLY admin — dial runs through dead air, appt exempt
+    const idleMins = (Date.now() - window._lastInteraction) / 60000;
+    const existing = document.getElementById('idle-prompt');
+    if (idleMins >= 13) {
+      // Prompt ignored for 3 minutes — stop the clock
+      if (existing) existing.remove();
+      timerStop(); timerUpdateStatusLabel();
+    } else if (idleMins >= 10 && !existing) {
+      // 10 idle minutes: ask, don't assume
+      const modal = document.querySelector('#modal-ov .modal') || document.body;
+      const div = document.createElement('div');
+      div.id = 'idle-prompt';
+      div.style.cssText = 'position:sticky;top:0;z-index:99;background:#534AB7;color:#fff;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;font-weight:600;cursor:pointer;text-align:center;';
+      div.textContent = 'Still working this lead? Tap to keep the clock running';
+      div.onclick = () => { window._lastInteraction = Date.now(); div.remove(); };
+      modal.prepend(div);
+    } else if (idleMins < 10 && existing) {
+      existing.remove(); // interaction happened elsewhere — prompt no longer needed
+    }
+  } catch(e) {}
+}, 30000);
 
 function startRealtimeSync() {
   sb.channel('clients-sync')
@@ -886,7 +930,14 @@ function getNetPlacedForMonth(year, month) {
         const pm = getPlacementMonth({...ap, tpDate: ap.writtenDate || tp.datetime});
         if (!pm || pm.getFullYear() !== year || pm.getMonth() !== month) return;
         if (['Placed','Issued','Paid'].includes(ap.status||'')) placed += (ap.premium||0);
-        if (['Lapse','Cancel'].includes(ap.status||'')) lapsed += (ap.premium||0);
+      });
+    }));
+    // Chargebacks subtract in the month they HAPPEN (lapse_date)
+    (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+      (tp.apps||[]).forEach(ap => {
+        if (!['Lapse','Cancel'].includes(ap.status||'')) return;
+        const d = new Date(ap.lapse_date || ap.writtenDate || tp.datetime || 0);
+        if (d.getFullYear() === year && d.getMonth() === month) lapsed += (ap.premium||0);
       });
     }));
   });
@@ -1612,6 +1663,7 @@ function showTab(t, btn) {
   document.getElementById('tab-apps').style.display = t==='apps'?'block':'none';
   // Per spec: time is tracked only while WORKING LEADS (dialing, in a card).
   // Browsing tabs bills nothing. Dial starts when the first lead is opened.
+  if (t!=='clients') window._dialArmed = false; // leaving Leads ends the dial session
   if (t==='appts') { renderAppts(); timerStop(); }
   if (t==='apps') { renderAppsTab(); timerStop(); }
   if (t==='clients') { renderClients(); timerStop(); }
@@ -2175,8 +2227,14 @@ function renderAppsTab() {
 
     const now = new Date();
     const targetDate = new Date(now.getFullYear(), now.getMonth() + periodOffset, 1);
+    // The placement window follows the period being VIEWED: week view = that
+    // week's ratio, month = that month, etc. Chargebacks count by lapse_date —
+    // the month they happen, matching company accounting.
     let placedStart, placedEnd;
-    if (view === 'year') {
+    if (view === 'week' || view === 'day') {
+      const b = getPeriodBounds('production');
+      placedStart = b.start; placedEnd = b.end;
+    } else if (view === 'year') {
       placedStart = new Date(targetDate.getFullYear(), 0, 1);
       placedEnd = new Date(targetDate.getFullYear(), 11, 31, 23, 59, 59);
     } else if (view === 'quarter') {
@@ -2191,12 +2249,18 @@ function renderAppsTab() {
     const PLACED_STATUSES = ['Issued','Paid'];
     const placedApps = allApps.filter(ap => {
       if (!PLACED_STATUSES.includes(ap.status||'')) return false;
+      // Fine windows (day/week) use the actual status-change date; month+
+      // windows use the placement-month bucket (with carrier backdating)
+      if (view === 'week' || view === 'day') {
+        const d = new Date(ap.paid_date || ap.placed_date || ap.writtenDate || ap.tpDate || 0);
+        return d >= placedStart && d <= placedEnd;
+      }
       const d = getPlacementMonth(ap);
       return d >= placedStart && d <= placedEnd;
     });
     const lapsedApps = allApps.filter(ap => {
       if (!['Lapse','Cancel'].includes(ap.status||'')) return false;
-      const d = new Date(ap.tpDate||0);
+      const d = new Date(ap.lapse_date || ap.tpDate || 0);
       return d >= placedStart && d <= placedEnd;
     });
 
@@ -3205,6 +3269,7 @@ function openClient(id, keepDialCount) {
     // On the Leads tab, dial is the default everything returns to — opening any
     // regular lead self-heals a stuck appt/admin clock.
     const inLeadsTab = document.getElementById('tab-clients').style.display !== 'none';
+    if (inLeadsTab) window._dialArmed = true; // idle-resume stays in dial until tab exit
     timerStart(inLeadsTab ? 'dial' : 'admin');
   }
   const sits = c.sits || [];
@@ -5549,6 +5614,8 @@ async function updateAppStatus(id, ci, ti, ai, status) {
     c.cases[ci].touchpoints[ti].apps[ai].status = status;
     if (status==='Placed') c.cases[ci].touchpoints[ti].apps[ai].placed_date = new Date().toISOString();
     if (status==='Paid') c.cases[ci].touchpoints[ti].apps[ai].paid_date = new Date().toISOString();
+    // Chargebacks hit the month they HAPPEN (company accounting), not the month the policy paid
+    if (status==='Lapse' || status==='Cancel') c.cases[ci].touchpoints[ti].apps[ai].lapse_date = new Date().toISOString();
   }
   showSync('Saving...');
   await sb.from('clients').update({cases:c.cases}).eq('id',id);
@@ -6046,7 +6113,7 @@ function getCarrierList() {
 
 // Get products for a carrier
 function getProductsForCarrier(carrierName) {
-  const carrier = COMP_DATA[carrierName];
+  const carrier = COMP_DATA[resolveCarrierKey(carrierName)];
   if (!carrier) return [];
   return carrier.products.map(p => ({
     name: p.name + (p.range ? ' ' + p.range : ''),
