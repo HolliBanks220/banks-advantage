@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h1</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -626,12 +626,24 @@ async function loadClients() {
 }
 
 async function loadStats() {
-  // Newest-first with an explicit high ceiling — the default 1000-row cap
-  // was silently truncating away the current day once the table grew.
-  const { data, error } = await sb.from('stats').select('*')
-    .order('recorded_at', { ascending: false })
-    .range(0, 49999);
-  if (!error && data) stats = data;
+  // Page through the whole table. The server enforces a per-request row cap
+  // (~1000) regardless of the range we ask for, so a single call silently
+  // truncated older days once the table grew. Loop until a short page.
+  const PAGE = 1000;
+  let all = [], from = 0, ok = true;
+  while (true) {
+    const { data, error } = await sb.from('stats').select('*')
+      .order('recorded_at', { ascending: false })
+      .range(from, from + PAGE - 1);
+    if (error) { console.error('loadStats page error', error); ok = false; break; }
+    if (!data || data.length === 0) break;
+    all = all.concat(data);
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+  // Only replace the in-memory stats if the full load succeeded — never blank
+  // the board on a transient error.
+  if (ok) stats = all;
 }
 
 async function loadTasksFromDB() {
