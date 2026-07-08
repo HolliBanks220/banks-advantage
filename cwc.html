@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h1</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h3</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -574,6 +574,32 @@ setInterval(() => {
   } catch(e) {}
 }, 30000);
 
+// DIAL IDLE GUARD: the dial clock runs through dead air on purpose, but a lead
+// left open while you step away used to run it for hours. At 4 idle minutes,
+// ask; ignored to 6, stop the dial clock so idle time isn't billed as dialing.
+setInterval(() => {
+  try {
+    const t = window._timer;
+    if (!t || t.activity !== 'dial') return;
+    const idleMins = (Date.now() - window._lastInteraction) / 60000;
+    const existing = document.getElementById('dial-idle-prompt');
+    if (idleMins >= 6) {
+      if (existing) existing.remove();
+      timerStop(); timerUpdateStatusLabel();
+    } else if (idleMins >= 4 && !existing) {
+      const modal = document.querySelector('#modal-ov .modal') || document.body;
+      const div = document.createElement('div');
+      div.id = 'dial-idle-prompt';
+      div.style.cssText = 'position:sticky;top:0;z-index:99;background:#138181;color:#fff;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;font-weight:600;cursor:pointer;text-align:center;';
+      div.textContent = 'Still dialing? Tap to keep the clock running';
+      div.onclick = () => { window._lastInteraction = Date.now(); div.remove(); };
+      modal.prepend(div);
+    } else if (idleMins < 4 && existing) {
+      existing.remove();
+    }
+  } catch(e) {}
+}, 30000);
+
 function startRealtimeSync() {
   sb.channel('clients-sync')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, async (payload) => {
@@ -622,7 +648,21 @@ async function loadClients() {
       seen.add(c.id);
       return true;
     });
+    normalizeAppDates();
   }
+}
+
+// Apps get bucketed by the date they were WRITTEN. Creation stored that as
+// written_date, but the readers look for writtenDate — the mismatch made sales
+// fall back to the (often old) touchpoint date. Keep both spellings in sync so
+// every app counts toward the day it was actually done.
+function normalizeAppDates() {
+  clients.forEach(c => (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp =>
+    (tp.apps||[]).forEach(ap => {
+      const wd = ap.writtenDate || ap.written_date;
+      if (wd) { ap.writtenDate = wd; ap.written_date = wd; }
+    })
+  )));
 }
 
 async function loadStats() {
@@ -840,9 +880,42 @@ function shiftPeriod(d) {
 //  STATS 
 async function addStat(key, n) {
   const row = { stat_key: key, value: n, recorded_at: new Date().toISOString() };
-  const { data } = await sb.from('stats').insert([row]).select();
+  const { data, error } = await sb.from('stats').insert([row]).select();
+  if (error) { console.error('addStat FAILED', key, n, error); showStatWarning(key); return; }
   if (data) stats.push(data[0]);
   renderScore();
+}
+
+// Visible warning when a stat write is rejected — a silent failure once cost
+// a whole afternoon of dials. Tapping retries the write.
+function showStatWarning(key) {
+  const existing = document.getElementById('stat-warn');
+  if (existing) existing.remove();
+  const div = document.createElement('div');
+  div.id = 'stat-warn';
+  div.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:9999;background:#A32D2D;color:#fff;border-radius:8px;padding:10px 14px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.25);';
+  div.textContent = '\u26A0 A ' + key + ' didn\u2019t save \u2014 tap to retry';
+  div.onclick = async () => { div.remove(); await addStat(key, 1); };
+  document.body.appendChild(div);
+  setTimeout(() => { const d = document.getElementById('stat-warn'); if (d) d.remove(); }, 12000);
+}
+
+// A dial can be "armed" by tapping the phone number (autoIncrementDial) but not
+// yet committed. Outcome buttons commit it; navigating away used to drop it.
+// This commits any armed-but-uncommitted dial exactly once. Clearing the flag
+// FIRST (before any await) guarantees no double-count.
+async function commitPendingDial() {
+  if (!window._dialCountSet) return;
+  const dialCount = window._dialCount || 1;
+  const c = clients.find(x => x.id === window._openClientId);
+  window._dialCountSet = false; window._dialCount = 1;
+  if (c) {
+    const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(), outcome:'No answer', dials:dialCount}];
+    c.call_log = callLog;
+    try { await sb.from('clients').update({call_log:callLog}).eq('id', c.id); }
+    catch(e) { console.error('commitPendingDial log', e); }
+  }
+  await addStat('dials', dialCount);
 }
 
 function sumStat(key, start, end) {
@@ -3256,6 +3329,7 @@ function showModal(html) {
   document.body.appendChild(ov);
 }
 function closeModal() {
+  commitPendingDial(); // don't lose an armed dial when closing without an outcome
   const m=document.getElementById('modal-ov'); if(m) m.remove();
   window._openClientId = null;
   const act = window._timer && window._timer.activity;
@@ -3268,6 +3342,8 @@ function closeModal() {
 
 //  OPEN CLIENT 
 function openClient(id, keepDialCount) {
+  // Leaving a different lead with a dial still armed? Commit it before it's lost.
+  if (!keepDialCount && window._openClientId && window._openClientId !== id) commitPendingDial();
   window._openClientId = id;
   const c = clients.find(x => x.id === id);
   if (!c) return;
@@ -4777,6 +4853,7 @@ async function quickLog(id, outcome, statKey) {
     await addStat('convos', 1);
   }
   window._dialCount = 1;
+  window._dialCountSet = false; // outcome committed the dial — don't let navigate re-commit
   hideSync();
   renderScore();
   if (outcome === 'No answer') {
@@ -5502,7 +5579,7 @@ async function saveAppsToTouchpoint(id, ci, ti) {
       const comp = carrier && productName && apv ? calcAppComp(carrier, productName, apv, null, undefined, age, productRange) : null;
       apps.push({
         carrier, product: productName, product_range: productRange, face, premium: apv, who, age,
-        status:'Written', written_date: new Date().toISOString(), id: Date.now()+idx,
+        status:'Written', written_date: new Date().toISOString(), writtenDate: new Date().toISOString(), id: Date.now()+idx,
         comp_rate: comp ? comp.rate : null,
         comp_gross: comp ? Math.round(comp.grossComp) : null,
         comp_advance: comp ? Math.round(comp.advance) : null,
@@ -5582,6 +5659,7 @@ function openEditApp(id, ci, ti, ai) {
   <div class="field"><label>Monthly premium ($ and cents — the number you quote)</label><input type="number" step="0.01" id="edit-app-monthly" value="${ap.premium ? (ap.premium/12).toFixed(2) : ''}" placeholder="e.g. 95.20" style="font-size:16px;" oninput="const a=document.getElementById('edit-app-apv-display'); if(a) a.textContent = this.value ? '= $' + (parseFloat(this.value)*12).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' APV' : '';">
   <div id="edit-app-apv-display" style="font-size:10px;color:#5f7a99;margin-top:3px;">${ap.premium ? '= $' + ap.premium.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' APV' : ''}</div></div>
   <div class="field"><label>Who</label><input type="text" id="edit-app-who" value="${ap.who||'Borrower'}"></div>
+  <div class="field"><label>Date written (the day this app was actually done)</label><input type="date" id="edit-app-date" value="${(ap.writtenDate||ap.written_date||new Date().toISOString()).slice(0,10)}" style="font-size:16px;"></div>
   <div class="field"><label>Status</label><select id="edit-app-status">${APP_STATUSES.map(s=>`<option${ap.status===s?' selected':''}>${s}</option>`).join('')}</select></div>
   <button class="save-btn" onclick="saveEditApp('${id}',${ci},${ti},${ai})">Save</button>
   <button style="width:100%;margin-top:8px;background:none;border:1px solid #E8B4B4;border-radius:8px;padding:9px;font-size:12px;color:#A32D2D;cursor:pointer;" onclick="deleteApp('${id}',${ci},${ti},${ai})">Delete this app</button>`);
@@ -5606,6 +5684,12 @@ async function saveEditApp(id, ci, ti, ai) {
   ap.premium = Math.round(_mo * 12 * 100) / 100; // APV = monthly x 12, cents preserved
   ap.who = document.getElementById('edit-app-who').value.trim()||'Borrower';
   ap.status = document.getElementById('edit-app-status').value;
+  const _dw = document.getElementById('edit-app-date');
+  if (_dw && _dw.value) {
+    // preserve time-of-day if the original had one; just move the calendar day
+    const iso = new Date(_dw.value + 'T12:00:00').toISOString();
+    ap.writtenDate = iso; ap.written_date = iso;
+  }
   // Recompute comp with the corrected matching — editing an app repairs its stored comp
   const _comp = calcAppComp(ap.carrier, ap.product, ap.premium, null, undefined, ap.age, ap.product_range);
   if (_comp) {
