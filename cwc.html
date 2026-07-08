@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h7</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h8</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -2000,8 +2000,11 @@ function renderSidebar() {
   // Overdue: appts whose time has passed and still have no outcome logged.
   // getAllAppts already drops any appt with a logged outcome, so anything past
   // here still needs to be dealt with — keep it in the sidebar, loud, until logged.
+  // EXCEPTION: pre-July-1-2026 unresolved appts are old abandoned business —
+  // hide them from the sidebar (lead + history stay intact on the card).
+  const _julyCutoff = new Date('2026-07-01T00:00:00');
   const overdueItems = deduped
-    .filter(a => { const dt = new Date(a.datetime); return dt < now && dt.toDateString() !== todayStr; })
+    .filter(a => { const dt = new Date(a.datetime); return dt < now && dt.toDateString() !== todayStr && dt >= _julyCutoff; })
     .sort((a,b) => new Date(a.datetime) - new Date(b.datetime));
   const upcoming = [...overdueItems, ...todayItems, ...futureItems].slice(0,20);
   const todayPassed = []; // folded into upcoming now
