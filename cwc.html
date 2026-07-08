@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h3</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h4</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -1997,7 +1997,13 @@ function renderSidebar() {
     ...futureCallbacks,
     ...followUpItems.filter(a => { const dt = new Date(a.datetime); return dt > now && dt.toDateString() !== todayStr; })
   ].sort((a,b) => new Date(a.datetime)-new Date(b.datetime));
-  const upcoming = [...todayItems, ...futureItems].slice(0,15);
+  // Overdue: appts whose time has passed and still have no outcome logged.
+  // getAllAppts already drops any appt with a logged outcome, so anything past
+  // here still needs to be dealt with — keep it in the sidebar, loud, until logged.
+  const overdueItems = deduped
+    .filter(a => { const dt = new Date(a.datetime); return dt < now && dt.toDateString() !== todayStr; })
+    .sort((a,b) => new Date(a.datetime) - new Date(b.datetime));
+  const upcoming = [...overdueItems, ...todayItems, ...futureItems].slice(0,20);
   const todayPassed = []; // folded into upcoming now
 
   function apptCard(a, passed) {
@@ -2047,8 +2053,9 @@ function renderSidebar() {
       sidebar.innerHTML = '<div style="font-size:11px;color:#a0b8cc;padding:4px 2px;">No appointments today</div>';
     } else {
       let html = '';
+      const overdueList = upcoming.filter(a => { const dt=new Date(a.datetime); return dt < now && dt.toDateString() !== todayStr; });
       const todayList = upcoming.filter(a => new Date(a.datetime).toDateString() === todayStr);
-      const laterList = upcoming.filter(a => new Date(a.datetime).toDateString() !== todayStr);
+      const laterList = upcoming.filter(a => { const dt=new Date(a.datetime); return dt > now && dt.toDateString() !== todayStr; });
       const renderItem = (a) => {
         if (a.isCallback) return callbackCard(a);
         if (a.isFollowUp) return followUpCard(a);
@@ -2056,6 +2063,10 @@ function renderSidebar() {
         const passed = new Date(a.datetime) < now;
         return apptCard(a, passed);
       };
+      if (overdueList.length) {
+        html += `<div class="appt-sidebar-divider" style="color:#A32D2D;">Overdue - log outcome</div>`;
+        html += overdueList.map(renderItem).join('');
+      }
       if (todayList.length) {
         html += `<div class="appt-sidebar-divider">Today</div>`;
         html += todayList.map(renderItem).join('');
@@ -2071,7 +2082,7 @@ function renderSidebar() {
   const banner = document.getElementById('appt-banner');
   const bannerText = document.getElementById('next-appt-text');
   if (banner && bannerText) {
-    const next = upcoming[0];
+    const next = upcoming.find(a => new Date(a.datetime) >= now) || upcoming[0];
     if (next) {
       const dt = new Date(next.datetime);
       const timeStr = dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
@@ -5564,6 +5575,11 @@ function updateAppCompDisplay(i) {
 
 async function saveAppsToTouchpoint(id, ci, ti) {
   const c = clients.find(x=>x.id===id); if(!c) return;
+  // Rule: a sale dates to the SIT it was run on — this specific touchpoint's
+  // datetime — not the day it was logged. Falls back to now only if the sit
+  // has no datetime for some reason.
+  const _sitTp = c.cases[ci] && c.cases[ci].touchpoints ? c.cases[ci].touchpoints[ti] : null;
+  const sitDate = (_sitTp && _sitTp.datetime) ? new Date(_sitTp.datetime).toISOString() : new Date().toISOString();
   const entries = document.querySelectorAll('.app-entry');
   const apps = [];
   entries.forEach((entry, idx) => {
@@ -5579,7 +5595,7 @@ async function saveAppsToTouchpoint(id, ci, ti) {
       const comp = carrier && productName && apv ? calcAppComp(carrier, productName, apv, null, undefined, age, productRange) : null;
       apps.push({
         carrier, product: productName, product_range: productRange, face, premium: apv, who, age,
-        status:'Written', written_date: new Date().toISOString(), writtenDate: new Date().toISOString(), id: Date.now()+idx,
+        status:'Written', written_date: sitDate, writtenDate: sitDate, id: Date.now()+idx,
         comp_rate: comp ? comp.rate : null,
         comp_gross: comp ? Math.round(comp.grossComp) : null,
         comp_advance: comp ? Math.round(comp.advance) : null,
