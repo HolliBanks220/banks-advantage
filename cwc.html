@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h9</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h10</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -1162,27 +1162,37 @@ function collectProduction(start, end) {
 function renderProduction() {
   const el = document.getElementById('production-panel');
   if (!el) return;
-  const {start: pStart, end: pEnd} = getPeriodBounds('production');
-  const P = collectProduction(pStart, pEnd);
-  // A wall of zeros helps nobody — the panel only appears when the period has activity
-  if (P.showed + P.noShow + P.pending === 0) { el.style.display = 'none'; return; }
+  // The old "Production detail" block was removed. This slot now surfaces
+  // referral payouts you still owe, so nobody who sent you business gets missed.
+  const owed = [];
+  clients.forEach(c => {
+    (c.referrals || []).forEach(r => {
+      if (!r.paid) {
+        const lead = clients.find(x => x.id === r.id);
+        owed.push({ referrerId: c.id, referrerName: c.name, refId: r.id, refName: r.name || (lead && lead.name) || 'referral', amount: r.amount || 30 });
+      }
+    });
+  });
+  if (!owed.length) { el.style.display = 'none'; return; }
   el.style.display = 'block';
-  const pct = (a,b) => b > 0 ? Math.round(a/b*100) + '%' : '-';
-  const typeLine = Object.entries(P.byType)
-    .filter(([t,v]) => v.showed + v.noShow > 0)
-    .map(([t,v]) => t + ' ' + pct(v.showed, v.showed + v.noShow))
-    .join(' \u00B7 ') || 'No resolved sits yet';
-  const oneSit = pct(P.oneSitCases.closed, P.oneSitCases.total);
-  const multiSit = pct(P.multiSitCases.closed, P.multiSitCases.total);
+  const total = owed.reduce((s, o) => s + (o.amount || 30), 0);
   el.innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 20px;">
-      <div style="grid-column:1/-1;font-size:11px;font-weight:700;color:#1D3557;text-transform:uppercase;letter-spacing:0.5px;">Production detail</div>
-      <div style="font-size:12px;color:#1D3557;"><strong>${P.showed}</strong> showed \u00B7 <strong>${P.noShow}</strong> no-show \u00B7 <strong>${P.pending}</strong> pending <span style="color:#8fa8c0;">|</span> show rate <strong>${pct(P.showed, P.showed + P.noShow)}</strong></div>
-      <div style="font-size:12px;color:#1D3557;">Finalized <strong>${P.finalized}</strong> \u00B7 Needs more work <strong>${P.needsWork}</strong> <span style="color:#8fa8c0;">|</span> close: one-sit <strong>${oneSit}</strong> \u00B7 after cont. <strong>${multiSit}</strong></div>
-      <div style="font-size:11px;color:#5f7a99;">Show by type: ${typeLine}</div>
-      <div style="font-size:11px;color:#5f7a99;">Retirement: S1 ${P.funnel.s1.showed}/${P.funnel.s1.booked} \u2192 S2 ${P.funnel.s2.showed}/${P.funnel.s2.booked} \u2192 S3 ${P.funnel.s3.showed}/${P.funnel.s3.booked} \u2192 Closed ${P.funnel.closed}</div>
-    </div>
+    <div style="font-size:11px;font-weight:700;color:#1D3557;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Referral payouts owed &middot; $${total}</div>
+    ${owed.map(o => `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0;border-top:1px solid #eef2f7;">
+        <div style="font-size:12px;color:#1D3557;">$${o.amount||30} to <strong onclick="openClient('${o.referrerId}')" style="cursor:pointer;text-decoration:underline;">${o.referrerName}</strong> <span style="color:#8fa8c0;">(ref: ${o.refName})</span></div>
+        <button onclick="markReferralPaid('${o.referrerId}','${o.refId}')" style="font-size:11px;background:#138181;color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-weight:500;flex-shrink:0;">Mark paid</button>
+      </div>`).join('')}
   `;
+}
+
+async function markReferralPaid(referrerId, refId) {
+  const c = clients.find(x => x.id === referrerId); if (!c) return;
+  const r = (c.referrals || []).find(x => x.id === refId); if (!r) return;
+  r.paid = true; r.amount = r.amount || 30; r.paidDate = new Date().toISOString();
+  await sb.from('clients').update({ referrals: c.referrals }).eq('id', referrerId);
+  renderProduction();
+  if (window._openClientId === referrerId) openClient(referrerId);
 }
 
 // ── CASE CLOCK ──────────────────────────────────────────────────────────────
@@ -3457,6 +3467,23 @@ function openClient(id, keepDialCount) {
     <span style="color:#5f7a99;font-size:13px;">- ${c.state||''} - <span class="${badgeClass(c.source)}">${c.source||''}</span></span>
   </div>
   ${c.address?`<div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">[Addr] ${c.address}</div>`:''}
+  ${(()=>{
+    let h='';
+    if (c.referred_by) {
+      const r = clients.find(x=>x.id===c.referred_by);
+      if (r) h += `<div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">Referred by: <strong onclick="closeModal();openClient('${r.id}')" style="color:#138181;cursor:pointer;text-decoration:underline;">${r.name}</strong></div>`;
+    }
+    if ((c.referrals||[]).length) {
+      h += `<div style="font-size:11px;color:#5f7a99;margin-bottom:2px;">Referrals given:</div>`;
+      h += (c.referrals||[]).map(rf=>{
+        const nm = rf.name || 'referral';
+        const paid = rf.paid ? `<span style="color:#138181;">paid $${rf.amount||30}</span>` : `<span style="color:#A32D2D;">owe $${rf.amount||30}</span> <button onclick="markReferralPaid('${c.id}','${rf.id}')" style="font-size:9px;background:#138181;color:#fff;border:none;border-radius:5px;padding:2px 7px;cursor:pointer;">Mark paid</button>`;
+        return `<div style="font-size:11px;color:#1D3557;margin-bottom:3px;padding-left:8px;"><strong onclick="closeModal();openClient('${rf.id}')" style="cursor:pointer;text-decoration:underline;">${nm}</strong> - ${paid}</div>`;
+      }).join('');
+    }
+    return h;
+  })()}
+
   ${(c.appt_datetime || getScheduledFollowUp(c))?(()=>{
     const fu = getScheduledFollowUp(c);
     // Banner must match reality: if the appointment's outcome is already logged
@@ -3799,7 +3826,7 @@ async function saveASR(referrerId) {
 
   const asrNote = `ASR from ${referrer?.name||''}${relationship?' ('+relationship+')':''}${notes?'. '+notes:''}`;
 
-  // Create new lead
+  // Create new lead — referred_by links it back to the referrer (walkable web).
   const newLead = {
     name,
     phone,
@@ -3812,19 +3839,23 @@ async function saveASR(referrerId) {
     call_log: [],
     sits: [],
     cases: [],
-    state: referrer?.state || ''
+    state: referrer?.state || '',
+    referred_by: referrerId
   };
 
   const {data, error} = await sb.from('clients').insert([newLead]).select();
   if (error) { alert('Error saving ASR: ' + error.message); return; }
   if (data) clients.push(data[0]);
+  const newId = data && data[0] ? data[0].id : null;
 
-  // Also log the ASR on the referrer's record in notes
+  // Record the referral on the referrer as a real linked entry (not a note that
+  // can get clobbered) — includes the $30 payout, unpaid by default.
   if (referrer) {
-    const existingNotes = referrer.notes || '';
-    referrer.notes = existingNotes + (existingNotes?'\n':'') + `ASR → ${name} (${phone})${relationship?' - '+relationship:''}`;
-    await sb.from('clients').update({notes: referrer.notes}).eq('id', referrerId);
+    referrer.referrals = referrer.referrals || [];
+    referrer.referrals.push({ id: newId, name, phone, relationship: relationship || '', paid: false, amount: 30, paidDate: null });
+    await sb.from('clients').update({ referrals: referrer.referrals }).eq('id', referrerId);
   }
+
 
   closeModal();
   showResetOnly(referrerId, 'Outcome logged');
@@ -5635,7 +5666,9 @@ async function saveAppsToTouchpoint(id, ci, ti) {
   // datetime — not the day it was logged. Falls back to now only if the sit
   // has no datetime for some reason.
   const _sitTp = c.cases[ci] && c.cases[ci].touchpoints ? c.cases[ci].touchpoints[ti] : null;
-  const sitDate = (_sitTp && _sitTp.datetime) ? new Date(_sitTp.datetime).toISOString() : new Date().toISOString();
+  // Apps date to the day they're logged (today), editable after — so an app added
+  // on a later follow-up counts toward today, not the original sit's week.
+  const sitDate = new Date().toISOString();
   const entries = document.querySelectorAll('.app-entry');
   const apps = [];
   let _missingProduct = false;
