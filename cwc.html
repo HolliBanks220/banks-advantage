@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h10</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h11</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -380,6 +380,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <button class="filter-btn" onclick="setFilter('working',this)">Working</button>
       <button class="filter-btn" onclick="setFilter('noshow',this)">No show</button>
       <button class="filter-btn" onclick="setFilter('Appointment set',this)">Appt</button>
+      <button class="filter-btn" onclick="openLeadImport()" style="background:#1D3557;color:#fff;border-color:#1D3557;">+ Import PDF</button>
     </div>
     <div id="clients-list"><div class="loading">Loading clients...</div></div>
   </div>
@@ -3533,6 +3534,7 @@ function openClient(id, keepDialCount) {
   </div>
   <button onclick="openTextModal('${id}')" style="font-size:10px;background:none;border:1px solid #9FE1CB;border-radius:6px;padding:3px 10px;color:#138181;cursor:pointer;margin-bottom:8px;">📱 Text templates</button>
   <button class="save-btn" onclick="updateClient('${id}')" style="margin-bottom:12px;">Save & next</button>
+  <button onclick="removeBadLead('${id}')" style="width:100%;font-size:11px;background:none;border:1px solid #E0A0A0;border-radius:6px;padding:6px;color:#A32D2D;cursor:pointer;margin-bottom:12px;">Bad number \u2014 remove from queue</button>
   <div class="section-lbl">Call log</div>
   <div style="padding-left:4px;margin-bottom:12px;">${callHistory||'<div style="font-size:12px;color:#a0b8cc;">No calls yet.</div>'}</div>
   <div class="section-lbl">Notes</div>
@@ -4957,6 +4959,187 @@ async function saveNamePhone(id) {
 }
 
 //  UPDATE CLIENT 
+// ===== SELF-SERVE LEAD IMPORTER (PDF drop -> parse -> auto CIA/MIA -> preview -> insert) =====
+// Self-contained module. CIA/MIA classification is isolated in classifyLeadSource()
+// so team levels / new-agent views can extend or hide it later without unpicking this.
+let _importRows = [];
+
+function openLeadImport() {
+  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+    <div class="modal-title">Import leads from PDF</div>
+    <div class="modal-sub">Drop an SFG lead PDF. It reads the leads, guesses CIA vs MIA, and lets you review before saving.</div>
+    <div id="li-drop" style="border:2px dashed #9FE1CB;border-radius:10px;padding:26px;text-align:center;color:#138181;cursor:pointer;margin-bottom:12px;">
+      <div style="font-size:14px;font-weight:600;">Tap to choose a PDF, or drop it here</div>
+      <div style="font-size:11px;color:#5f7a99;margin-top:4px;">Typed sheets auto-fill. Handwritten cards come up blank for you to type.</div>
+      <input type="file" id="li-file" accept="application/pdf" style="display:none;">
+    </div>
+    <div id="li-status" style="font-size:12px;color:#5f7a99;margin-bottom:8px;"></div>
+    <div id="li-preview"></div>`);
+  const drop = document.getElementById('li-drop');
+  const file = document.getElementById('li-file');
+  drop.onclick = () => file.click();
+  drop.ondragover = (e) => { e.preventDefault(); drop.style.background = '#E1F5EE'; };
+  drop.ondragleave = () => { drop.style.background = 'none'; };
+  drop.ondrop = (e) => { e.preventDefault(); drop.style.background = 'none'; if (e.dataTransfer.files[0]) handleImportFile(e.dataTransfer.files[0]); };
+  file.onchange = () => { if (file.files[0]) handleImportFile(file.files[0]); };
+}
+
+// Load pdf.js once, from CDN (same pattern as Supabase). Verify on the vercel.app URL.
+function loadPdfJs() {
+  return new Promise((resolve, reject) => {
+    if (window.pdfjsLib) return resolve(window.pdfjsLib);
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    s.onload = () => {
+      try { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; } catch(e){}
+      resolve(window.pdfjsLib);
+    };
+    s.onerror = () => reject(new Error('Could not load PDF reader'));
+    document.head.appendChild(s);
+  });
+}
+
+async function handleImportFile(f) {
+  const statusEl = document.getElementById('li-status');
+  statusEl.textContent = 'Reading PDF...';
+  try {
+    const pdfjsLib = await loadPdfJs();
+    const buf = await f.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    const pages = [];
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const page = await pdf.getPage(p);
+      const tc = await page.getTextContent();
+      pages.push(tc.items.map(it => it.str).join(' ').replace(/\s+/g, ' ').trim());
+    }
+    _importRows = pages.map(parseLeadText).filter(r => r);
+    statusEl.textContent = `Found ${_importRows.length} lead(s). Review and edit, then import.`;
+    renderImportPreview();
+  } catch (err) {
+    statusEl.textContent = 'Could not read that PDF: ' + err.message + '. If it is a scanned/handwritten card, add it manually.';
+  }
+}
+
+// --- CIA vs MIA classification (isolated for future team levels) ---
+function classifyLeadSource(text) {
+  const t = (text || '').toLowerCase();
+  if (t.includes('postcard')) return 'CIA';
+  if (/(complete and return|return this card|request for information|mail(ed|-| )back|final .{0,12}notice|letter in the mail|opted to call)/.test(t)) return 'MIA';
+  if (t.includes('called the phone number') || t.includes('customer request')) return 'CIA';
+  return ''; // unknown -> needs review
+}
+
+function grab(text, label) {
+  const re = new RegExp(label + '\\s*:?\\s*([^:]*?)(?=\\s{2,}|$|First Name|Last Name|Property Address|City|County|State|Postal|Mortgage ID|Contact Phone|Primary Phone|Caller ID|Age|Purchase Amount|Mortgage Amount|Lender Name|What is|Have you|Do you|Spouse|Home Phone|Cell Phone|E-Mail|AMOUNT|COUNTY|ORIGINATED)', 'i');
+  const m = text.match(re);
+  return m ? m[1].trim() : '';
+}
+
+function parseLeadText(text) {
+  if (!text || text.length < 20) return null;
+  const phoneMatch = text.match(/\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
+  const phoneRaw = phoneMatch ? phoneMatch[0] : '';
+  const phone = phoneRaw.replace(/\D/g, '').replace(/^1/, '').replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+  let first = grab(text, 'First Name'), last = grab(text, 'Last Name');
+  let name = (first + ' ' + last).trim();
+  if (!name) name = grab(text, 'Name');
+  name = name.replace(/\b\w/g, ch => ch.toUpperCase());
+  const ageM = text.match(/Age\s*:?\s*(\d{1,3})/i);
+  const age = ageM ? parseInt(ageM[1]) : null;
+  let mort = (text.match(/Mortgage Amount\s*:?\s*\$?([\d,]+)/i) || text.match(/AMOUNT\s*:?\s*\$?([\d,]+)/i) || text.match(/\$\s?([\d,]{4,})/));
+  const mortgage = mort ? mort[1].replace(/,/g, '') : '';
+  const zipM = text.match(/\b(\d{5})(?:-\d{4})?\b/);
+  const zip = zipM ? zipM[1] : '';
+  const stM = text.match(/\b([A-Z]{2})\b\s*(?:\d{5})/) || text.match(/State\s*:?\s*([A-Z]{2})\b/i);
+  const state = stM ? stM[1].toUpperCase() : '';
+  let addr = grab(text, 'Property Address') || grab(text, 'Address');
+  const city = grab(text, 'City');
+  if (city && addr) addr = addr + ', ' + city;
+  const cob = /co-?borrower[^?]*\?\s*(Y|N|Yes|No)/i.exec(text);
+  const coborrower = cob ? (/^y/i.test(cob[1]) ? 'Y' : 'N') : '';
+  const source = classifyLeadSource(text);
+  const notesBits = [];
+  if (mortgage) notesBits.push('Mortgage: $' + mortgage);
+  if (source) notesBits.push(source);
+  if (coborrower) notesBits.push('co-borrower: ' + coborrower);
+  if (zip) notesBits.push(zip);
+  return { name, phone, age, address: addr, state: state || '', mortgage_amount: mortgage, source, notes: notesBits.join(' \u00b7 '), include: true };
+}
+
+function renderImportPreview() {
+  const el = document.getElementById('li-preview');
+  if (!_importRows.length) { el.innerHTML = ''; return; }
+  el.innerHTML = _importRows.map((r, i) => {
+    const flag = r.source ? '' : ' style="border:1px solid #E0A0A0;border-radius:8px;"';
+    return `<div${flag} style="border:1px solid #e0e8f0;border-radius:8px;padding:8px;margin-bottom:8px;">
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;">
+        <input type="checkbox" ${r.include?'checked':''} onchange="_importRows[${i}].include=this.checked">
+        <input value="${(r.name||'').replace(/"/g,'&quot;')}" oninput="_importRows[${i}].name=this.value" placeholder="Name" style="flex:1;font-size:13px;font-weight:600;">
+        <select onchange="_importRows[${i}].source=this.value" style="font-size:12px;">
+          <option value="CIA"${r.source==='CIA'?' selected':''}>CIA</option>
+          <option value="MIA"${r.source==='MIA'?' selected':''}>MIA</option>
+          <option value=""${!r.source?' selected':''}>?</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <input value="${r.phone||''}" oninput="_importRows[${i}].phone=this.value" placeholder="Phone" style="flex:1;font-size:12px;">
+        <input value="${r.age||''}" oninput="_importRows[${i}].age=this.value" placeholder="Age" style="width:50px;font-size:12px;">
+        <input value="${r.mortgage_amount||''}" oninput="_importRows[${i}].mortgage_amount=this.value" placeholder="Mortgage" style="width:90px;font-size:12px;">
+        <input value="${r.state||''}" oninput="_importRows[${i}].state=this.value" placeholder="ST" style="width:44px;font-size:12px;">
+      </div>
+    </div>`;
+  }).join('') + `<button class="save-btn" onclick="confirmLeadImport()">Import ${_importRows.filter(r=>r.include).length} lead(s)</button>`;
+}
+
+async function confirmLeadImport() {
+  const chosen = _importRows.filter(r => r.include && r.phone && r.name);
+  if (!chosen.length) { alert('Nothing to import - each lead needs at least a name and phone.'); return; }
+  const existing = new Set(clients.map(c => (c.phone||'').replace(/\D/g,'')));
+  const fresh = chosen.filter(r => !existing.has((r.phone||'').replace(/\D/g,'')));
+  const dupes = chosen.length - fresh.length;
+  if (!fresh.length) { alert('All of those are already in your list (matched by phone).'); return; }
+  const today = new Date().toISOString().slice(0,10);
+  const rows = fresh.map(r => {
+    let notes = r.notes || '';
+    if (r.mortgage_amount && !/^Mortgage:/.test(notes)) notes = 'Mortgage: $' + r.mortgage_amount + (notes ? ' \u00b7 ' + notes : '');
+    return {
+      name: r.name.trim(), phone: r.phone.trim(),
+      age: r.age ? parseInt(r.age) : null,
+      address: r.address || '', state: (r.state||'').toUpperCase(),
+      source: r.source || 'CIA',
+      mortgage_amount: r.mortgage_amount ? String(r.mortgage_amount) : null,
+      status: 'New', assigned_date: today, notes,
+      health_notes: '', policy_notes: '', call_log: [], sits: [], cases: []
+    };
+  });
+  showSync('Importing...');
+  const { data, error } = await sb.from('clients').insert(rows).select();
+  hideSync();
+  if (error) { alert('Import failed: ' + error.message); return; }
+  if (data) data.forEach(d => clients.push(d));
+  closeModal();
+  renderClients('');
+  renderScore();
+  alert('Imported ' + rows.length + ' lead(s)' + (dupes ? ' (' + dupes + ' skipped as duplicates)' : '') + '.');
+}
+
+
+// One-tap remove for bad-number leads. Saves directly (no dependency on the
+// edit-form fields that can make Save & next throw), and stamps the reason so
+// these never get counted as worked "not interested" leads.
+async function removeBadLead(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  if (!confirm('Remove this lead as a bad number? It will be marked Dead and leave your queue (history kept).')) return;
+  const note = c.notes || '';
+  const updates = { status: 'Dead', notes: (note ? note + ' \u00b7 ' : '') + 'Removed: bad number' };
+  showSync('Removing...');
+  await sb.from('clients').update(updates).eq('id', id);
+  Object.assign(c, updates);
+  hideSync(); closeModal();
+  const sv = document.getElementById('client-search'); renderClients(sv ? sv.value : '');
+  renderScore();
+}
+
 async function updateClient(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const nameEl = document.getElementById('edit-name');
