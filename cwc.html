@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h11</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h12</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -394,6 +394,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div style="display:flex;gap:6px;margin-bottom:10px;align-items:center;">
         <button id="apps-view-submitted" onclick="setAppsView('submitted')" style="flex:1;padding:7px;font-size:12px;font-weight:600;border-radius:8px;border:none;background:#1D3557;color:#fff;cursor:pointer;">Submitted</button>
         <button id="apps-view-placed" onclick="setAppsView('placed')" style="flex:1;padding:7px;font-size:12px;font-weight:600;border-radius:8px;border:2px solid #e2eaf2;background:#fff;color:#5f7a99;cursor:pointer;">Placed</button>
+        <button id="apps-view-written" onclick="setAppsView('written')" style="flex:1;padding:7px;font-size:12px;font-weight:600;border-radius:8px;border:2px solid #e2eaf2;background:#fff;color:#5f7a99;cursor:pointer;">Written</button>
         <button id="apps-view-commissions" onclick="setAppsView('commissions')" style="display:none;flex:1;padding:7px;font-size:12px;font-weight:600;border-radius:8px;border:2px solid #e2eaf2;background:#fff;color:#5f7a99;cursor:pointer;">Commissions</button>
         <input id="apps-search" oninput="renderAppsTab()" placeholder="Search by client, insured, carrier or status..." style="flex:1.5;padding:7px 10px;font-size:12px;border:1px solid #d0dcea;border-radius:8px;color:#1D3557;outline:none;">
       </div>
@@ -646,6 +647,7 @@ async function loadClients() {
     const seen = new Set();
     clients = data.map(c => ({...c, cases: c.cases||[]})).filter(c => {
       if (seen.has(c.id)) return false;
+      if (c.status === 'Removed') return false; // not-valid leads: gone from all lists & tracking
       seen.add(c.id);
       return true;
     });
@@ -1023,7 +1025,8 @@ function getNetPlacedForMonth(year, month) {
       (tp.apps||[]).forEach(ap => {
         if (!['Lapse','Cancel'].includes(ap.status||'')) return;
         const d = new Date(ap.lapse_date || ap.writtenDate || tp.datetime || 0);
-        if (d.getFullYear() === year && d.getMonth() === month) lapsed += (ap.premium||0);
+        const back = (ap.chargeback_amount !== undefined && ap.chargeback_amount !== null && ap.chargeback_amount !== '') ? Number(ap.chargeback_amount) : (ap.premium||0);
+        if (d.getFullYear() === year && d.getMonth() === month) lapsed += back;
       });
     }));
   });
@@ -1438,10 +1441,10 @@ function renderSourceComparison(pStart, pEnd, label) {
     // Use all-time for day view
     const contacted = sourceClients.filter(c =>
       (c.call_log||[]).some(cl => {
-        const isConvo = cl.outcome === 'Appt set' || cl.outcome === 'Callback' ||
-          cl.outcome === 'Not interested' || cl.outcome === 'Rescheduled' ||
-          cl.outcome === 'Conversation' || cl.outcome === 'Reset to Retirement Solutions' ||
-          cl.outcome === 'Reset to IBC/DFL' || cl.outcome === 'No show';
+        const isConvo = cl.outcome === 'Appt set' ||
+          cl.outcome === 'Not interested' ||
+          cl.outcome === 'Reset to Retirement Solutions' ||
+          cl.outcome === 'Reset to IBC/DFL';
         if (!isConvo) return false;
         if (isDay) return true;
         const t = new Date(cl.ts);
@@ -2120,6 +2123,8 @@ function setAppsView(v) {
   const cm = document.getElementById('apps-view-commissions');
   if (sub) { sub.style.background = v==='submitted'?'#1D3557':'#fff'; sub.style.color = v==='submitted'?'#fff':'#5f7a99'; sub.style.border = v==='submitted'?'none':'2px solid #e2eaf2'; }
   if (pl)  { pl.style.background  = v==='placed'?'#138181':'#fff';   pl.style.color  = v==='placed'?'#fff':'#5f7a99';  pl.style.border  = v==='placed'?'none':'2px solid #e2eaf2'; }
+  const wr = document.getElementById('apps-view-written');
+  if (wr)  { wr.style.background  = v==='written'?'#1D3557':'#fff';  wr.style.color  = v==='written'?'#fff':'#5f7a99'; wr.style.border  = v==='written'?'none':'2px solid #e2eaf2'; }
   if (cm)  { cm.style.background  = v==='commissions'?'#3B6D11':'#fff'; cm.style.color = v==='commissions'?'#fff':'#5f7a99'; cm.style.border = v==='commissions'?'none':'2px solid #e2eaf2'; }
   renderAppsTab();
 }
@@ -2163,6 +2168,12 @@ async function setAppStatus(clientId, ci, ti, ai, newStatus) {
   const ap = (((c.cases||[])[ci]||{}).touchpoints||[])[ti];
   if (!ap || !ap.apps || !ap.apps[ai]) return;
   ap.apps[ai].status = newStatus;
+  // Lapse/Cancel: default the date to today and the chargeback to the premium,
+  // both editable in the app editor. The loss then lands in this month.
+  if ((newStatus==='Lapse'||newStatus==='Cancel')) {
+    if (!ap.apps[ai].lapse_date) ap.apps[ai].lapse_date = new Date().toISOString();
+    if (ap.apps[ai].chargeback_amount === undefined || ap.apps[ai].chargeback_amount === null || ap.apps[ai].chargeback_amount === '') ap.apps[ai].chargeback_amount = ap.apps[ai].premium || 0;
+  }
   // If marking Placed or Paid, stamp writtenDate from the touchpoint datetime (the sale date)
   if ((newStatus==='Issued'||newStatus==='Paid') && !ap.apps[ai].writtenDate) {
     ap.apps[ai].writtenDate = ap.datetime || ap.apps[ai].created || new Date().toISOString();
@@ -2237,8 +2248,11 @@ function renderAppsTab() {
 
   const fmt = v => '$'+Math.round(v).toLocaleString();
 
-  if (appsView === 'submitted') {
+  if (appsView === 'submitted' || appsView === 'written') {
     // --- SUBMITTED VIEW: filter by production period ---
+    // Written view = the same list, narrowed to apps still in 'Written' (in-limbo:
+    // waiting on banking info, offer pending, not yet firmed up).
+    const writtenOnly = (appsView === 'written');
     if (summaryBar) summaryBar.style.display = 'flex';
     if (placementBar) placementBar.style.display = 'none';
 
@@ -2256,6 +2270,7 @@ function renderAppsTab() {
         }
         return false;
       })
+      .filter(ap => !writtenOnly || (ap.status||'Written') === 'Written')
       .sort((a,b) => new Date(b.tpDate||0) - new Date(a.tpDate||0));
 
     const totalAPV = submittedApps.reduce((a,ap) => a+(ap.premium||0), 0);
@@ -3534,7 +3549,6 @@ function openClient(id, keepDialCount) {
   </div>
   <button onclick="openTextModal('${id}')" style="font-size:10px;background:none;border:1px solid #9FE1CB;border-radius:6px;padding:3px 10px;color:#138181;cursor:pointer;margin-bottom:8px;">📱 Text templates</button>
   <button class="save-btn" onclick="updateClient('${id}')" style="margin-bottom:12px;">Save & next</button>
-  <button onclick="removeBadLead('${id}')" style="width:100%;font-size:11px;background:none;border:1px solid #E0A0A0;border-radius:6px;padding:6px;color:#A32D2D;cursor:pointer;margin-bottom:12px;">Bad number \u2014 remove from queue</button>
   <div class="section-lbl">Call log</div>
   <div style="padding-left:4px;margin-bottom:12px;">${callHistory||'<div style="font-size:12px;color:#a0b8cc;">No calls yet.</div>'}</div>
   <div class="section-lbl">Notes</div>
@@ -3556,6 +3570,7 @@ function openClient(id, keepDialCount) {
   </div>
   <div class="section-lbl" style="margin-top:4px;">Cases</div>
   ${renderCasesHtml(c)}
+  <button onclick="removeBadLead('${id}')" style="width:100%;font-size:12px;background:none;border:1px solid #E0A0A0;border-radius:8px;padding:8px;color:#A32D2D;cursor:pointer;margin-top:18px;">Not valid — remove lead</button>
   <div style="display:flex;gap:8px;margin-bottom:12px;">
     <button class="sec-btn" style="flex:1;" onclick="openNewCase('${id}')">+ New case</button>
     <button class="sec-btn" style="flex:1;background:#E8F7F5;color:#138181;border-color:#138181;" onclick="openASREntry('${id}')">⭐ + ASR</button>
@@ -5128,13 +5143,14 @@ async function confirmLeadImport() {
 // edit-form fields that can make Save & next throw), and stamps the reason so
 // these never get counted as worked "not interested" leads.
 async function removeBadLead(id) {
-  const c = clients.find(x=>x.id===id); if (!c) return;
-  if (!confirm('Remove this lead as a bad number? It will be marked Dead and leave your queue (history kept).')) return;
+  const c = clients.find(x => x.id === id); if (!c) return;
+  if (!confirm('Remove this lead as not valid (bad number, language barrier, etc.)? It disappears from every list and all tracking, as if it never existed. Still recoverable in the database.')) return;
   const note = c.notes || '';
-  const updates = { status: 'Dead', notes: (note ? note + ' \u00b7 ' : '') + 'Removed: bad number' };
+  const updates = { status: 'Removed', notes: (note ? note + ' \u00b7 ' : '') + 'Removed: not valid' };
   showSync('Removing...');
   await sb.from('clients').update(updates).eq('id', id);
-  Object.assign(c, updates);
+  const idx = clients.findIndex(x => x.id === id);
+  if (idx > -1) clients.splice(idx, 1);
   hideSync(); closeModal();
   const sv = document.getElementById('client-search'); renderClients(sv ? sv.value : '');
   renderScore();
@@ -5953,6 +5969,8 @@ function openEditApp(id, ci, ti, ai) {
   <div class="field"><label>Who</label><input type="text" id="edit-app-who" value="${ap.who||'Borrower'}"></div>
   <div class="field"><label>Date written (the day this app was actually done)</label><input type="date" id="edit-app-date" value="${(ap.writtenDate||ap.written_date||new Date().toISOString()).slice(0,10)}" style="font-size:16px;"></div>
   <div class="field"><label>Status</label><select id="edit-app-status">${APP_STATUSES.map(s=>`<option${ap.status===s?' selected':''}>${s}</option>`).join('')}</select></div>
+  <div class="field"><label>Lapse/Cancel date (chargeback lands in this month)</label><input type="date" id="edit-app-lapse-date" value="${(ap.lapse_date||'').slice(0,10)}" style="font-size:16px;"></div>
+  <div class="field"><label>Chargeback $ (blank = full premium)</label><input type="number" step="0.01" id="edit-app-chargeback" value="${ap.chargeback_amount!=null&&ap.chargeback_amount!==''?ap.chargeback_amount:''}" placeholder="${ap.premium||''}" style="font-size:16px;"></div>
   <button class="save-btn" onclick="saveEditApp('${id}',${ci},${ti},${ai})">Save</button>
   <button style="width:100%;margin-top:8px;background:none;border:1px solid #E8B4B4;border-radius:8px;padding:9px;font-size:12px;color:#A32D2D;cursor:pointer;" onclick="deleteApp('${id}',${ci},${ti},${ai})">Delete this app</button>`);
 }
@@ -5976,6 +5994,10 @@ async function saveEditApp(id, ci, ti, ai) {
   ap.premium = Math.round(_mo * 12 * 100) / 100; // APV = monthly x 12, cents preserved
   ap.who = document.getElementById('edit-app-who').value.trim()||'Borrower';
   ap.status = document.getElementById('edit-app-status').value;
+  const _ld = document.getElementById('edit-app-lapse-date');
+  if (_ld) ap.lapse_date = _ld.value ? new Date(_ld.value + 'T12:00:00').toISOString() : null;
+  const _cb = document.getElementById('edit-app-chargeback');
+  if (_cb) ap.chargeback_amount = (_cb.value !== '' ? parseFloat(_cb.value) : null);
   const _dw = document.getElementById('edit-app-date');
   if (_dw && _dw.value) {
     // preserve time-of-day if the original had one; just move the calendar day
