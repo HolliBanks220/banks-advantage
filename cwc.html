@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h8</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h9</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -2606,6 +2606,9 @@ function getLeadLocalHour(c) {
   return ((localHour % 24) + 24) % 24;
 }
 
+// Timezone offsets here are whole hours, so lead-local minutes equal the clock's.
+function getLeadLocalMinute(c) { return new Date().getMinutes(); }
+
 // Lead-local hour of a PAST timestamp (for bucketing historical calls into the lead's slots)
 function getLeadLocalHourAt(c, ts) {
   const d = new Date(ts);
@@ -2640,9 +2643,10 @@ function isGoodTimeToCall(c) {
 // Returns current time slot for lead based on their local time
 function getCurrentSlotForLead(c) {
   const h = getLeadLocalHour(c);
-  if (h >= 8 && h < 12) return 'morning';
+  const m = getLeadLocalMinute(c);
+  if (h >= 9 && h < 12) return 'morning';
   if (h >= 12 && h < 17) return 'afternoon';
-  if (h >= 17 && h <= 21) return 'evening';
+  if (h >= 17 && (h < 20 || (h === 20 && m < 30))) return 'evening'; // ends 8:30 their time
   return null;
 }
 
@@ -3223,7 +3227,7 @@ function renderAlerts() {
 
     // Overdue: had at least one attempt, warm lead, been more than 3 days since last contact
     // (not dependent on window — this is about neglected leads regardless of time of day)
-    if (attempts > 0 && days <= 17 && daysSinceLast >= 3) {
+    if (attempts > 0 && days <= 17 && daysSinceLast >= 3 && !isFollowUpFuture(c) && !isCallbackFuture(c)) {
       overdue++;
     } else if (score < 150) {
       // ONE definition of actionable: the same score band that sorts the queue
@@ -3292,21 +3296,31 @@ function getFilteredClients(q='') {
     const isNoShow = c.status === 'No show';
     const hasOpenCase = (c.cases||[]).some(cs => cs.status === 'Open' && (cs.touchpoints||[]).length > 0);
     let matchF = false;
-    if (activeFilter==='active') matchF = (c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale' && c.status !== 'Appointment set' && !isCallbackFuture(c) && !isFollowUpFuture(c)) || isApptImminent(c);    else if (activeFilter==='all') matchF = true;
+    if (activeFilter==='active') matchF = (c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale' && c.status !== 'Appointment set' && !isCallbackFuture(c) && !isFollowUpFuture(c) && !isOnBreak(c)) || isApptImminent(c);    else if (activeFilter==='all') matchF = true;
     else if (activeFilter==='fresh') matchF = days <= 4 && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale';
     else if (activeFilter==='warm') matchF = days >= 5 && days <= 17 && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale';
     else if (activeFilter==='open') matchF = days > 17 && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale';
     else if (activeFilter==='none') matchF = (c.call_log||[]).length === 0 && c.status !== 'Dead';
     else if (activeFilter==='working') matchF = hasOpenCase && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed';
     else if (activeFilter==='noshow') matchF = isNoShow;
-    else if (activeFilter==='overdue') matchF = getAttemptCount(c) > 0 && getDaysSinceAssigned(c) <= 17 && getDaysSinceLastAttempt(c) >= 3 && c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale' && c.status !== 'Appointment set';
+    else if (activeFilter==='overdue') matchF = getAttemptCount(c) > 0 && getDaysSinceAssigned(c) <= 17 && getDaysSinceLastAttempt(c) >= 3 && !isFollowUpFuture(c) && !isCallbackFuture(c) && c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale' && c.status !== 'Appointment set';
     else if (activeFilter==='Appointment set') matchF = isAppt;
     else matchF = c.status === activeFilter;
     // Search overrides filter — search always pulls from all leads
     return (q ? matchQ : (matchQ && matchF));
   });
 
-  // Sort by urgency score (lower = more urgent)
+  // Dialing queue: youngest-due-first. On-break leads are already filtered out,
+  // so everything here is due right now — the freshest lead always leads, and an
+  // older lead only surfaces when nothing younger is due. Imminent appts jump first.
+  if (activeFilter === 'active') {
+    return filtered.sort((a, b) => {
+      const ai = isApptImminent(a) ? 0 : 1, bi = isApptImminent(b) ? 0 : 1;
+      if (ai !== bi) return ai - bi;
+      return getDaysSinceAssigned(a) - getDaysSinceAssigned(b);
+    });
+  }
+  // Other views: sort by urgency score (lower = more urgent)
   return filtered.sort((a, b) => getUrgencyScore(a) - getUrgencyScore(b));
 }
 
@@ -5122,7 +5136,7 @@ function renderCasesHtml(c) {
         appsHtml +
         '<div style="display:flex;gap:6px;margin-top:8px;">' +
           ((cs.status==='Open' || (cs.touchpoints||[]).some(tp=>tp && tp.outcome==='pending'))?'<button onclick="openSitOutcomeForCase(\''+c.id+'\','+ci+')" style="flex:1;background:#138181;color:#fff;border:none;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;font-weight:500;">+ Log outcome</button>':'') +
-          (caseApps.length===0 && resolvedTps.some(tp=>tp.outcome==='sale')?'<button onclick="openAddAppsForCase(\''+c.id+'\','+ci+')" style="flex:1;background:#1D3557;color:#fff;border:none;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;font-weight:500;">+ Add apps</button>':'') +
+          (resolvedTps.some(tp=>tp.outcome==='sale')?'<button onclick="openAddAppsForCase(\''+c.id+'\','+ci+')" style="flex:1;background:#1D3557;color:#fff;border:none;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;font-weight:500;">+ Add apps</button>':'') +
           '<button onclick="openEditCase(\''+c.id+'\','+ci+')" style="background:#f0f4f8;border:none;border-radius:6px;padding:6px 10px;font-size:11px;color:#5f7a99;cursor:pointer;">Edit</button>' +
         '</div>' +
       '</div>' +
