@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h12</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h13</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -551,56 +551,63 @@ window._lastInteraction = Date.now();
     } catch(e) {}
   }, {passive: true})
 );
-setInterval(() => {
-  try {
-    const t = window._timer;
-    if (!t || t.activity !== 'admin') return; // ONLY admin — dial runs through dead air, appt exempt
-    const idleMins = (Date.now() - window._lastInteraction) / 60000;
-    const existing = document.getElementById('idle-prompt');
-    if (idleMins >= 13) {
-      // Prompt ignored for 3 minutes — stop the clock
-      if (existing) existing.remove();
-      timerStop(); timerUpdateStatusLabel();
-    } else if (idleMins >= 10 && !existing) {
-      // 10 idle minutes: ask, don't assume
-      const modal = document.querySelector('#modal-ov .modal') || document.body;
-      const div = document.createElement('div');
-      div.id = 'idle-prompt';
-      div.style.cssText = 'position:sticky;top:0;z-index:99;background:#534AB7;color:#fff;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;font-weight:600;cursor:pointer;text-align:center;';
-      div.textContent = 'Still working this lead? Tap to keep the clock running';
-      div.onclick = () => { window._lastInteraction = Date.now(); div.remove(); };
-      modal.prepend(div);
-    } else if (idleMins < 10 && existing) {
-      existing.remove(); // interaction happened elsewhere — prompt no longer needed
-    }
-  } catch(e) {}
-}, 30000);
+// ===== TIMER IDLE + BANNER ENGINE (redesigned) =====
+// Per-activity idle thresholds (minutes) before the "still there?" banner shows.
+function timerIdleThreshold(activity) {
+  return activity === 'dial' ? 4 : 30; // dial 4 min; appt & admin 30 min
+}
+// After the banner shows, this long (minutes) with no response -> stop the clock,
+// crediting ONLY up to the idle mark (the grace time is discarded). timerStop does
+// the actual credit-cap; this just decides when to call it.
+const TIMER_GRACE_MIN = 60;
 
-// DIAL IDLE GUARD: the dial clock runs through dead air on purpose, but a lead
-// left open while you step away used to run it for hours. At 4 idle minutes,
-// ask; ignored to 6, stop the dial clock so idle time isn't billed as dialing.
+// Unified idle watcher for whatever clock is running. Banner text matches the clock.
 setInterval(() => {
   try {
     const t = window._timer;
-    if (!t || t.activity !== 'dial') return;
+    if (!t || !t.activity) return;
+    const thr = timerIdleThreshold(t.activity);
     const idleMins = (Date.now() - window._lastInteraction) / 60000;
-    const existing = document.getElementById('dial-idle-prompt');
-    if (idleMins >= 6) {
+    const existing = document.getElementById('idle-banner');
+    if (idleMins >= thr + TIMER_GRACE_MIN) {
+      // Grace elapsed with no response: stop. timerStop credits only to the idle mark.
       if (existing) existing.remove();
       timerStop(); timerUpdateStatusLabel();
-    } else if (idleMins >= 4 && !existing) {
+    } else if (idleMins >= thr && !existing) {
+      const label = t.activity === 'dial' ? 'Still dialing?'
+                  : t.activity === 'appt' ? 'Still in your appointment?'
+                  : 'Still working?';
       const modal = document.querySelector('#modal-ov .modal') || document.body;
       const div = document.createElement('div');
-      div.id = 'dial-idle-prompt';
-      div.style.cssText = 'position:sticky;top:0;z-index:99;background:#138181;color:#fff;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;font-weight:600;cursor:pointer;text-align:center;';
-      div.textContent = 'Still dialing? Tap to keep the clock running';
+      div.id = 'idle-banner';
+      div.style.cssText = 'position:sticky;top:0;z-index:99;background:#534AB7;color:#fff;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;font-weight:600;cursor:pointer;text-align:center;';
+      div.textContent = label + ' Tap to keep the clock running';
       div.onclick = () => { window._lastInteraction = Date.now(); div.remove(); };
       modal.prepend(div);
-    } else if (idleMins < 4 && existing) {
+    } else if (idleMins < thr && existing) {
       existing.remove();
     }
   } catch(e) {}
 }, 30000);
+
+// DIAL pauses 1 minute after you leave the tab. APPT and ADMIN ignore tab/window
+// focus entirely (you may be in a carrier's e-app or research tab -- that counts).
+document.addEventListener('visibilitychange', () => {
+  try {
+    const t = window._timer;
+    if (document.hidden) {
+      if (t && t.activity === 'dial') {
+        clearTimeout(window._dialHideTimer);
+        window._dialHideTimer = setTimeout(() => {
+          if (document.hidden && window._timer.activity === 'dial') { timerStop(); timerUpdateStatusLabel(); }
+        }, 60000);
+      }
+    } else {
+      clearTimeout(window._dialHideTimer); window._dialHideTimer = null;
+    }
+  } catch(e) {}
+});
+
 
 function startRealtimeSync() {
   sb.channel('clients-sync')
@@ -1612,20 +1619,34 @@ function timerGetTotals() {
 
 function timerStart(activity) {
   if (window._timer.activity === activity) return; // already running this
+  // Appt owns the clock: while an appointment is running, flipping to the Leads
+  // tab or admin won't switch clocks and cut the appointment short. It ends only
+  // on the sit outcome, a manual stop, or the idle grace expiring.
+  if (window._timer.activity === 'appt' && (activity === 'dial' || activity === 'admin')) return;
   timerStop(); // stop current if any
   window._timer.activity = activity;
   window._timer.startTime = Date.now();
   timerUpdateStatusLabel();
 }
 
-function timerStop() {
+function timerStop(opts) {
   const t = window._timer;
   if (!t.activity || !t.startTime) return;
-  const seconds = Math.floor((Date.now() - t.startTime) / 1000);
+  // Credit cap: never bank past the idle mark (last interaction + this activity's
+  // idle threshold). This is what stops a closed laptop / walk-away from banking
+  // dead time (the 142-hour bug). opts.full = an appt outcome was logged, so the
+  // whole session counts (you were in it until you logged the result).
+  let endMs = Date.now();
+  if (!(opts && opts.full)) {
+    const cap = window._lastInteraction + timerIdleThreshold(t.activity) * 60000;
+    if (endMs > cap) endMs = cap;
+  }
+  if (endMs < t.startTime) endMs = t.startTime;
+  const seconds = Math.floor((endMs - t.startTime) / 1000);
   if (seconds < 5) { t.activity = null; t.startTime = null; return; } // ignore tiny blips
 
   // Save session
-  const session = {activity: t.activity, start: new Date(t.startTime).toISOString(), end: new Date().toISOString(), seconds};
+  const session = {activity: t.activity, start: new Date(t.startTime).toISOString(), end: new Date(endMs).toISOString(), seconds};
   const sessions = timerGetTodaySessions();
   sessions.push(session);
   timerSaveSessions(sessions);
@@ -3660,6 +3681,9 @@ function showContModal(id, ci) {
 
 async function confirmSitOutcome(id, ci, outcome) {
   const c = clients.find(x=>x.id===id); if (!c) return;
+  // Logging the outcome proves you were in the appointment until now, so credit the
+  // full appt session even if the idle banner had capped it while you were heads-down.
+  if (window._timer && window._timer.activity === 'appt') { window._lastInteraction = Date.now(); timerStop({full:true}); timerUpdateStatusLabel(); }
   const now = new Date();
 
   // Get continuation details if needed
