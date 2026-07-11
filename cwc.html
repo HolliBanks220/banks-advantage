@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h14</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h16</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -5086,22 +5086,39 @@ function parseLeadText(text) {
   const age = ageM ? parseInt(ageM[1]) : null;
   let mort = (text.match(/Mortgage Amount\s*:?\s*\$?([\d,]+)/i) || text.match(/AMOUNT\s*:?\s*\$?([\d,]+)/i) || text.match(/\$\s?([\d,]{4,})/));
   const mortgage = mort ? mort[1].replace(/,/g, '') : '';
-  const zipM = text.match(/\b(\d{5})(?:-\d{4})?\b/);
+  const zipM = text.match(/\b[A-Z]{2}\s+(\d{5})(?:-\d{4})?\b/)   // zip right after a state
+            || text.match(/Postal\s*Code\s*:?\s*(\d{5})/i)        // labeled Postal Code
+            || text.match(/\b(\d{5})(?:-\d{4})?\b/);              // last resort: any 5-digit
   const zip = zipM ? zipM[1] : '';
   const stM = text.match(/\b([A-Z]{2})\b\s*(?:\d{5})/) || text.match(/State\s*:?\s*([A-Z]{2})\b/i);
   const state = stM ? stM[1].toUpperCase() : '';
   let addr = grab(text, 'Property Address') || grab(text, 'Address');
   const city = grab(text, 'City');
   if (city && addr) addr = addr + ', ' + city;
+  // Fallback for vendors with no address label (e.g. LeadPros): find "City, ST ZIP"
+  // and take the street that sits immediately in front of it. Anchored so it can't
+  // sweep in a preceding name or an ID number.
+  if (!addr || !/\d/.test(addr)) {
+    const czM = text.match(/,\s*([A-Z]{2})\s+(\d{5})\b/); // ", TX 77016"
+    if (czM) {
+      const before = text.slice(0, czM.index).trim();     // "...7450 Wheatley Gardens Dr Houston"
+      const m = before.match(/(\d{1,6}\s+(?:[A-Za-z][\w.'\-]*\s+)*[A-Za-z][\w.'\-]*)\s*$/);
+      if (m) addr = (m[1].trim() + ', ' + czM[1] + ' ' + czM[2]).replace(/\s+/g, ' ');
+    }
+  }
   const cob = /co-?borrower[^?]*\?\s*(Y|N|Yes|No)/i.exec(text);
   const coborrower = cob ? (/^y/i.test(cob[1]) ? 'Y' : 'N') : '';
+  // Make sure the stored address carries the state + zip so nothing gets lost.
+  if (addr && zip && !addr.includes(zip)) {
+    if (state && !new RegExp('\\b' + state + '\\b').test(addr)) addr += ', ' + state;
+    addr += ' ' + zip;
+  }
   const source = classifyLeadSource(text);
   const notesBits = [];
   if (mortgage) notesBits.push('Mortgage: $' + mortgage);
   if (source) notesBits.push(source);
   if (coborrower) notesBits.push('co-borrower: ' + coborrower);
-  if (zip) notesBits.push(zip);
-  return { name, phone, age, address: addr, state: state || '', mortgage_amount: mortgage, source, notes: notesBits.join(' \u00b7 '), include: true };
+  return { name, phone, age, address: addr, state: state || '', zip, mortgage_amount: mortgage, source, notes: notesBits.join(' \u00b7 '), include: true };
 }
 
 function renderImportPreview() {
@@ -5124,6 +5141,9 @@ function renderImportPreview() {
         <input value="${r.age||''}" oninput="_importRows[${i}].age=this.value" placeholder="Age" style="width:50px;font-size:12px;">
         <input value="${r.mortgage_amount||''}" oninput="_importRows[${i}].mortgage_amount=this.value" placeholder="Mortgage" style="width:90px;font-size:12px;">
         <input value="${r.state||''}" oninput="_importRows[${i}].state=this.value" placeholder="ST" style="width:44px;font-size:12px;">
+      </div>
+      <div style="margin-top:6px;">
+        <input value="${(r.address||'').replace(/"/g,'&quot;')}" oninput="_importRows[${i}].address=this.value" placeholder="Address, City, ST ZIP" style="width:100%;font-size:12px;">
       </div>
     </div>`;
   }).join('') + `<button class="save-btn" onclick="confirmLeadImport()">Import ${_importRows.filter(r=>r.include).length} lead(s)</button>`;
