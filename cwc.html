@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h13</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h14</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -365,7 +365,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="leads-hdr">
       <div style="font-size:13px;font-weight:500;color:#1D3557;" id="client-count">Loading...</div>
       <div style="display:flex;gap:6px;">
-        <button class="add-btn" style="background:#138181;" onclick="openImportModal()">[Import] Import</button>
+        <button class="add-btn" style="background:#138181;" onclick="openLeadImport()">[Import] Import</button>
         <button class="add-btn" onclick="openAddClient()">+ Add lead</button>
       </div>
     </div>
@@ -380,7 +380,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <button class="filter-btn" onclick="setFilter('working',this)">Working</button>
       <button class="filter-btn" onclick="setFilter('noshow',this)">No show</button>
       <button class="filter-btn" onclick="setFilter('Appointment set',this)">Appt</button>
-      <button class="filter-btn" onclick="openLeadImport()" style="background:#1D3557;color:#fff;border-color:#1D3557;">+ Import PDF</button>
     </div>
     <div id="clients-list"><div class="loading">Loading clients...</div></div>
   </div>
@@ -6247,12 +6246,7 @@ async function toggleUpload(id, si, ai) {
 }
 
 //  BULK IMPORT 
-function openImportModal() {
-  showModal('<button class="close-x" onclick="closeModal()">x</button>' +
-  '<div class="modal-title">Import leads</div>' +
-  '<div style="font-size:12px;color:#5f7a99;margin-bottom:14px;">Upload a PDF to import new leads. PDF import coming soon!</div>' +
-  '<div style="font-size:13px;color:#1D3557;padding:12px;background:#f0f4f8;border-radius:8px;">Previous batches (June 9 + June 10) already imported - 31 leads in your tracker.</div>');
-}
+function openImportModal() { openLeadImport(); }
 
 // ── TASK SYSTEM (Supabase-backed) ──────────────────────────────
 async function addTask() {
