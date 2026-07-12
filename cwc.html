@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h19</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h21</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -4031,6 +4031,8 @@ async function confirmMoveAppt(id) {
   showSync('Saving...');
   await sb.from('clients').update({appt_datetime: newDt, appt_notes: notes, cases}).eq('id',id);
   c.appt_datetime = newDt;
+  pushApptToCalendar(c, 'upsert'); // editing the time updates the Google event
+  c.appt_datetime = newDt;
   c.appt_notes = notes;
   c.cases = cases;
   hideSync(); closeModal(); openClient(id); renderSidebar();
@@ -4135,6 +4137,7 @@ async function removeFollowUp(id) {
   if (!confirm('Remove this follow-up? Use this to undo a mistake - the client goes back to Working status.')) return;
   const callLog = [...(c.call_log||[]), {ts: new Date().toISOString(), outcome: 'Follow-up canceled', dials: 0}];
   showSync('Removing...');
+  if (c.gcal_event_id) pushApptToCalendar(c, 'delete'); // appt cancelled -> remove from Google
   await sb.from('clients').update({ status: 'Working', call_log: callLog, appt_datetime: null, appt_notes: '' }).eq('id', id);
   c.status = 'Working'; c.call_log = callLog; c.appt_datetime = null; c.appt_notes = '';
   hideSync(); closeModal();
@@ -4334,6 +4337,7 @@ async function confirmResetTo(id) {
   }).eq('id', id);
 
   Object.assign(c, {cases, call_log: callLog, status: 'Appointment set', appt_datetime: apptDatetime, appt_notes: apptNotes});
+  pushApptToCalendar(c, 'upsert');
 
   await addStat('dials', dialCount);
   await addStat('appts', 1);
@@ -5341,6 +5345,7 @@ async function confirmReviveTp(id, ci, ti) {
   showSync('Reviving...');
   await sb.from('clients').update({cases, status:'Appointment set', appt_datetime: newDt, appt_notes: (srcTp.type||'') + ' (revived)', call_log: callLog}).eq('id', id);
   Object.assign(c, {cases, status:'Appointment set', appt_datetime: newDt, appt_notes: (srcTp.type||'') + ' (revived)', call_log: callLog});
+  pushApptToCalendar(c, 'upsert');
   hideSync(); closeModal();
   openClient(id); renderScore(); renderSidebar();
 }
@@ -6195,6 +6200,8 @@ async function confirmReset(id) {
   const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(),outcome:'Reset scheduled',appt_datetime:resetDatetime,appt_notes:resetNotes}];
   showSync('Saving...');
   await sb.from('clients').update({call_log:callLog,status:'Appointment set',appt_datetime:resetDatetime,appt_notes:resetNotes}).eq('id',id);
+  c.appt_datetime = resetDatetime;
+  pushApptToCalendar(c, 'upsert');
   c.call_log=callLog; c.status='Appointment set'; c.appt_datetime=resetDatetime; c.appt_notes=resetNotes;
   await addStat('appts',1);
   hideSync(); closeModal();
@@ -6460,7 +6467,7 @@ async function pushApptToCalendar(client, action) {
         summary: client.name + ' - appointment',
         description: 'CWC lead - ' + (client.phone || '') + (client.address ? '\n' + client.address : ''),
         start: client.appt_datetime,
-        minutes: 60
+        minutes: 30
       })
     });
     const out = await res.json().catch(() => ({}));
