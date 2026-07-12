@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h18</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h19</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -4210,6 +4210,8 @@ async function confirmReschedule(id) {
 
   showSync('Saving...');
   await sb.from('clients').update({call_log:callLog, status:'Appointment set', appt_datetime:apptDatetime, appt_notes:apptNotes, cases}).eq('id',id);
+  c.appt_datetime = apptDatetime;
+  pushApptToCalendar(c, 'upsert'); // moving an appt moves the Google event too
   c.call_log=callLog; c.status='Appointment set'; c.appt_datetime=apptDatetime; c.appt_notes=apptNotes; c.cases=cases;
   await addStat('dials', dialCount); // No convos, no appt stat — reschedule is not a new sit
   window._dialCount=1; window._dialCountSet=false; hideSync(); closeModal();
@@ -6406,6 +6408,17 @@ function connectGoogleCalendar() {
   window.open('https://accounts.google.com/o/oauth2/v2/auth?' + params.toString(), '_blank');
 }
 
+async function syncExistingAppts() {
+  const now = new Date();
+  const upcoming = clients.filter(c => c.appt_datetime && new Date(c.appt_datetime) >= now && c.status === 'Appointment set');
+  if (!upcoming.length) { alert('No upcoming appointments to sync.'); return; }
+  if (!confirm('Push ' + upcoming.length + ' upcoming appointment(s) to your Google Calendar?')) return;
+  showSync('Syncing ' + upcoming.length + '...');
+  for (const c of upcoming) { await pushApptToCalendar(c, 'upsert'); }
+  hideSync();
+  alert('Synced ' + upcoming.length + ' appointment(s) to Google Calendar.');
+}
+
 async function getCalendarStatus() {
   // Ask the Edge Function, which has privileged access. The browser must never be
   // able to read calendar_tokens directly - that table holds refresh tokens.
@@ -6773,7 +6786,8 @@ function openSettings() {
     if (!st || !ac) return;
     if (email) {
       st.innerHTML = '<span style="color:#138181;font-weight:600;">Connected</span> - ' + email + '<br><span style="font-size:11px;">Appointments you set will appear on this calendar.</span>';
-      ac.innerHTML = '<button onclick="disconnectGoogleCalendar()" style="width:100%;background:none;border:1px solid #E0A0A0;color:#A32D2D;border-radius:8px;padding:8px;font-size:12px;cursor:pointer;">Disconnect</button>';
+      ac.innerHTML = '<button onclick="syncExistingAppts()" style="width:100%;background:#138181;color:#fff;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:6px;">Sync existing appointments</button>' +
+        '<button onclick="disconnectGoogleCalendar()" style="width:100%;background:none;border:1px solid #E0A0A0;color:#A32D2D;border-radius:8px;padding:8px;font-size:12px;cursor:pointer;">Disconnect</button>';
     } else {
       st.textContent = 'Not connected. Connect once and your CWC appointments will show up on your Google Calendar.';
       ac.innerHTML = '<button onclick="connectGoogleCalendar()" style="width:100%;background:#138181;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;">Connect Google Calendar</button>';
