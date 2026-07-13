@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h21</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h22</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -4185,6 +4185,7 @@ function openReschedulePicker(id) {
   </div>
   ${buildWeekGrid(id)}
   <div class="field"><label>New date & time</label><input type="datetime-local" id="appt-dt" value="${dt}" style="font-size:16px;"></div>
+  <div class="field"><label>Length (minutes)</label><input type="number" step="5" id="appt-mins" value="${c.appt_mins || getDefaultApptMins()}" style="font-size:16px;"></div>
   <div class="field"><label>Notes (optional)</label><input type="text" id="appt-note-field" placeholder="e.g. confirmed via text..."></div>
   <button class="save-btn" style="background:#534AB7;" onclick="confirmReschedule('${id}')">Confirm reschedule</button>`);
 }
@@ -4194,6 +4195,7 @@ async function confirmReschedule(id) {
   const dtVal = document.getElementById('appt-dt').value;
   if (!dtVal) return;
   const apptNotes = (document.getElementById('appt-note-field')||{value:''}).value.trim();
+  const apptMins = parseInt((document.getElementById('appt-mins')||{}).value) || getDefaultApptMins();
   const reason = (document.getElementById('resched-reason')||{value:'other'}).value;
   const [year,month,day] = dtVal.split('T')[0].split('-').map(Number);
   const [hours,minutes] = dtVal.split('T')[1].split(':').map(Number);
@@ -4212,8 +4214,8 @@ async function confirmReschedule(id) {
   });
 
   showSync('Saving...');
-  await sb.from('clients').update({call_log:callLog, status:'Appointment set', appt_datetime:apptDatetime, appt_notes:apptNotes, cases}).eq('id',id);
-  c.appt_datetime = apptDatetime;
+  await sb.from('clients').update({call_log:callLog, status:'Appointment set', appt_datetime:apptDatetime, appt_notes:apptNotes, appt_mins:apptMins, cases}).eq('id',id);
+  c.appt_datetime = apptDatetime; c.appt_mins = apptMins;
   pushApptToCalendar(c, 'upsert'); // moving an appt moves the Google event too
   c.call_log=callLog; c.status='Appointment set'; c.appt_datetime=apptDatetime; c.appt_notes=apptNotes; c.cases=cases;
   await addStat('dials', dialCount); // No convos, no appt stat — reschedule is not a new sit
@@ -4370,6 +4372,7 @@ function openApptPicker(id) {
   ${buildWeekGrid(id)}
   <div class="field"><label>Appointment type</label><select id="appt-case-type">${caseOptions}</select></div>
   <div class="field"><label>Date & time</label><input type="datetime-local" id="appt-dt" value="${dt}" style="font-size:16px;"></div>
+  <div class="field"><label>Length (minutes)</label><input type="number" step="5" id="appt-mins" value="${getDefaultApptMins()}" style="font-size:16px;"></div>
   <div class="field"><label>Notes (optional)</label><input type="text" id="appt-note-field" placeholder="e.g. Call back on cell, spouse available..."></div>
   <button class="save-btn" onclick="confirmAppt('${id}')">Confirm appointment</button>`);
 }
@@ -4379,6 +4382,7 @@ async function confirmAppt(id) {
   const dtVal = document.getElementById('appt-dt').value;
   if (!dtVal) return;
   const apptNotes = (document.getElementById('appt-note-field')||{value:''}).value.trim();
+  const apptMins = parseInt((document.getElementById('appt-mins')||{}).value) || getDefaultApptMins();
   const apptDatetime = new Date(dtVal).toISOString();
   const caseTypeEl = document.getElementById('appt-case-type');
   const selectedType = caseTypeEl ? caseTypeEl.value : 'Mortgage Protection';
@@ -4423,7 +4427,8 @@ async function confirmAppt(id) {
   const callLog = [...(c.call_log||[]), logEntry];
   const newStatusAfter = isFollowUpMove ? 'Follow-up' : 'Appointment set';
   showSync('Saving...');
-  await sb.from('clients').update({call_log:callLog,status:newStatusAfter,appt_datetime:isFollowUpMove?null:apptDatetime,appt_notes:isFollowUpMove?'':apptNotes,cases}).eq('id',id);
+  await sb.from('clients').update({call_log:callLog,status:newStatusAfter,appt_datetime:isFollowUpMove?null:apptDatetime,appt_notes:isFollowUpMove?'':apptNotes,appt_mins:apptMins,cases}).eq('id',id);
+  c.appt_mins = apptMins;
   c.call_log=callLog; c.status=newStatusAfter; c.appt_datetime=isFollowUpMove?null:apptDatetime; c.appt_notes=isFollowUpMove?'':apptNotes; c.cases=cases;
   if (!isFollowUpMove) { await addStat('dials',dialCount); await addStat('appts',1); await addStat('convos',1); }
   // Sync to Google Calendar (fails quietly - never blocks booking)
@@ -6415,6 +6420,11 @@ function connectGoogleCalendar() {
   window.open('https://accounts.google.com/o/oauth2/v2/auth?' + params.toString(), '_blank');
 }
 
+// Each agent sets their own default length in Settings; any appointment can override it.
+function getDefaultApptMins() {
+  return parseInt(getAgentSettings().defaultApptMins) || 40;
+}
+
 async function syncExistingAppts() {
   const now = new Date();
   const upcoming = clients.filter(c => c.appt_datetime && new Date(c.appt_datetime) >= now && c.status === 'Appointment set');
@@ -6467,7 +6477,7 @@ async function pushApptToCalendar(client, action) {
         summary: client.name + ' - appointment',
         description: 'CWC lead - ' + (client.phone || '') + (client.address ? '\n' + client.address : ''),
         start: client.appt_datetime,
-        minutes: 30
+        minutes: client.appt_mins || getDefaultApptMins()
       })
     });
     const out = await res.json().catch(() => ({}));
@@ -6766,6 +6776,7 @@ function openSettings() {
         '</select>' +
       '</div>' +
 
+      '<div class="field"><label>Default appointment length (minutes)</label><input type="number" step="5" id="s-appt-mins" value="' + (settings.defaultApptMins || 40) + '" style="font-size:16px;"></div>' +
       '<button onclick="saveProfileSettings()" style="width:100%;background:#1D3557;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;">Save profile</button>' +
     '</div>' +
 
@@ -6807,6 +6818,8 @@ function saveProfileSettings() {
   const settings = getAgentSettings();
   settings.agentName = document.getElementById('s-name').value.trim();
   settings.contractLevel = parseInt(document.getElementById('s-level').value);
+  const dm = document.getElementById('s-appt-mins');
+  if (dm) settings.defaultApptMins = parseInt(dm.value) || 40;
   saveAgentSettings(settings);
   closeModal();
   showSync('Settings saved!');
