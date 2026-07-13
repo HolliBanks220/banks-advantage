@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h22</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h23</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -339,8 +339,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="mia-show-ratio">-</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">Close ratio</div>
         <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="mia-close-ratio">-</div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Avg APV</div>
-        <div style="font-size:15px;font-weight:500;color:#fff;" id="mia-avg-apv">-</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Avg APV / sale</div>
+        <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="mia-avg-apv">-</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">$ per lead</div>
+        <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="mia-per-lead">-</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">$ per lead w/ referrals</div>
+        <div style="font-size:15px;font-weight:600;color:#9FE1CB;margin-bottom:4px;" id="mia-per-lead-ref">-</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Touches / lead</div>
+        <div style="font-size:15px;font-weight:500;color:#fff;" id="mia-touches">-</div>
       </div>
       <div style="background:#138181;border-radius:10px;padding:10px 12px;">
         <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;">CIA</div>
@@ -354,8 +360,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="cia-show-ratio">-</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">Close ratio</div>
         <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="cia-close-ratio">-</div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Avg APV</div>
-        <div style="font-size:15px;font-weight:500;color:#fff;" id="cia-avg-apv">-</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Avg APV / sale</div>
+        <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="cia-avg-apv">-</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">$ per lead</div>
+        <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="cia-per-lead">-</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">$ per lead w/ referrals</div>
+        <div style="font-size:15px;font-weight:600;color:#9FE1CB;margin-bottom:4px;" id="cia-per-lead-ref">-</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Touches / lead</div>
+        <div style="font-size:15px;font-weight:500;color:#fff;" id="cia-touches">-</div>
       </div>
     </div>
   </div>
@@ -1302,18 +1314,19 @@ function renderScore() {
   document.getElementById('s-resolved-pct').textContent = resolved + ' resolved / ' + assignedInPeriod + ' assigned';
   document.getElementById('s-resolved-fresh').textContent = assignedInPeriod > 0 ? pct(resolved, assignedInPeriod) + ' resolution rate' : '-';
 
-  const periodAppts = clients.filter(c => {
-    if (!c.appt_datetime) return false;
-    const d = new Date(c.appt_datetime);
-    return d >= pStart && d <= pEnd;
-  }).length;
-
   const allTPs = clients.flatMap(c => (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).filter(tp => {
     const d = new Date(tp.datetime); return d >= pStart && d <= pEnd;
   })));
   const allSits = clients.flatMap(c => (c.sits||[]).filter(s => {
     const d = new Date(s.datetime); return d >= pStart && d <= pEnd;
   }));
+
+  // PRODUCTION = calendar truth, counted as EVENTS. Every appointment that was
+  // supposed to happen in this period counts once, and every no-show counts once.
+  // (Counting clients instead of events is what let no-show rate exceed 100%:
+  // one client who no-showed 3 times was 3 no-shows over 1 "appointment".)
+  // These numbers are operational only - lead VALUE is measured per-lead below.
+  const periodAppts = allTPs.length + allSits.length;
 
   const tpSits = allTPs.filter(t => t.outcome==='sale'||t.outcome==='nosale'||t.outcome==='cont').length;
   const legacySits = allSits.filter(s => s.outcome==='showed').length;
@@ -1477,7 +1490,9 @@ function renderSourceComparison(pStart, pEnd, label) {
         return d >= pStart && d <= pEnd;
       }) ||
       (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => {
-        if (tp.outcome !== 'sale' && tp.outcome !== 'nosale') return false;
+        // A continuation IS a sit - they showed up. Counting it keeps "ever showed"
+        // honest for a lead that took several appointments to work.
+        if (tp.outcome !== 'sale' && tp.outcome !== 'nosale' && tp.outcome !== 'cont') return false;
         if (isDay) return true;
         const d = new Date(tp.datetime);
         return d >= pStart && d <= pEnd;
@@ -1511,7 +1526,35 @@ function renderSourceComparison(pStart, pEnd, label) {
       return acc + tpAPV + sitAPV;
     }, 0);
 
-    return { assigned, contacted, apptsSet, shows, sales, totalAPV };
+    // Effort: how many appointments/sits it takes to work a lead of this source.
+    // A lead needing 4 touches isn't bad, it's deep - but it costs time.
+    const totalTouches = sourceClients.reduce((acc, c) =>
+      acc + (c.cases||[]).reduce((a,cs)=>a+(cs.touchpoints||[]).length,0) + (c.sits||[]).length, 0);
+
+    // Referral-inclusive APV: what this lead source is TRULY worth, following the
+    // referral web out from each lead (a lead who refers two buyers is worth far
+    // more than the policy they bought). Walks the whole chain, not just one hop.
+    function apvOf(cl) {
+      if (!cl) return 0;
+      const tp = (cl.cases||[]).flatMap(cs => (cs.touchpoints||[]).filter(t => t.outcome === 'sale'))
+        .reduce((a,t) => a + (t.apps||[]).reduce((b,ap)=>b+(ap.premium||0),0), 0);
+      const st = (cl.sits||[]).filter(s => s.outcome === 'showed')
+        .reduce((a,s) => a + (s.apps||[]).reduce((b,ap)=>b+(ap.premium||0),0), 0);
+      return tp + st;
+    }
+    function referralAPV(cl, seen) {
+      seen = seen || new Set();
+      if (!cl || seen.has(cl.id)) return 0;
+      seen.add(cl.id);
+      return (cl.referrals||[]).reduce((acc, r) => {
+        const kid = clients.find(x => x.id === r.id);
+        if (!kid) return acc;
+        return acc + apvOf(kid) + referralAPV(kid, seen);
+      }, 0);
+    }
+    const refAPV = sourceClients.reduce((acc, c) => acc + referralAPV(c), 0);
+
+    return { assigned, contacted, apptsSet, shows, sales, totalAPV, totalTouches, refAPV };
   }
 
   function fmtPct(n, d) { return d > 0 ? Math.round((n/d)*100) + "%" : "-"; }
@@ -1526,6 +1569,9 @@ function renderSourceComparison(pStart, pEnd, label) {
   document.getElementById("mia-show-ratio").textContent = fmtPct(mia.shows, mia.apptsSet);
   document.getElementById("mia-close-ratio").textContent = fmtPct(mia.sales, mia.shows);
   document.getElementById("mia-avg-apv").textContent = fmtAvg(mia.totalAPV, mia.sales);
+  document.getElementById("mia-per-lead").textContent = fmtAvg(mia.totalAPV, mia.assigned);
+  document.getElementById("mia-per-lead-ref").textContent = fmtAvg(mia.totalAPV + mia.refAPV, mia.assigned);
+  document.getElementById("mia-touches").textContent = mia.assigned > 0 ? (mia.totalTouches / mia.assigned).toFixed(1) : '-';
 
   document.getElementById("cia-leads").textContent = cia.assigned;
   document.getElementById("cia-contact-ratio").textContent = fmtPct(cia.contacted, cia.assigned);
@@ -1533,6 +1579,9 @@ function renderSourceComparison(pStart, pEnd, label) {
   document.getElementById("cia-show-ratio").textContent = fmtPct(cia.shows, cia.apptsSet);
   document.getElementById("cia-close-ratio").textContent = fmtPct(cia.sales, cia.shows);
   document.getElementById("cia-avg-apv").textContent = fmtAvg(cia.totalAPV, cia.sales);
+  document.getElementById("cia-per-lead").textContent = fmtAvg(cia.totalAPV, cia.assigned);
+  document.getElementById("cia-per-lead-ref").textContent = fmtAvg(cia.totalAPV + cia.refAPV, cia.assigned);
+  document.getElementById("cia-touches").textContent = cia.assigned > 0 ? (cia.totalTouches / cia.assigned).toFixed(1) : '-';
 }
 //  TABS 
 
