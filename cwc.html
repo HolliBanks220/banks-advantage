@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h23</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h25</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -345,7 +345,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="mia-per-lead">-</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">$ per lead w/ referrals</div>
         <div style="font-size:15px;font-weight:600;color:#9FE1CB;margin-bottom:4px;" id="mia-per-lead-ref">-</div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Touches / lead</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Appts to decision</div>
         <div style="font-size:15px;font-weight:500;color:#fff;" id="mia-touches">-</div>
       </div>
       <div style="background:#138181;border-radius:10px;padding:10px 12px;">
@@ -366,7 +366,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="cia-per-lead">-</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">$ per lead w/ referrals</div>
         <div style="font-size:15px;font-weight:600;color:#9FE1CB;margin-bottom:4px;" id="cia-per-lead-ref">-</div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Touches / lead</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Appts to decision</div>
         <div style="font-size:15px;font-weight:500;color:#fff;" id="cia-touches">-</div>
       </div>
     </div>
@@ -1526,10 +1526,32 @@ function renderSourceComparison(pStart, pEnd, label) {
       return acc + tpAPV + sitAPV;
     }, 0);
 
-    // Effort: how many appointments/sits it takes to work a lead of this source.
-    // A lead needing 4 touches isn't bad, it's deep - but it costs time.
-    const totalTouches = sourceClients.reduce((acc, c) =>
-      acc + (c.cases||[]).reduce((a,cs)=>a+(cs.touchpoints||[]).length,0) + (c.sits||[]).length, 0);
+    // RESOLVED-ONLY DENOMINATORS. An appointment on the books for Thursday hasn't
+    // failed to show, and a lead still in continuation hasn't failed to buy - so
+    // neither belongs in a ratio yet. Both only count once they RESOLVE.
+    const tpsOf = (c) => (c.cases||[]).flatMap(cs => cs.touchpoints||[]);
+    const inPeriod = (d) => { if (isDay) return true; const t = new Date(d); return t >= pStart && t <= pEnd; };
+
+    // Appointments that actually happened (showed OR no-showed) - excludes pending.
+    const apptsResolved = sourceClients.filter(c =>
+      tpsOf(c).some(tp => ['sale','nosale','cont','noshow'].includes(tp.outcome) && inPeriod(tp.datetime)) ||
+      (c.sits||[]).some(s => ['showed','noshow'].includes(s.outcome) && inPeriod(s.datetime))
+    ).length;
+
+    // Leads that reached a DECISION (sale or no-sale). A continuation is still open.
+    const decided = sourceClients.filter(c =>
+      tpsOf(c).some(tp => (tp.outcome === 'sale' || tp.outcome === 'nosale') && inPeriod(tp.datetime))
+    ).length;
+
+    // Effort that matters: for leads that made it all the way to a decision, how
+    // many appointments did it take to get there? (MIA 1.5 vs CIA 2.8 is a real
+    // cost difference.) Only counts leads that actually resolved.
+    const decidedClients = sourceClients.filter(c =>
+      tpsOf(c).some(tp => tp.outcome === 'sale' || tp.outcome === 'nosale')
+    );
+    const touchesToDecision = decidedClients.length
+      ? decidedClients.reduce((acc, c) => acc + tpsOf(c).length + (c.sits||[]).length, 0) / decidedClients.length
+      : 0;
 
     // Referral-inclusive APV: what this lead source is TRULY worth, following the
     // referral web out from each lead (a lead who refers two buyers is worth far
@@ -1554,7 +1576,7 @@ function renderSourceComparison(pStart, pEnd, label) {
     }
     const refAPV = sourceClients.reduce((acc, c) => acc + referralAPV(c), 0);
 
-    return { assigned, contacted, apptsSet, shows, sales, totalAPV, totalTouches, refAPV };
+    return { assigned, contacted, apptsSet, shows, sales, totalAPV, refAPV, apptsResolved, decided, touchesToDecision };
   }
 
   function fmtPct(n, d) { return d > 0 ? Math.round((n/d)*100) + "%" : "-"; }
@@ -1566,22 +1588,22 @@ function renderSourceComparison(pStart, pEnd, label) {
   document.getElementById("mia-leads").textContent = mia.assigned;
   document.getElementById("mia-contact-ratio").textContent = fmtPct(mia.contacted, mia.assigned);
   document.getElementById("mia-appt-ratio").textContent = fmtPct(mia.apptsSet, mia.contacted);
-  document.getElementById("mia-show-ratio").textContent = fmtPct(mia.shows, mia.apptsSet);
-  document.getElementById("mia-close-ratio").textContent = fmtPct(mia.sales, mia.shows);
+  document.getElementById("mia-show-ratio").textContent = fmtPct(mia.shows, mia.apptsResolved);
+  document.getElementById("mia-close-ratio").textContent = fmtPct(mia.sales, mia.decided);
   document.getElementById("mia-avg-apv").textContent = fmtAvg(mia.totalAPV, mia.sales);
   document.getElementById("mia-per-lead").textContent = fmtAvg(mia.totalAPV, mia.assigned);
   document.getElementById("mia-per-lead-ref").textContent = fmtAvg(mia.totalAPV + mia.refAPV, mia.assigned);
-  document.getElementById("mia-touches").textContent = mia.assigned > 0 ? (mia.totalTouches / mia.assigned).toFixed(1) : '-';
+  document.getElementById("mia-touches").textContent = mia.touchesToDecision > 0 ? mia.touchesToDecision.toFixed(1) : '-';
 
   document.getElementById("cia-leads").textContent = cia.assigned;
   document.getElementById("cia-contact-ratio").textContent = fmtPct(cia.contacted, cia.assigned);
   document.getElementById("cia-appt-ratio").textContent = fmtPct(cia.apptsSet, cia.contacted);
-  document.getElementById("cia-show-ratio").textContent = fmtPct(cia.shows, cia.apptsSet);
-  document.getElementById("cia-close-ratio").textContent = fmtPct(cia.sales, cia.shows);
+  document.getElementById("cia-show-ratio").textContent = fmtPct(cia.shows, cia.apptsResolved);
+  document.getElementById("cia-close-ratio").textContent = fmtPct(cia.sales, cia.decided);
   document.getElementById("cia-avg-apv").textContent = fmtAvg(cia.totalAPV, cia.sales);
   document.getElementById("cia-per-lead").textContent = fmtAvg(cia.totalAPV, cia.assigned);
   document.getElementById("cia-per-lead-ref").textContent = fmtAvg(cia.totalAPV + cia.refAPV, cia.assigned);
-  document.getElementById("cia-touches").textContent = cia.assigned > 0 ? (cia.totalTouches / cia.assigned).toFixed(1) : '-';
+  document.getElementById("cia-touches").textContent = cia.touchesToDecision > 0 ? cia.touchesToDecision.toFixed(1) : '-';
 }
 //  TABS 
 
@@ -3542,13 +3564,13 @@ function openClient(id, keepDialCount) {
   showModal(`<button class="close-x" onclick="closeModal()">x</button>
   <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:2px;">
     <div style="flex:1;">
-      <input id="edit-name" value="${c.name||''}" style="font-size:16px;font-weight:500;color:#1D3557;border:none;border-bottom:2px solid transparent;outline:none;background:transparent;width:100%;font-family:inherit;padding:0;" onfocus="this.style.borderBottomColor='#138181'" onblur="this.style.borderBottomColor='transparent'">
+      <input id="edit-name" value="${escAttr(c.name)}" style="font-size:16px;font-weight:500;color:#1D3557;border:none;border-bottom:2px solid transparent;outline:none;background:transparent;width:100%;font-family:inherit;padding:0;" onfocus="this.style.borderBottomColor='#138181'" onblur="this.style.borderBottomColor='transparent'">
     </div>
     <button onclick="saveNamePhone('${id}')" style="font-size:10px;background:#138181;color:#fff;border:none;border-radius:6px;padding:3px 8px;cursor:pointer;margin-left:6px;white-space:nowrap;">Save</button>
   </div>
   <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
     <a href="tel:${(c.phone||'').replace(/[^0-9+]/g,'')}" onclick="autoIncrementDial();setTimeout(()=>window.focus(),3000)" style="font-size:13px;color:#138181;font-weight:500;text-decoration:none;margin-right:4px;"> ${c.phone||''}</a>
-    <input id="edit-phone" value="${c.phone||''}" style="font-size:11px;color:#5f7a99;border:none;border-bottom:1px solid transparent;outline:none;background:transparent;font-family:inherit;width:120px;padding:0;" onfocus="this.style.borderBottomColor='#138181'" onblur="this.style.borderBottomColor='transparent'" placeholder="edit number">
+    <input id="edit-phone" value="${escAttr(c.phone)}" style="font-size:11px;color:#5f7a99;border:none;border-bottom:1px solid transparent;outline:none;background:transparent;font-family:inherit;width:120px;padding:0;" onfocus="this.style.borderBottomColor='#138181'" onblur="this.style.borderBottomColor='transparent'" placeholder="edit number">
     <span style="color:#5f7a99;font-size:13px;">- ${c.state||''} - <span class="${badgeClass(c.source)}">${c.source||''}</span></span>
   </div>
   ${c.address?`<div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">[Addr] ${c.address}</div>`:''}
@@ -3621,7 +3643,7 @@ function openClient(id, keepDialCount) {
   <div class="section-lbl">Call log</div>
   <div style="padding-left:4px;margin-bottom:12px;">${callHistory||'<div style="font-size:12px;color:#a0b8cc;">No calls yet.</div>'}</div>
   <div class="section-lbl">Notes</div>
-  <div class="field"><label>Property address</label><input type="text" id="cn-address" value="${c.address||''}" placeholder="123 Main St, City, ST 00000" onchange="autoSaveField('${id}','address',this.value)"></div>
+  <div class="field"><label>Property address</label><input type="text" id="cn-address" value="${escAttr(c.address)}" placeholder="123 Main St, City, ST 00000" onchange="autoSaveField('${id}','address',this.value)"></div>
   <div class="field"><label>Age</label><input type="number" id="cn-age" value="${c.age||''}" placeholder="Age" min="18" max="99" onchange="autoSaveField('${id}','age',this.value?parseInt(this.value):null)" style="width:90px;"></div>
   <div class="field"><label>Call window</label><select id="cn-callwindow" onchange="autoSaveField('${id}','call_window',this.value||null)">
     <option value=""${!c.call_window?' selected':''}>Standard (age-aware)</option>
@@ -4054,7 +4076,7 @@ function openMoveAppt(id) {
   <div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:6px 10px;margin-bottom:10px;">Correcting a mistake — no stats logged, no reschedule tracked.</div>
   ${buildWeekGrid(id)}
   <div class="field"><label>New date & time</label><input type="datetime-local" id="move-dt" value="${dtVal}" style="font-size:16px;"></div>
-  <div class="field"><label>Notes (optional)</label><input type="text" id="move-notes" value="${c.appt_notes||''}" placeholder="Notes..."></div>
+  <div class="field"><label>Notes (optional)</label><input type="text" id="move-notes" value="${escAttr(c.appt_notes)}" placeholder="Notes..."></div>
   <button class="save-btn" style="background:#138181;" onclick="confirmMoveAppt('${id}')">Save correction</button>`);
 }
 
@@ -5191,7 +5213,7 @@ function renderImportPreview() {
     return `<div${flag} style="border:1px solid #e0e8f0;border-radius:8px;padding:8px;margin-bottom:8px;">
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;">
         <input type="checkbox" ${r.include?'checked':''} onchange="_importRows[${i}].include=this.checked">
-        <input value="${(r.name||'').replace(/"/g,'&quot;')}" oninput="_importRows[${i}].name=this.value" placeholder="Name" style="flex:1;font-size:13px;font-weight:600;">
+        <input value="${escAttr(r.name)}" oninput="_importRows[${i}].name=this.value" placeholder="Name" style="flex:1;font-size:13px;font-weight:600;">
         <select onchange="_importRows[${i}].source=this.value" style="font-size:12px;">
           <option value="CIA"${r.source==='CIA'?' selected':''}>CIA</option>
           <option value="MIA"${r.source==='MIA'?' selected':''}>MIA</option>
@@ -5199,13 +5221,13 @@ function renderImportPreview() {
         </select>
       </div>
       <div style="display:flex;gap:6px;">
-        <input value="${r.phone||''}" oninput="_importRows[${i}].phone=this.value" placeholder="Phone" style="flex:1;font-size:12px;">
-        <input value="${r.age||''}" oninput="_importRows[${i}].age=this.value" placeholder="Age" style="width:50px;font-size:12px;">
+        <input value="${escAttr(r.phone)}" oninput="_importRows[${i}].phone=this.value" placeholder="Phone" style="flex:1;font-size:12px;">
+        <input value="${escAttr(r.age)}" oninput="_importRows[${i}].age=this.value" placeholder="Age" style="width:50px;font-size:12px;">
         <input value="${r.mortgage_amount||''}" oninput="_importRows[${i}].mortgage_amount=this.value" placeholder="Mortgage" style="width:90px;font-size:12px;">
         <input value="${r.state||''}" oninput="_importRows[${i}].state=this.value" placeholder="ST" style="width:44px;font-size:12px;">
       </div>
       <div style="margin-top:6px;">
-        <input value="${(r.address||'').replace(/"/g,'&quot;')}" oninput="_importRows[${i}].address=this.value" placeholder="Address, City, ST ZIP" style="width:100%;font-size:12px;">
+        <input value="${escAttr(r.address)}" oninput="_importRows[${i}].address=this.value" placeholder="Address, City, ST ZIP" style="width:100%;font-size:12px;">
       </div>
     </div>`;
   }).join('') + `<button class="save-btn" onclick="confirmLeadImport()">Import ${_importRows.filter(r=>r.include).length} lead(s)</button>`;
@@ -6449,6 +6471,15 @@ window._agentSettings = null;
 // team version lands, each agent connects their own calendar with no refactor.
 const SB_FN_BASE = 'https://mdsaqxbqmvmusdtwlgay.supabase.co/functions/v1';
 const GOOGLE_CLIENT_ID_PUBLIC = '411098095079-vq113elr395pigbsdvo9b2hrulfs61bt.apps.googleusercontent.com';
+
+// Escape a value going into an HTML attribute. Without this, a name like
+// Anthony "Keith" Grant terminates the value= attribute early and the rest of
+// the name is silently lost on save.
+function escAttr(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
 function getAgentId() {
   let id = localStorage.getItem('cwc_agent_id');
