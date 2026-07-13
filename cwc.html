@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h25</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h27</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -1306,7 +1306,9 @@ function renderScore() {
     const dialHrs = timeDialSecs / 3600;
     dialsPerHrEl.textContent = dialHrs > 0.1 ? Math.round(dials / dialHrs) + ' dials/hr' : '';
   }
-  document.getElementById('s-resolved').textContent = resolved;
+  // Distinct LEADS that resolved - not the old appts+dead event tally, which
+  // double-counted any lead that was reset, revived or re-appointed.
+  document.getElementById('s-resolved').textContent = trueResolvedCount();
   const assignedInPeriod = clients.filter(c => {
     const d = new Date(c.assigned_date || c.created_at);
     return d >= aStart && d <= aEnd;
@@ -3721,7 +3723,8 @@ function showSitOutcomeModal(id, ci) {
       '<button onclick="confirmSitOutcome(\''+_id+'\','+_ci+',\'sale\')" style="background:#3B6D11;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">✓ Sale</button>' +
       '<button onclick="confirmSitOutcome(\''+_id+'\','+_ci+',\'nosale\')" style="background:#A32D2D;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">✗ No Sale</button>' +
       '<button onclick="showContModal(\''+_id+'\','+_ci+')" style="background:#534AB7;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">↻ Continuation</button>' +
-      '<button onclick="confirmSitOutcome(\''+_id+'\','+_ci+',\'noshow\')" style="background:#BA7517;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">✗ No Show</button>' +
+      '<button onclick="confirmSitOutcome(\''+_id+'\','+_ci+',\'noshow\')" style="background:#BA7517;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">✗ No Show - alive</button>' +
+      '<button onclick="confirmSitOutcome(\''+_id+'\','+_ci+',\'noshow_dead\')" style="background:#7A4A0F;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">✗ No Show - dead</button>' +
     '</div>' +
     '<button onclick="closeModal();openResetToPicker(\''+_id+'\')" style="width:100%;background:none;border:1px solid #BA7517;border-radius:8px;padding:10px;font-size:12px;color:#BA7517;cursor:pointer;font-weight:500;">↺ Reset to new product</button>');
 }
@@ -3751,6 +3754,12 @@ function showContModal(id, ci) {
 
 async function confirmSitOutcome(id, ci, outcome) {
   const c = clients.find(x=>x.id===id); if (!c) return;
+  // "No show - dead": the slot still evaporated, so it logs a REAL no-show in
+  // production (calendar truth). But the lead isn't recoverable, so it also gets
+  // closed out and stops nagging from the queue. It never touches close ratio -
+  // they never sat, so they were never a no-sale.
+  const killLead = (outcome === 'noshow_dead');
+  if (killLead) outcome = 'noshow';
   // Logging the outcome proves you were in the appointment until now, so credit the
   // full appt session even if the idle banner had capped it while you were heads-down.
   if (window._timer && window._timer.activity === 'appt') { window._lastInteraction = Date.now(); timerStop({full:true}); timerUpdateStatusLabel(); }
@@ -3821,7 +3830,7 @@ async function confirmSitOutcome(id, ci, outcome) {
   // Update case status
   if (outcome === 'sale') cases[targetCi].status = 'Closed Won';
   else if (outcome === 'nosale') cases[targetCi].status = 'Closed Lost';
-  else if (outcome === 'noshow') cases[targetCi].status = 'Open';
+  else if (outcome === 'noshow') cases[targetCi].status = killLead ? 'Closed Lost' : 'Open';
   else if (outcome === 'cont') cases[targetCi].status = 'Open';
 
   // Add continuation touchpoint for next appt
@@ -3842,7 +3851,11 @@ async function confirmSitOutcome(id, ci, outcome) {
 
   if (outcome === 'sale') { newStatus = 'Closed'; }
   else if (outcome === 'nosale') { newStatus = 'No sale'; newApptDt = null; newApptNotes = null; }
-  else if (outcome === 'noshow') { newStatus = 'No show'; }
+  else if (outcome === 'noshow') {
+    // alive -> stays workable in the queue; dead -> closed out, stops nagging
+    newStatus = killLead ? 'Dead' : 'No show';
+    if (killLead) { newApptDt = null; newApptNotes = null; }
+  }
   else if (outcome === 'cont') { newStatus = 'Appointment set'; newApptDt = nextDt; newApptNotes = (ppu?'PPU ':'') + 'Continuation'; }
 
   // Also log to call_log so urgency/alert system can track it
@@ -4413,7 +4426,7 @@ async function confirmResetTo(id) {
   pushApptToCalendar(c, 'upsert');
 
   await addStat('dials', dialCount);
-  await addStat('appts', 1);
+  await markResolvedOnce(c, 'appt');
   await addStat('convos', 1);
 
   window._dialCount = 1; window._dialCountSet = false;
@@ -4501,7 +4514,7 @@ async function confirmAppt(id) {
   await sb.from('clients').update({call_log:callLog,status:newStatusAfter,appt_datetime:isFollowUpMove?null:apptDatetime,appt_notes:isFollowUpMove?'':apptNotes,appt_mins:apptMins,cases}).eq('id',id);
   c.appt_mins = apptMins;
   c.call_log=callLog; c.status=newStatusAfter; c.appt_datetime=isFollowUpMove?null:apptDatetime; c.appt_notes=isFollowUpMove?'':apptNotes; c.cases=cases;
-  if (!isFollowUpMove) { await addStat('dials',dialCount); await addStat('appts',1); await addStat('convos',1); }
+  if (!isFollowUpMove) { await addStat('dials',dialCount); await markResolvedOnce(c,'appt'); await addStat('convos',1); }
   // Sync to Google Calendar (fails quietly - never blocks booking)
   if (!isFollowUpMove) { pushApptToCalendar(c, 'upsert'); }
   window._dialCount=1; hideSync(); closeModal();
@@ -5041,7 +5054,10 @@ async function quickLog(id, outcome, statKey) {
   if (updatePayloadExtra.cases) c.cases = updatePayloadExtra.cases;
   await addStat('dials', dialCount);
   if (statKey !== 'dials') {
-    await addStat(statKey, 1);
+    // 'dead' is a RESOLUTION - it can only ever fire once per lead. Everything
+    // else (callbacks, conversations) is ordinary activity and counts every time.
+    if (statKey === 'dead') { await markResolvedOnce(c, 'dead'); }
+    else { await addStat(statKey, 1); }
     await addStat('convos', 1);
   }
   window._dialCount = 1;
@@ -6279,7 +6295,7 @@ async function confirmReset(id) {
   c.appt_datetime = resetDatetime;
   pushApptToCalendar(c, 'upsert');
   c.call_log=callLog; c.status='Appointment set'; c.appt_datetime=resetDatetime; c.appt_notes=resetNotes;
-  await addStat('appts',1);
+  await markResolvedOnce(c, 'appt'); // no-op if this lead already resolved
   hideSync(); closeModal();
   renderClients(document.getElementById('client-search') ? document.getElementById('client-search').value : '');
   renderScore();
@@ -6479,6 +6495,51 @@ function escAttr(v) {
   return String(v == null ? '' : v)
     .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
     .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// A lead RESOLVES exactly once in its life: the first time an initial appointment
+// is set, or the first time it's marked dead/not-interested. Reschedules, resets,
+// continuations and revivals are the SAME lead - they must never log a second
+// resolution. This stamps the lead on first resolve and refuses to double-count.
+// Walk a lead's real history and find the ONE moment it resolved (first appt set,
+// or first not-interested). Used to backfill leads that predate the resolution gate.
+function firstResolution(c) {
+  const log = (c.call_log||[]).slice().sort((a,b) => new Date(a.ts) - new Date(b.ts));
+  for (const cl of log) {
+    if (cl.outcome === 'Appt set') return { ts: cl.ts, kind: 'appt' };
+    if (cl.outcome === 'Not interested') return { ts: cl.ts, kind: 'dead' };
+  }
+  return null;
+}
+
+// True resolution count: distinct LEADS that ever resolved. One lead = one
+// resolution, no matter how many appointments, resets or revivals it went through.
+function trueResolvedCount() {
+  return clients.filter(c => c.resolved_at || firstResolution(c)).length;
+}
+
+async function backfillResolutions() {
+  const toStamp = clients.filter(c => !c.resolved_at && firstResolution(c));
+  if (!toStamp.length) { alert('Nothing to backfill - all resolved leads are already stamped.'); return; }
+  if (!confirm('Stamp ' + toStamp.length + ' already-resolved lead(s) with their true resolution date?\n\nThis fixes the inflated count. It only reads your existing call history - no data is changed.')) return;
+  showSync('Backfilling...');
+  for (const c of toStamp) {
+    const r = firstResolution(c);
+    c.resolved_at = r.ts; c.resolved_as = r.kind;
+    await sb.from('clients').update({ resolved_at: r.ts, resolved_as: r.kind }).eq('id', c.id);
+  }
+  hideSync();
+  alert('Stamped ' + toStamp.length + ' lead(s).\n\nTrue resolved count: ' + trueResolvedCount() + ' leads.');
+  renderScore();
+}
+
+async function markResolvedOnce(c, kind) {
+  if (!c || c.resolved_at) return false;   // already resolved - never count twice
+  c.resolved_at = new Date().toISOString();
+  c.resolved_as = kind;                     // 'appt' or 'dead'
+  try { await sb.from('clients').update({ resolved_at: c.resolved_at, resolved_as: kind }).eq('id', c.id); } catch (e) {}
+  await addStat(kind === 'dead' ? 'dead' : 'appts', 1);
+  return true;
 }
 
 function getAgentId() {
@@ -6864,6 +6925,12 @@ function openSettings() {
       '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Google Calendar</div>' +
       '<div id="cal-status" style="font-size:12px;color:#5f7a99;margin-bottom:8px;">Checking...</div>' +
       '<div id="cal-actions"></div>' +
+    '</div>' +
+
+    '<div style="background:#f0f4f8;border-radius:10px;padding:12px;margin-bottom:12px;">' +
+      '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Data</div>' +
+      '<button onclick="backfillResolutions()" style="width:100%;background:#1D3557;color:#fff;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;">Recount resolutions</button>' +
+      '<div style="font-size:10px;color:#8fa8c0;margin-top:4px;">Stamps each already-resolved lead with its true first resolution. Fixes the inflated count.</div>' +
     '</div>' +
 
     '<div style="background:#f0f4f8;border-radius:10px;padding:12px;">' +
