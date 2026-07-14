@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h36</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h38</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -1069,6 +1069,8 @@ function getNetPlacedForMonth(year, month) {
         const pm = getPlacementMonth({...ap, tpDate: ap.writtenDate || tp.datetime});
         if (!pm || pm.getFullYear() !== year || pm.getMonth() !== month) return;
         if (['Placed','Issued','Paid'].includes(ap.status||'')) placed += (ap.premium||0);
+        // Declined counts as SUBMITTED (it reached the carrier) but never as placed.
+        // No chargeback branch: Holli isn't paid until issue, so a decline claws back nothing.
       });
     }));
     // Chargebacks subtract in the month they HAPPEN (lapse_date)
@@ -1269,7 +1271,7 @@ function renderCaseClock() {
       if (!saleTp) return;
       const openDt = new Date(cs.created || (tps[0] && tps[0].datetime) || saleTp.datetime);
       const days = Math.max(0, (new Date(saleTp.datetime) - openDt) / 86400000);
-      const apv = tps.reduce((a,tp) => a+(tp.apps||[]).reduce((b,ap)=>b+(ap.premium||0),0), 0);
+      const apv = tps.reduce((a,tp) => a+(tp.apps||[]).reduce((b,ap)=>b+premOf(ap),0), 0);
       totalDays += days; totalN++;
       const b = buckets.find(x => days < x.max);
       b.n++; b.apv += apv;
@@ -1382,7 +1384,7 @@ function renderScore() {
   }).map(cs => ({...cs, clientId: c.id})));
 
   const hasPPUTouchpoint = cs => (cs.touchpoints||[]).some(tp => tp.type === 'PPU / Policy Pickup' && (tp.outcome==='sale'||tp.outcome==='nosale'));
-  const caseAPV = cs => (cs.touchpoints||[]).reduce((a,tp) => a+(tp.apps||[]).reduce((b,ap)=>b+(ap.premium||0),0), 0);
+  const caseAPV = cs => (cs.touchpoints||[]).reduce((a,tp) => a+(tp.apps||[]).reduce((b,ap)=>b+premOf(ap),0), 0);
   const caseSold = cs => (cs.touchpoints||[]).some(tp => tp.outcome==='sale');
   const caseNoSale = cs => (cs.touchpoints||[]).some(tp => tp.outcome==='nosale') && !(cs.touchpoints||[]).some(tp=>tp.outcome==='sale');
 
@@ -1440,7 +1442,10 @@ function renderScore() {
       });
     });
   });
-  const totalAPV = periodApps.reduce((a,ap)=>a+(ap.premium||0),0);
+  // Feeds Written APV and APV/sale: one sale = one policy's worth of money, so a
+  // declined app that has been rewritten drops out. (Submitted/placed ratios on the
+  // business tab deliberately do NOT do this - see totalAPV there.)
+  const totalAPV = periodApps.reduce((a,ap)=>a+premOf(ap),0);
   const totalApps = periodApps.length;
   const closedCount = saleTPs.filter(t=>(t.apps||[]).length>0).length + satSits.filter(s=>(s.apps||[]).length>0).length;
   const apvPerSale = totalSales>0 ? totalAPV/totalSales : 0;
@@ -1575,13 +1580,13 @@ function renderSourceComparison(pStart, pEnd, label) {
         if (isDay) return true;
         const d = new Date(tp.datetime);
         return d >= pStart && d <= pEnd;
-      })).reduce((a,tp) => a + (tp.apps||[]).reduce((b,ap) => b+(ap.premium||0), 0), 0);
+      })).reduce((a,tp) => a + (tp.apps||[]).reduce((b,ap) => b+premOf(ap), 0), 0);
       const sitAPV = (c.sits||[]).filter(s => {
         if (s.outcome !== 'showed') return false;
         if (isDay) return true;
         const d = new Date(s.datetime);
         return d >= pStart && d <= pEnd;
-      }).reduce((a,s) => a + (s.apps||[]).reduce((b,ap) => b+(ap.premium||0), 0), 0);
+      }).reduce((a,s) => a + (s.apps||[]).reduce((b,ap) => b+premOf(ap), 0), 0);
       return acc + tpAPV + sitAPV;
     }, 0);
 
@@ -1618,9 +1623,9 @@ function renderSourceComparison(pStart, pEnd, label) {
     function apvOf(cl) {
       if (!cl) return 0;
       const tp = (cl.cases||[]).flatMap(cs => (cs.touchpoints||[]).filter(t => t.outcome === 'sale'))
-        .reduce((a,t) => a + (t.apps||[]).reduce((b,ap)=>b+(ap.premium||0),0), 0);
+        .reduce((a,t) => a + (t.apps||[]).reduce((b,ap)=>b+premOf(ap),0), 0);
       const st = (cl.sits||[]).filter(s => s.outcome === 'showed')
-        .reduce((a,s) => a + (s.apps||[]).reduce((b,ap)=>b+(ap.premium||0),0), 0);
+        .reduce((a,s) => a + (s.apps||[]).reduce((b,ap)=>b+premOf(ap),0), 0);
       return tp + st;
     }
     function referralAPV(cl, seen) {
@@ -2436,7 +2441,7 @@ function renderAppsTab() {
     (ap.status||'').toLowerCase().includes(searchVal)
   );
 
-  const STATUS_ORDER = ['Written','Submitted','Approved','Issued','Paid','Free Look','Cancel','Lapse'];
+  const STATUS_ORDER = ['Written','Submitted','Approved','Issued','Paid','Free Look','Declined','Cancel','Lapse'];
   const STATUS_COLOR = {
     'Written':'#1D3557','Submitted':'#BA7517','Approved':'#534AB7',
     'Issued':'#138181','Placed':'#138181','Paid':'#3B6D11',
@@ -2470,7 +2475,7 @@ function renderAppsTab() {
       .filter(ap => !writtenOnly || (ap.status||'Written') === 'Written')
       .sort((a,b) => new Date(b.tpDate||0) - new Date(a.tpDate||0));
 
-    const totalAPV = submittedApps.reduce((a,ap) => a+(ap.premium||0), 0);
+    const totalAPV = submittedApps.reduce((a,ap) => a+(ap.premium||0), 0);   // full premium: a decline still counts as submitted
     const totalApps = submittedApps.length;
     // OPT warning is all-time — show anything active not yet in OPT
     const notOPT = allApps.filter(ap => activeStatuses.includes(ap.status||'Written') && !ap.opted).length;
@@ -2504,7 +2509,7 @@ function renderAppsTab() {
     }
 
     el.innerHTML = submittedApps.map(ap => {
-      const STATUS_OPTS = ['Written','Submitted','Approved','Issued','Paid','Free Look','Lapse','Cancel'];
+      const STATUS_OPTS = ['Written','Submitted','Approved','Issued','Paid','Free Look','Declined','Lapse','Cancel'];
       const currentStatus = ap.status || 'Submitted';
       const statusColor = STATUS_COLOR[currentStatus] || '#1D3557';
       const dt = ap.tpDate ? new Date(ap.tpDate).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
@@ -2516,6 +2521,9 @@ function renderAppsTab() {
               ${ap.who && ap.who !== 'Borrower' && ap.who !== ap.clientName ? `<div style="font-size:11px;color:#8fa8c0;">· ${ap.who}</div>` : ''}
             </div>
             <div style="font-size:11px;color:#5f7a99;margin-top:2px;">${ap.carrier||''} · ${ap.product||''}</div>
+            ${(ap.status||'') === 'Declined' ? (isSuperseded(ap)
+              ? `<div style="font-size:10px;color:#8fa8c0;margin-top:3px;">Declined - rewritten. Premium counted on the replacement.</div>`
+              : `<div style="font-size:10px;color:#BA7517;font-weight:600;margin-top:3px;">Declined - needs a replacement</div>`) : ''}
             <div style="font-size:11px;color:#8fa8c0;margin-top:1px;"><strong style="color:#1D3557;">$${((ap.premium||0)/12).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}/mo</strong> · ${fmt(ap.premium||0)} APV · ${ap.caseType||''} · ${dt}</div>
             ${(() => {
               const comp = calcAppComp(ap.carrier, ap.product, ap.premium||0, null, undefined, ap.age, ap.product_range || null);
@@ -2670,7 +2678,7 @@ function renderAppsTab() {
             <div style="font-size:12px;color:#138181;font-weight:600;">${fmt(monthAPV)}</div>
           </div>
           ${apps.map(ap => {
-            const STATUS_OPTS = ['Written','Submitted','Approved','Issued','Paid','Free Look','Lapse','Cancel'];
+            const STATUS_OPTS = ['Written','Submitted','Approved','Issued','Paid','Free Look','Declined','Lapse','Cancel'];
             const currentStatus = ap.status || 'Placed';
             const statusColor = STATUS_COLOR[currentStatus] || '#138181';
             return `<div style="border:1px solid #e2eaf2;border-radius:10px;padding:10px 12px;margin-bottom:6px;background:#fff;">
@@ -3367,6 +3375,35 @@ function getUrgencyBadge(c) {
   return {label:'Open', color:'#5f7a99', bg:'#EBF3FF', fire:false};
 }
 
+// Declined and unreplaced: they want coverage and you owe them a policy. Loud.
+// The two ways a decline ends: rewrite it, or accept nobody will take them.
+function replacementBar(c) {
+  if (c.uninsurable) {
+    return '<div style="background:#f0f4f8;border-radius:8px;padding:9px 11px;margin-bottom:8px;font-size:11px;color:#5f7a99;">' +
+      'Uninsurable - no carrier would take them. The sale stands. ' +
+      '<span onclick="undoUninsurable(\'' + c.id + '\')" style="color:#138181;text-decoration:underline;cursor:pointer;">Undo</span></div>';
+  }
+  if (!needsReplacement(c)) return '';
+  const apps = allAppsOf(c);
+  const dec = apps.find(ap => (ap.status||'') === 'Declined' && !isSuperseded(ap));
+  let loc = null;
+  (c.cases||[]).forEach((cs,ci) => (cs.touchpoints||[]).forEach((tp,ti) =>
+    (tp.apps||[]).forEach((ap,ai) => { if (ap === dec) loc = {ci,ti,ai}; })));
+  if (!loc) return '';
+  return '<div style="background:#FFF6E8;border:1px solid #F0C888;border-radius:8px;padding:10px;margin-bottom:8px;">' +
+    '<div style="font-size:12px;font-weight:600;color:#854F0B;margin-bottom:2px;">Needs a replacement policy</div>' +
+    '<div style="font-size:11px;color:#854F0B;margin-bottom:8px;">' + esc(dec.carrier||'') + ' declined. They still want coverage - stays in your dial queue until this is resolved.</div>' +
+    '<div style="display:flex;gap:6px;">' +
+      '<button onclick="rewriteApp(\'' + c.id + '\',' + loc.ci + ',' + loc.ti + ',' + loc.ai + ')" style="flex:1;background:#138181;color:#fff;border:none;border-radius:6px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;">Write the replacement</button>' +
+      '<button onclick="markUninsurable(\'' + c.id + '\')" style="flex:1;background:none;border:1px solid #BA7517;color:#BA7517;border-radius:6px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;">Out of options</button>' +
+    '</div></div>';
+}
+
+function getReplaceBadge(c) {
+  return needsReplacement(c)
+    ? ' <span style="font-size:9px;font-weight:700;color:#fff;background:#BA7517;border-radius:3px;padding:1px 4px;">NEEDS REWRITE</span>'
+    : '';
+}
 function getNoShowBadge(c) {
   const count = getNoShowCount(c);
   if (count === 0) return '';
@@ -3567,10 +3604,92 @@ function dormantRules() {
 }
 function attemptCount(c) { return (c.call_log || []).length; }
 
+// --- DECLINES & REWRITES ---------------------------------------------------
+// A decline is NOT a lapse. A lapse is a policy that existed and died - money was
+// advanced and gets clawed back. A decline means the carrier said no before it ever
+// issued, so nothing placed and nothing was advanced. There is nothing to charge back.
+//
+// The client still WANTS coverage - the policy just has to come from somewhere else.
+// That's a rewrite: same case, new app, linked to the one it replaces.
+//
+// The trap: apps written goes to 2 (true - you did the work twice) but there is still
+// only ONE sale, and the premium must only count ONCE. Summing both apps would post
+// $3,000 of written premium against a $1,500 sale and double your APV/sale - a lie in
+// your own favour, which is the worst kind. So a declined app whose rewrite EXISTS is
+// superseded and drops out of the premium. A decline never rewritten stays counted:
+// you wrote it, it just didn't fly.
+// App ids are unique, so we can just ask globally: does a rewrite of this app exist?
+// Cached per render - this gets hit inside several reduce loops.
+let _rewriteOfCache = null;
+function rewrittenIds() {
+  if (_rewriteOfCache) return _rewriteOfCache;
+  _rewriteOfCache = new Set();
+  clients.forEach(c => allAppsOf(c).forEach(ap => { if (ap && ap.rewrite_of) _rewriteOfCache.add(ap.rewrite_of); }));
+  return _rewriteOfCache;
+}
+function clearRewriteCache() { _rewriteOfCache = null; }
+
+function isSuperseded(ap) {
+  if (!ap || (ap.status || '') !== 'Declined') return false;
+  return rewrittenIds().has(ap.id);
+}
+
+// The premium that should actually count. Zero if a rewrite has replaced it.
+function premOf(ap) { return isSuperseded(ap) ? 0 : (ap.premium || 0); }
+
+// Every app on a client, across all cases - the pool a rewrite is matched within.
+function allAppsOf(c) {
+  return (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).flatMap(tp => tp.apps||[]));
+}
+
+// A declined client still wants coverage and you owe them a policy. They stay in the
+// dial queue - they can never go dormant and never age out - until they're rewritten
+// or you run out of carriers.
+// Write the replacement policy: same case, new app, linked to the declined one.
+// Sales stay at 1 (they're counted off the touchpoint outcome, not the app count).
+// Apps written goes to 2 - true, you did the work twice. Premium counts once.
+async function rewriteApp(cid, ci, ti, ai) {
+  const c = clients.find(x => x.id === cid); if (!c) return;
+  const tp = c.cases[ci].touchpoints[ti];
+  const old = tp.apps[ai];
+  if (!old.id) { old.id = 'app_' + Math.random().toString(36).slice(2,10); await saveClient(c); }
+  closeModal();
+  window._rewriteOf = old.id;   // picked up by the add-app save path
+  openAddApp(cid, ci, ti);
+}
+
+// No carrier will take them. This is a real ending, not a give-up: the SALE stays
+// (you closed them - the carriers didn't), the premium leaves, and it never touches
+// the close ratio. Clears the flag so they stop nagging you forever.
+async function markUninsurable(cid) {
+  const c = clients.find(x => x.id === cid); if (!c) return;
+  if (!confirm('Mark ' + c.name + ' uninsurable?\n\nYou keep the sale - you closed them, the carriers declined. They come out of the dial queue and stop asking for a replacement.')) return;
+  c.uninsurable = true;
+  c.status = 'Dead';
+  await saveClient(c);
+  clearRewriteCache();
+  closeModal(); render();
+}
+
+async function undoUninsurable(cid) {
+  const c = clients.find(x => x.id === cid); if (!c) return;
+  c.uninsurable = false;
+  c.status = 'Appointment set';
+  await saveClient(c);
+  clearRewriteCache();
+  closeModal(); render();
+}
+
+function needsReplacement(c) {
+  if (c.uninsurable) return false;   // no carrier will take them - a real ending, not a give-up
+  return allAppsOf(c).some(ap => (ap.status||'') === 'Declined' && !isSuperseded(ap));
+}
+
 function isDormant(c) {
   if (!c || c.resolved_at) return false;                       // resolved is not dormant
   if (['Dead','Removed'].includes(c.status)) return false;     // dead is a decision, dormant is not
   if (c.appt_datetime) return false;                           // has an appointment - never dormant
+  if (needsReplacement(c)) return false;                       // declined and unreplaced - you owe them a policy
   const r = dormantRules();
   return attemptCount(c) >= r.attempts && getDaysSinceAssigned(c) >= r.days;
 }
@@ -3673,7 +3792,7 @@ function renderClients(q='') {
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
         <div>
           <div class="client-name">${c.name||'Unknown'}${fresh?'<span class="fresh-tag">fresh</span>':''}</div>
-          <div class="client-meta">${c.phone||''} - ${c.state||''}${c.age?' - <span style="color:#1D3557;font-weight:500;">'+c.age+'</span>':''} - <span style="color:#8fa8c0;">${Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24))}d</span> - <span style="color:#8fa8c0;">${(c.call_log||[]).length} att</span>${getNoShowBadge(c)}${getCallTimeBadge(c)}</div>
+          <div class="client-meta">${c.phone||''} - ${c.state||''}${c.age?' - <span style="color:#1D3557;font-weight:500;">'+c.age+'</span>':''} - <span style="color:#8fa8c0;">${Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24))}d</span> - <span style="color:#8fa8c0;">${(c.call_log||[]).length} att</span>${getReplaceBadge(c)}${getNoShowBadge(c)}${getCallTimeBadge(c)}</div>
           ${getUrgencyBadgeHtml(c)}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
@@ -3775,6 +3894,7 @@ function openClient(id, keepDialCount) {
   }).join('');
 
   showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  ${replacementBar(c)}
   <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:2px;">
     <div style="flex:1;">
       <input id="edit-name" value="${escAttr(c.name)}" style="font-size:16px;font-weight:500;color:#1D3557;border:none;border-bottom:2px solid transparent;outline:none;background:transparent;width:100%;font-family:inherit;padding:0;" onfocus="this.style.borderBottomColor='#138181'" onblur="this.style.borderBottomColor='transparent'">
@@ -6304,6 +6424,9 @@ async function saveAppsToTouchpoint(id, ci, ti) {
       apps.push({
         carrier, product: productName, product_range: productRange, face, premium: apv, who, age,
         status:'Written', written_date: sitDate, writtenDate: sitDate, id: Date.now()+idx,
+        // Set when this app replaces a declined one. The declined app is then
+        // superseded and its premium stops counting - one sale, one premium.
+        rewrite_of: (idx === 0 && window._rewriteOf) ? window._rewriteOf : null,
         comp_rate: comp ? comp.rate : null,
         comp_gross: comp ? Math.round(comp.grossComp) : null,
         comp_advance: comp ? Math.round(comp.advance) : null,
