@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h32</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h33</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -362,10 +362,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="mia-per-lead">-</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">$ per lead w/ referrals</div>
         <div style="font-size:15px;font-weight:600;color:#9FE1CB;margin-bottom:4px;" id="mia-per-lead-ref">-</div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Appts to decision</div>
-        <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="mia-touches">-</div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Dials / lead</div>
-        <div style="font-size:15px;font-weight:500;color:#fff;" id="mia-dials">-</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Never resolved</div>
+        <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:6px;" id="mia-never">-</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">To appointment</div>
+        <div style="font-size:13px;font-weight:500;color:#fff;margin-bottom:6px;" id="mia-toappt">-</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">To resolution</div>
+        <div style="font-size:13px;font-weight:500;color:#fff;margin-bottom:6px;" id="mia-tores">-</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">To sale</div>
+        <div style="font-size:13px;font-weight:500;color:#fff;" id="mia-tosale">-</div>
       </div>
       <div style="background:#138181;border-radius:10px;padding:10px 12px;">
         <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;">CIA</div>
@@ -385,10 +389,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="cia-per-lead">-</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">$ per lead w/ referrals</div>
         <div style="font-size:15px;font-weight:600;color:#9FE1CB;margin-bottom:4px;" id="cia-per-lead-ref">-</div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Appts to decision</div>
-        <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="cia-touches">-</div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Dials / lead</div>
-        <div style="font-size:15px;font-weight:500;color:#fff;" id="cia-dials">-</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Never resolved</div>
+        <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:6px;" id="cia-never">-</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">To appointment</div>
+        <div style="font-size:13px;font-weight:500;color:#fff;margin-bottom:6px;" id="cia-toappt">-</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">To resolution</div>
+        <div style="font-size:13px;font-weight:500;color:#fff;margin-bottom:6px;" id="cia-tores">-</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">To sale</div>
+        <div style="font-size:13px;font-weight:500;color:#fff;" id="cia-tosale">-</div>
       </div>
     </div>
   </div>
@@ -1623,12 +1631,37 @@ function renderSourceComparison(pStart, pEnd, label) {
     }
     const refAPV = sourceClients.reduce((acc, c) => acc + referralAPV(c), 0);
 
-    // Dials it takes to work a lead of this source - a real workload + quality signal.
-    const totalDials = sourceClients.reduce((acc, c) =>
-      acc + (c.call_log||[]).reduce((a, cl) => a + (cl.dials || 0), 0), 0);
-    const dialsPerLead = assigned > 0 ? totalDials / assigned : 0;
+    // MILESTONE METRICS. Averages are over leads that REACHED each milestone, so
+    // nothing drifts when you import a fresh stack, and fast rejections can't
+    // flatter a bad source (a lead that says no on dial 1 resolves beautifully).
+    // Attempts, not dials - a triple-dial is ONE attempt.
+    const att = c => (c.call_log||[]).length;
+    const daysBetween = (a, b) => (new Date(b) - new Date(a)) / 86400000;
+    const startOf = c => c.assigned_date || c.created_at;
+    const avg = (arr, f) => arr.length ? arr.reduce((s,x) => s + f(x), 0) / arr.length : 0;
 
-    return { assigned, contacted, apptsSet, shows, sales, totalAPV, refAPV, apptsResolved, decided, touchesToDecision, dialsPerLead };
+    const resolvedLeads = sourceClients.filter(c => c.resolved_at);
+    const apptLeads     = sourceClients.filter(c => c.resolved_as === 'appt' && c.resolved_at);
+    const saleLeads     = sourceClients.filter(c => (c.cases||[]).some(cs => cs.status === 'Closed Won'));
+
+    const neverResolved = assigned - resolvedLeads.length;
+    const m = {
+      neverPct:   assigned ? (neverResolved / assigned) * 100 : 0,
+      apptRate:   assigned ? (apptLeads.length / assigned) * 100 : 0,
+      apptAtt:    avg(apptLeads, att),
+      apptDays:   avg(apptLeads, c => daysBetween(startOf(c), c.resolved_at)),
+      resAtt:     avg(resolvedLeads, att),
+      resDays:    avg(resolvedLeads, c => daysBetween(startOf(c), c.resolved_at)),
+      saleRate:   assigned ? (saleLeads.length / assigned) * 100 : 0,
+      saleAtt:    avg(saleLeads, att),
+      saleDays:   avg(saleLeads, c => {
+        const won = (c.cases||[]).find(cs => cs.status === 'Closed Won');
+        const sold = (won && (won.touchpoints||[]).find(t => t.outcome === 'sale'));
+        return sold ? daysBetween(startOf(c), sold.datetime) : 0;
+      })
+    };
+
+    return { assigned, contacted, apptsSet, shows, sales, totalAPV, refAPV, apptsResolved, decided, touchesToDecision, m };
   }
 
   function fmtPct(n, d) { return d > 0 ? Math.round((n/d)*100) + "%" : "-"; }
@@ -1646,7 +1679,14 @@ function renderSourceComparison(pStart, pEnd, label) {
   document.getElementById("mia-per-lead").textContent = fmtAvg(mia.totalAPV, mia.assigned);
   document.getElementById("mia-per-lead-ref").textContent = fmtAvg(mia.totalAPV + mia.refAPV, mia.assigned);
   document.getElementById("mia-touches").textContent = mia.touchesToDecision > 0 ? mia.touchesToDecision.toFixed(1) : '-';
-  document.getElementById("mia-dials").textContent = mia.dialsPerLead > 0 ? mia.dialsPerLead.toFixed(1) : '-';
+  {
+    const _m = mia.m;
+    const _f = (rate, a, d) => (rate !== null ? Math.round(rate) + '%  ' : '') + a.toFixed(1) + ' att  ' + d.toFixed(1) + 'd';
+    document.getElementById("mia-never").textContent  = mia.assigned ? Math.round(_m.neverPct) + '%' : '-';
+    document.getElementById("mia-toappt").textContent = _m.apptAtt > 0 ? _f(_m.apptRate, _m.apptAtt, _m.apptDays) : '-';
+    document.getElementById("mia-tores").textContent  = _m.resAtt  > 0 ? _f(null, _m.resAtt, _m.resDays) : '-';
+    document.getElementById("mia-tosale").textContent = _m.saleAtt > 0 ? _f(_m.saleRate, _m.saleAtt, _m.saleDays) : '-';
+  }
 
   document.getElementById("cia-leads").textContent = cia.assigned;
   document.getElementById("cia-contact-ratio").textContent = fmtPct(cia.contacted, cia.assigned);
@@ -1657,7 +1697,14 @@ function renderSourceComparison(pStart, pEnd, label) {
   document.getElementById("cia-per-lead").textContent = fmtAvg(cia.totalAPV, cia.assigned);
   document.getElementById("cia-per-lead-ref").textContent = fmtAvg(cia.totalAPV + cia.refAPV, cia.assigned);
   document.getElementById("cia-touches").textContent = cia.touchesToDecision > 0 ? cia.touchesToDecision.toFixed(1) : '-';
-  document.getElementById("cia-dials").textContent = cia.dialsPerLead > 0 ? cia.dialsPerLead.toFixed(1) : '-';
+  {
+    const _m = cia.m;
+    const _f = (rate, a, d) => (rate !== null ? Math.round(rate) + '%  ' : '') + a.toFixed(1) + ' att  ' + d.toFixed(1) + 'd';
+    document.getElementById("cia-never").textContent  = cia.assigned ? Math.round(_m.neverPct) + '%' : '-';
+    document.getElementById("cia-toappt").textContent = _m.apptAtt > 0 ? _f(_m.apptRate, _m.apptAtt, _m.apptDays) : '-';
+    document.getElementById("cia-tores").textContent  = _m.resAtt  > 0 ? _f(null, _m.resAtt, _m.resDays) : '-';
+    document.getElementById("cia-tosale").textContent = _m.saleAtt > 0 ? _f(_m.saleRate, _m.saleAtt, _m.saleDays) : '-';
+  }
 }
 //  TABS 
 
@@ -2452,7 +2499,7 @@ function renderAppsTab() {
     }
 
     el.innerHTML = submittedApps.map(ap => {
-      const STATUS_OPTS = ['Submitted','Approved','Issued','Paid','Free Look','Lapse','Cancel'];
+      const STATUS_OPTS = ['Written','Submitted','Approved','Issued','Paid','Free Look','Lapse','Cancel'];
       const currentStatus = ap.status || 'Submitted';
       const statusColor = STATUS_COLOR[currentStatus] || '#1D3557';
       const dt = ap.tpDate ? new Date(ap.tpDate).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
@@ -2618,7 +2665,7 @@ function renderAppsTab() {
             <div style="font-size:12px;color:#138181;font-weight:600;">${fmt(monthAPV)}</div>
           </div>
           ${apps.map(ap => {
-            const STATUS_OPTS = ['Submitted','Approved','Issued','Paid','Free Look','Lapse','Cancel'];
+            const STATUS_OPTS = ['Written','Submitted','Approved','Issued','Paid','Free Look','Lapse','Cancel'];
             const currentStatus = ap.status || 'Placed';
             const statusColor = STATUS_COLOR[currentStatus] || '#138181';
             return `<div style="border:1px solid #e2eaf2;border-radius:10px;padding:10px 12px;margin-bottom:6px;background:#fff;">
@@ -3485,14 +3532,71 @@ function getFilteredClients(q='') {
   // so everything here is due right now — the freshest lead always leads, and an
   // older lead only surfaces when nothing younger is due. Imminent appts jump first.
   if (activeFilter === 'active') {
-    return filtered.sort((a, b) => {
+    return filtered.filter(c => !isDormant(c)).sort((a, b) => {
       const ai = isApptImminent(a) ? 0 : 1, bi = isApptImminent(b) ? 0 : 1;
       if (ai !== bi) return ai - bi;
       return getDaysSinceAssigned(a) - getDaysSinceAssigned(b);
     });
   }
+  if (activeFilter === 'dormant') return dormantLeads();
   // Other views: sort by urgency score (lower = more urgent)
   return filtered.sort((a, b) => getUrgencyScore(a) - getUrgencyScore(b));
+}
+
+// --- DORMANT LEADS ---------------------------------------------------------
+// A lead goes dormant only when BOTH are true: 10+ attempts AND 21+ days old.
+// AND, not OR - deliberately. With OR, a 22-day-old lead you'd only dialled
+// twice would age out. That lead isn't exhausted, it's NEGLECTED, and the right
+// response is to call it, not archive it. People move, take vacations, land in
+// hospital, lose a phone. Three weeks of silence is not a verdict.
+// Thresholds came from the data: CIA p90 = 7 attempts, MIA p90 = 8. Ten clears
+// both with room. When unsure, cut LATE - a wasted dial is cheap, binning a live
+// lead is not. Nothing is ever deleted.
+function dormantRules() {
+  const st = getAgentSettings();
+  return { attempts: st.dormantAttempts || 10, days: st.dormantDays || 21 };
+}
+function attemptCount(c) { return (c.call_log || []).length; }
+
+function isDormant(c) {
+  if (!c || c.resolved_at) return false;                       // resolved is not dormant
+  if (['Dead','Removed'].includes(c.status)) return false;     // dead is a decision, dormant is not
+  if (c.appt_datetime) return false;                           // has an appointment - never dormant
+  const r = dormantRules();
+  return attemptCount(c) >= r.attempts && getDaysSinceAssigned(c) >= r.days;
+}
+
+// Rank the dormant pile by SIGNAL OF LIFE, not by age. Someone you actually
+// spoke to who said "call me after the move" is worth more than 10 rings into
+// the void, no matter how old they are.
+function dormantTier(c) {
+  const log = c.call_log || [];
+  const spoke = log.some(l => /conversation|callback|reschedul/i.test(l.outcome || ''));
+  const reached = log.some(l => !/no answer|voicemail|vm|busy/i.test(l.outcome || ''));
+  if (spoke) return 1;                                  // talked to them, unresolved - the movers
+  if (reached) return 2;                                // some human contact, no traction
+  if (attemptCount(c) < dormantRules().attempts + 4) return 3;  // never answered, upside left
+  return 4;                                             // never answered, exhausted
+}
+
+// Don't ring someone Tuesday who ignored you Monday. That's how you get blocked.
+function dormantRested(c) {
+  const log = c.call_log || [];
+  if (!log.length) return true;
+  const last = new Date(log[log.length - 1].datetime || log[log.length - 1].date || 0);
+  return (new Date() - last) / 86400000 >= 7;
+}
+
+function dormantLeads() {
+  return clients.filter(isDormant).filter(dormantRested).sort((a, b) => {
+    const t = dormantTier(a) - dormantTier(b);
+    if (t) return t;
+    // MIA over CIA at equal signal: 70% of resolved MIAs become appointments vs
+    // 55% of CIAs. Tiebreak ONLY - it's 37 leads. Promote it when the data earns it.
+    const sa = a.source === 'MIA' ? 0 : 1, sb = b.source === 'MIA' ? 0 : 1;
+    if (sa !== sb) return sa - sb;
+    return attemptCount(a) - attemptCount(b);
+  });
 }
 
 function renderClients(q='') {
@@ -3504,7 +3608,53 @@ function renderClients(q='') {
   document.getElementById('client-count').textContent = activeFilter === 'all'
     ? list.length + ' leads total'
     : list.length + ' ' + filterLabel + ' \u00B7 ' + callableNow + ' callable now';
-  if (!list.length) { el.innerHTML='<div class="empty">No leads match.</div>'; return; }
+  if (!list.length) {
+    // Caught up. The dormant pile is offered as a REWARD, not seeded back into
+    // the queue - you get the "you're on top of it" moment first, and the extra
+    // work is opt-in underneath. Only ever shown when there's nothing live to call.
+    const nDormant = dormantLeads().length;
+    if (activeFilter === 'active' && nDormant) {
+      el.innerHTML =
+        '<div style="text-align:center;padding:28px 16px;">' +
+          '<div style="font-size:34px;margin-bottom:6px;">&#127881;</div>' +
+          '<div style="font-size:16px;font-weight:600;color:#1D3557;margin-bottom:4px;">You are caught up.</div>' +
+          '<div style="font-size:13px;color:#5f7a99;margin-bottom:18px;">Every workable lead has been called. Nothing is due.</div>' +
+          '<button onclick="setFilter(\'dormant\')" style="background:#138181;color:#fff;border:none;border-radius:8px;padding:11px 18px;font-size:13px;font-weight:600;cursor:pointer;">Work the dormant pile (' + nDormant + ')</button>' +
+          '<div style="font-size:11px;color:#8fa8c0;margin-top:9px;">10+ attempts, 21+ days, never resolved. Best signal first.</div>' +
+        '</div>';
+      return;
+    }
+    if (activeFilter === 'active') {
+      el.innerHTML =
+        '<div style="text-align:center;padding:28px 16px;">' +
+          '<div style="font-size:34px;margin-bottom:6px;">&#127881;</div>' +
+          '<div style="font-size:16px;font-weight:600;color:#1D3557;">You are caught up.</div>' +
+          '<div style="font-size:13px;color:#5f7a99;margin-top:4px;">Every workable lead has been called.</div>' +
+        '</div>';
+      return;
+    }
+    el.innerHTML = '<div class="empty">No leads match.</div>';
+    return;
+  }
+  if (activeFilter === 'dormant') {
+    const TIER = {1:['Spoke to them','#138181'], 2:['Reached once','#534AB7'], 3:['Never answered','#BA7517'], 4:['Exhausted','#8fa8c0']};
+    el.innerHTML =
+      '<div style="background:#f0f4f8;border-radius:8px;padding:9px 12px;margin-bottom:8px;font-size:11px;color:#5f7a99;">' +
+        'Dormant: 10+ attempts, 21+ days, never resolved. Rested 7 days. Best signal first - nothing here is deleted.' +
+      '</div>' +
+      list.map(c => {
+        const t = TIER[dormantTier(c)];
+        return '<div class="client-card" onclick="openClient(\'' + c.id + '\')">' +
+          '<div class="client-row">' +
+            '<div class="client-name">' + esc(c.name) + '</div>' +
+            '<div style="font-size:10px;font-weight:600;color:' + t[1] + ';">' + t[0] + '</div>' +
+          '</div>' +
+          '<div class="client-meta">' + esc(c.phone||'') + ' - ' + esc(c.source||'') + ' - ' +
+            attemptCount(c) + ' att - ' + getDaysSinceAssigned(c) + 'd</div>' +
+        '</div>';
+      }).join('');
+    return;
+  }
   el.innerHTML = list.map(c => {
     const fresh = isFresh(c);
     const sits = c.sits || [];
@@ -7213,6 +7363,15 @@ function openSettings() {
     '</div>' +
 
     '<div style="background:#f0f4f8;border-radius:10px;padding:12px;margin-bottom:12px;">' +
+      '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Dormancy</div>' +
+      '<div style="display:flex;gap:8px;">' +
+        '<div class="field" style="flex:1;"><label>Attempts</label><input type="number" id="s-dorm-att" value="' + dormantRules().attempts + '"></div>' +
+        '<div class="field" style="flex:1;"><label>Days</label><input type="number" id="s-dorm-days" value="' + dormantRules().days + '"></div>' +
+      '</div>' +
+      '<div style="font-size:10px;color:#8fa8c0;">A lead goes dormant only when BOTH are met. Never deleted - it comes back when you are caught up.</div>' +
+    '</div>' +
+
+    '<div style="background:#f0f4f8;border-radius:10px;padding:12px;margin-bottom:12px;">' +
       '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Data</div>' +
       '<button onclick="backfillResolutions()" style="width:100%;background:#1D3557;color:#fff;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:6px;">Recount resolutions</button>' +
       '<button onclick="recheckComp()" style="width:100%;background:#138181;color:#fff;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;">Recheck comp on all apps</button>' +
@@ -7253,6 +7412,9 @@ function saveProfileSettings() {
   settings.contractLevel = parseInt(document.getElementById('s-level').value);
   const dm = document.getElementById('s-appt-mins');
   if (dm) settings.defaultApptMins = parseInt(dm.value) || 40;
+  const da = document.getElementById('s-dorm-att'), dd = document.getElementById('s-dorm-days');
+  if (da) settings.dormantAttempts = parseInt(da.value) || 10;
+  if (dd) settings.dormantDays = parseInt(dd.value) || 21;
   saveAgentSettings(settings);
   closeModal();
   showSync('Settings saved!');
