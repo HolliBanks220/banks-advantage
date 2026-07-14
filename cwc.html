@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h27</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h29</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -275,6 +275,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-val val-white" id="p-sales" style="cursor:pointer;" onclick="drillDown('sales')">0</div>
         <div class="stat-sub sub-white" id="p-sales-sub">- of sits</div>
       </div>
+      <div class="stat stat-navy">
+        <div class="stat-lbl lbl-white">Cases decided</div>
+        <div class="stat-val val-white" id="p-cases">0</div>
+        <div class="stat-sub sub-white" id="p-cases-sub">- case close rate</div>
+      </div>
+      <div class="stat stat-teal">
+        <div class="stat-lbl lbl-white">Ref asks</div>
+        <div class="stat-val val-white" id="p-refask">0</div>
+        <div class="stat-sub sub-white" id="p-refask-sub">- of sits</div>
+      </div>
+      <div class="stat stat-navy">
+        <div class="stat-lbl lbl-white">Recruit asks</div>
+        <div class="stat-val val-white" id="p-recask">0</div>
+        <div class="stat-sub sub-white" id="p-recask-sub">- of sits</div>
+      </div>
+      <div class="stat stat-gold">
+        <div class="stat-lbl">Plans sent</div>
+        <div class="stat-val" id="p-stp">0</div>
+        <div class="stat-sub" id="p-stp-sub">- of sits</div>
+      </div>
       <div class="stat stat-red">
         <div class="stat-lbl lbl-red">No Sales</div>
         <div class="stat-val val-red" id="p-nosales" style="cursor:pointer;" onclick="drillDown('nosales')">0</div>
@@ -346,7 +366,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">$ per lead w/ referrals</div>
         <div style="font-size:15px;font-weight:600;color:#9FE1CB;margin-bottom:4px;" id="mia-per-lead-ref">-</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">Appts to decision</div>
-        <div style="font-size:15px;font-weight:500;color:#fff;" id="mia-touches">-</div>
+        <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="mia-touches">-</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Dials / lead</div>
+        <div style="font-size:15px;font-weight:500;color:#fff;" id="mia-dials">-</div>
       </div>
       <div style="background:#138181;border-radius:10px;padding:10px 12px;">
         <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;">CIA</div>
@@ -367,7 +389,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">$ per lead w/ referrals</div>
         <div style="font-size:15px;font-weight:600;color:#9FE1CB;margin-bottom:4px;" id="cia-per-lead-ref">-</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">Appts to decision</div>
-        <div style="font-size:15px;font-weight:500;color:#fff;" id="cia-touches">-</div>
+        <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="cia-touches">-</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Dials / lead</div>
+        <div style="font-size:15px;font-weight:500;color:#fff;" id="cia-dials">-</div>
       </div>
     </div>
   </div>
@@ -1306,15 +1330,17 @@ function renderScore() {
     const dialHrs = timeDialSecs / 3600;
     dialsPerHrEl.textContent = dialHrs > 0.1 ? Math.round(dials / dialHrs) + ' dials/hr' : '';
   }
-  // Distinct LEADS that resolved - not the old appts+dead event tally, which
-  // double-counted any lead that was reset, revived or re-appointed.
-  document.getElementById('s-resolved').textContent = trueResolvedCount();
+  // Distinct LEADS that resolved IN THIS PERIOD - not the old appts+dead event
+  // tally, which double-counted any lead that was reset, revived or re-appointed.
+  // Respects the day/week/month filter like every other card.
+  const resolvedLeads = trueResolvedCount(aStart, aEnd);
+  document.getElementById('s-resolved').textContent = resolvedLeads;
   const assignedInPeriod = clients.filter(c => {
     const d = new Date(c.assigned_date || c.created_at);
     return d >= aStart && d <= aEnd;
   }).length;
-  document.getElementById('s-resolved-pct').textContent = resolved + ' resolved / ' + assignedInPeriod + ' assigned';
-  document.getElementById('s-resolved-fresh').textContent = assignedInPeriod > 0 ? pct(resolved, assignedInPeriod) + ' resolution rate' : '-';
+  document.getElementById('s-resolved-pct').textContent = resolvedLeads + ' resolved / ' + assignedInPeriod + ' assigned';
+  document.getElementById('s-resolved-fresh').textContent = assignedInPeriod > 0 ? pct(resolvedLeads, assignedInPeriod) + ' resolution rate' : '-';
 
   const allTPs = clients.flatMap(c => (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).filter(tp => {
     const d = new Date(tp.datetime); return d >= pStart && d <= pEnd;
@@ -1427,6 +1453,40 @@ function renderScore() {
   document.getElementById('p-resets').textContent = totalResets;
   document.getElementById('p-closed').textContent = closedCount;
   document.getElementById('p-close-rate').textContent = pct(closedCount,totalShowed)+' close rate';
+
+  // --- CASE COUNTER: close ratio belongs to CASES, not sits. A case may take
+  // three appointments to decide - that's three real sits but ONE case. Counting
+  // sits was why production read 24% while lead source read 55%: different units.
+  const casesInPeriod = clients.flatMap(c => (c.cases||[]).filter(cs => {
+    const tps = cs.touchpoints || [];
+    return tps.some(tp => { const d = new Date(tp.datetime); return d >= pStart && d <= pEnd; });
+  }));
+  const casesWon  = casesInPeriod.filter(cs => cs.status === 'Closed Won').length;
+  const casesLost = casesInPeriod.filter(cs => cs.status === 'Closed Lost').length;
+  const casesDecided = casesWon + casesLost;
+  const elCases = document.getElementById('p-cases');
+  if (elCases) {
+    elCases.textContent = casesDecided;
+    const sub = document.getElementById('p-cases-sub');
+    if (sub) sub.textContent = casesDecided > 0 ? pct(casesWon, casesDecided) + ' case close rate' : '- case close rate';
+  }
+
+  // --- ASK RATES: the behaviours that compound. Denominator is resolved sits -
+  // you can only ask someone who actually sat with you.
+  const resolvedTps = clients.flatMap(c => (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).filter(tp => {
+    if (!['sale','nosale','cont'].includes(tp.outcome)) return false;
+    const d = new Date(tp.datetime); return d >= pStart && d <= pEnd;
+  })));
+  const nAsk = resolvedTps.filter(t => t.ref_ask).length;
+  const nRec = resolvedTps.filter(t => t.recruit_ask).length;
+  const nStp = resolvedTps.filter(t => t.stp_sent).length;
+  const setTxt = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  setTxt('p-refask', nAsk);
+  setTxt('p-refask-sub', resolvedTps.length ? pct(nAsk, resolvedTps.length) + ' of sits' : '- of sits');
+  setTxt('p-recask', nRec);
+  setTxt('p-recask-sub', resolvedTps.length ? pct(nRec, resolvedTps.length) + ' of sits' : '- of sits');
+  setTxt('p-stp', nStp);
+  setTxt('p-stp-sub', resolvedTps.length ? pct(nStp, resolvedTps.length) + ' of sits' : '- of sits');
   document.getElementById('p-apv').textContent = fmt(totalAPV);
   document.getElementById('p-apps').textContent = totalApps+' apps';
   document.getElementById('p-apv-hh').textContent = fmt(apvPerSale);
@@ -1578,7 +1638,12 @@ function renderSourceComparison(pStart, pEnd, label) {
     }
     const refAPV = sourceClients.reduce((acc, c) => acc + referralAPV(c), 0);
 
-    return { assigned, contacted, apptsSet, shows, sales, totalAPV, refAPV, apptsResolved, decided, touchesToDecision };
+    // Dials it takes to work a lead of this source - a real workload + quality signal.
+    const totalDials = sourceClients.reduce((acc, c) =>
+      acc + (c.call_log||[]).reduce((a, cl) => a + (cl.dials || 0), 0), 0);
+    const dialsPerLead = assigned > 0 ? totalDials / assigned : 0;
+
+    return { assigned, contacted, apptsSet, shows, sales, totalAPV, refAPV, apptsResolved, decided, touchesToDecision, dialsPerLead };
   }
 
   function fmtPct(n, d) { return d > 0 ? Math.round((n/d)*100) + "%" : "-"; }
@@ -1596,6 +1661,7 @@ function renderSourceComparison(pStart, pEnd, label) {
   document.getElementById("mia-per-lead").textContent = fmtAvg(mia.totalAPV, mia.assigned);
   document.getElementById("mia-per-lead-ref").textContent = fmtAvg(mia.totalAPV + mia.refAPV, mia.assigned);
   document.getElementById("mia-touches").textContent = mia.touchesToDecision > 0 ? mia.touchesToDecision.toFixed(1) : '-';
+  document.getElementById("mia-dials").textContent = mia.dialsPerLead > 0 ? mia.dialsPerLead.toFixed(1) : '-';
 
   document.getElementById("cia-leads").textContent = cia.assigned;
   document.getElementById("cia-contact-ratio").textContent = fmtPct(cia.contacted, cia.assigned);
@@ -1606,6 +1672,7 @@ function renderSourceComparison(pStart, pEnd, label) {
   document.getElementById("cia-per-lead").textContent = fmtAvg(cia.totalAPV, cia.assigned);
   document.getElementById("cia-per-lead-ref").textContent = fmtAvg(cia.totalAPV + cia.refAPV, cia.assigned);
   document.getElementById("cia-touches").textContent = cia.touchesToDecision > 0 ? cia.touchesToDecision.toFixed(1) : '-';
+  document.getElementById("cia-dials").textContent = cia.dialsPerLead > 0 ? cia.dialsPerLead.toFixed(1) : '-';
 }
 //  TABS 
 
@@ -3719,6 +3786,18 @@ function showSitOutcomeModal(id, ci) {
     '<div class="modal-title">Log outcome</div>' +
     '<div class="modal-sub">' + c.name + ' — ' + caseLabel + '</div>' +
     '<div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:5px 10px;margin-bottom:12px;">' + apptStr + '</div>' +
+    // The three behaviours that compound: ask for referrals, ask about the
+    // opportunity, actually send the plan. Tracked as yes/no - the ASK is the
+    // discipline; referrals received show up on their own when you log the ASR.
+    '<div style="background:#f7fafc;border:1px solid #e2eaf2;border-radius:8px;padding:10px;margin-bottom:12px;">' +
+      '<div style="font-size:10px;font-weight:700;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Did you...</div>' +
+      '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#1D3557;margin-bottom:6px;cursor:pointer;"><input type="checkbox" id="sit-refask" style="width:16px;height:16px;"> Ask for referrals? <span onclick="event.preventDefault();toggleScript(\'referral\')" style="color:#138181;font-size:11px;text-decoration:underline;">script</span></label>' +
+      '<div id="script-referral" style="display:none;white-space:pre-wrap;font-size:11px;color:#5f7a99;background:#fff;border-radius:6px;padding:8px;margin:0 0 8px 24px;">' + getScript('referral') + '</div>' +
+      '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#1D3557;margin-bottom:6px;cursor:pointer;"><input type="checkbox" id="sit-recask" style="width:16px;height:16px;"> Ask about the opportunity? <span onclick="event.preventDefault();toggleScript(\'recruit\')" style="color:#138181;font-size:11px;text-decoration:underline;">script</span></label>' +
+      '<div id="script-recruit" style="display:none;white-space:pre-wrap;font-size:11px;color:#5f7a99;background:#fff;border-radius:6px;padding:8px;margin:0 0 8px 24px;">' + getScript('recruit') + '</div>' +
+      '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#1D3557;cursor:pointer;"><input type="checkbox" id="sit-stp" style="width:16px;height:16px;"> Send the plan (STP)? <span onclick="event.preventDefault();toggleScript(\'stp\')" style="color:#138181;font-size:11px;text-decoration:underline;">script</span></label>' +
+      '<div id="script-stp" style="display:none;white-space:pre-wrap;font-size:11px;color:#5f7a99;background:#fff;border-radius:6px;padding:8px;margin:6px 0 0 24px;">' + getScript('stp') + '</div>' +
+    '</div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">' +
       '<button onclick="confirmSitOutcome(\''+_id+'\','+_ci+',\'sale\')" style="background:#3B6D11;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">✓ Sale</button>' +
       '<button onclick="confirmSitOutcome(\''+_id+'\','+_ci+',\'nosale\')" style="background:#A32D2D;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">✗ No Sale</button>' +
@@ -3760,6 +3839,13 @@ async function confirmSitOutcome(id, ci, outcome) {
   // they never sat, so they were never a no-sale.
   const killLead = (outcome === 'noshow_dead');
   if (killLead) outcome = 'noshow';
+  // The three compounding behaviours, captured at the sit.
+  const askEl = document.getElementById('sit-refask');
+  const recEl = document.getElementById('sit-recask');
+  const stpEl = document.getElementById('sit-stp');
+  const refAsk = askEl ? askEl.checked : false;
+  const recruitAsk = recEl ? recEl.checked : false;
+  const stpSent = stpEl ? stpEl.checked : false;
   // Logging the outcome proves you were in the appointment until now, so credit the
   // full appt session even if the idle banner had capped it while you were heads-down.
   if (window._timer && window._timer.activity === 'appt') { window._lastInteraction = Date.now(); timerStop({full:true}); timerUpdateStatusLabel(); }
@@ -3811,6 +3897,9 @@ async function confirmSitOutcome(id, ci, outcome) {
   if (pendIdx !== -1) {
     tp = existingTps[pendIdx];
     tp.outcome = outcome;
+    tp.ref_ask = refAsk;         // did I ask for referrals on this sit?
+    tp.recruit_ask = recruitAsk; // did I ask about the opportunity?
+    tp.stp_sent = stpSent;       // did the plan video actually go out?
     tp.ppu = ppu;
     tp.notes = sitNotes;
     if (!tp.apps) tp.apps = [];
@@ -6514,8 +6603,14 @@ function firstResolution(c) {
 
 // True resolution count: distinct LEADS that ever resolved. One lead = one
 // resolution, no matter how many appointments, resets or revivals it went through.
-function trueResolvedCount() {
-  return clients.filter(c => c.resolved_at || firstResolution(c)).length;
+function trueResolvedCount(start, end) {
+  return clients.filter(c => {
+    const r = c.resolved_at ? { ts: c.resolved_at } : firstResolution(c);
+    if (!r) return false;
+    if (!start || !end) return true;          // no bounds = all time
+    const d = new Date(r.ts);
+    return d >= start && d <= end;            // resolved DURING this period
+  }).length;
 }
 
 async function backfillResolutions() {
@@ -6540,6 +6635,22 @@ async function markResolvedOnce(c, kind) {
   try { await sb.from('clients').update({ resolved_at: c.resolved_at, resolved_as: kind }).eq('id', c.id); } catch (e) {}
   await addStat(kind === 'dead' ? 'dead' : 'appts', 1);
   return true;
+}
+
+// Default scripts. Each agent can rewrite these in Settings - what works for one
+// person's voice won't work for another's.
+const DEFAULT_SCRIPTS = {
+  referral: "Before I go - what was the most valuable part of what we did today?\n\n(let them answer - they sell themselves)\n\n\"That's exactly why I do this. Who do you know who's sharp, who you care about, and who deserves the same conversation? No pressure on them - I'll just do for them what I did for you.\"",
+  recruit: "\"We've got more families asking for help than we have people to help them. I'm always looking for good people - who do you know who's sharp, has a good heart for people, and might be looking for something more than what they've got? Full time or even part time.\"\n\nIF THEY'RE THE FIT:\n\"You're really sharp. Do you think you could do what I did today?\"\n(when they say yes)\n\"I agree.\"",
+  stp: "\"Let me send you an overview of what we actually do. It's about 45 minutes - worth every one of them. Watch it when you've got a quiet stretch, then tell me what you think.\"\n\nLength is a feature: someone who won't give 45 minutes to explore a career change wasn't going to build an agency anyway."
+};
+function toggleScript(k) {
+  const el = document.getElementById('script-' + k);
+  if (el) el.style.display = (el.style.display === 'none' ? 'block' : 'none');
+}
+function getScript(k) {
+  const s = getAgentSettings();
+  return (s.scripts && s.scripts[k]) || DEFAULT_SCRIPTS[k];
 }
 
 function getAgentId() {
@@ -6928,6 +7039,14 @@ function openSettings() {
     '</div>' +
 
     '<div style="background:#f0f4f8;border-radius:10px;padding:12px;margin-bottom:12px;">' +
+      '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Your scripts</div>' +
+      '<div class="field"><label>Referral ask</label><textarea id="s-script-referral" rows="5" style="font-size:12px;">' + getScript('referral') + '</textarea></div>' +
+      '<div class="field"><label>Recruiting ask</label><textarea id="s-script-recruit" rows="6" style="font-size:12px;">' + getScript('recruit') + '</textarea></div>' +
+      '<div class="field"><label>Send the plan (STP)</label><textarea id="s-script-stp" rows="4" style="font-size:12px;">' + getScript('stp') + '</textarea></div>' +
+      '<div style="font-size:10px;color:#8fa8c0;">Make them yours - what works in one person\'s voice won\'t work in another\'s.</div>' +
+    '</div>' +
+
+    '<div style="background:#f0f4f8;border-radius:10px;padding:12px;margin-bottom:12px;">' +
       '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Data</div>' +
       '<button onclick="backfillResolutions()" style="width:100%;background:#1D3557;color:#fff;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;">Recount resolutions</button>' +
       '<div style="font-size:10px;color:#8fa8c0;margin-top:4px;">Stamps each already-resolved lead with its true first resolution. Fixes the inflated count.</div>' +
@@ -6967,6 +7086,11 @@ function saveProfileSettings() {
   settings.contractLevel = parseInt(document.getElementById('s-level').value);
   const dm = document.getElementById('s-appt-mins');
   if (dm) settings.defaultApptMins = parseInt(dm.value) || 40;
+  settings.scripts = settings.scripts || {};
+  ['referral','recruit','stp'].forEach(k => {
+    const el = document.getElementById('s-script-' + k);
+    if (el) settings.scripts[k] = el.value;
+  });
   saveAgentSettings(settings);
   closeModal();
   showSync('Settings saved!');
