@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h33</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h34</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -1678,14 +1678,14 @@ function renderSourceComparison(pStart, pEnd, label) {
   document.getElementById("mia-avg-apv").textContent = fmtAvg(mia.totalAPV, mia.sales);
   document.getElementById("mia-per-lead").textContent = fmtAvg(mia.totalAPV, mia.assigned);
   document.getElementById("mia-per-lead-ref").textContent = fmtAvg(mia.totalAPV + mia.refAPV, mia.assigned);
-  document.getElementById("mia-touches").textContent = mia.touchesToDecision > 0 ? mia.touchesToDecision.toFixed(1) : '-';
+  const setEl = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
   {
     const _m = mia.m;
     const _f = (rate, a, d) => (rate !== null ? Math.round(rate) + '%  ' : '') + a.toFixed(1) + ' att  ' + d.toFixed(1) + 'd';
-    document.getElementById("mia-never").textContent  = mia.assigned ? Math.round(_m.neverPct) + '%' : '-';
-    document.getElementById("mia-toappt").textContent = _m.apptAtt > 0 ? _f(_m.apptRate, _m.apptAtt, _m.apptDays) : '-';
-    document.getElementById("mia-tores").textContent  = _m.resAtt  > 0 ? _f(null, _m.resAtt, _m.resDays) : '-';
-    document.getElementById("mia-tosale").textContent = _m.saleAtt > 0 ? _f(_m.saleRate, _m.saleAtt, _m.saleDays) : '-';
+    setEl("mia-never", mia.assigned ? Math.round(_m.neverPct) + '%' : '-');
+    setEl("mia-toappt", _m.apptAtt > 0 ? _f(_m.apptRate, _m.apptAtt, _m.apptDays) : '-');
+    setEl("mia-tores", _m.resAtt  > 0 ? _f(null, _m.resAtt, _m.resDays) : '-');
+    setEl("mia-tosale", _m.saleAtt > 0 ? _f(_m.saleRate, _m.saleAtt, _m.saleDays) : '-');
   }
 
   document.getElementById("cia-leads").textContent = cia.assigned;
@@ -1696,14 +1696,13 @@ function renderSourceComparison(pStart, pEnd, label) {
   document.getElementById("cia-avg-apv").textContent = fmtAvg(cia.totalAPV, cia.sales);
   document.getElementById("cia-per-lead").textContent = fmtAvg(cia.totalAPV, cia.assigned);
   document.getElementById("cia-per-lead-ref").textContent = fmtAvg(cia.totalAPV + cia.refAPV, cia.assigned);
-  document.getElementById("cia-touches").textContent = cia.touchesToDecision > 0 ? cia.touchesToDecision.toFixed(1) : '-';
   {
     const _m = cia.m;
     const _f = (rate, a, d) => (rate !== null ? Math.round(rate) + '%  ' : '') + a.toFixed(1) + ' att  ' + d.toFixed(1) + 'd';
-    document.getElementById("cia-never").textContent  = cia.assigned ? Math.round(_m.neverPct) + '%' : '-';
-    document.getElementById("cia-toappt").textContent = _m.apptAtt > 0 ? _f(_m.apptRate, _m.apptAtt, _m.apptDays) : '-';
-    document.getElementById("cia-tores").textContent  = _m.resAtt  > 0 ? _f(null, _m.resAtt, _m.resDays) : '-';
-    document.getElementById("cia-tosale").textContent = _m.saleAtt > 0 ? _f(_m.saleRate, _m.saleAtt, _m.saleDays) : '-';
+    setEl("cia-never", cia.assigned ? Math.round(_m.neverPct) + '%' : '-');
+    setEl("cia-toappt", _m.apptAtt > 0 ? _f(_m.apptRate, _m.apptAtt, _m.apptDays) : '-');
+    setEl("cia-tores", _m.resAtt  > 0 ? _f(null, _m.resAtt, _m.resDays) : '-');
+    setEl("cia-tosale", _m.saleAtt > 0 ? _f(_m.saleRate, _m.saleAtt, _m.saleDays) : '-');
   }
 }
 //  TABS 
