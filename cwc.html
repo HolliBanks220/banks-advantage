@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h34</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h36</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -354,6 +354,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="mia-appt-ratio">-</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">Show ratio</div>
         <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="mia-show-ratio">-</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Sits with an outcome</div>
+        <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="mia-outcome-ratio">-</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">Close ratio</div>
         <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="mia-close-ratio">-</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">Avg APV / sale</div>
@@ -381,6 +383,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="cia-appt-ratio">-</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">Show ratio</div>
         <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="cia-show-ratio">-</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Sits with an outcome</div>
+        <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="cia-outcome-ratio">-</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">Close ratio</div>
         <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="cia-close-ratio">-</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">Avg APV / sale</div>
@@ -1674,6 +1678,7 @@ function renderSourceComparison(pStart, pEnd, label) {
   document.getElementById("mia-contact-ratio").textContent = fmtPct(mia.contacted, mia.assigned);
   document.getElementById("mia-appt-ratio").textContent = fmtPct(mia.apptsSet, mia.contacted);
   document.getElementById("mia-show-ratio").textContent = fmtPct(mia.shows, mia.apptsResolved);
+  document.getElementById("mia-outcome-ratio").textContent = fmtPct(mia.decided, mia.shows);
   document.getElementById("mia-close-ratio").textContent = fmtPct(mia.sales, mia.decided);
   document.getElementById("mia-avg-apv").textContent = fmtAvg(mia.totalAPV, mia.sales);
   document.getElementById("mia-per-lead").textContent = fmtAvg(mia.totalAPV, mia.assigned);
@@ -1692,6 +1697,7 @@ function renderSourceComparison(pStart, pEnd, label) {
   document.getElementById("cia-contact-ratio").textContent = fmtPct(cia.contacted, cia.assigned);
   document.getElementById("cia-appt-ratio").textContent = fmtPct(cia.apptsSet, cia.contacted);
   document.getElementById("cia-show-ratio").textContent = fmtPct(cia.shows, cia.apptsResolved);
+  document.getElementById("cia-outcome-ratio").textContent = fmtPct(cia.decided, cia.shows);
   document.getElementById("cia-close-ratio").textContent = fmtPct(cia.sales, cia.decided);
   document.getElementById("cia-avg-apv").textContent = fmtAvg(cia.totalAPV, cia.sales);
   document.getElementById("cia-per-lead").textContent = fmtAvg(cia.totalAPV, cia.assigned);
@@ -2704,10 +2710,14 @@ function renderAppts() {
   // Upcoming: always show all future appointments regardless of period
   const upcoming = allAppts.filter(a => new Date(a.datetime) >= now).sort((a,b) => new Date(a.datetime)-new Date(b.datetime));
   // Past: filter by selected period
-  const past = allAppts.filter(a => {
-    const d = new Date(a.datetime);
-    return d < now && d >= pStart && d <= pEnd;
-  }).sort((a,b) => new Date(b.datetime)-new Date(a.datetime));
+  // An appointment whose time has passed with NO outcome logged is not history -
+  // it's an open task, and it owes you a sit/no-show. getAllAppts already drops
+  // anything that HAS an outcome, so everything here still needs to be dealt with.
+  // It therefore ignores the period filter: a date range must never be able to
+  // hide work you still owe. (This used to be clamped to pStart..pEnd, so flipping
+  // the board to Today made yesterday's unlogged appointment vanish.)
+  const past = allAppts.filter(a => new Date(a.datetime) < now)
+    .sort((a,b) => new Date(b.datetime)-new Date(a.datetime));
 
   function apptCard(a) {
     const dt = new Date(a.datetime);
@@ -2739,7 +2749,7 @@ function renderAppts() {
     html += upcoming.map(apptCard).join('');
   }
   if (past.length) {
-    html += `<div class="section-lbl" style="margin-top:12px;">Past this period (${past.length})</div>`;
+    html += `<div class="section-lbl" style="margin-top:12px;color:#BA7517;">Needs an outcome (${past.length})</div>`;
     html += past.map(apptCard).join('');
   }
   if (!upcoming.length && !past.length) {
