@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h38</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h41</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -318,6 +318,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-lbl">Plans sent</div>
         <div class="stat-val" id="p-stp" style="cursor:pointer;" onclick="openRecruitProspects()">0</div>
         <div class="stat-sub" id="p-stp-sub">- prospects</div>
+      </div>
+    </div>
+    <div id="pushoff-warn" style="display:none;background:#FFF6E8;border:1px solid #F0C888;border-radius:8px;padding:10px 12px;margin-bottom:8px;">
+      <div style="font-size:12px;font-weight:600;color:#854F0B;" id="pushoff-warn-txt"></div>
+      <div style="font-size:11px;color:#854F0B;margin-top:2px;">That is not them. That is the close.</div>
+    </div>
+    <div class="stat-row">
+      <div class="stat stat-navy-lt">
+        <div class="stat-lbl lbl-navy">Pushed off</div>
+        <div class="stat-val val-navy" id="p-pushed">0</div>
+        <div class="stat-sub sub-navy" id="p-pushed-sub">- of conversations</div>
       </div>
     </div>
     <div id="production-panel" style="background:#fff;border-radius:12px;padding:12px 16px;margin-bottom:6px;box-shadow:0 1px 3px rgba(29,53,87,0.08);"></div>
@@ -1487,6 +1498,18 @@ function renderScore() {
   setTxt('p-refask-sub', resolvedTps.length ? pct(nAsk, resolvedTps.length) + ' of sits' : '- of sits');
   setTxt('p-recask', nRec);
   setTxt('p-recask-sub', resolvedTps.length ? pct(nRec, resolvedTps.length) + ' of sits' : '- of sits');
+  // Push-off rate: the accountability number. It is deliberately NOT a resolution
+  // and NOT a contact - being dodged advances nothing, and the board should say so.
+  const po = pushOffRate();
+  setTxt('p-pushed', po.pushed);
+  setTxt('p-pushed-sub', po.convos ? Math.round(po.rate) + '% of conversations' : '- of conversations');
+  const warn = document.getElementById('pushoff-warn');
+  if (warn) {
+    const bad = po.convos >= 10 && po.rate >= 40;
+    warn.style.display = bad ? 'block' : 'none';
+    const t = document.getElementById('pushoff-warn-txt');
+    if (t && bad) t.textContent = 'You are being pushed off on ' + Math.round(po.rate) + '% of your conversations.';
+  }
   setTxt('p-stp', nStp);
   setTxt('p-stp-sub', allProspects.length ? nStp + ' of ' + allProspects.length + ' prospects' : 'no prospects yet');
   document.getElementById('p-apv').textContent = fmt(totalAPV);
@@ -3399,6 +3422,18 @@ function replacementBar(c) {
     '</div></div>';
 }
 
+// A lead that has served its rest and returned. Tells the agent what they're
+// picking up, and why it's been quiet.
+function getDodgeBadge(c) {
+  const start = dodgeStart(c);
+  if (!start || isResting(c) || c.resolved_at) return '';
+  return ' <span style="font-size:9px;font-weight:700;color:#fff;background:#8fa8c0;border-radius:3px;padding:1px 4px;">RESTED</span>';
+}
+function getOutcomeBadge(c) {
+  return apptNeedsOutcome(c)
+    ? ' <span style="font-size:9px;font-weight:700;color:#fff;background:#E24B4A;border-radius:3px;padding:1px 4px;">NEEDS OUTCOME</span>'
+    : '';
+}
 function getReplaceBadge(c) {
   return needsReplacement(c)
     ? ' <span style="font-size:9px;font-weight:700;color:#fff;background:#BA7517;border-radius:3px;padding:1px 4px;">NEEDS REWRITE</span>'
@@ -3578,7 +3613,14 @@ function getFilteredClients(q='') {
   // so everything here is due right now — the freshest lead always leads, and an
   // older lead only surfaces when nothing younger is due. Imminent appts jump first.
   if (activeFilter === 'active') {
-    return filtered.filter(c => !isDormant(c)).sort((a, b) => {
+    // A lead whose appointment passed unlogged goes BACK IN THE QUEUE. It is not
+    // pinned to the top: a lead that pushed you off needs TIME, not urgency - the
+    // two that just booked did so because three weeks had passed and they'd
+    // forgotten they were avoiding you. Let the normal sort decide when.
+    const reentry = clients.filter(c => apptNeedsOutcome(c) && !filtered.includes(c));
+    return [...filtered, ...reentry]
+      .filter(c => !isDormant(c) && !isResting(c))
+      .sort((a, b) => {
       const ai = isApptImminent(a) ? 0 : 1, bi = isApptImminent(b) ? 0 : 1;
       if (ai !== bi) return ai - bi;
       return getDaysSinceAssigned(a) - getDaysSinceAssigned(b);
@@ -3629,8 +3671,13 @@ function rewrittenIds() {
 }
 function clearRewriteCache() { _rewriteOfCache = null; }
 
+// Status-agnostic ON PURPOSE. If an app has been rewritten, it's superseded -
+// it doesn't matter whether the carrier declined it, the client cancelled it, or
+// it lapsed. One sale is one policy's worth of money, however many times you have
+// to re-paper it. Chain three rewrites and it's still one premium.
+// (Chargebacks still compute off the real ap.premium - that money was really lost.)
 function isSuperseded(ap) {
-  if (!ap || (ap.status || '') !== 'Declined') return false;
+  if (!ap) return false;
   return rewrittenIds().has(ap.id);
 }
 
@@ -3685,11 +3732,103 @@ function needsReplacement(c) {
   return allAppsOf(c).some(ap => (ap.status||'') === 'Declined' && !isSuperseded(ap));
 }
 
+// --- DODGERS CADENCE ------------------------------------------------------
+// One cadence, three doors in: Cancelled, two No Shows, or Pushed off.
+// Rest 18 days, then back in the queue. Rests again every time it recurs.
+//
+// Why resting works: someone dodging you last week is STILL dodging you. Someone
+// who dodged you three weeks ago has forgotten they were avoiding you. The delay
+// isn't a failure - it's the mechanism. Holli booked two appointments off leads
+// that had ghosted her three weeks earlier, precisely because three weeks passed.
+//
+// Note a no-show is a no-show even if they ANSWER and say "I forgot / can't now".
+// A Cancel means they told you AHEAD of time that it's off.
+//
+// FOLLOW-UP IS THE OVERRIDE. The cadence is the default for when you don't know;
+// Follow-up is there for when you do (surgery on the 12th, call on the 20th).
+async function cancelAppt(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  if (!confirm('Cancel ' + c.name + "'s appointment?\n\nThey told you ahead of time it's off. They go into the dodgers cadence - rest " + dodgeDays() + " days, then back in your queue automatically.\n\nIf you know when to call them, use Follow-up instead.")) return;
+  c.call_log = [...(c.call_log||[]), {ts:new Date().toISOString(), outcome:'Cancelled', dials:window._dialCount||1}];
+  if (c.gcal_event_id) pushApptToCalendar(c, 'delete');   // don't leave a dead event making your day look full
+  c.appt_datetime = null;
+  c.appt_notes = '';
+  c.status = 'Working';
+  await saveClient(c);
+  window._dialCount = 1;
+  closeModal();
+  render();
+}
+
+function dodgeDays() { return parseInt(getAgentSettings().pushOffDays) || 18; }
+
+function noShowCount(c) {
+  return (c.call_log||[]).filter(cl => cl.outcome === 'No show').length;
+}
+
+// The moment they entered the cadence - the most recent of the three doors.
+function dodgeStart(c) {
+  const log = c.call_log || [];
+  let ts = null;
+  log.forEach(cl => {
+    const isDoor = cl.outcome === 'Pushed off' || cl.outcome === 'Cancelled' ||
+      (cl.outcome === 'No show' && noShowCount(c) >= 2);
+    if (isDoor && cl.ts && (!ts || new Date(cl.ts) > new Date(ts))) ts = cl.ts;
+  });
+  return ts;
+}
+
+// Resting: in the cadence and the 18 days haven't elapsed. Out of the queue, but
+// NOT dormant and never deleted - it comes back on its own.
+function isResting(c) {
+  if (c.resolved_at || ['Dead','Removed'].includes(c.status)) return false;
+  if (c.status === 'Follow-up') return false;          // an explicit override beats the cadence
+  const start = dodgeStart(c);
+  if (!start) return false;
+  return (new Date() - new Date(start)) / 86400000 < dodgeDays();
+}
+function restReturnsOn(c) {
+  const start = dodgeStart(c);
+  return start ? new Date(new Date(start).getTime() + dodgeDays() * 86400000) : null;
+}
+
+// An appointment that passed with no outcome logged. Real outcomes get logged in
+// minutes, so anything unlogged the next day is a slip, not work in progress. It
+// goes back in the DIAL QUEUE - a list was never enough. Three weeks proved that:
+// these sat in "Needs an outcome" the whole time and still didn't get worked,
+// because status 'Appointment set' excludes a lead from dialing. Dead zone.
+function apptNeedsOutcome(c) {
+  if (!c.appt_datetime || c.status !== 'Appointment set') return false;
+  if (new Date(c.appt_datetime) >= new Date(Date.now() - 86400000)) return false;  // 1 day grace
+  const apptMs = new Date(c.appt_datetime).getTime();
+  const logged = (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp =>
+    tp && tp.outcome && tp.outcome !== 'pending' && tp.datetime &&
+    Math.abs(new Date(tp.datetime).getTime() - apptMs) < 5*60*1000));
+  return !logged;
+}
+
+// Push-off rate: the accountability number. "Pushed off" is a comfortable button -
+// for an agent afraid of the close it's an escape hatch that FEELS like progress:
+// no rejection, no hard conversation, queue stays busy. A tool that makes avoidance
+// frictionless will manufacture avoidance. So it costs something VISIBLE: it's not
+// a resolution, not a contact, and the rate goes on the board next to everyone
+// else's. An agent at 60% while Holli is at 15% doesn't need "take control"
+// explained - the number does it.
+function pushOffRate() {
+  let pushed = 0, convos = 0;
+  clients.forEach(c => (c.call_log||[]).forEach(cl => {
+    if (cl.outcome === 'Pushed off') { pushed++; convos++; }
+    else if (['Appt set','Not interested','Conversation','Callback','Rescheduled','Cancelled'].includes(cl.outcome)) convos++;
+  }));
+  return { pushed, convos, rate: convos ? (pushed/convos)*100 : 0 };
+}
+
 function isDormant(c) {
   if (!c || c.resolved_at) return false;                       // resolved is not dormant
   if (['Dead','Removed'].includes(c.status)) return false;     // dead is a decision, dormant is not
   if (c.appt_datetime) return false;                           // has an appointment - never dormant
   if (needsReplacement(c)) return false;                       // declined and unreplaced - you owe them a policy
+  if (isResting(c) || apptNeedsOutcome(c)) return false;       // these come BACK - they can never fall out of sight
   const r = dormantRules();
   return attemptCount(c) >= r.attempts && getDaysSinceAssigned(c) >= r.days;
 }
@@ -3792,7 +3931,7 @@ function renderClients(q='') {
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
         <div>
           <div class="client-name">${c.name||'Unknown'}${fresh?'<span class="fresh-tag">fresh</span>':''}</div>
-          <div class="client-meta">${c.phone||''} - ${c.state||''}${c.age?' - <span style="color:#1D3557;font-weight:500;">'+c.age+'</span>':''} - <span style="color:#8fa8c0;">${Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24))}d</span> - <span style="color:#8fa8c0;">${(c.call_log||[]).length} att</span>${getReplaceBadge(c)}${getNoShowBadge(c)}${getCallTimeBadge(c)}</div>
+          <div class="client-meta">${c.phone||''} - ${c.state||''}${c.age?' - <span style="color:#1D3557;font-weight:500;">'+c.age+'</span>':''} - <span style="color:#8fa8c0;">${Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24))}d</span> - <span style="color:#8fa8c0;">${(c.call_log||[]).length} att</span>${getOutcomeBadge(c)}${getDodgeBadge(c)}${getReplaceBadge(c)}${getNoShowBadge(c)}${getCallTimeBadge(c)}</div>
           ${getUrgencyBadgeHtml(c)}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
@@ -3853,7 +3992,7 @@ function openClient(id, keepDialCount) {
     const realIdx = callLog.length - 1 - ri;
     return `
     <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:5px;">
-      <div style="width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0;background:${cl.outcome==='Appt set'?'#138181':cl.outcome==='No show'?'#E24B4A':cl.outcome==='Not interested'?'#E24B4A':cl.outcome==='Callback'?'#BA7517':'#1D3557'};"></div>
+      <div style="width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0;background:${cl.outcome==='Appt set'?'#138181':cl.outcome==='No show'?'#E24B4A':cl.outcome==='Not interested'?'#E24B4A':cl.outcome==='Cancelled'?'#E24B4A':cl.outcome==='Pushed off'?'#8fa8c0':cl.outcome==='Callback'?'#BA7517':'#1D3557'};"></div>
       <div style="flex:1;">
         <div style="font-size:12px;color:#1a2e44;font-weight:500;">${cl.outcome}${cl.dials>1?' <span style="font-size:10px;color:#5f7a99;">('+cl.dials+'x dialed)</span>':''}</div>
         ${cl.appt_datetime?`<div style="font-size:11px;font-weight:600;color:#138181;">[Cal] ${new Date(cl.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(cl.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>`:''}
@@ -3895,6 +4034,7 @@ function openClient(id, keepDialCount) {
 
   showModal(`<button class="close-x" onclick="closeModal()">x</button>
   ${replacementBar(c)}
+  ${isResting(c) ? `<div style="background:#f0f4f8;border-radius:8px;padding:9px 11px;margin-bottom:8px;font-size:11px;color:#5f7a99;">Resting - returns to your queue on ${restReturnsOn(c).toLocaleDateString('en-US',{month:'short',day:'numeric'})}. Someone dodging you last week is still dodging you; three weeks later they've forgotten they were avoiding you.</div>` : ''}
   <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:2px;">
     <div style="flex:1;">
       <input id="edit-name" value="${escAttr(c.name)}" style="font-size:16px;font-weight:500;color:#1D3557;border:none;border-bottom:2px solid transparent;outline:none;background:transparent;width:100%;font-family:inherit;padding:0;" onfocus="this.style.borderBottomColor='#138181'" onblur="this.style.borderBottomColor='transparent'">
@@ -3969,6 +4109,8 @@ function openClient(id, keepDialCount) {
     <button class="call-btn" style="background:#534AB7;color:#fff;" onclick="openFollowUpPicker('${id}')">+ Follow-up</button>
     <button class="call-btn" style="background:#534AB7;color:#fff;opacity:0.7;" onclick="openReschedulePicker('${id}')">Reschedule</button>
     <button class="call-btn" style="background:#BA7517;color:#fff;" onclick="openResetToPicker('${id}')">↺ Reset to</button>
+    ${c.appt_datetime && c.status === 'Appointment set' ? `<button class="call-btn" style="background:#E24B4A;color:#fff;opacity:0.85;" onclick="cancelAppt('${id}')">Cancelled</button>` : ''}
+    <button class="call-btn" style="background:#8fa8c0;color:#fff;" onclick="quickLog('${id}','Pushed off','pushed')">Pushed off</button>
     <button class="call-btn cb-red" onclick="quickLog('${id}','Not interested','dead')">Not interested</button>
   </div>
   <button onclick="openTextModal('${id}')" style="font-size:10px;background:none;border:1px solid #9FE1CB;border-radius:6px;padding:3px 10px;color:#138181;cursor:pointer;margin-bottom:8px;">📱 Text templates</button>
@@ -6402,9 +6544,13 @@ async function saveAppsToTouchpoint(id, ci, ti) {
   // datetime — not the day it was logged. Falls back to now only if the sit
   // has no datetime for some reason.
   const _sitTp = c.cases[ci] && c.cases[ci].touchpoints ? c.cases[ci].touchpoints[ti] : null;
-  // Apps date to the day they're logged (today), editable after — so an app added
-  // on a later follow-up counts toward today, not the original sit's week.
-  const sitDate = new Date().toISOString();
+  // An app dates to the SIT IT CAME FROM, not the moment you typed it in. You run an
+  // appointment at 7pm and enter the paperwork next morning - that business belongs to
+  // the day of the appointment. This used to stamp new Date(), so every app entered the
+  // morning after landed in the wrong day's submitted business. An app added at a LATER
+  // touchpoint still dates right: ti points at the sit it was actually written on.
+  const sitDate = (_sitTp && _sitTp.datetime) ? new Date(_sitTp.datetime).toISOString()
+                                              : new Date().toISOString();
   const entries = document.querySelectorAll('.app-entry');
   const apps = [];
   let _missingProduct = false;
@@ -7499,6 +7645,7 @@ function openSettings() {
       '<div style="display:flex;gap:8px;">' +
         '<div class="field" style="flex:1;"><label>Attempts</label><input type="number" id="s-dorm-att" value="' + dormantRules().attempts + '"></div>' +
         '<div class="field" style="flex:1;"><label>Days</label><input type="number" id="s-dorm-days" value="' + dormantRules().days + '"></div>' +
+        '<div class="field" style="flex:1;"><label>Push-off rest</label><input type="number" id="s-pushoff" value="' + pushOffDays() + '"></div>' +
       '</div>' +
       '<div style="font-size:10px;color:#8fa8c0;">A lead goes dormant only when BOTH are met. Never deleted - it comes back when you are caught up.</div>' +
     '</div>' +
@@ -7547,6 +7694,8 @@ function saveProfileSettings() {
   const da = document.getElementById('s-dorm-att'), dd = document.getElementById('s-dorm-days');
   if (da) settings.dormantAttempts = parseInt(da.value) || 10;
   if (dd) settings.dormantDays = parseInt(dd.value) || 21;
+  const po = document.getElementById('s-pushoff');
+  if (po) settings.pushOffDays = parseInt(po.value) || 18;
   saveAgentSettings(settings);
   closeModal();
   showSync('Settings saved!');
