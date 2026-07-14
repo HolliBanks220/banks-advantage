@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h29</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h32</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -261,7 +261,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="stat stat-teal">
         <div class="stat-lbl lbl-white">Sits</div>
         <div class="stat-val val-white" id="p-showed" style="cursor:pointer;" onclick="drillDown('showed')">0</div>
-        <div class="stat-sub sub-white" id="p-sit-rate">- close rate</div>
+        <div class="stat-sub sub-white" id="p-sit-rate">- decided</div>
       </div>
       <div class="stat stat-amber">
         <div class="stat-lbl lbl-amber">No Shows</div>
@@ -273,27 +273,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="stat stat-teal">
         <div class="stat-lbl lbl-white">Sales</div>
         <div class="stat-val val-white" id="p-sales" style="cursor:pointer;" onclick="drillDown('sales')">0</div>
-        <div class="stat-sub sub-white" id="p-sales-sub">- of sits</div>
-      </div>
-      <div class="stat stat-navy">
-        <div class="stat-lbl lbl-white">Cases decided</div>
-        <div class="stat-val val-white" id="p-cases">0</div>
-        <div class="stat-sub sub-white" id="p-cases-sub">- case close rate</div>
-      </div>
-      <div class="stat stat-teal">
-        <div class="stat-lbl lbl-white">Ref asks</div>
-        <div class="stat-val val-white" id="p-refask">0</div>
-        <div class="stat-sub sub-white" id="p-refask-sub">- of sits</div>
-      </div>
-      <div class="stat stat-navy">
-        <div class="stat-lbl lbl-white">Recruit asks</div>
-        <div class="stat-val val-white" id="p-recask">0</div>
-        <div class="stat-sub sub-white" id="p-recask-sub">- of sits</div>
-      </div>
-      <div class="stat stat-gold">
-        <div class="stat-lbl">Plans sent</div>
-        <div class="stat-val" id="p-stp">0</div>
-        <div class="stat-sub" id="p-stp-sub">- of sits</div>
+        <div class="stat-sub sub-white" id="p-sales-sub">- close rate</div>
       </div>
       <div class="stat stat-red">
         <div class="stat-lbl lbl-red">No Sales</div>
@@ -307,20 +287,37 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
     </div>
     <div class="stat-row">
-      <div class="stat stat-amber">
-        <div class="stat-lbl lbl-amber">PPUs</div>
-        <div class="stat-val val-amber" id="p-ppu" style="cursor:pointer;" onclick="drillDown('ppu')">0</div>
-        <div class="stat-sub" style="color:#854F0B;" id="p-ppu-sub">- sold</div>
+      <div class="stat stat-green">
+        <div class="stat-lbl lbl-green">Apps written</div>
+        <div class="stat-val val-green" id="p-closed">0</div>
+        <div class="stat-sub sub-green" id="p-close-rate">- per sale</div>
       </div>
       <div class="stat stat-purple">
         <div class="stat-lbl lbl-purple">Resets</div>
         <div class="stat-val val-purple" id="p-resets" style="cursor:pointer;" onclick="drillDown('resets')">0</div>
         <div class="stat-sub" style="color:#3C3489;" id="p-resets-sub">-</div>
       </div>
-      <div class="stat stat-green">
-        <div class="stat-lbl lbl-green">Apps written</div>
-        <div class="stat-val val-green" id="p-closed">0</div>
-        <div class="stat-sub sub-green" id="p-close-rate">-</div>
+      <div class="stat stat-amber">
+        <div class="stat-lbl lbl-amber">PPUs</div>
+        <div class="stat-val val-amber" id="p-ppu" style="cursor:pointer;" onclick="drillDown('ppu')">0</div>
+        <div class="stat-sub" style="color:#854F0B;" id="p-ppu-sub">- sold</div>
+      </div>
+    </div>
+    <div class="stat-row">
+      <div class="stat stat-teal">
+        <div class="stat-lbl lbl-white">Ref asks</div>
+        <div class="stat-val val-white" id="p-refask">0</div>
+        <div class="stat-sub sub-white" id="p-refask-sub">- of sits</div>
+      </div>
+      <div class="stat stat-navy">
+        <div class="stat-lbl lbl-white">Recruit asks</div>
+        <div class="stat-val val-white" id="p-recask" style="cursor:pointer;" onclick="openRecruitProspects()">0</div>
+        <div class="stat-sub sub-white" id="p-recask-sub">- of sits</div>
+      </div>
+      <div class="stat stat-gold">
+        <div class="stat-lbl">Plans sent</div>
+        <div class="stat-val" id="p-stp" style="cursor:pointer;" onclick="openRecruitProspects()">0</div>
+        <div class="stat-sub" id="p-stp-sub">- prospects</div>
       </div>
     </div>
     <div id="production-panel" style="background:#fff;border-radius:12px;padding:12px 16px;margin-bottom:6px;box-shadow:0 1px 3px rgba(29,53,87,0.08);"></div>
@@ -1439,11 +1436,14 @@ function renderScore() {
   document.getElementById('p-first').textContent = periodAppts;
   document.getElementById('p-first-rate').textContent = pct(totalShowed, periodAppts) + ' show rate'; // totalShowed includes continuation sits
   document.getElementById('p-showed').textContent = totalShowed;
-  document.getElementById('p-sit-rate').textContent = totalSales + totalNoSales > 0 ? pct(totalSales, totalSales + totalNoSales) + ' close rate' : '- close rate';
+  // Continuations decided nothing yet, so they're excluded here AND from the
+  // close-rate denominator on the Sales card. This is that denominator, shown.
+  const decidedSits = totalSales + totalNoSales;
+  document.getElementById('p-sit-rate').textContent = decidedSits > 0 ? decidedSits + ' decided' : '- decided';
   document.getElementById('p-noshow').textContent = totalNoShows;
   document.getElementById('p-cancel').textContent = periodAppts>0 ? pct(totalNoShows,periodAppts)+' no-show rate' : '-';
   document.getElementById('p-sales').textContent = totalSales;
-  document.getElementById('p-sales-sub').textContent = pct(totalSales, totalSales + totalNoSales) + ' close rate';
+  document.getElementById('p-sales-sub').textContent = decidedSits > 0 ? pct(totalSales, decidedSits) + ' close rate' : '- close rate';
   document.getElementById('p-nosales').textContent = totalNoSales;
   document.getElementById('p-nosales-sub').textContent = pct(totalNoSales,totalShowed)+' of sits';
   document.getElementById('p-cont').textContent = totalCont;
@@ -1452,24 +1452,7 @@ function renderScore() {
   document.getElementById('p-ppu-sub').textContent = ppuSales+' sold ('+ppuCloseRate+') vs '+nonPPUCloseRate+' w/o PPU';
   document.getElementById('p-resets').textContent = totalResets;
   document.getElementById('p-closed').textContent = closedCount;
-  document.getElementById('p-close-rate').textContent = pct(closedCount,totalShowed)+' close rate';
-
-  // --- CASE COUNTER: close ratio belongs to CASES, not sits. A case may take
-  // three appointments to decide - that's three real sits but ONE case. Counting
-  // sits was why production read 24% while lead source read 55%: different units.
-  const casesInPeriod = clients.flatMap(c => (c.cases||[]).filter(cs => {
-    const tps = cs.touchpoints || [];
-    return tps.some(tp => { const d = new Date(tp.datetime); return d >= pStart && d <= pEnd; });
-  }));
-  const casesWon  = casesInPeriod.filter(cs => cs.status === 'Closed Won').length;
-  const casesLost = casesInPeriod.filter(cs => cs.status === 'Closed Lost').length;
-  const casesDecided = casesWon + casesLost;
-  const elCases = document.getElementById('p-cases');
-  if (elCases) {
-    elCases.textContent = casesDecided;
-    const sub = document.getElementById('p-cases-sub');
-    if (sub) sub.textContent = casesDecided > 0 ? pct(casesWon, casesDecided) + ' case close rate' : '- case close rate';
-  }
+  document.getElementById('p-close-rate').textContent = totalSales > 0 ? (closedCount/totalSales).toFixed(1) + ' per sale' : '- per sale';
 
   // --- ASK RATES: the behaviours that compound. Denominator is resolved sits -
   // you can only ask someone who actually sat with you.
@@ -1479,14 +1462,16 @@ function renderScore() {
   })));
   const nAsk = resolvedTps.filter(t => t.ref_ask).length;
   const nRec = resolvedTps.filter(t => t.recruit_ask).length;
-  const nStp = resolvedTps.filter(t => t.stp_sent).length;
+  // STP now belongs to the person, not the sit. This counts prospects actually sent to.
+  const allProspects = clients.flatMap(c => (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).flatMap(tp => tp.recruit_people||[])));
+  const nStp = allProspects.filter(x => x.stp_sent).length;
   const setTxt = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
   setTxt('p-refask', nAsk);
   setTxt('p-refask-sub', resolvedTps.length ? pct(nAsk, resolvedTps.length) + ' of sits' : '- of sits');
   setTxt('p-recask', nRec);
   setTxt('p-recask-sub', resolvedTps.length ? pct(nRec, resolvedTps.length) + ' of sits' : '- of sits');
   setTxt('p-stp', nStp);
-  setTxt('p-stp-sub', resolvedTps.length ? pct(nStp, resolvedTps.length) + ' of sits' : '- of sits');
+  setTxt('p-stp-sub', allProspects.length ? nStp + ' of ' + allProspects.length + ' prospects' : 'no prospects yet');
   document.getElementById('p-apv').textContent = fmt(totalAPV);
   document.getElementById('p-apps').textContent = totalApps+' apps';
   document.getElementById('p-apv-hh').textContent = fmt(apvPerSale);
@@ -3780,28 +3765,45 @@ function showSitOutcomeModal(id, ci) {
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+7); tomorrow.setHours(10,0,0,0);
   const contDt = toLocalDT(tomorrow);
   window._sitPPU = false;
+  window._q = {reset:null, ref:null, rec:null};   // reset every open - no stale Yes
+  window._people = {ref:[], rec:[]};
 
   const _id = id, _ci = ci;
   showModal('<button class="close-x" onclick="closeModal()">x</button>' +
     '<div class="modal-title">Log outcome</div>' +
     '<div class="modal-sub">' + c.name + ' — ' + caseLabel + '</div>' +
     '<div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:5px 10px;margin-bottom:12px;">' + apptStr + '</div>' +
-    // The three behaviours that compound: ask for referrals, ask about the
-    // opportunity, actually send the plan. Tracked as yes/no - the ASK is the
-    // discipline; referrals received show up on their own when you log the ASR.
-    '<div style="background:#f7fafc;border:1px solid #e2eaf2;border-radius:8px;padding:10px;margin-bottom:12px;">' +
-      '<div style="font-size:10px;font-weight:700;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Did you...</div>' +
-      '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#1D3557;margin-bottom:6px;cursor:pointer;"><input type="checkbox" id="sit-refask" style="width:16px;height:16px;"> Ask for referrals? <span onclick="event.preventDefault();toggleScript(\'referral\')" style="color:#138181;font-size:11px;text-decoration:underline;">script</span></label>' +
-      '<div id="script-referral" style="display:none;white-space:pre-wrap;font-size:11px;color:#5f7a99;background:#fff;border-radius:6px;padding:8px;margin:0 0 8px 24px;">' + getScript('referral') + '</div>' +
-      '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#1D3557;margin-bottom:6px;cursor:pointer;"><input type="checkbox" id="sit-recask" style="width:16px;height:16px;"> Ask about the opportunity? <span onclick="event.preventDefault();toggleScript(\'recruit\')" style="color:#138181;font-size:11px;text-decoration:underline;">script</span></label>' +
-      '<div id="script-recruit" style="display:none;white-space:pre-wrap;font-size:11px;color:#5f7a99;background:#fff;border-radius:6px;padding:8px;margin:0 0 8px 24px;">' + getScript('recruit') + '</div>' +
-      '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#1D3557;cursor:pointer;"><input type="checkbox" id="sit-stp" style="width:16px;height:16px;"> Send the plan (STP)? <span onclick="event.preventDefault();toggleScript(\'stp\')" style="color:#138181;font-size:11px;text-decoration:underline;">script</span></label>' +
-      '<div id="script-stp" style="display:none;white-space:pre-wrap;font-size:11px;color:#5f7a99;background:#fff;border-radius:6px;padding:8px;margin:6px 0 0 24px;">' + getScript('stp') + '</div>' +
+    // MANDATORY GATE. Not checkboxes - an unticked box can't be told apart from a
+    // box you never read, so you'd blow past it and the % stat would be a floor,
+    // not a fact. Explicit Yes/No, both blank to start, no way through to apps
+    // until all three are answered. Answering "No" is fine. Skipping is not.
+    // That friction IS the feature: you have to think about it every single time.
+    '<div style="background:#f7fafc;border:1px solid #e2eaf2;border-radius:8px;padding:12px;margin-bottom:12px;">' +
+      '<div style="font-size:10px;font-weight:700;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Before applications</div>' +
+
+      '<div id="gate-warn" style="font-size:11px;color:#BA7517;margin-bottom:8px;">Answer all three to log a sit outcome.</div>' +
+      askRow('reset', 'Were you able to find another way to help them?') +
+      '<div id="q-reset-detail" style="display:none;margin:0 0 10px 0;">' +
+        '<input type="text" id="sit-reset-to" placeholder="Holli for retirement / Joel for DFL" style="width:100%;font-size:13px;padding:7px;border:1px solid #e2eaf2;border-radius:6px;margin-bottom:6px;">' +
+        '<textarea id="sit-reset-notes" placeholder="Notes" style="width:100%;font-size:13px;padding:7px;border:1px solid #e2eaf2;border-radius:6px;min-height:44px;"></textarea>' +
+      '</div>' +
+
+      askRow('ref', 'Did you ask who they care about most who deserves the same conversation?') +
+      '<div id="q-ref-detail" style="display:none;margin:0 0 10px 0;">' +
+        '<div id="ref-people"></div>' +
+        '<button onclick="addPerson(\'ref\')" style="background:none;border:1px dashed #138181;color:#138181;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;">+ Add person</button>' +
+      '</div>' +
+
+      askRow('rec', 'Did you ask who might be looking for an opportunity?') +
+      '<div id="q-rec-detail" style="display:none;">' +
+        '<div id="rec-people"></div>' +
+        '<button onclick="addPerson(\'rec\')" style="background:none;border:1px dashed #138181;color:#138181;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;">+ Add person</button>' +
+      '</div>' +
     '</div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">' +
-      '<button onclick="confirmSitOutcome(\''+_id+'\','+_ci+',\'sale\')" style="background:#3B6D11;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">✓ Sale</button>' +
-      '<button onclick="confirmSitOutcome(\''+_id+'\','+_ci+',\'nosale\')" style="background:#A32D2D;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">✗ No Sale</button>' +
-      '<button onclick="showContModal(\''+_id+'\','+_ci+')" style="background:#534AB7;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">↻ Continuation</button>' +
+      '<button class="sit-outcome-btn" onclick="confirmSitOutcome(\''+_id+'\','+_ci+',\'sale\')" style="background:#3B6D11;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">✓ Sale</button>' +
+      '<button class="sit-outcome-btn" onclick="confirmSitOutcome(\''+_id+'\','+_ci+',\'nosale\')" style="background:#A32D2D;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">✗ No Sale</button>' +
+      '<button class="sit-outcome-btn" onclick="showContModal(\''+_id+'\','+_ci+')" style="background:#534AB7;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">↻ Continuation</button>' +
       '<button onclick="confirmSitOutcome(\''+_id+'\','+_ci+',\'noshow\')" style="background:#BA7517;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">✗ No Show - alive</button>' +
       '<button onclick="confirmSitOutcome(\''+_id+'\','+_ci+',\'noshow_dead\')" style="background:#7A4A0F;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">✗ No Show - dead</button>' +
     '</div>' +
@@ -3840,12 +3842,16 @@ async function confirmSitOutcome(id, ci, outcome) {
   const killLead = (outcome === 'noshow_dead');
   if (killLead) outcome = 'noshow';
   // The three compounding behaviours, captured at the sit.
-  const askEl = document.getElementById('sit-refask');
-  const recEl = document.getElementById('sit-recask');
-  const stpEl = document.getElementById('sit-stp');
-  const refAsk = askEl ? askEl.checked : false;
-  const recruitAsk = recEl ? recEl.checked : false;
-  const stpSent = stpEl ? stpEl.checked : false;
+  // Read the gate. These are true/false, never null - the buttons were locked
+  // until all three were answered, so by the time we're here they're real answers.
+  const refAsk     = window._q.ref === true;
+  const recruitAsk = window._q.rec === true;
+  const didReset   = window._q.reset === true;
+  const resetTo    = didReset ? (document.getElementById('sit-reset-to')||{value:''}).value.trim() : '';
+  const resetNotes = didReset ? (document.getElementById('sit-reset-notes')||{value:''}).value.trim() : '';
+  // Drop blank rows - an empty name is not a person.
+  const refPeople = (window._people.ref||[]).filter(x => x.name && x.name.trim());
+  const recPeople = (window._people.rec||[]).filter(x => x.name && x.name.trim());
   // Logging the outcome proves you were in the appointment until now, so credit the
   // full appt session even if the idle banner had capped it while you were heads-down.
   if (window._timer && window._timer.activity === 'appt') { window._lastInteraction = Date.now(); timerStop({full:true}); timerUpdateStatusLabel(); }
@@ -3897,9 +3903,23 @@ async function confirmSitOutcome(id, ci, outcome) {
   if (pendIdx !== -1) {
     tp = existingTps[pendIdx];
     tp.outcome = outcome;
-    tp.ref_ask = refAsk;         // did I ask for referrals on this sit?
-    tp.recruit_ask = recruitAsk; // did I ask about the opportunity?
-    tp.stp_sent = stpSent;       // did the plan video actually go out?
+    tp.ref_ask = refAsk;          // did I ASK for referrals? (the discipline)
+    tp.recruit_ask = recruitAsk;  // did I ASK about the opportunity?
+    tp.did_reset = didReset;      // did I find another way to help them?
+    tp.reset_to = resetTo;        // "Holli for retirement" / "Joel for DFL"
+    tp.reset_notes = resetNotes;
+    tp.ref_people = refPeople;    // names given (may be empty even if asked)
+    // Recruit prospects. Same shape as a referral on purpose - name/phone/why,
+    // plus a link back to whoever named them. When the recruiting pipeline gets
+    // built these walk straight in; no migration, no re-keying. stp_sent lives
+    // on the PERSON, not the sit: you don't send the plan at the kitchen table,
+    // you send it to Bob on Thursday.
+    tp.recruit_people = recPeople.map(x => ({
+      name: x.name.trim(), phone: (x.phone||'').trim(), why: (x.why||'').trim(),
+      from_client: c.id, from_name: c.name,
+      stp_sent: false, status: 'new',
+      created: new Date().toISOString()
+    }));
     tp.ppu = ppu;
     tp.notes = sitNotes;
     if (!tp.apps) tp.apps = [];
@@ -6077,8 +6097,13 @@ function updateAppCompDisplay(i) {
   
   if (!carrier || !productVal || !apv) { compEl.innerHTML = ''; return; }
   
+  // The dropdown value is "Name|Range" - the range IS the age band the user picked.
+  // Dropping it (as this line used to) sent the lookup to the age-guess fallback,
+  // which always grabs the first/youngest/lowest-paying band. Eagle Select 1 came
+  // back 75% instead of 90%. Pass the range through, same as the save path does.
   const productName = productVal.split('|')[0];
-  const comp = calcAppComp(carrier, productName, apv, null, undefined, age);
+  const productRange = productVal.split('|')[1] || null;
+  const comp = calcAppComp(carrier, productName, apv, null, undefined, age, productRange);
   
   if (comp) {
     const advStr = comp.isAsEarned ? 'As earned' : '$' + Math.round(comp.advance).toLocaleString() + ' adv';
@@ -6637,20 +6662,107 @@ async function markResolvedOnce(c, kind) {
   return true;
 }
 
-// Default scripts. Each agent can rewrite these in Settings - what works for one
-// person's voice won't work for another's.
-const DEFAULT_SCRIPTS = {
-  referral: "Before I go - what was the most valuable part of what we did today?\n\n(let them answer - they sell themselves)\n\n\"That's exactly why I do this. Who do you know who's sharp, who you care about, and who deserves the same conversation? No pressure on them - I'll just do for them what I did for you.\"",
-  recruit: "\"We've got more families asking for help than we have people to help them. I'm always looking for good people - who do you know who's sharp, has a good heart for people, and might be looking for something more than what they've got? Full time or even part time.\"\n\nIF THEY'RE THE FIT:\n\"You're really sharp. Do you think you could do what I did today?\"\n(when they say yes)\n\"I agree.\"",
-  stp: "\"Let me send you an overview of what we actually do. It's about 45 minutes - worth every one of them. Watch it when you've got a quiet stretch, then tell me what you think.\"\n\nLength is a feature: someone who won't give 45 minutes to explore a career change wasn't going to build an agency anyway."
-};
-function toggleScript(k) {
-  const el = document.getElementById('script-' + k);
-  if (el) el.style.display = (el.style.display === 'none' ? 'block' : 'none');
+// --- The pre-application gate ---------------------------------------------
+// window._q holds the three answers: null = unanswered, true = yes, false = no.
+// null is what blocks the outcome. There is no default and no skip.
+window._q = {reset:null, ref:null, rec:null};
+window._people = {ref:[], rec:[]};
+
+function askRow(k, question) {
+  return '<div style="margin-bottom:8px;">' +
+    '<div style="font-size:13px;color:#1D3557;line-height:1.35;margin-bottom:5px;">' + question + '</div>' +
+    '<div style="display:flex;gap:6px;">' +
+      '<button id="q-' + k + '-yes" onclick="answerQ(\'' + k + '\',true)" style="flex:1;background:#fff;border:1px solid #e2eaf2;color:#5f7a99;border-radius:6px;padding:6px;font-size:12px;font-weight:600;cursor:pointer;">Yes</button>' +
+      '<button id="q-' + k + '-no"  onclick="answerQ(\'' + k + '\',false)" style="flex:1;background:#fff;border:1px solid #e2eaf2;color:#5f7a99;border-radius:6px;padding:6px;font-size:12px;font-weight:600;cursor:pointer;">No</button>' +
+    '</div></div>';
 }
-function getScript(k) {
-  const s = getAgentSettings();
-  return (s.scripts && s.scripts[k]) || DEFAULT_SCRIPTS[k];
+
+function answerQ(k, val) {
+  window._q[k] = val;
+  const yes = document.getElementById('q-' + k + '-yes');
+  const no  = document.getElementById('q-' + k + '-no');
+  if (yes) { yes.style.background = val ? '#138181' : '#fff'; yes.style.color = val ? '#fff' : '#5f7a99'; yes.style.borderColor = val ? '#138181' : '#e2eaf2'; }
+  if (no)  { no.style.background  = !val ? '#1D3557' : '#fff'; no.style.color  = !val ? '#fff' : '#5f7a99'; no.style.borderColor  = !val ? '#1D3557' : '#e2eaf2'; }
+  const d = document.getElementById('q-' + k + '-detail');
+  if (d) d.style.display = val ? 'block' : 'none';
+  // Asking and naming nobody is allowed - but if they open it, give them a row.
+  if (val && (k === 'ref' || k === 'rec') && !window._people[k].length) addPerson(k);
+  gateCheck();
+}
+
+// Name / phone / why. Same shape for both, because a referral and a recruit
+// prospect are the same record with a different destination. That's deliberate:
+// when the recruiting pipeline gets built, these rows walk straight in.
+function addPerson(k) {
+  window._people[k].push({name:'', phone:'', why:''});
+  renderPeople(k);
+}
+function removePerson(k, i) {
+  window._people[k].splice(i, 1);
+  renderPeople(k);
+}
+function syncPerson(k, i, f, v) { window._people[k][i][f] = v; }
+function renderPeople(k) {
+  const el = document.getElementById(k + '-people');
+  if (!el) return;
+  el.innerHTML = window._people[k].map((pp, i) =>
+    '<div style="display:flex;gap:4px;margin-bottom:4px;align-items:center;">' +
+      '<input type="text" value="' + escAttr(pp.name) + '" oninput="syncPerson(\'' + k + '\',' + i + ',\'name\',this.value)" placeholder="Name" style="flex:1.1;font-size:12px;padding:6px;border:1px solid #e2eaf2;border-radius:6px;">' +
+      '<input type="tel" value="' + escAttr(pp.phone) + '" oninput="syncPerson(\'' + k + '\',' + i + ',\'phone\',this.value)" placeholder="Phone" style="flex:1;font-size:12px;padding:6px;border:1px solid #e2eaf2;border-radius:6px;">' +
+      '<input type="text" value="' + escAttr(pp.why) + '" oninput="syncPerson(\'' + k + '\',' + i + ',\'why\',this.value)" placeholder="Why them?" style="flex:1.3;font-size:12px;padding:6px;border:1px solid #e2eaf2;border-radius:6px;">' +
+      '<button onclick="removePerson(\'' + k + '\',' + i + ')" style="background:none;border:none;color:#c0392b;font-size:16px;cursor:pointer;padding:0 4px;">&times;</button>' +
+    '</div>').join('');
+}
+
+// Grey out every outcome button until all three are answered.
+function gateCheck() {
+  const ready = window._q.reset !== null && window._q.ref !== null && window._q.rec !== null;
+  document.querySelectorAll('.sit-outcome-btn').forEach(b => {
+    b.disabled = !ready;
+    b.style.opacity = ready ? '1' : '0.4';
+    b.style.cursor = ready ? 'pointer' : 'not-allowed';
+  });
+  const warn = document.getElementById('gate-warn');
+  if (warn) warn.style.display = ready ? 'none' : 'block';
+}
+
+// Every person ever named for the opportunity, with the client who named them.
+// This is the seed of the recruiting pipeline - tick STP as you actually send it.
+function openRecruitProspects() {
+  const rows = [];
+  clients.forEach(c => (c.cases||[]).forEach((cs,ci) => (cs.touchpoints||[]).forEach((tp,ti) =>
+    (tp.recruit_people||[]).forEach((pp,pi) => rows.push({pp, cid:c.id, ci, ti, pi}))
+  )));
+  if (!rows.length) {
+    showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+      '<div class="modal-title">Recruit prospects</div>' +
+      '<div style="font-size:13px;color:#5f7a99;padding:16px 0;">Nobody named yet. They show up here when you log a sit and name someone for the opportunity.</div>');
+    return;
+  }
+  showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">Recruit prospects</div>' +
+    '<div class="modal-sub">' + rows.filter(r=>r.pp.stp_sent).length + ' of ' + rows.length + ' sent the plan</div>' +
+    rows.map(r =>
+      '<div style="border:1px solid #e2eaf2;border-radius:8px;padding:10px;margin-bottom:6px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
+          '<div style="flex:1;">' +
+            '<div style="font-size:14px;font-weight:600;color:#1D3557;">' + esc(r.pp.name) + '</div>' +
+            (r.pp.phone ? '<div style="font-size:12px;color:#138181;">' + esc(r.pp.phone) + '</div>' : '') +
+            (r.pp.why ? '<div style="font-size:12px;color:#5f7a99;margin-top:2px;">' + esc(r.pp.why) + '</div>' : '') +
+            '<div style="font-size:10px;color:#8fa8c0;margin-top:3px;">via ' + esc(r.pp.from_name||'') + '</div>' +
+          '</div>' +
+          '<label style="display:flex;align-items:center;gap:5px;font-size:11px;color:#1D3557;cursor:pointer;white-space:nowrap;">' +
+            '<input type="checkbox" ' + (r.pp.stp_sent?'checked':'') + ' onchange="toggleProspectSTP(\'' + r.cid + '\',' + r.ci + ',' + r.ti + ',' + r.pi + ',this.checked)" style="width:16px;height:16px;"> STP sent' +
+          '</label>' +
+        '</div>' +
+      '</div>').join(''));
+}
+async function toggleProspectSTP(cid, ci, ti, pi, val) {
+  const c = clients.find(x => x.id === cid); if (!c) return;
+  c.cases[ci].touchpoints[ti].recruit_people[pi].stp_sent = val;
+  await saveClient(c);
+  render();
+  openRecruitProspects();
 }
 
 function getAgentId() {
@@ -6872,6 +6984,11 @@ function getCompRate(carrierName, productName, contractLevel, clientAge, product
   // "tap Edit to fix product/range" instead.
   if (matches.length > 1 && !ageRows.length) return null;
 
+  // Rows differ by AGE and we don't know the age: refuse, exactly as we already
+  // refuse on term ambiguity above. Guessing here always returned matches[0] -
+  // the youngest, lowest-paying band - so it understated comp every single time.
+  if (matches.length > 1 && ageRows.length && !clientAge) return null;
+
   if (matches.length === 1 || !clientAge || !ageRows.length) {
     product = matches[0];
   } else {
@@ -6890,8 +7007,9 @@ function getCompRate(carrierName, productName, contractLevel, clientAge, product
       if (mGte) return age >= parseInt(mGte[1]);
       return false;
     });
-    // Fall back to first match if no age range matched
-    if (!product) product = matches[0];
+    // Age given but it falls outside every band (e.g. a 38yo on a 40+ product).
+    // That's a genuine mismatch - surface it rather than quietly bill the wrong row.
+    if (!product) return null;
   }
 
   return product.rates[String(level)] || null;
@@ -6908,6 +7026,62 @@ function getCarrierAdvance(carrierName) {
   if (carrierName === 'Gerber') return 'as_earned';
   if (carrierName === 'Foresters') return settings.forestersAsEarned !== false ? 'as_earned' : 75;
   return 75; // everyone else
+}
+
+// Recompute every saved app against the comp grid and report anything that drifted.
+// comp is dual-stored (stamped on the app + recomputed live), so a bad lookup at
+// entry time leaves a wrong number baked into the record. Report, then fix on confirm.
+function recheckComp() {
+  const drift = [];
+  const unknown = [];
+  clients.forEach(c => (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp =>
+    (tp.apps||[]).forEach(ap => {
+      if (!ap.carrier || !ap.product || !ap.premium) return;
+      const fresh = calcAppComp(ap.carrier, ap.product, ap.premium, null, undefined, ap.age, ap.product_range || null);
+      if (!fresh) { unknown.push({c, ap}); return; }
+      const stored = ap.comp_gross;
+      if (stored === undefined || stored === null) return;
+      if (Math.abs(stored - fresh.grossComp) > 0.5) {
+        drift.push({ c, ap, stored, fresh: fresh.grossComp, rate: fresh.rate });
+      }
+    })
+  )));
+
+  if (!drift.length && !unknown.length) { alert('All apps match the comp grid. Nothing to fix.'); return; }
+
+  let msg = '';
+  let delta = 0;
+  if (drift.length) {
+    msg += drift.length + ' app(s) stored the wrong comp:\n\n';
+    drift.forEach(d => {
+      delta += (d.fresh - d.stored);
+      msg += '  ' + d.c.name + ' - ' + d.ap.carrier + ' ' + d.ap.product +
+             (d.ap.product_range ? ' (' + d.ap.product_range + ')' : '') + '\n' +
+             '     stored $' + Math.round(d.stored) + '  ->  correct $' + Math.round(d.fresh) +
+             ' @ ' + d.rate + '%\n';
+    });
+    msg += '\nNet change: ' + (delta >= 0 ? '+' : '') + '$' + Math.round(delta) + '\n';
+  }
+  if (unknown.length) {
+    msg += '\n' + unknown.length + ' app(s) can no longer be priced (missing age band or product).\n' +
+           'These are NOT changed - open each and set the product/age band:\n';
+    unknown.forEach(u => { msg += '  ' + u.c.name + ' - ' + u.ap.carrier + ' ' + u.ap.product + '\n'; });
+  }
+  if (!drift.length) { alert(msg); return; }
+
+  msg += '\nUpdate the ' + drift.length + ' drifted app(s) to the correct comp?';
+  if (!confirm(msg)) return;
+
+  drift.forEach(d => {
+    const fresh = calcAppComp(d.ap.carrier, d.ap.product, d.ap.premium, null, undefined, d.ap.age, d.ap.product_range || null);
+    d.ap.comp_gross = fresh.grossComp;
+    d.ap.comp_advance = fresh.advance;
+    d.ap.comp_rate = fresh.rate;
+  });
+  const touched = [...new Set(drift.map(d => d.c))];
+  touched.forEach(c => saveClient(c));
+  alert('Updated ' + drift.length + ' app(s). Net ' + (delta >= 0 ? '+' : '') + '$' + Math.round(delta) + '.');
+  render();
 }
 
 function calcAppComp(carrierName, productName, apv, contractLevel, forceAdvancePct, clientAge, productRange) {
@@ -7039,16 +7213,9 @@ function openSettings() {
     '</div>' +
 
     '<div style="background:#f0f4f8;border-radius:10px;padding:12px;margin-bottom:12px;">' +
-      '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Your scripts</div>' +
-      '<div class="field"><label>Referral ask</label><textarea id="s-script-referral" rows="5" style="font-size:12px;">' + getScript('referral') + '</textarea></div>' +
-      '<div class="field"><label>Recruiting ask</label><textarea id="s-script-recruit" rows="6" style="font-size:12px;">' + getScript('recruit') + '</textarea></div>' +
-      '<div class="field"><label>Send the plan (STP)</label><textarea id="s-script-stp" rows="4" style="font-size:12px;">' + getScript('stp') + '</textarea></div>' +
-      '<div style="font-size:10px;color:#8fa8c0;">Make them yours - what works in one person\'s voice won\'t work in another\'s.</div>' +
-    '</div>' +
-
-    '<div style="background:#f0f4f8;border-radius:10px;padding:12px;margin-bottom:12px;">' +
       '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Data</div>' +
-      '<button onclick="backfillResolutions()" style="width:100%;background:#1D3557;color:#fff;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;">Recount resolutions</button>' +
+      '<button onclick="backfillResolutions()" style="width:100%;background:#1D3557;color:#fff;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:6px;">Recount resolutions</button>' +
+      '<button onclick="recheckComp()" style="width:100%;background:#138181;color:#fff;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;">Recheck comp on all apps</button>' +
       '<div style="font-size:10px;color:#8fa8c0;margin-top:4px;">Stamps each already-resolved lead with its true first resolution. Fixes the inflated count.</div>' +
     '</div>' +
 
@@ -7086,11 +7253,6 @@ function saveProfileSettings() {
   settings.contractLevel = parseInt(document.getElementById('s-level').value);
   const dm = document.getElementById('s-appt-mins');
   if (dm) settings.defaultApptMins = parseInt(dm.value) || 40;
-  settings.scripts = settings.scripts || {};
-  ['referral','recruit','stp'].forEach(k => {
-    const el = document.getElementById('s-script-' + k);
-    if (el) settings.scripts[k] = el.value;
-  });
   saveAgentSettings(settings);
   closeModal();
   showSync('Settings saved!');
