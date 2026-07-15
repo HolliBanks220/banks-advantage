@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h41</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h43</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -1304,6 +1304,19 @@ function renderCaseClock() {
     '<div style="font-size:12px;color:#1D3557;">Avg days to close: <strong>' + (totalDays / totalN).toFixed(1) + '</strong> across ' + totalN + ' \u00B7 ' + typeLine + '</div>' +
     '<div style="font-size:11px;color:#5f7a99;">APV by speed: ' + bucketLine + '</div>' +
   '</div>';
+}
+
+// Umbrella re-render. Five handlers (cancelAppt, markUninsurable, undoUninsurable,
+// toggleProspectSTP, recheck-comp confirm) call render() - without this definition
+// that call throws and blanks the whole screen. Mirrors the pattern at init():
+// always redraw the scoreboard, redraw the client list only if its tab is visible,
+// preserving whatever is typed in the search box.
+function render() {
+  try { renderScore(); } catch(e) { console.error('renderScore:', e); }
+  try {
+    const tab = document.getElementById('tab-clients');
+    if (tab && tab.style.display !== 'none') renderClients((document.getElementById('client-search')||{}).value||'');
+  } catch(e) { console.error('renderClients:', e); }
 }
 
 function renderScore() {
@@ -7038,6 +7051,9 @@ function escAttr(v) {
     .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
     .replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
+// 8 call sites (dormant tab cards, needs-replacement banner, recruit prospect list)
+// call esc() - it was never defined, so each of those paths threw and blanked.
+function esc(v) { return escAttr(v); }
 
 // A lead RESOLVES exactly once in its life: the first time an initial appointment
 // is set, or the first time it's marked dead/not-interested. Reschedules, resets,
@@ -7645,7 +7661,7 @@ function openSettings() {
       '<div style="display:flex;gap:8px;">' +
         '<div class="field" style="flex:1;"><label>Attempts</label><input type="number" id="s-dorm-att" value="' + dormantRules().attempts + '"></div>' +
         '<div class="field" style="flex:1;"><label>Days</label><input type="number" id="s-dorm-days" value="' + dormantRules().days + '"></div>' +
-        '<div class="field" style="flex:1;"><label>Push-off rest</label><input type="number" id="s-pushoff" value="' + pushOffDays() + '"></div>' +
+        '<div class="field" style="flex:1;"><label>Push-off rest</label><input type="number" id="s-pushoff" value="' + dodgeDays() + '"></div>' +
       '</div>' +
       '<div style="font-size:10px;color:#8fa8c0;">A lead goes dormant only when BOTH are met. Never deleted - it comes back when you are caught up.</div>' +
     '</div>' +
