@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h45</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h46</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -409,6 +409,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div id="tab-clients" style="display:none;">
     <div class="leads-hdr">
       <div style="font-size:13px;font-weight:500;color:#1D3557;" id="client-count">Loading...</div>
+      <div id="pace-line" style="font-size:11px;font-weight:600;margin-top:2px;display:none;"></div>
       <div style="display:flex;gap:6px;">
         <button class="add-btn" style="background:#138181;" onclick="openLeadImport()">[Import] Import</button>
         <button class="add-btn" onclick="openAddClient()">+ Add lead</button>
@@ -425,6 +426,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <button class="filter-btn" onclick="setFilter('working',this)">Working</button>
       <button class="filter-btn" onclick="setFilter('noshow',this)">No show</button>
       <button class="filter-btn" onclick="setFilter('Appointment set',this)">Appt</button>
+      <button class="filter-btn" onclick="setFilter('dormant',this)">Dormant (<span id="dormant-chip-n">0</span>)</button>
     </div>
     <div id="clients-list"><div class="loading">Loading clients...</div></div>
   </div>
@@ -2824,7 +2826,12 @@ function setFilterAlert(f) {
 
 function setFilter(f, btn) {
   activeFilter = f;
-  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('on')); btn.classList.add('on');
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('on'));
+  // Callers that don't pass their button (the caught-up celebration calls
+  // setFilter('dormant') bare) used to throw right here and the filter never
+  // applied. Fall back to highlighting the matching chip if one exists.
+  const target = btn || document.querySelector('.filter-btn[onclick*="\'' + f + '\'"]');
+  if (target) target.classList.add('on');
   renderClients(document.getElementById('client-search').value);
 }
 
@@ -3616,7 +3623,7 @@ function getFilteredClients(q='') {
       return getDaysSinceAssigned(a) - getDaysSinceAssigned(b);
     });
   }
-  if (activeFilter === 'dormant') return dormantLeads();
+  if (activeFilter === 'dormant') return allDormantForView();
   // Other views: sort by urgency score (lower = more urgent)
   return filtered.sort((a, b) => getUrgencyScore(a) - getUrgencyScore(b));
 }
@@ -3632,9 +3639,73 @@ function getFilteredClients(q='') {
 // lead is not. Nothing is ever deleted.
 function dormantRules() {
   const st = getAgentSettings();
-  return { attempts: st.dormantAttempts || 10, days: st.dormantDays || 21 };
+  return {
+    // Gate 1: heavily worked - earns its rest at three weeks.
+    attempts:  parseInt(st.dormantAttempts)  || 10, days:  parseInt(st.dormantDays)  || 21,
+    // Gate 2: moderately worked - needs an extra week past the exclusivity
+    // window to prove it's cooked. Catches the purgatory band that youngest-
+    // due-first starves: old enough to never surface, never reaching gate 1.
+    attempts2: parseInt(st.dormantAttempts2) || 8,  days2: parseInt(st.dormantDays2) || 28
+  };
 }
 function attemptCount(c) { return (c.call_log || []).length; }
+
+// --- ATTEMPT PACE ------------------------------------------------------------
+// The 17-day exclusivity window is the whole economics of an A lead: drive
+// attempts hard while the lead is exclusively yours. Pace bars say what "on
+// pace" means at each age (defaults: 3 attempts by day 4, 6 by day 10, 8 by
+// day 17 - front-loaded, landing at the p90-to-resolution of 8 before the
+// window closes). The header counts leads BELOW their bar and the total
+// attempts to catch up: a finishable number instead of a pile. "Attempt" not
+// "dial" on purpose - one attempt may be a double or triple dial.
+// Past day 17 nothing is "behind": the window is gone, that's the open pile.
+function paceRules() {
+  const st = getAgentSettings();
+  return {
+    fresh:    parseInt(st.paceFresh)    || 3,   // by day 4
+    building: parseInt(st.paceBuilding) || 6,   // by day 10
+    closing:  parseInt(st.paceClosing)  || 8    // by day 17
+  };
+}
+
+function paceStats() {
+  const p = paceRules();
+  let fresh = 0, building = 0, closing = 0, catchup = 0;
+  clients.forEach(c => {
+    if (!c || c.resolved_at) return;
+    if (['Dead','Removed'].includes(c.status)) return;
+    if (c.appt_datetime) return;
+    const days = getDaysSinceAssigned(c), att = attemptCount(c);
+    let bar = 0, band = null;
+    if (days < 4) { bar = p.fresh; band = 'f'; }
+    else if (days <= 9) { bar = p.building; band = 'b'; }
+    else if (days <= 16) { bar = p.closing; band = 'c'; }
+    else return;
+    if (att < bar) {
+      if (band === 'f') fresh++; else if (band === 'b') building++; else closing++;
+      catchup += bar - att;
+    }
+  });
+  return { fresh, building, closing, catchup };
+}
+
+function renderPaceLine() {
+  const el = document.getElementById('pace-line');
+  if (!el) return;
+  const s = paceStats();
+  el.style.display = 'block';
+  if (!s.catchup) {
+    el.style.color = '#138181';
+    el.textContent = '\u2713 On pace \u2014 every lead in your window is at attempt pace';
+    return;
+  }
+  el.style.color = '#BA7517';
+  const bits = [];
+  if (s.fresh) bits.push(s.fresh + ' fresh');
+  if (s.building) bits.push(s.building + ' building');
+  if (s.closing) bits.push(s.closing + ' closing');
+  el.textContent = 'Behind pace: ' + bits.join(' \u00B7 ') + ' \u2014 catch-up: ' + s.catchup + ' attempts';
+}
 
 // --- DECLINES & REWRITES ---------------------------------------------------
 // A decline is NOT a lapse. A lapse is a policy that existed and died - money was
@@ -3804,7 +3875,8 @@ function isDormant(c) {
   if (needsReplacement(c)) return false;                       // declined and unreplaced - you owe them a policy
   if (isResting(c) || apptNeedsOutcome(c)) return false;       // these come BACK - they can never fall out of sight
   const r = dormantRules();
-  return attemptCount(c) >= r.attempts && getDaysSinceAssigned(c) >= r.days;
+  const att = attemptCount(c), days = getDaysSinceAssigned(c);
+  return (att >= r.attempts && days >= r.days) || (att >= r.attempts2 && days >= r.days2);
 }
 
 // Rank the dormant pile by SIGNAL OF LIFE, not by age. Someone you actually
@@ -3828,6 +3900,26 @@ function dormantRested(c) {
   return (new Date() - last) / 86400000 >= 7;
 }
 
+// Days until a dormant lead's 7-day rest is up (0 = workable now).
+function dormantRestLeft(c) {
+  const log = c.call_log || [];
+  if (!log.length) return 0;
+  const last = new Date(log[log.length - 1].datetime || log[log.length - 1].date || 0);
+  return Math.max(0, Math.ceil(7 - (new Date() - last) / 86400000));
+}
+
+// The WHOLE dormant pile for the Dormant tab: nothing hidden. Rested-and-
+// workable leads first (best signal first), still-resting ones at the bottom
+// with their countdown. dormantLeads() stays the workable subset used by the
+// caught-up celebration - that one is an invitation, this one is an inventory.
+function allDormantForView() {
+  return clients.filter(isDormant).sort((a, b) => {
+    const ra = dormantRested(a) ? 0 : 1, rb = dormantRested(b) ? 0 : 1;
+    if (ra !== rb) return ra - rb;
+    return dormantTier(a) - dormantTier(b);
+  });
+}
+
 function dormantLeads() {
   return clients.filter(isDormant).filter(dormantRested).sort((a, b) => {
     const t = dormantTier(a) - dormantTier(b);
@@ -3849,6 +3941,9 @@ function renderClients(q='') {
   document.getElementById('client-count').textContent = activeFilter === 'all'
     ? list.length + ' leads total'
     : list.length + ' ' + filterLabel + ' \u00B7 ' + callableNow + ' callable now';
+  renderPaceLine();
+  const dchip = document.getElementById('dormant-chip-n');
+  if (dchip) dchip.textContent = clients.filter(isDormant).length;
   if (!list.length) {
     // Caught up. The dormant pile is offered as a REWARD, not seeded back into
     // the queue - you get the "you're on top of it" moment first, and the extra
@@ -3861,7 +3956,7 @@ function renderClients(q='') {
           '<div style="font-size:16px;font-weight:600;color:#1D3557;margin-bottom:4px;">You are caught up.</div>' +
           '<div style="font-size:13px;color:#5f7a99;margin-bottom:18px;">Every workable lead has been called. Nothing is due.</div>' +
           '<button onclick="setFilter(\'dormant\')" style="background:#138181;color:#fff;border:none;border-radius:8px;padding:11px 18px;font-size:13px;font-weight:600;cursor:pointer;">Work the dormant pile (' + nDormant + ')</button>' +
-          '<div style="font-size:11px;color:#8fa8c0;margin-top:9px;">10+ attempts, 21+ days, never resolved. Best signal first.</div>' +
+          '<div style="font-size:11px;color:#8fa8c0;margin-top:9px;">Heavily worked and aged out, never resolved. Best signal first.</div>' +
         '</div>';
       return;
     }
@@ -3879,19 +3974,22 @@ function renderClients(q='') {
   }
   if (activeFilter === 'dormant') {
     const TIER = {1:['Spoke to them','#138181'], 2:['Reached once','#534AB7'], 3:['Never answered','#BA7517'], 4:['Exhausted','#8fa8c0']};
+    const dr = dormantRules();
     el.innerHTML =
       '<div style="background:#f0f4f8;border-radius:8px;padding:9px 12px;margin-bottom:8px;font-size:11px;color:#5f7a99;">' +
-        'Dormant: 10+ attempts, 21+ days, never resolved. Rested 7 days. Best signal first - nothing here is deleted.' +
+        'Dormant: ' + dr.attempts + '+ attempts at ' + dr.days + '+ days, or ' + dr.attempts2 + '+ attempts at ' + dr.days2 + '+ days, never resolved. Best signal first - nothing here is deleted.' +
       '</div>' +
       list.map(c => {
         const t = TIER[dormantTier(c)];
-        return '<div class="client-card" onclick="openClient(\'' + c.id + '\')">' +
+        const restLeft = dormantRested(c) ? 0 : dormantRestLeft(c);
+        return '<div class="client-card" onclick="openClient(\'' + c.id + '\')"' + (restLeft ? ' style="opacity:0.6;"' : '') + '>' +
           '<div class="client-row">' +
             '<div class="client-name">' + esc(c.name) + '</div>' +
             '<div style="font-size:10px;font-weight:600;color:' + t[1] + ';">' + t[0] + '</div>' +
           '</div>' +
           '<div class="client-meta">' + esc(c.phone||'') + ' - ' + esc(c.source||'') + ' - ' +
-            attemptCount(c) + ' att - ' + getDaysSinceAssigned(c) + 'd</div>' +
+            attemptCount(c) + ' att - ' + getDaysSinceAssigned(c) + 'd' +
+            (restLeft ? ' - <span style="color:#BA7517;font-weight:600;">resting ' + restLeft + 'd more</span>' : '') + '</div>' +
         '</div>';
       }).join('');
     return;
@@ -5633,14 +5731,38 @@ async function handleImportFile(f) {
     const pdfjsLib = await loadPdfJs();
     const buf = await f.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-    const pages = [];
+    _importRows = [];
+    let scans = 0;
     for (let p = 1; p <= pdf.numPages; p++) {
       const page = await pdf.getPage(p);
       const tc = await page.getTextContent();
-      pages.push(tc.items.map(it => it.str).join(' ').replace(/\s+/g, ' ').trim());
+      const text = tc.items.map(it => it.str).join(' ').replace(/\s+/g, ' ').trim();
+      const row = parseLeadText(text);
+      if (row) { _importRows.push(row); continue; }
+      // No lead came off this page. A scanned/handwritten card has no text
+      // layer - to the parser it looks blank, and until now it VANISHED
+      // silently. Instead: render the page as an image and hand it to the
+      // human. You read the handwriting, you type it, it imports with the
+      // rest. Machines misread a scrawled phone digit; people don't.
+      let img = '';
+      try {
+        const vp = page.getViewport({ scale: 1.4 });
+        const canvas = document.createElement('canvas');
+        canvas.width = vp.width; canvas.height = vp.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+        img = canvas.toDataURL('image/jpeg', 0.82);
+      } catch (e) { /* render failed - still show the row, just without the picture */ }
+      scans++;
+      _importRows.push({
+        name: '', phone: '', age: '', address: '', state: '', zip: '',
+        mortgage_amount: '', source: 'MIA',
+        notes: 'Typed from scanned card (page ' + p + ')',
+        include: false, _scan: img || 'none', _page: p
+      });
     }
-    _importRows = pages.map(parseLeadText).filter(r => r);
-    statusEl.textContent = `Found ${_importRows.length} lead(s). Review and edit, then import.`;
+    const typed = _importRows.filter(r => !r._scan).length;
+    statusEl.innerHTML = pdf.numPages + ' page(s) \u2192 <b>' + typed + '</b> lead(s) read automatically' +
+      (scans ? ' \u00B7 <b style="color:#BA7517;">' + scans + '</b> scanned card(s) need your eyes below' : '');
     renderImportPreview();
   } catch (err) {
     statusEl.textContent = 'Could not read that PDF: ' + err.message + '. If it is a scanned/handwritten card, add it manually.';
@@ -5714,11 +5836,14 @@ function renderImportPreview() {
   const el = document.getElementById('li-preview');
   if (!_importRows.length) { el.innerHTML = ''; return; }
   el.innerHTML = _importRows.map((r, i) => {
-    const flag = r.source ? '' : ' style="border:1px solid #E0A0A0;border-radius:8px;"';
-    return `<div${flag} style="border:1px solid #e0e8f0;border-radius:8px;padding:8px;margin-bottom:8px;">
+    const isScan = !!r._scan;
+    const border = isScan ? 'border:1px solid #F0C888;background:#FFFDF8;' : (r.source ? 'border:1px solid #e0e8f0;' : 'border:1px solid #E0A0A0;');
+    return `<div style="${border}border-radius:8px;padding:8px;margin-bottom:8px;">
+      ${isScan ? `<div style="font-size:11px;font-weight:600;color:#854F0B;margin-bottom:6px;">Scanned card \u2014 page ${r._page}. Read it, type it, tick the box.</div>` : ''}
+      ${isScan && r._scan !== 'none' ? `<img src="${r._scan}" style="width:100%;border-radius:6px;border:1px solid #e0e8f0;margin-bottom:8px;" alt="Scanned lead card page ${r._page}">` : ''}
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;">
-        <input type="checkbox" ${r.include?'checked':''} onchange="_importRows[${i}].include=this.checked">
-        <input value="${escAttr(r.name)}" oninput="_importRows[${i}].name=this.value" placeholder="Name" style="flex:1;font-size:13px;font-weight:600;">
+        <input type="checkbox" id="li-inc-${i}" ${r.include?'checked':''} onchange="_importRows[${i}].include=this.checked">
+        <input value="${escAttr(r.name)}" oninput="_importRows[${i}].name=this.value;importAutoInclude(${i})" placeholder="Name" style="flex:1;font-size:13px;font-weight:600;">
         <select onchange="_importRows[${i}].source=this.value" style="font-size:12px;">
           <option value="CIA"${r.source==='CIA'?' selected':''}>CIA</option>
           <option value="MIA"${r.source==='MIA'?' selected':''}>MIA</option>
@@ -5726,7 +5851,7 @@ function renderImportPreview() {
         </select>
       </div>
       <div style="display:flex;gap:6px;">
-        <input value="${escAttr(r.phone)}" oninput="_importRows[${i}].phone=this.value" placeholder="Phone" style="flex:1;font-size:12px;">
+        <input value="${escAttr(r.phone)}" oninput="_importRows[${i}].phone=this.value;importAutoInclude(${i})" placeholder="Phone" style="flex:1;font-size:12px;">
         <input value="${escAttr(r.age)}" oninput="_importRows[${i}].age=this.value" placeholder="Age" style="width:50px;font-size:12px;">
         <input value="${r.mortgage_amount||''}" oninput="_importRows[${i}].mortgage_amount=this.value" placeholder="Mortgage" style="width:90px;font-size:12px;">
         <input value="${r.state||''}" oninput="_importRows[${i}].state=this.value" placeholder="ST" style="width:44px;font-size:12px;">
@@ -5735,7 +5860,25 @@ function renderImportPreview() {
         <input value="${escAttr(r.address)}" oninput="_importRows[${i}].address=this.value" placeholder="Address, City, ST ZIP" style="width:100%;font-size:12px;">
       </div>
     </div>`;
-  }).join('') + `<button class="save-btn" onclick="confirmLeadImport()">Import ${_importRows.filter(r=>r.include).length} lead(s)</button>`;
+  }).join('') + `<button class="save-btn" id="li-import-btn" onclick="confirmLeadImport()">Import ${_importRows.filter(r=>r.include).length} lead(s)</button>`;
+}
+
+// A scanned-card row auto-ticks itself the moment it has a name and a phone -
+// the two things the import needs - so typing the card IS opting it in.
+function importAutoInclude(i) {
+  const r = _importRows[i];
+  if (!r || !r._scan) { updateImportBtn(); return; }
+  const ready = (r.name||'').trim() && (r.phone||'').trim();
+  if (ready && !r.include) {
+    r.include = true;
+    const cb = document.getElementById('li-inc-' + i);
+    if (cb) cb.checked = true;
+  }
+  updateImportBtn();
+}
+function updateImportBtn() {
+  const btn = document.getElementById('li-import-btn');
+  if (btn) btn.textContent = 'Import ' + _importRows.filter(r=>r.include).length + ' lead(s)';
 }
 
 async function confirmLeadImport() {
@@ -7669,10 +7812,20 @@ function openSettings() {
     '<div style="background:#f0f4f8;border-radius:10px;padding:12px;margin-bottom:12px;">' +
       '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Dormancy</div>' +
       '<div style="display:flex;gap:8px;">' +
-        '<div class="field" style="flex:1;"><label>Attempts</label><input type="number" id="s-dorm-att" value="' + dormantRules().attempts + '"></div>' +
-        '<div class="field" style="flex:1;"><label>Days</label><input type="number" id="s-dorm-days" value="' + dormantRules().days + '"></div>' +
+        '<div class="field" style="flex:1;"><label>Gate 1 attempts</label><input type="number" id="s-dorm-att" value="' + dormantRules().attempts + '"></div>' +
+        '<div class="field" style="flex:1;"><label>Gate 1 days</label><input type="number" id="s-dorm-days" value="' + dormantRules().days + '"></div>' +
+        '<div class="field" style="flex:1;"><label>Gate 2 attempts</label><input type="number" id="s-dorm-att2" value="' + dormantRules().attempts2 + '"></div>' +
+        '<div class="field" style="flex:1;"><label>Gate 2 days</label><input type="number" id="s-dorm-days2" value="' + dormantRules().days2 + '"></div>' +
         '<div class="field" style="flex:1;"><label>Push-off rest</label><input type="number" id="s-pushoff" value="' + dodgeDays() + '"></div>' +
       '</div>' +
+      '<div style="font-size:10px;color:#8fa8c0;margin:2px 0 8px 0;">A lead goes dormant at either gate: heavily worked (gate 1) or moderately worked but aged (gate 2).</div>' +
+      '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Attempt pace bars (per lead, by age)</div>' +
+      '<div style="display:flex;gap:8px;">' +
+        '<div class="field" style="flex:1;"><label>By day 4</label><input type="number" id="s-pace-1" value="' + paceRules().fresh + '"></div>' +
+        '<div class="field" style="flex:1;"><label>By day 10</label><input type="number" id="s-pace-2" value="' + paceRules().building + '"></div>' +
+        '<div class="field" style="flex:1;"><label>By day 17</label><input type="number" id="s-pace-3" value="' + paceRules().closing + '"></div>' +
+      '</div>' +
+      '<button onclick="restoreDefaultSettings()" style="width:100%;background:none;border:1px solid #d0dcea;border-radius:8px;padding:8px;font-size:12px;color:#5f7a99;cursor:pointer;margin-top:4px;">\u21BA Restore defaults</button>' +
       '<div style="font-size:10px;color:#8fa8c0;">A lead goes dormant only when BOTH are met. Never deleted - it comes back when you are caught up.</div>' +
     '</div>' +
 
@@ -7720,12 +7873,37 @@ function saveProfileSettings() {
   const da = document.getElementById('s-dorm-att'), dd = document.getElementById('s-dorm-days');
   if (da) settings.dormantAttempts = parseInt(da.value) || 10;
   if (dd) settings.dormantDays = parseInt(dd.value) || 21;
+  const da2 = document.getElementById('s-dorm-att2'), dd2 = document.getElementById('s-dorm-days2');
+  if (da2) settings.dormantAttempts2 = parseInt(da2.value) || 8;
+  if (dd2) settings.dormantDays2 = parseInt(dd2.value) || 28;
+  const p1 = document.getElementById('s-pace-1'), p2 = document.getElementById('s-pace-2'), p3 = document.getElementById('s-pace-3');
+  if (p1) settings.paceFresh = parseInt(p1.value) || 3;
+  if (p2) settings.paceBuilding = parseInt(p2.value) || 6;
+  if (p3) settings.paceClosing = parseInt(p3.value) || 8;
   const po = document.getElementById('s-pushoff');
   if (po) settings.pushOffDays = parseInt(po.value) || 18;
   saveAgentSettings(settings);
   closeModal();
   showSync('Settings saved!');
   setTimeout(hideSync, 1500);
+  renderScore(); if (document.getElementById('tab-clients') && document.getElementById('tab-clients').style.display !== 'none') renderClients((document.getElementById('client-search')||{}).value||'');
+}
+
+// One button back to the tested values. Covers everything an agent can dial
+// out of shape: dormancy gates, pace bars, dodger rest, appointment length.
+function restoreDefaultSettings() {
+  if (!confirm('Restore dormancy gates (10/21 and 8/28), pace bars (3/6/8), dodger rest (18d), and appointment length (40 min) to their tested defaults? Your name, contract level, and calendar connection are untouched.')) return;
+  const settings = getAgentSettings();
+  settings.dormantAttempts = 10; settings.dormantDays = 21;
+  settings.dormantAttempts2 = 8; settings.dormantDays2 = 28;
+  settings.paceFresh = 3; settings.paceBuilding = 6; settings.paceClosing = 8;
+  settings.pushOffDays = 18;
+  settings.defaultApptMins = 40;
+  saveAgentSettings(settings);
+  closeModal();
+  showSync('Defaults restored');
+  setTimeout(hideSync, 1500);
+  renderScore(); if (document.getElementById('tab-clients') && document.getElementById('tab-clients').style.display !== 'none') renderClients((document.getElementById('client-search')||{}).value||'');
 }
 
 function openCarrierManager() {
