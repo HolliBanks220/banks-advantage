@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h43</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h45</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -318,17 +318,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-lbl">Plans sent</div>
         <div class="stat-val" id="p-stp" style="cursor:pointer;" onclick="openRecruitProspects()">0</div>
         <div class="stat-sub" id="p-stp-sub">- prospects</div>
-      </div>
-    </div>
-    <div id="pushoff-warn" style="display:none;background:#FFF6E8;border:1px solid #F0C888;border-radius:8px;padding:10px 12px;margin-bottom:8px;">
-      <div style="font-size:12px;font-weight:600;color:#854F0B;" id="pushoff-warn-txt"></div>
-      <div style="font-size:11px;color:#854F0B;margin-top:2px;">That is not them. That is the close.</div>
-    </div>
-    <div class="stat-row">
-      <div class="stat stat-navy-lt">
-        <div class="stat-lbl lbl-navy">Pushed off</div>
-        <div class="stat-val val-navy" id="p-pushed">0</div>
-        <div class="stat-sub sub-navy" id="p-pushed-sub">- of conversations</div>
       </div>
     </div>
     <div id="production-panel" style="background:#fff;border-radius:12px;padding:12px 16px;margin-bottom:6px;box-shadow:0 1px 3px rgba(29,53,87,0.08);"></div>
@@ -1511,18 +1500,6 @@ function renderScore() {
   setTxt('p-refask-sub', resolvedTps.length ? pct(nAsk, resolvedTps.length) + ' of sits' : '- of sits');
   setTxt('p-recask', nRec);
   setTxt('p-recask-sub', resolvedTps.length ? pct(nRec, resolvedTps.length) + ' of sits' : '- of sits');
-  // Push-off rate: the accountability number. It is deliberately NOT a resolution
-  // and NOT a contact - being dodged advances nothing, and the board should say so.
-  const po = pushOffRate();
-  setTxt('p-pushed', po.pushed);
-  setTxt('p-pushed-sub', po.convos ? Math.round(po.rate) + '% of conversations' : '- of conversations');
-  const warn = document.getElementById('pushoff-warn');
-  if (warn) {
-    const bad = po.convos >= 10 && po.rate >= 40;
-    warn.style.display = bad ? 'block' : 'none';
-    const t = document.getElementById('pushoff-warn-txt');
-    if (t && bad) t.textContent = 'You are being pushed off on ' + Math.round(po.rate) + '% of your conversations.';
-  }
   setTxt('p-stp', nStp);
   setTxt('p-stp-sub', allProspects.length ? nStp + ' of ' + allProspects.length + ' prospects' : 'no prospects yet');
   document.getElementById('p-apv').textContent = fmt(totalAPV);
@@ -3784,7 +3761,7 @@ function dodgeStart(c) {
   const log = c.call_log || [];
   let ts = null;
   log.forEach(cl => {
-    const isDoor = cl.outcome === 'Pushed off' || cl.outcome === 'Cancelled' ||
+    const isDoor = cl.outcome === 'Cancelled' ||
       (cl.outcome === 'No show' && noShowCount(c) >= 2);
     if (isDoor && cl.ts && (!ts || new Date(cl.ts) > new Date(ts))) ts = cl.ts;
   });
@@ -3818,22 +3795,6 @@ function apptNeedsOutcome(c) {
     tp && tp.outcome && tp.outcome !== 'pending' && tp.datetime &&
     Math.abs(new Date(tp.datetime).getTime() - apptMs) < 5*60*1000));
   return !logged;
-}
-
-// Push-off rate: the accountability number. "Pushed off" is a comfortable button -
-// for an agent afraid of the close it's an escape hatch that FEELS like progress:
-// no rejection, no hard conversation, queue stays busy. A tool that makes avoidance
-// frictionless will manufacture avoidance. So it costs something VISIBLE: it's not
-// a resolution, not a contact, and the rate goes on the board next to everyone
-// else's. An agent at 60% while Holli is at 15% doesn't need "take control"
-// explained - the number does it.
-function pushOffRate() {
-  let pushed = 0, convos = 0;
-  clients.forEach(c => (c.call_log||[]).forEach(cl => {
-    if (cl.outcome === 'Pushed off') { pushed++; convos++; }
-    else if (['Appt set','Not interested','Conversation','Callback','Rescheduled','Cancelled'].includes(cl.outcome)) convos++;
-  }));
-  return { pushed, convos, rate: convos ? (pushed/convos)*100 : 0 };
 }
 
 function isDormant(c) {
@@ -4123,7 +4084,6 @@ function openClient(id, keepDialCount) {
     <button class="call-btn" style="background:#534AB7;color:#fff;opacity:0.7;" onclick="openReschedulePicker('${id}')">Reschedule</button>
     <button class="call-btn" style="background:#BA7517;color:#fff;" onclick="openResetToPicker('${id}')">↺ Reset to</button>
     ${c.appt_datetime && c.status === 'Appointment set' ? `<button class="call-btn" style="background:#E24B4A;color:#fff;opacity:0.85;" onclick="cancelAppt('${id}')">Cancelled</button>` : ''}
-    <button class="call-btn" style="background:#8fa8c0;color:#fff;" onclick="quickLog('${id}','Pushed off','pushed')">Pushed off</button>
     <button class="call-btn cb-red" onclick="quickLog('${id}','Not interested','dead')">Not interested</button>
   </div>
   <button onclick="openTextModal('${id}')" style="font-size:10px;background:none;border:1px solid #9FE1CB;border-radius:6px;padding:3px 10px;color:#138181;cursor:pointer;margin-bottom:8px;">📱 Text templates</button>
@@ -4207,36 +4167,17 @@ function showSitOutcomeModal(id, ci) {
     '<div class="modal-title">Log outcome</div>' +
     '<div class="modal-sub">' + c.name + ' — ' + caseLabel + '</div>' +
     '<div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:5px 10px;margin-bottom:12px;">' + apptStr + '</div>' +
-    // MANDATORY GATE. Not checkboxes - an unticked box can't be told apart from a
-    // box you never read, so you'd blow past it and the % stat would be a floor,
-    // not a fact. Explicit Yes/No, both blank to start, no way through to apps
-    // until all three are answered. Answering "No" is fine. Skipping is not.
-    // That friction IS the feature: you have to think about it every single time.
-    '<div style="background:#f7fafc;border:1px solid #e2eaf2;border-radius:8px;padding:12px;margin-bottom:12px;">' +
-      '<div style="font-size:10px;font-weight:700;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Before applications</div>' +
-
-      '<div id="gate-warn" style="font-size:11px;color:#BA7517;margin-bottom:8px;">Answer all three to log a sit outcome.</div>' +
-      askRow('reset', 'Were you able to find another way to help them?') +
-      '<div id="q-reset-detail" style="display:none;margin:0 0 10px 0;">' +
-        '<input type="text" id="sit-reset-to" placeholder="Holli for retirement / Joel for DFL" style="width:100%;font-size:13px;padding:7px;border:1px solid #e2eaf2;border-radius:6px;margin-bottom:6px;">' +
-        '<textarea id="sit-reset-notes" placeholder="Notes" style="width:100%;font-size:13px;padding:7px;border:1px solid #e2eaf2;border-radius:6px;min-height:44px;"></textarea>' +
-      '</div>' +
-
-      askRow('ref', 'Did you ask who they care about most who deserves the same conversation?') +
-      '<div id="q-ref-detail" style="display:none;margin:0 0 10px 0;">' +
-        '<div id="ref-people"></div>' +
-        '<button onclick="addPerson(\'ref\')" style="background:none;border:1px dashed #138181;color:#138181;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;">+ Add person</button>' +
-      '</div>' +
-
-      askRow('rec', 'Did you ask who might be looking for an opportunity?') +
-      '<div id="q-rec-detail" style="display:none;">' +
-        '<div id="rec-people"></div>' +
-        '<button onclick="addPerson(\'rec\')" style="background:none;border:1px dashed #138181;color:#138181;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;">+ Add person</button>' +
-      '</div>' +
-    '</div>' +
+    // OUTCOME FIRST. The old gate put three Yes/No questions between the agent
+    // and these buttons and disabled them until all were answered - and a
+    // disabled-button bug locked the agent out entirely. Now no button on this
+    // screen is ever disabled: Sale and No Sale lead INTO the questions, one
+    // per screen (startSitFlow). The questions still always get asked - you
+    // cannot reach the finish without answering all three - the trap is just
+    // structurally impossible. Continuations and no-shows skip the questions:
+    // a continuation isn't a decided sit yet, and a no-show never sat at all.
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">' +
-      '<button class="sit-outcome-btn" onclick="confirmSitOutcome(\''+_id+'\','+_ci+',\'sale\')" style="background:#3B6D11;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">✓ Sale</button>' +
-      '<button class="sit-outcome-btn" onclick="confirmSitOutcome(\''+_id+'\','+_ci+',\'nosale\')" style="background:#A32D2D;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">✗ No Sale</button>' +
+      '<button class="sit-outcome-btn" onclick="startSitFlow(\''+_id+'\','+_ci+',\'sale\')" style="background:#3B6D11;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">✓ Sale</button>' +
+      '<button class="sit-outcome-btn" onclick="startSitFlow(\''+_id+'\','+_ci+',\'nosale\')" style="background:#A32D2D;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">✗ No Sale</button>' +
       '<button class="sit-outcome-btn" onclick="showContModal(\''+_id+'\','+_ci+')" style="background:#534AB7;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">↻ Continuation</button>' +
       '<button onclick="confirmSitOutcome(\''+_id+'\','+_ci+',\'noshow\')" style="background:#BA7517;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">✗ No Show - alive</button>' +
       '<button onclick="confirmSitOutcome(\''+_id+'\','+_ci+',\'noshow_dead\')" style="background:#7A4A0F;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">✗ No Show - dead</button>' +
@@ -4337,23 +4278,6 @@ async function confirmSitOutcome(id, ci, outcome) {
   if (pendIdx !== -1) {
     tp = existingTps[pendIdx];
     tp.outcome = outcome;
-    tp.ref_ask = refAsk;          // did I ASK for referrals? (the discipline)
-    tp.recruit_ask = recruitAsk;  // did I ASK about the opportunity?
-    tp.did_reset = didReset;      // did I find another way to help them?
-    tp.reset_to = resetTo;        // "Holli for retirement" / "Joel for DFL"
-    tp.reset_notes = resetNotes;
-    tp.ref_people = refPeople;    // names given (may be empty even if asked)
-    // Recruit prospects. Same shape as a referral on purpose - name/phone/why,
-    // plus a link back to whoever named them. When the recruiting pipeline gets
-    // built these walk straight in; no migration, no re-keying. stp_sent lives
-    // on the PERSON, not the sit: you don't send the plan at the kitchen table,
-    // you send it to Bob on Thursday.
-    tp.recruit_people = recPeople.map(x => ({
-      name: x.name.trim(), phone: (x.phone||'').trim(), why: (x.why||'').trim(),
-      from_client: c.id, from_name: c.name,
-      stp_sent: false, status: 'new',
-      created: new Date().toISOString()
-    }));
     tp.ppu = ppu;
     tp.notes = sitNotes;
     if (!tp.apps) tp.apps = [];
@@ -4369,6 +4293,28 @@ async function confirmSitOutcome(id, ci, outcome) {
       created: now.toISOString()
     };
   }
+
+  // The sit answers land on the touchpoint on BOTH branches. They used to be
+  // written only when resolving an existing pending tp - an outcome logged on
+  // a case with no pending appointment silently dropped the ref/recruit/reset
+  // answers, so people named there never reached the recruit prospect list.
+  tp.ref_ask = refAsk;          // did I ASK for referrals? (the discipline)
+  tp.recruit_ask = recruitAsk;  // did I ASK about the opportunity?
+  tp.did_reset = didReset;      // did I find another way to help them?
+  tp.reset_to = resetTo;        // "Holli for retirement" / "Joel for DFL"
+  tp.reset_notes = resetNotes;
+  tp.ref_people = refPeople;    // names given (may be empty even if asked)
+  // Recruit prospects. Same shape as a referral on purpose - name/phone/why,
+  // plus a link back to whoever named them. When the recruiting pipeline gets
+  // built these walk straight in; no migration, no re-keying. stp_sent lives
+  // on the PERSON, not the sit: you don't send the plan at the kitchen table,
+  // you send it to Bob on Thursday.
+  tp.recruit_people = recPeople.map(x => ({
+    name: x.name.trim(), phone: (x.phone||'').trim(), why: (x.why||'').trim(),
+    from_client: c.id, from_name: c.name,
+    stp_sent: false, status: 'new',
+    created: new Date().toISOString()
+  }));
 
   // Update case status
   if (outcome === 'sale') cases[targetCi].status = 'Closed Won';
@@ -7106,22 +7052,64 @@ async function markResolvedOnce(c, kind) {
   return true;
 }
 
-// --- The pre-application gate ---------------------------------------------
+// --- The sit questions, one at a time --------------------------------------
 // window._q holds the three answers: null = unanswered, true = yes, false = no.
-// null is what blocks the outcome. There is no default and no skip.
+// The old design gated the outcome buttons behind all three questions and
+// DISABLED the buttons until answered - a bug in that gate locked the agent out
+// entirely. New structure: outcome first (Sale / No Sale), then the questions
+// come one per screen with a progress bar. No button is ever disabled; you
+// simply cannot reach the end without answering, so the answers stay real.
+// Answers land in window._q / window._people exactly as before -
+// confirmSitOutcome and everything downstream is untouched.
 window._q = {reset:null, ref:null, rec:null};
 window._people = {ref:[], rec:[]};
 
-function askRow(k, question) {
-  return '<div style="margin-bottom:8px;">' +
-    '<div style="font-size:13px;color:#1D3557;line-height:1.35;margin-bottom:5px;">' + question + '</div>' +
-    '<div style="display:flex;gap:6px;">' +
-      '<button id="q-' + k + '-yes" onclick="answerQ(\'' + k + '\',true)" style="flex:1;background:#fff;border:1px solid #e2eaf2;color:#5f7a99;border-radius:6px;padding:6px;font-size:12px;font-weight:600;cursor:pointer;">Yes</button>' +
-      '<button id="q-' + k + '-no"  onclick="answerQ(\'' + k + '\',false)" style="flex:1;background:#fff;border:1px solid #e2eaf2;color:#5f7a99;border-radius:6px;padding:6px;font-size:12px;font-weight:600;cursor:pointer;">No</button>' +
-    '</div></div>';
+const SIT_STEPS = [
+  {k:'reset', q:'Were you able to find another way to help them?'},
+  {k:'ref',   q:'Did you ask who they care about most who deserves the same conversation?'},
+  {k:'rec',   q:'Did you ask who might be looking for an opportunity?'}
+];
+
+function sitStepDetail(k) {
+  if (k === 'reset') return '<div id="q-reset-detail" style="display:none;margin:0 0 10px 0;">' +
+    '<input type="text" id="sit-reset-to" placeholder="Holli for retirement / Joel for DFL" style="width:100%;font-size:13px;padding:7px;border:1px solid #e2eaf2;border-radius:6px;margin-bottom:6px;">' +
+    '<textarea id="sit-reset-notes" placeholder="Notes" style="width:100%;font-size:13px;padding:7px;border:1px solid #e2eaf2;border-radius:6px;min-height:44px;"></textarea>' +
+    '</div>';
+  return '<div id="q-' + k + '-detail" style="display:none;margin:0 0 10px 0;">' +
+    '<div id="' + k + '-people"></div>' +
+    '<button onclick="addPerson(\'' + k + '\')" style="background:none;border:1px dashed #138181;color:#138181;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;">+ Add person</button>' +
+    '</div>';
 }
 
-function answerQ(k, val) {
+function startSitFlow(id, ci, outcome) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  window._sitCtx = {id, ci, outcome, step: 0};
+  const badge = outcome === 'sale'
+    ? '<span style="background:#3B6D11;color:#fff;border-radius:6px;padding:2px 10px;font-size:12px;font-weight:600;vertical-align:middle;">✓ Sale</span>'
+    : '<span style="background:#A32D2D;color:#fff;border-radius:6px;padding:2px 10px;font-size:12px;font-weight:600;vertical-align:middle;">✗ No Sale</span>';
+  showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">Log outcome &nbsp;' + badge + '</div>' +
+    '<div class="modal-sub">' + c.name + '</div>' +
+    '<div style="display:flex;gap:4px;margin:10px 0 16px 0;">' +
+      SIT_STEPS.map((s,i) => '<div id="sit-prog-' + i + '" style="flex:1;height:4px;border-radius:2px;background:#e2eaf2;"></div>').join('') +
+    '</div>' +
+    // All three steps live in the DOM the whole time (hidden, not destroyed):
+    // confirmSitOutcome reads sit-reset-to / sit-reset-notes straight from
+    // these inputs, and renderPeople writes into ref-people / rec-people.
+    SIT_STEPS.map((s,i) =>
+      '<div id="sit-step-' + i + '" style="display:' + (i===0?'block':'none') + ';">' +
+        '<div style="font-size:15px;color:#1D3557;line-height:1.4;margin-bottom:12px;font-weight:500;">' + s.q + '</div>' +
+        '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
+          '<button id="q-' + s.k + '-yes" onclick="answerSit(\'' + s.k + '\',true)"  style="flex:1;background:#fff;border:1px solid #e2eaf2;color:#5f7a99;border-radius:8px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;">Yes</button>' +
+          '<button id="q-' + s.k + '-no"  onclick="answerSit(\'' + s.k + '\',false)" style="flex:1;background:#fff;border:1px solid #e2eaf2;color:#5f7a99;border-radius:8px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;">No</button>' +
+        '</div>' +
+        sitStepDetail(s.k) +
+        '<button id="sit-next-' + i + '" onclick="nextSitStep()" style="display:none;width:100%;background:#1D3557;color:#fff;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;">' + (i === SIT_STEPS.length-1 ? 'Finish' : 'Continue') + '</button>' +
+      '</div>').join(''));
+  sitProgress();
+}
+
+function answerSit(k, val) {
   window._q[k] = val;
   const yes = document.getElementById('q-' + k + '-yes');
   const no  = document.getElementById('q-' + k + '-no');
@@ -7129,9 +7117,43 @@ function answerQ(k, val) {
   if (no)  { no.style.background  = !val ? '#1D3557' : '#fff'; no.style.color  = !val ? '#fff' : '#5f7a99'; no.style.borderColor  = !val ? '#1D3557' : '#e2eaf2'; }
   const d = document.getElementById('q-' + k + '-detail');
   if (d) d.style.display = val ? 'block' : 'none';
-  // Asking and naming nobody is allowed - but if they open it, give them a row.
-  if (val && (k === 'ref' || k === 'rec') && !window._people[k].length) addPerson(k);
-  gateCheck();
+  const i = SIT_STEPS.findIndex(s => s.k === k);
+  const next = document.getElementById('sit-next-' + i);
+  if (val) {
+    // Yes opens the detail (names, reset target) - explicit Continue so the
+    // agent can actually type before the screen moves on.
+    if ((k === 'ref' || k === 'rec') && !window._people[k].length) addPerson(k);
+    if (next) next.style.display = 'block';
+  } else {
+    // No has nothing to add - advance on its own after a beat, but only if
+    // the answer is STILL no (they may flip to Yes in that beat), and never
+    // double-advance on a double-tap.
+    if (next) next.style.display = 'none';
+    if (window._sitAdvancing) return;
+    window._sitAdvancing = true;
+    setTimeout(() => {
+      window._sitAdvancing = false;
+      if (window._q[k] === false && window._sitCtx && SIT_STEPS[window._sitCtx.step] && SIT_STEPS[window._sitCtx.step].k === k) nextSitStep();
+    }, 250);
+  }
+}
+
+function nextSitStep() {
+  const ctx = window._sitCtx; if (!ctx) return;
+  ctx.step++;
+  if (ctx.step >= SIT_STEPS.length) {
+    // Steps stay in the DOM (confirmSitOutcome reads the inputs); it takes
+    // over the modal from here (apps entry on a sale, reset prompt on no sale).
+    confirmSitOutcome(ctx.id, ctx.ci, ctx.outcome);
+    return;
+  }
+  SIT_STEPS.forEach((s,i) => { const el = document.getElementById('sit-step-' + i); if (el) el.style.display = i === ctx.step ? 'block' : 'none'; });
+  sitProgress();
+}
+
+function sitProgress() {
+  const ctx = window._sitCtx; if (!ctx) return;
+  SIT_STEPS.forEach((s,i) => { const el = document.getElementById('sit-prog-' + i); if (el) el.style.background = i <= ctx.step ? '#138181' : '#e2eaf2'; });
 }
 
 // Name / phone / why. Same shape for both, because a referral and a recruit
@@ -7156,18 +7178,6 @@ function renderPeople(k) {
       '<input type="text" value="' + escAttr(pp.why) + '" oninput="syncPerson(\'' + k + '\',' + i + ',\'why\',this.value)" placeholder="Why them?" style="flex:1.3;font-size:12px;padding:6px;border:1px solid #e2eaf2;border-radius:6px;">' +
       '<button onclick="removePerson(\'' + k + '\',' + i + ')" style="background:none;border:none;color:#c0392b;font-size:16px;cursor:pointer;padding:0 4px;">&times;</button>' +
     '</div>').join('');
-}
-
-// Grey out every outcome button until all three are answered.
-function gateCheck() {
-  const ready = window._q.reset !== null && window._q.ref !== null && window._q.rec !== null;
-  document.querySelectorAll('.sit-outcome-btn').forEach(b => {
-    b.disabled = !ready;
-    b.style.opacity = ready ? '1' : '0.4';
-    b.style.cursor = ready ? 'pointer' : 'not-allowed';
-  });
-  const warn = document.getElementById('gate-warn');
-  if (warn) warn.style.display = ready ? 'none' : 'block';
 }
 
 // Every person ever named for the opportunity, with the client who named them.
@@ -7627,7 +7637,7 @@ function getBonusRate(carrierName, productName) {
 function openSettings() {
   const settings = getAgentSettings();
   const level = settings.contractLevel || 105;
-  const levels = [95, 100, 105, 110, 115, 120, 125, 130];
+  const levels = [80, 85, 90, 95, 100, 105, 110, 115, 120, 125, 130];
   const enabledCarriers = settings.enabledCarriers || {};
 
   const carrierList = getCarrierList();
@@ -7642,7 +7652,7 @@ function openSettings() {
       '<div class="field"><label>Name</label><input type="text" id="s-name" value="' + (settings.agentName||'Holli Banks') + '" style="font-size:14px;"></div>' +
       '<div class="field"><label>Contract level</label>' +
         '<select id="s-level" style="font-size:16px;width:100%;border:1px solid #d0dcea;border-radius:8px;padding:8px;">' +
-          levels.map(l => '<option value="' + l + '"' + (l===level?' selected':'') + '>' + l + '% — Bonus qualifier: $' + (BONUS_THRESHOLDS[l]||'N/A').toLocaleString() + '</option>').join('') +
+          levels.map(l => '<option value="' + l + '"' + (l===level?' selected':'') + '>' + l + '%' + (BONUS_THRESHOLDS[l] ? ' — Bonus qualifier: $' + BONUS_THRESHOLDS[l].toLocaleString() : ' — Below bonus level') + '</option>').join('') +
         '</select>' +
       '</div>' +
 
