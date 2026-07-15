@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h46</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h47</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -2790,6 +2790,9 @@ function setFilterAlert(f) {
     const textReadyLeads = clients.filter(c => isReadyForText(c) && c.status !== 'Dead' && c.status !== 'Appointment set')
       .sort((a,b) => getUrgencyScore(a) - getUrgencyScore(b));
     document.getElementById('client-count').textContent = clients.length + ' leads - ' + textReadyLeads.length + ' shown (ready for text)';
+    renderPaceLine();
+    const dchipT = document.getElementById('dormant-chip-n');
+    if (dchipT) dchipT.textContent = clients.filter(isDormant).length;
     if (!textReadyLeads.length) { el.innerHTML='<div class="empty">No leads ready for text.</div>'; return; }
     el.innerHTML = textReadyLeads.map(c => {
       const fresh = isFresh(c);
