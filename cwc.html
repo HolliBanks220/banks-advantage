@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h47</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h49</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -2924,7 +2924,9 @@ function getHoursSinceLastAttempt(c) {
   // a lead you just talked to must rest, not resurface at the top of the queue
   const meaningful = log.filter(cl => cl.dials > 0 || cl.outcome === 'Text sent' || cl.outcome === 'No answer' || cl.outcome === 'Conversation' || cl.outcome === 'Callback');
   if (!meaningful.length) return 999;
-  return (new Date() - new Date(meaningful[meaningful.length-1].ts)) / (1000*60*60);
+  const last = meaningful[meaningful.length-1];
+  const hrs = (new Date() - new Date(last.ts || last.datetime || last.date || 0)) / (1000*60*60);
+  return isNaN(hrs) ? 999 : hrs;
 }
 
 function getSlotsCoveredToday(c) {
@@ -3045,7 +3047,11 @@ function getDaysSinceAssigned(c) {
 function getDaysSinceLastAttempt(c) {
   const log = (c.call_log||[]);
   const meaningful = log.filter(cl => cl.dials > 0 || cl.outcome === 'Text sent' || cl.outcome === 'No answer');
-  const callLogDate = meaningful.length ? new Date(meaningful[meaningful.length-1].ts) : null;
+  // ts is the canonical stamp, but hand-inserted or legacy rows may only carry
+  // datetime/date. An Invalid Date here turns the whole urgency score NaN and
+  // silently scrambles the queue sort around this lead - never let that out.
+  const lastLog = meaningful.length ? meaningful[meaningful.length-1] : null;
+  const callLogDate = lastLog ? new Date(lastLog.ts || lastLog.datetime || lastLog.date || 0) : null;
   const tpDates = (c.cases||[]).flatMap(cs =>
     (cs.touchpoints||[]).filter(tp => tp && tp.outcome && tp.outcome !== 'pending')
       .map(tp => new Date(tp.created || tp.datetime || 0))
@@ -3587,6 +3593,18 @@ function renderAlerts() {
 
 
 
+// A commitment only jumps the queue if it carries a CLOCK TIME. A callback
+// for "Thursday at 6:00" is a promise to a person; a date-only follow-up is
+// a reminder to yourself - reminders wait their turn in the ladder.
+function hasClockTime(v) { return !!v && /\d{1,2}:\d{2}/.test(String(v)); }
+function timedCommitmentDue(c) {
+  const cb = getScheduledCallback(c);
+  if (cb && hasClockTime(cb.callback_dt) && (isCallbackOverdue(c) || isCallbackDueNow(c))) return true;
+  const fu = getScheduledFollowUp(c);
+  if (fu && hasClockTime(fu.datetime) && isFollowUpDue(c)) return true;
+  return false;
+}
+
 function getFilteredClients(q='') {
   const filtered = clients.filter(c => {
     const matchQ = !q || (c.name||'').toLowerCase().includes(q.toLowerCase()) || (c.phone||'').includes(q);
@@ -3623,7 +3641,25 @@ function getFilteredClients(q='') {
       .sort((a, b) => {
       const ai = isApptImminent(a) ? 0 : 1, bi = isApptImminent(b) ? 0 : 1;
       if (ai !== bi) return ai - bi;
-      return getDaysSinceAssigned(a) - getDaysSinceAssigned(b);
+      // A kept promise beats prospecting - but ONLY a promise with a clock
+      // time on it. "Call me Thursday at 6" jumps the ladder; a date-only
+      // follow-up waits its turn like everything else.
+      const ad = timedCommitmentDue(a) ? 0 : 1, bd = timedCommitmentDue(b) ? 0 : 1;
+      if (ad !== bd) return ad - bd;
+      // THE ATTEMPT LADDER. The first three attempts are where a lead lives
+      // or dies, so attempt count is the primary sort: every 0 before any 1,
+      // every 1 before any 2, every 2 before the rest. Leads dialed this
+      // time block are already excluded (on-break), so "1 attempt" here
+      // means "1 attempt and not yet tried this period". 3+ attempts all
+      // share the bottom rung and sort by age.
+      const at = Math.min(getAttemptCount(a), 3), bt = Math.min(getAttemptCount(b), 3);
+      if (at !== bt) return at - bt;
+      const dayDiff = getDaysSinceAssigned(a) - getDaysSinceAssigned(b);
+      if (dayDiff !== 0) return dayDiff;
+      // Same rung, same day: urgency settles it - windows, senior bias,
+      // breadth-first. Without this a batch imported together sat in random
+      // order, touched leads above untouched, closed windows mixed in.
+      return getUrgencyScore(a) - getUrgencyScore(b);
     });
   }
   if (activeFilter === 'dormant') return allDormantForView();
