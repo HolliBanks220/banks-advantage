@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h49</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h51</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -3646,6 +3646,12 @@ function getFilteredClients(q='') {
       // follow-up waits its turn like everything else.
       const ad = timedCommitmentDue(a) ? 0 : 1, bd = timedCommitmentDue(b) ? 0 : 1;
       if (ad !== bd) return ad - bd;
+      // CALLABLE FIRST. You cannot attempt someone whose phone shouldn't
+      // ring yet - a "too early their time" lead on top of the queue is the
+      // queue telling you to do the wrong thing. In-window beats everything
+      // below this line; the attempt ladder applies within each group.
+      const aw = isGoodTimeToCall(a) ? 0 : 1, bw = isGoodTimeToCall(b) ? 0 : 1;
+      if (aw !== bw) return aw - bw;
       // THE ATTEMPT LADDER. The first three attempts are where a lead lives
       // or dies, so attempt count is the primary sort: every 0 before any 1,
       // every 1 before any 2, every 2 before the rest. Leads dialed this
@@ -3799,7 +3805,7 @@ async function rewriteApp(cid, ci, ti, ai) {
   const c = clients.find(x => x.id === cid); if (!c) return;
   const tp = c.cases[ci].touchpoints[ti];
   const old = tp.apps[ai];
-  if (!old.id) { old.id = 'app_' + Math.random().toString(36).slice(2,10); await saveClient(c); }
+  if (!old.id) { old.id = 'app_' + Math.random().toString(36).slice(2,10); await saveClientRecord(c); }
   closeModal();
   window._rewriteOf = old.id;   // picked up by the add-app save path
   openAddApp(cid, ci, ti);
@@ -3813,7 +3819,7 @@ async function markUninsurable(cid) {
   if (!confirm('Mark ' + c.name + ' uninsurable?\n\nYou keep the sale - you closed them, the carriers declined. They come out of the dial queue and stop asking for a replacement.')) return;
   c.uninsurable = true;
   c.status = 'Dead';
-  await saveClient(c);
+  await saveClientRecord(c);
   clearRewriteCache();
   closeModal(); render();
 }
@@ -3822,7 +3828,7 @@ async function undoUninsurable(cid) {
   const c = clients.find(x => x.id === cid); if (!c) return;
   c.uninsurable = false;
   c.status = 'Appointment set';
-  await saveClient(c);
+  await saveClientRecord(c);
   clearRewriteCache();
   closeModal(); render();
 }
@@ -3846,6 +3852,37 @@ function needsReplacement(c) {
 //
 // FOLLOW-UP IS THE OVERRIDE. The cadence is the default for when you don't know;
 // Follow-up is there for when you do (surgery on the 12th, call on the 20th).
+// A misclick is not a client behavior. "Cancelled" means THEY called it off
+// (dodger cadence, logged outcome); this means YOU booked by accident and
+// need it gone as if it never happened: future pending removed, calendar
+// event deleted, the 'Appt set' log entry removed so the board's appts-set
+// number stays honest, status reverted. A passed pending (a sit that
+// happened, awaiting its outcome) is never touched.
+async function removeApptMistake(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  if (!confirm('Remove ' + c.name + "'s upcoming appointment as booked-by-mistake?\n\nThis erases it completely - no Cancelled outcome, no dodger cadence, and the appts-set number on your board goes back down. Any PAST appointment still waiting for its outcome is untouched.")) return;
+  const now = new Date();
+  // strip future pendings; drop cases left with zero touchpoints
+  c.cases = (c.cases||[]).map(cs => {
+    if (cs.status !== 'Open') return cs;
+    return {...cs, touchpoints: (cs.touchpoints||[]).filter(tp => !tp || tp.outcome !== 'pending' || new Date(tp.datetime) <= now)};
+  }).filter(cs => (cs.touchpoints||[]).length > 0 || (cs.apps||[]).length > 0);
+  // remove the most recent 'Appt set' log entry - the mistaken click
+  const lastIdx = (c.call_log||[]).map(cl => cl.outcome).lastIndexOf('Appt set');
+  if (lastIdx > -1) c.call_log = c.call_log.filter((_, i) => i !== lastIdx);
+  if (c.gcal_event_id) pushApptToCalendar(c, 'delete');
+  c.appt_datetime = null;
+  c.appt_notes = '';
+  // status falls back to the truth of the record: dialed before = Working
+  const stillPending = (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => tp && tp.outcome === 'pending'));
+  c.status = stillPending ? 'Appointment set' : ((c.call_log||[]).length ? 'Working' : 'New');
+  await saveClientRecord(c);
+  closeModal();
+  showSync('Appointment removed');
+  setTimeout(hideSync, 1500);
+  render();
+}
+
 async function cancelAppt(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   if (!confirm('Cancel ' + c.name + "'s appointment?\n\nThey told you ahead of time it's off. They go into the dodgers cadence - rest " + dodgeDays() + " days, then back in your queue automatically.\n\nIf you know when to call them, use Follow-up instead.")) return;
@@ -3854,7 +3891,7 @@ async function cancelAppt(id) {
   c.appt_datetime = null;
   c.appt_notes = '';
   c.status = 'Working';
-  await saveClient(c);
+  await saveClientRecord(c);
   window._dialCount = 1;
   closeModal();
   render();
@@ -4220,7 +4257,7 @@ function openClient(id, keepDialCount) {
     <button class="call-btn" style="background:#534AB7;color:#fff;" onclick="openFollowUpPicker('${id}')">+ Follow-up</button>
     <button class="call-btn" style="background:#534AB7;color:#fff;opacity:0.7;" onclick="openReschedulePicker('${id}')">Reschedule</button>
     <button class="call-btn" style="background:#BA7517;color:#fff;" onclick="openResetToPicker('${id}')">↺ Reset to</button>
-    ${c.appt_datetime && c.status === 'Appointment set' ? `<button class="call-btn" style="background:#E24B4A;color:#fff;opacity:0.85;" onclick="cancelAppt('${id}')">Cancelled</button>` : ''}
+    ${c.appt_datetime && c.status === 'Appointment set' ? `<button class="call-btn" style="background:#E24B4A;color:#fff;opacity:0.85;" onclick="cancelAppt('${id}')">Cancelled</button><button class="call-btn" style="background:none;border:1px solid #8fa8c0;color:#5f7a99;" onclick="removeApptMistake('${id}')">Booked by mistake</button>` : ''}
     <button class="call-btn cb-red" onclick="quickLog('${id}','Not interested','dead')">Not interested</button>
   </div>
   <button onclick="openTextModal('${id}')" style="font-size:10px;background:none;border:1px solid #9FE1CB;border-radius:6px;padding:3px 10px;color:#138181;cursor:pointer;margin-bottom:8px;">📱 Text templates</button>
@@ -5088,6 +5125,12 @@ function openApptPicker(id) {
 }
 
 async function confirmAppt(id) {
+  // A slow save + an impatient second tap wrote identical pending touchpoints
+  // 2-3x (three copies of one appointment observed in the wild). One save at
+  // a time; the button simply does nothing while a save is in flight.
+  if (window._apptSaving) return;
+  window._apptSaving = true;
+  try {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const dtVal = document.getElementById('appt-dt').value;
   if (!dtVal) return;
@@ -5104,12 +5147,19 @@ async function confirmAppt(id) {
   };
   const caseType = caseTypeMap[selectedType] || 'Mortgage Protection';
 
-  // Find existing open case of same type — add touchpoint instead of creating new case
-  const cases = [...(c.cases||[])];
+  // ONE UPCOMING APPOINTMENT PER LEAD. Booking over an existing future
+  // appointment UPDATES it (retire + recreate); stacking was the ghost
+  // factory. But ONLY future pendings are retired - a pending whose time has
+  // PASSED is an unlogged sit that still owes an outcome, and no booking
+  // click may silently delete a sit that happened.
+  const _bookNow = new Date();
+  const cases = (c.cases||[]).map(cs => {
+    if (cs.status !== 'Open') return cs;
+    return {...cs, touchpoints: (cs.touchpoints||[]).filter(tp => !tp || tp.outcome !== 'pending' || new Date(tp.datetime) <= _bookNow)};
+  });
   const existingCaseIdx = cases.findIndex(cs => cs.status === 'Open' && cs.type === caseType);
 
   if (existingCaseIdx > -1) {
-    // Add pending touchpoint to existing case
     const tpType = cases[existingCaseIdx].touchpoints && cases[existingCaseIdx].touchpoints.length > 0 ? 'Follow-up' : 'Initial';
     cases[existingCaseIdx].touchpoints = [...(cases[existingCaseIdx].touchpoints||[]), {
       type: tpType, datetime: apptDatetime, outcome: 'pending',
@@ -5155,6 +5205,7 @@ async function confirmAppt(id) {
   renderScore(); renderSidebar();
   // Booked: offer the confirmation text instead of jumping to the next lead
   setTimeout(() => openTextModal(id, 'appt_confirm'), 400);
+  } finally { window._apptSaving = false; }
 }
 
 //  DIAL COUNT 
@@ -6022,6 +6073,22 @@ function openAddClient() {
   <div class="field"><label>HQ assigned date</label><input type="date" id="cl-assigned" value="${todayStr()}"></div>
   <div class="field"><label>Notes</label><textarea id="cl-notes" placeholder="Mortgage amount, age, details..."></textarea></div>
   <button class="save-btn" onclick="saveClient()">Add client</button>`);
+}
+
+// The generic persist that six callers always assumed existed. saveClient()
+// below is the ADD-CLIENT MODAL's saver - it reads DOM fields and INSERTS a
+// new row. Passing it a client object did nothing but crash on a missing
+// field (after mutating local state), so Cancelled appointments, uninsurable
+// flags, rewrites, and STP toggles were never reaching Supabase - they
+// looked saved and evaporated on refresh. This writes what those callers
+// actually change, and only fields present on the object.
+async function saveClientRecord(c) {
+  if (!c || !c.id) return;
+  const cols = ['status','call_log','cases','appt_datetime','appt_notes','appt_mins','uninsurable','notes','resolved_at'];
+  const patch = {};
+  cols.forEach(k => { if (k in c) patch[k] = c[k]; });
+  const { error } = await sb.from('clients').update(patch).eq('id', c.id);
+  if (error) console.error('saveClientRecord failed for', c.name, error);
 }
 
 async function saveClient() {
@@ -7396,7 +7463,7 @@ function openRecruitProspects() {
 async function toggleProspectSTP(cid, ci, ti, pi, val) {
   const c = clients.find(x => x.id === cid); if (!c) return;
   c.cases[ci].touchpoints[ti].recruit_people[pi].stp_sent = val;
-  await saveClient(c);
+  await saveClientRecord(c);
   render();
   openRecruitProspects();
 }
@@ -7715,7 +7782,7 @@ function recheckComp() {
     d.ap.comp_rate = fresh.rate;
   });
   const touched = [...new Set(drift.map(d => d.c))];
-  touched.forEach(c => saveClient(c));
+  touched.forEach(c => saveClientRecord(c));
   alert('Updated ' + drift.length + ' app(s). Net ' + (delta >= 0 ? '+' : '') + '$' + Math.round(delta) + '.');
   render();
 }
