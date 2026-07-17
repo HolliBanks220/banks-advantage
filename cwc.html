@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h51</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h52</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -4438,17 +4438,31 @@ async function confirmSitOutcome(id, ci, outcome) {
     targetCi = cases.length - 1;
   }
 
-  // Use the appt datetime as the sit datetime
-  const sitDatetime = c.appt_datetime || now.toISOString();
-
-  // RESOLVE the existing pending touchpoint if one matches this appointment —
-  // creating a parallel record left a pending ghost that kept APPT NOW firing
-  // and double-counted the appointment.
+  // WHICH SIT IS BEING RESOLVED? The one that HAPPENED: the most recent
+  // pending whose time has passed. The old logic trusted c.appt_datetime -
+  // correct only if you log the outcome BEFORE booking the next meeting.
+  // Booking first (a completely legitimate workflow) updated the field to
+  // the FUTURE date, so the resolver stamped the outcome onto the future
+  // appointment and left the actual sat appointment pending forever -
+  // pinning APPT NOW all day and booking the sit into next month's ledger.
   let tp = null;
-  const sitMs = new Date(sitDatetime).getTime();
   const existingTps = cases[targetCi].touchpoints || [];
-  let pendIdx = existingTps.findIndex(t => t && t.outcome === 'pending' && t.datetime && Math.abs(new Date(t.datetime).getTime() - sitMs) < 6 * 3600000);
-  if (pendIdx === -1) pendIdx = existingTps.findIndex(t => t && t.outcome === 'pending');
+  const nowMs = now.getTime();
+  let pendIdx = -1;
+  for (let i = existingTps.length - 1; i >= 0; i--) {
+    const t = existingTps[i];
+    if (t && t.outcome === 'pending' && t.datetime && new Date(t.datetime).getTime() <= nowMs + 30*60000) { pendIdx = i; break; }
+  }
+  if (pendIdx === -1) {
+    // No past pending: fall back to the appt-field match, then any pending.
+    const sitMs0 = new Date(c.appt_datetime || now.toISOString()).getTime();
+    pendIdx = existingTps.findIndex(t => t && t.outcome === 'pending' && t.datetime && Math.abs(new Date(t.datetime).getTime() - sitMs0) < 6 * 3600000);
+    if (pendIdx === -1) pendIdx = existingTps.findIndex(t => t && t.outcome === 'pending');
+  }
+  // The sit's datetime is calendar truth: the resolved touchpoint's own time.
+  // Fallbacks: a PAST appt field, else now - never a future date.
+  const sitDatetime = pendIdx !== -1 ? existingTps[pendIdx].datetime
+    : (c.appt_datetime && new Date(c.appt_datetime) <= now ? c.appt_datetime : now.toISOString());
   if (pendIdx !== -1) {
     tp = existingTps[pendIdx];
     tp.outcome = outcome;
@@ -4499,9 +4513,15 @@ async function confirmSitOutcome(id, ci, outcome) {
   // Add continuation touchpoint for next appt
   if (outcome === 'cont' && nextDt) {
     const pendingTp = {type: contReason || (ppu ? 'PPU / Policy Pickup' : 'Continuation'), datetime: nextDt, outcome:'pending', notes:'', apps:[], created:now.toISOString()};
-    cases[targetCi].touchpoints = tp._resolvedExisting
-      ? [...(cases[targetCi].touchpoints||[]), pendingTp]
-      : [...(cases[targetCi].touchpoints||[]), tp, pendingTp];
+    // One upcoming appointment per lead: if the next meeting was already
+    // booked through Set Appointment before logging this outcome (book-then-
+    // log workflow), that future pending is superseded by this one - keep
+    // past pendings (they owe outcomes), retire future ones.
+    const keepTp = t => !t || t.outcome !== 'pending' || new Date(t.datetime).getTime() <= nowMs + 30*60000;
+    const base = (tp._resolvedExisting
+      ? (cases[targetCi].touchpoints||[])
+      : [...(cases[targetCi].touchpoints||[]), tp]).filter(keepTp);
+    cases[targetCi].touchpoints = [...base, pendingTp];
   } else if (!tp._resolvedExisting) {
     cases[targetCi].touchpoints = [...(cases[targetCi].touchpoints||[]), tp];
   }
