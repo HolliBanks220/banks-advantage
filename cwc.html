@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h52</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h55</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -1527,13 +1527,20 @@ function renderSourceComparison(pStart, pEnd, label) {
   function sourceStats(source) {
     const sourceClients = clients.filter(c => c.source === source);
 
-    // For day view use all-time, otherwise use period
-    const assigned = isDay
-      ? sourceClients.length
+    // THE COHORT: leads ASSIGNED in the selected period (all-time for day
+    // view). Every milestone metric below - never-resolved, appt rate, sale
+    // rate, attempt averages - is computed over this same set of leads.
+    // Mixing a period-filtered denominator with all-time numerators produced
+    // impossible numbers (-400% never resolved: 1 lead assigned this period,
+    // 5 older leads resolved). Cohort math reads as: "of the leads this
+    // source delivered in this period, here is what happened to them."
+    const cohort = isDay
+      ? sourceClients
       : sourceClients.filter(c => {
           const d = new Date(c.assigned_date || c.created_at);
           return d >= pStart && d <= pEnd;
-        }).length;
+        });
+    const assigned = cohort.length;
 
     // Contacts = leads with at least one real conversation (not just no answer)
     // Use all-time for day view
@@ -1664,9 +1671,9 @@ function renderSourceComparison(pStart, pEnd, label) {
     const startOf = c => c.assigned_date || c.created_at;
     const avg = (arr, f) => arr.length ? arr.reduce((s,x) => s + f(x), 0) / arr.length : 0;
 
-    const resolvedLeads = sourceClients.filter(c => c.resolved_at);
-    const apptLeads     = sourceClients.filter(c => c.resolved_as === 'appt' && c.resolved_at);
-    const saleLeads     = sourceClients.filter(c => (c.cases||[]).some(cs => cs.status === 'Closed Won'));
+    const resolvedLeads = cohort.filter(c => c.resolved_at);
+    const apptLeads     = cohort.filter(c => c.resolved_as === 'appt' && c.resolved_at);
+    const saleLeads     = cohort.filter(c => (c.cases||[]).some(cs => cs.status === 'Closed Won'));
 
     const neverResolved = assigned - resolvedLeads.length;
     const m = {
@@ -5342,10 +5349,12 @@ async function confirmCallback(id, hasDate) {
 
   const ts = new Date().toISOString();
   const callLog = [...(c.call_log||[]), {ts, outcome:'Callback', dials:dialCount, callback_dt:callbackDt, callback_note:callbackNote}];
-  c.call_log = callLog; c.status = 'Working';
+  // Scheduling a callback on an appointment holder ("call Friday to confirm
+  // Monday") must not demote the appointment - the callback rides alongside.
+  c.call_log = callLog; c.status = (c.status === 'Appointment set') ? c.status : 'Working';
 
   showSync('Saving...');
-  await sb.from('clients').update({call_log:callLog, status:'Working'}).eq('id',id);
+  await sb.from('clients').update({call_log:callLog, status:c.status}).eq('id',id);
   await addStat('dials', dialCount);
   await addStat('callbacks', 1);
   await addStat('convos', 1);
@@ -5735,7 +5744,14 @@ async function quickLog(id, outcome, statKey) {
   if (outcome==='Not interested') newStatus='Dead';
   else if (outcome==='Appt set') newStatus='Appointment set';
   else if (outcome==='No show') newStatus='No show';
-  else if (outcome==='Conversation'||outcome==='Callback') newStatus='Working';
+  else if (outcome==='Conversation'||outcome==='Callback') {
+    // Ordinary activity NEVER overrides a decided or committed state. A
+    // confirm-call on Monday's appointment is not a reason to re-queue them,
+    // and a conversation logged on a dead lead does not resurrect it. This
+    // line used to flip both to 'Working' unconditionally - every appointment
+    // you confirmed by phone walked silently back into the dial queue.
+    if (!['Dead','Closed','No sale','Appointment set'].includes(c.status)) newStatus='Working';
+  }
 
   // Not interested: close all open cases and clear appointment
   if (outcome==='Not interested') {
@@ -5896,8 +5912,21 @@ function grab(text, label) {
 
 function parseLeadText(text) {
   if (!text || text.length < 20) return null;
-  const phoneMatch = text.match(/\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
-  const phoneRaw = phoneMatch ? phoneMatch[0] : '';
+  // PHONE: trust the LABEL first. The generic first-10-digits match grabbed
+  // digit runs out of Mortgage ID hex strings when one happened to contain
+  // ten consecutive digits (Brennan Olson got 365-203-5094 carved out of
+  // API-7ea36520350941... instead of his labeled 913 number). Order:
+  // 1) "Contact Phone" / "Primary Phone" (SFG), 2) "Phone:" (LeadPros),
+  // 3) generic - but only after scrubbing ID tokens and the SFG demo hotline.
+  let phoneRaw = '';
+  const labeled = text.match(/(?:Contact|Primary)\s*Phone\s*:?\s*((?:1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})/i)
+    || text.match(/\bPhone\s*:?\s*\(?((?:1[-.\s]?)?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})/i);
+  if (labeled) phoneRaw = labeled[1];
+  else {
+    const scrubbed = text.replace(/API-[0-9a-f]+/ig, ' ').replace(/Mortgage\s*ID\s*:?\s*[\d-]+/ig, ' ').replace(/1-855-920-9821/g, ' ');
+    const m = scrubbed.match(/\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
+    phoneRaw = m ? m[0] : '';
+  }
   const phone = phoneRaw.replace(/\D/g, '').replace(/^1/, '').replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
   let first = grab(text, 'First Name'), last = grab(text, 'Last Name');
   let name = (first + ' ' + last).trim();
