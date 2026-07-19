@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h57</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h58</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -1318,7 +1318,16 @@ function renderScore() {
   const dials=sumStat('dials',aStart,aEnd), convos=sumStat('convos',aStart,aEnd);
   // DIAL LEDGER: appointments SET (phone results), derived from logged outcomes.
   // Continuations, reschedules, and retirement steps never touch this number.
-  const appts = clients.reduce((n,c) => n + (c.call_log||[]).filter(cl => cl.outcome === 'Appt set' && new Date(cl.ts) >= aStart && new Date(cl.ts) <= aEnd).length, 0);
+  // FIRST 'Appt set' per lead, EVER - the activity tracker measures
+  // resolution: turning a lead into its first appointment. Rebooks, resets,
+  // and revivals never count here again. Production's show-rate math counts
+  // every appointment on the books - deliberately different.
+  const appts = clients.filter(c => {
+    const first = (c.call_log||[]).find(cl => cl.outcome === 'Appt set');
+    if (!first || !first.ts) return false;
+    const t = new Date(first.ts);
+    return t >= aStart && t <= aEnd;
+  }).length;
   const callbacks=sumStat('callbacks',aStart,aEnd), dead=sumStat('dead',aStart,aEnd);
   const texts=sumStat('texts',aStart,aEnd);
   try { renderProduction(); } catch(e) { console.error('renderProduction:', e); }
