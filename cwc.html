@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h56</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h57</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -5180,6 +5180,7 @@ async function confirmAppt(id) {
   // PASSED is an unlogged sit that still owes an outcome, and no booking
   // click may silently delete a sit that happened.
   const _bookNow = new Date();
+  const _hadFuturePending = (c.cases||[]).some(cs => cs.status === 'Open' && (cs.touchpoints||[]).some(tp => tp && tp.outcome === 'pending' && new Date(tp.datetime) > _bookNow));
   const cases = (c.cases||[]).map(cs => {
     if (cs.status !== 'Open') return cs;
     return {...cs, touchpoints: (cs.touchpoints||[]).filter(tp => !tp || tp.outcome !== 'pending' || new Date(tp.datetime) <= _bookNow)};
@@ -5208,8 +5209,15 @@ async function confirmAppt(id) {
   // this picker records a follow-up reschedule, not a new appointment win —
   // the dial ledger's appts-set number derives from 'Appt set' entries only.
   const isFollowUpMove = c.status === 'Follow-up';
+  // SAME RULE, WIDER: moving an existing appointment or booking a
+  // continuation on a case that already sat is NOT a new scheduled appt -
+  // it logs 'Rescheduled' (which the board deliberately doesn't count).
+  // 'Appt set' is reserved for the genuinely new win.
+  const isRebook = _hadFuturePending || (existingCaseIdx > -1 && (cases[existingCaseIdx].touchpoints||[]).length > 1);
   const logEntry = isFollowUpMove
     ? {ts:new Date().toISOString(),outcome:'Follow-up scheduled',followup_dt:apptDatetime,note:apptNotes,dials:0}
+    : isRebook
+    ? {ts:new Date().toISOString(),outcome:'Rescheduled',dials:dialCount,appt_datetime:apptDatetime,appt_notes:apptNotes}
     : {ts:new Date().toISOString(),outcome:'Appt set',dials:dialCount,appt_datetime:apptDatetime,appt_notes:apptNotes};
   const callLog = [...(c.call_log||[]), logEntry];
   const newStatusAfter = isFollowUpMove ? 'Follow-up' : 'Appointment set';
