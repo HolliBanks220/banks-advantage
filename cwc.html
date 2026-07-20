@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h58</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h59</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -3288,6 +3288,18 @@ function getUrgencyScore(c) {
   const hoursSinceLast = getHoursSinceLastAttempt(c);
   const noShowCount = getNoShowCount(c);
   const inWindow = isGoodTimeToCall(c);
+
+  // SPEED TO LEAD — a lead we've never dialed, in its call window, beats every
+  // previously-contacted lead. Only an imminent appointment (above) outranks it.
+  // Within the band: newest arrival first, because contact rates fall by the minute.
+  // Out-of-window fresh leads fall through below and sink under the callable list.
+  if (attempts === 0 && inWindow) {
+    const arrived = new Date(c.assigned_date || c.created_at).getTime();
+    const minsSince = isFinite(arrived) ? Math.max(0, (Date.now() - arrived) / 60000) : 999999;
+    const recency = Math.min(0.999, minsSince / (minsSince + 60)); // newest -> ~0, older -> ->1
+    return -100 + recency; // band (-100, -99): below imminent appt (-1000), above all contacted (>=1)
+  }
+
   const onBreak = isOnBreak(c);
   const isCIA = (c.source || '').toUpperCase() === 'CIA';
   const isMIA = (c.source || '').toUpperCase() === 'MIA';
