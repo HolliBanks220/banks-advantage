@@ -1,4 +1,3 @@
-
 <!-- CWC Tracker v2.2 - 20260628 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -148,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h60</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h64</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -3150,9 +3149,68 @@ function isFollowUpResolved(c) {
   });
 }
 
+// A callback jumps the queue ONLY if it has a real clock time. Date-only
+// callbacks (no time) go back into regular lead flow and never outrank fresh.
+function callbackHasClockTime(cl) {
+  if (!cl || !cl.callback_dt) return false;
+  if (cl.callback_has_time === true) return true;
+  if (cl.callback_has_time === false) return false;
+  // Legacy entries (no flag): the old picker defaulted blank times to 9:00 AM.
+  // Treat an exact 9:00:00 local time as "no time given" so old date-only
+  // callbacks stop behaving like a hard 9 AM commitment.
+  const d = new Date(cl.callback_dt);
+  return !(d.getHours() === 9 && d.getMinutes() === 0);
+}
+
 function getScheduledCallback(c) {
-  // Returns the most recent scheduled callback entry, or null
-  return [...(c.call_log||[])].reverse().find(cl => cl.outcome === 'Callback' && cl.callback_dt) || null;
+  // Returns the most recent scheduled, clock-timed callback entry, or null
+  return [...(c.call_log||[])].reverse().find(cl => cl.outcome === 'Callback' && callbackHasClockTime(cl)) || null;
+}
+
+// Count of fresh, never-called, in-window leads still waiting. Drives the
+// "Until I finish fresh" snooze — the callback stays parked while this > 0.
+function countFreshCallable() {
+  return clients.filter(c => {
+    if (['Dead','Closed','No sale','Appointment set','Nurture'].includes(c.status)) return false;
+    return getAttemptCount(c) === 0 && isGoodTimeToCall(c);
+  }).length;
+}
+
+// Is a due callback currently snoozed? Timed snooze: wake time in the future.
+// Until-fresh snooze: still fresh leads left to work.
+function isCallbackSnoozeActive(c) {
+  const s = c.callback_snooze;
+  if (!s) return false;
+  if (s.until && new Date(s.until) > new Date()) return true;
+  if (s.until_fresh && (typeof window._freshRemaining === 'number' ? window._freshRemaining : countFreshCallable()) > 0) return true;
+  return false;
+}
+
+async function snoozeCallbackMins(id, mins) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  c.callback_snooze = { until: new Date(Date.now() + mins*60000).toISOString(), until_fresh: false };
+  showSync('Snoozing...');
+  await sb.from('clients').update({ callback_snooze: c.callback_snooze }).eq('id', id);
+  hideSync();
+  renderClients(document.getElementById('client-search') ? document.getElementById('client-search').value : '');
+}
+
+async function snoozeCallbackUntilFresh(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  c.callback_snooze = { until: null, until_fresh: true };
+  showSync('Snoozing...');
+  await sb.from('clients').update({ callback_snooze: c.callback_snooze }).eq('id', id);
+  hideSync();
+  renderClients(document.getElementById('client-search') ? document.getElementById('client-search').value : '');
+}
+
+async function unsnoozeCallback(id) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  c.callback_snooze = null;
+  showSync('...');
+  await sb.from('clients').update({ callback_snooze: null }).eq('id', id);
+  hideSync();
+  renderClients(document.getElementById('client-search') ? document.getElementById('client-search').value : '');
 }
 
 // A due/overdue callback is RESOLVED once you act on it: any meaningful attempt
@@ -3328,13 +3386,19 @@ function getUrgencyScore(c) {
   // Earlier-scheduled-wins tiebreaker for same-tier commitments
   const dtFrac = (dt) => Math.min(0.9, Math.max(0, (new Date(dt).getTime() % 1e10) / 1.2e10));
 
+  // Timed callback due or overdue: jumps ABOVE fresh (below only an imminent
+  // appointment) so a promised time isn't missed — UNLESS snoozed, in which
+  // case it parks below fresh until the snooze clears.
+  if (isCallbackDueNow(c)) {
+    if (isCallbackSnoozeActive(c)) return 155 + windowPenalty; // parked below fresh
+    return -300 + dtFrac(getScheduledCallback(c).callback_dt) + windowPenalty;
+  }
+
   // Tier 1: Overdue commitments — callback or follow-up whose time has passed, unattempted.
   // Promises beat rest: these outrank the resting check on purpose.
-  if (isCallbackOverdue(c)) return 1 + dtFrac(getScheduledCallback(c).callback_dt) + windowPenalty;
   if (isFollowUpDue(c) && new Date(getScheduledFollowUp(c).datetime) < new Date()) return 1 + dtFrac(getScheduledFollowUp(c).datetime) + windowPenalty;
 
   // Tier 2: Commitments due now (within 2 minutes of scheduled time)
-  if (isCallbackDueNow(c)) return 10 + dtFrac(getScheduledCallback(c).callback_dt) + windowPenalty;
   if (isFollowUpDue(c)) return 10 + dtFrac(getScheduledFollowUp(c).datetime) + windowPenalty;
 
   // Resting leads sink below ALL active leads — they need a break, don't surface until ready
@@ -4038,6 +4102,7 @@ function dormantLeads() {
 }
 
 function renderClients(q='') {
+  window._freshRemaining = countFreshCallable();
   const el = document.getElementById('clients-list');
   const list = getFilteredClients(q);
   // Header speaks the working reality: filter count + callable-now, total demoted
@@ -4266,7 +4331,23 @@ function openClient(id, keepDialCount) {
     if (!c.appt_datetime) return '';
     const apptLabel = new Date(c.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + new Date(c.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + (c.appt_notes?' - '+c.appt_notes:'');
     if (isCallback) {
-      return '<div style="margin-bottom:8px;"><div style="font-size:12px;font-weight:600;color:#BA7517;background:#FFF8E6;border:1px solid #F5D78E;border-radius:6px;padding:5px 10px;margin-bottom:4px;display:block;">[Callback] ' + apptLabel + '</div><button onclick="openMoveAppt(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit or delete</button></div>';
+      let snoozeRow = '';
+      if (callbackHasClockTime(getScheduledCallback(c) || {}) && isCallbackDueNow(c)) {
+        if (isCallbackSnoozeActive(c)) {
+          const s = c.callback_snooze || {};
+          const lbl = s.until_fresh ? 'until fresh done' : ('till ' + new Date(s.until).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}));
+          snoozeRow = '<div style="display:flex;align-items:center;gap:8px;margin-top:5px;"><span style="font-size:10px;color:#8fa8c0;">💤 Snoozed ' + lbl + '</span><button onclick="unsnoozeCallback(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:2px 8px;color:#5f7a99;cursor:pointer;">Un-snooze</button></div>';
+        } else {
+          snoozeRow = '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:5px;">' +
+            '<span style="font-size:10px;color:#8fa8c0;align-self:center;margin-right:2px;">Snooze:</span>' +
+            '<button onclick="snoozeCallbackMins(\'' + id + '\',15)" style="font-size:10px;background:#FFF8E6;border:1px solid #F5D78E;border-radius:6px;padding:2px 8px;color:#BA7517;cursor:pointer;">15 min</button>' +
+            '<button onclick="snoozeCallbackMins(\'' + id + '\',30)" style="font-size:10px;background:#FFF8E6;border:1px solid #F5D78E;border-radius:6px;padding:2px 8px;color:#BA7517;cursor:pointer;">30 min</button>' +
+            '<button onclick="snoozeCallbackMins(\'' + id + '\',60)" style="font-size:10px;background:#FFF8E6;border:1px solid #F5D78E;border-radius:6px;padding:2px 8px;color:#BA7517;cursor:pointer;">60 min</button>' +
+            '<button onclick="snoozeCallbackUntilFresh(\'' + id + '\')" style="font-size:10px;background:#FFF8E6;border:1px solid #F5D78E;border-radius:6px;padding:2px 8px;color:#BA7517;cursor:pointer;">Until I finish fresh</button>' +
+            '</div>';
+        }
+      }
+      return '<div style="margin-bottom:8px;"><div style="font-size:12px;font-weight:600;color:#BA7517;background:#FFF8E6;border:1px solid #F5D78E;border-radius:6px;padding:5px 10px;margin-bottom:4px;display:block;">[Callback] ' + apptLabel + '</div><button onclick="openMoveAppt(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit or delete</button>' + snoozeRow + '</div>';
     } else if (hasOpenCase) {
       return '<div style="margin-bottom:8px;"><div onclick="openSitOutcome(\'' + id + '\')" style="font-size:12px;font-weight:600;color:#138181;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:6px;padding:5px 10px;margin-bottom:4px;cursor:pointer;display:block;">[Appt] ' + apptLabel + ' <span style="font-size:10px;opacity:0.6;">tap to log outcome</span></div><button onclick="openMoveAppt(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit or delete</button></div>';
     } else {
@@ -4394,8 +4475,8 @@ function showContModal(id, ci) {
   const isRetirement = ci !== null && ci !== undefined && ((c.cases||[])[ci]||{}).type === 'Retirement';
   // No 'Follow-up' here: follow-ups are post-sale only (client card button)
   const reasons = isRetirement
-    ? ['Step 2','Step 3','PPU / Policy Pickup','Think about it']
-    : ['PPU / Policy Pickup','Think about it'];
+    ? ['Step 2','Step 3','PPU / Policy Pickup','Rewrite - declined app','Think about it']
+    : ['PPU / Policy Pickup','Rewrite - declined app','Think about it'];
   const reasonOpts = reasons.map((r,i) => '<option value="' + r + '"' + (i===0?' selected':'') + '>' + r + '</option>').join('');
   showModal('<button class="close-x" onclick="closeModal()">x</button>' +
     '<div class="modal-title">Continuation</div>' +
@@ -5384,12 +5465,14 @@ async function confirmCallback(id, hasDate) {
 
   let callbackDt = null;
   let callbackNote = '';
+  let callbackHasTime = false;
   if (hasDate) {
     const dateEl = document.getElementById('cb-date');
     const timeEl = document.getElementById('cb-time');
     if (dateEl && dateEl.value) {
       const timeStr = timeEl && timeEl.value ? timeEl.value : '09:00';
-      const hasTime = timeEl && timeEl.value;
+      const hasTime = !!(timeEl && timeEl.value);
+      callbackHasTime = hasTime;
       // Parse as local time explicitly to avoid UTC interpretation issues
       const [year, month, day] = dateEl.value.split('-').map(Number);
       const [hours, minutes] = timeStr.split(':').map(Number);
@@ -5407,7 +5490,7 @@ async function confirmCallback(id, hasDate) {
   const nextLead = getNextLead(id, searchVal);
 
   const ts = new Date().toISOString();
-  const callLog = [...(c.call_log||[]), {ts, outcome:'Callback', dials:dialCount, callback_dt:callbackDt, callback_note:callbackNote}];
+  const callLog = [...(c.call_log||[]), {ts, outcome:'Callback', dials:dialCount, callback_dt:callbackDt, callback_note:callbackNote, callback_has_time:callbackHasTime}];
   // Scheduling a callback on an appointment holder ("call Friday to confirm
   // Monday") must not demote the appointment - the callback rides alongside.
   c.call_log = callLog; c.status = (c.status === 'Appointment set') ? c.status : 'Working';
@@ -7551,34 +7634,54 @@ function renderPeople(k) {
 
 // Every person ever named for the opportunity, with the client who named them.
 // This is the seed of the recruiting pipeline - tick STP as you actually send it.
-function openRecruitProspects() {
+function _recruitRows() {
   const rows = [];
   clients.forEach(c => (c.cases||[]).forEach((cs,ci) => (cs.touchpoints||[]).forEach((tp,ti) =>
     (tp.recruit_people||[]).forEach((pp,pi) => rows.push({pp, cid:c.id, ci, ti, pi}))
   )));
-  if (!rows.length) {
-    showModal('<button class="close-x" onclick="closeModal()">x</button>' +
-      '<div class="modal-title">Recruit prospects</div>' +
-      '<div style="font-size:13px;color:#5f7a99;padding:16px 0;">Nobody named yet. They show up here when you log a sit and name someone for the opportunity.</div>');
-    return;
+  return rows;
+}
+
+function renderRecruitRows(q) {
+  const rows = _recruitRows();
+  const needle = (q||'').trim().toLowerCase();
+  const filtered = !needle ? rows : rows.filter(r => {
+    const p = r.pp || {};
+    return [p.name, p.phone, p.relationship, p.why, p.from_name].filter(Boolean).join(' ').toLowerCase().includes(needle);
+  });
+  if (!filtered.length) {
+    return '<div style="font-size:13px;color:#5f7a99;padding:16px 0;">' + (needle ? 'No recruits match "' + esc(q) + '".' : 'Nobody named yet. Recruits show up here when you capture them.') + '</div>';
   }
-  showModal('<button class="close-x" onclick="closeModal()">x</button>' +
-    '<div class="modal-title">Recruit prospects</div>' +
-    '<div class="modal-sub">' + rows.filter(r=>r.pp.stp_sent).length + ' of ' + rows.length + ' sent the plan</div>' +
-    rows.map(r =>
-      '<div style="border:1px solid #e2eaf2;border-radius:8px;padding:10px;margin-bottom:6px;">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
-          '<div style="flex:1;">' +
-            '<div style="font-size:14px;font-weight:600;color:#1D3557;">' + esc(r.pp.name) + '</div>' +
-            (r.pp.phone ? '<div style="font-size:12px;color:#138181;">' + esc(r.pp.phone) + '</div>' : '') +
-            (r.pp.why ? '<div style="font-size:12px;color:#5f7a99;margin-top:2px;">' + esc(r.pp.why) + '</div>' : '') +
-            '<div style="font-size:10px;color:#8fa8c0;margin-top:3px;">via ' + esc(r.pp.from_name||'') + '</div>' +
-          '</div>' +
-          '<label style="display:flex;align-items:center;gap:5px;font-size:11px;color:#1D3557;cursor:pointer;white-space:nowrap;">' +
-            '<input type="checkbox" ' + (r.pp.stp_sent?'checked':'') + ' onchange="toggleProspectSTP(\'' + r.cid + '\',' + r.ci + ',' + r.ti + ',' + r.pi + ',this.checked)" style="width:16px;height:16px;"> STP sent' +
-          '</label>' +
+  return filtered.map(r =>
+    '<div style="border:1px solid #e2eaf2;border-radius:8px;padding:10px;margin-bottom:6px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
+        '<div style="flex:1;">' +
+          '<div style="font-size:14px;font-weight:600;color:#1D3557;">' + esc(r.pp.name) + '</div>' +
+          (r.pp.phone ? '<div style="font-size:12px;color:#138181;">' + esc(r.pp.phone) + '</div>' : '') +
+          (r.pp.relationship ? '<div style="font-size:11px;color:#5f7a99;margin-top:2px;">' + esc(r.pp.relationship) + '</div>' : '') +
+          (r.pp.why ? '<div style="font-size:12px;color:#5f7a99;margin-top:2px;">' + esc(r.pp.why) + '</div>' : '') +
+          '<div style="font-size:10px;color:#8fa8c0;margin-top:3px;">via ' + esc(r.pp.from_name||'') + '</div>' +
         '</div>' +
-      '</div>').join(''));
+        '<label style="display:flex;align-items:center;gap:5px;font-size:11px;color:#1D3557;cursor:pointer;white-space:nowrap;">' +
+          '<input type="checkbox" ' + (r.pp.stp_sent?'checked':'') + ' onchange="toggleProspectSTP(\'' + r.cid + '\',' + r.ci + ',' + r.ti + ',' + r.pi + ',this.checked)" style="width:16px;height:16px;"> STP sent' +
+        '</label>' +
+      '</div>' +
+    '</div>').join('');
+}
+
+function filterRecruits(q) {
+  const el = document.getElementById('recruit-list');
+  if (el) el.innerHTML = renderRecruitRows(q);
+}
+
+function openRecruitProspects() {
+  const rows = _recruitRows();
+  const sent = rows.filter(r=>r.pp.stp_sent).length;
+  showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">Recruits</div>' +
+    '<div class="modal-sub">' + sent + ' of ' + rows.length + ' sent the plan</div>' +
+    '<input type="text" id="recruit-search" placeholder="Search recruits — name, phone, relationship..." oninput="filterRecruits(this.value)" style="width:100%;padding:9px 10px;border:1px solid #d0dcea;border-radius:8px;font-size:13px;margin:8px 0 12px;box-sizing:border-box;">' +
+    '<div id="recruit-list">' + renderRecruitRows('') + '</div>');
 }
 async function toggleProspectSTP(cid, ci, ti, pi, val) {
   const c = clients.find(x => x.id === cid); if (!c) return;
