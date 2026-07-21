@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h64</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h65</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -306,7 +306,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="stat-row">
       <div class="stat stat-teal">
         <div class="stat-lbl lbl-white">Ref asks</div>
-        <div class="stat-val val-white" id="p-refask">0</div>
+        <div class="stat-val val-white" id="p-refask" style="cursor:pointer;" onclick="openReferralList()">0</div>
         <div class="stat-sub sub-white" id="p-refask-sub">- of sits</div>
       </div>
       <div class="stat stat-navy">
@@ -794,6 +794,16 @@ function isFresh(c) {
 function fmt(n) { return '$' + (n||0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
 function pct(n, d) { return d > 0 ? Math.round((n/d)*100) + '%' : '-'; }
 function todayStr() { return new Date().toISOString().slice(0,10); }
+
+// Phone dedupe used by EVERY save path (manual Add lead + ASR), not just the
+// importer. Normalizes to digits and drops a leading country 1 so differently-
+// formatted versions of the same number compare equal.
+function normPhone(p) { return (p||'').replace(/\D/g,'').replace(/^1/,''); }
+function findDupeByPhone(phone, excludeId) {
+  const d = normPhone(phone);
+  if (d.length < 10) return null;
+  return clients.find(c => c.id !== excludeId && normPhone(c.phone) === d) || null;
+}
 
 //  CALENDAR HELPERS 
 function lastFridayOfMonth(year, month) {
@@ -1323,8 +1333,14 @@ function renderScore() {
   // and revivals never count here again. Production's show-rate math counts
   // every appointment on the books - deliberately different.
   const appts = clients.filter(c => {
-    const first = (c.call_log||[]).find(cl => cl.outcome === 'Appt set');
+    const log = c.call_log||[];
+    const first = log.find(cl => cl.outcome === 'Appt set');
     if (!first || !first.ts) return false;
+    // h65: if this lead was ever marked Not interested, it never really sat —
+    // that 'Appt set' was a mis-qualified booking, so it does NOT count as a
+    // resolved appointment here. (Production show-rate is touchpoint-based and
+    // untouched — a genuinely SAT appointment still counts there.)
+    if (log.some(cl => cl.outcome === 'Not interested')) return false;
     const t = new Date(first.ts);
     return t >= aStart && t <= aEnd;
   }).length;
@@ -3471,7 +3487,11 @@ function getUrgencyBadge(c) {
 
   if (score < 20) {
     if (isFollowUpDue(c)) return {label:'\uD83D\uDCCB Follow-up due', color:'#534AB7', bg:'#F3EEFF', fire:false};
-    return {label:'\uD83D\uDD04 Callback', color:'#BA7517', bg:'#FFF8E6', fire:false};
+    // A real timed callback that's due (the -300 band) still reads Callback.
+    if (isCallbackDueNow(c) && !isCallbackSnoozeActive(c)) return {label:'\uD83D\uDD04 Callback', color:'#BA7517', bg:'#FFF8E6', fire:false};
+    // Everything else under 20 is a fresh, never-dialed, in-window lead (the
+    // speed-to-lead -100 band). It is NOT a callback — it's your top new lead.
+    return {label:'\uD83D\uDD25 New \u2014 call first', color:'#A32D2D', bg:'#FFE9E9', fire:false};
   }
 
   // No-show recovery window
@@ -4737,6 +4757,10 @@ async function saveASR(referrerId) {
   if (!name) { alert('Please enter the referred person\'s name.'); return; }
   if (!phone) { alert('Please enter a phone number.'); return; }
 
+  // Dedupe: don't spawn a second lead for a number you already have.
+  const dupe = findDupeByPhone(phone);
+  if (dupe) { alert('That number is already on ' + (dupe.name || 'another lead') + '. No duplicate lead created — you can link the referral on that lead directly.'); return; }
+
   const asrNote = `ASR from ${referrer?.name||''}${relationship?' ('+relationship+')':''}${notes?'. '+notes:''}`;
 
   // Create new lead — referred_by links it back to the referrer (walkable web).
@@ -5899,6 +5923,9 @@ async function quickLog(id, outcome, statKey) {
   if (outcome==='Not interested') {
     const closedCases = (c.cases||[]).map(cs => cs.status==='Open'?{...cs,status:'Closed Lost'}:cs);
     callLog[callLog.length-1].cases_closed = true;
+    // h65: quietly note how many appts this lead had booked that never sat, so a
+    // future "booked but never sat" rate is derivable. No new bucket/button.
+    callLog[callLog.length-1].phantom_appts = (c.call_log||[]).filter(cl => cl.outcome === 'Appt set').length;
     updatePayloadExtra = {cases:closedCases, appt_datetime:null, appt_notes:null};
   }
 
@@ -5911,7 +5938,21 @@ async function quickLog(id, outcome, statKey) {
   if (statKey !== 'dials') {
     // 'dead' is a RESOLUTION - it can only ever fire once per lead. Everything
     // else (callbacks, conversations) is ordinary activity and counts every time.
-    if (statKey === 'dead') { await markResolvedOnce(c, 'dead'); }
+    if (statKey === 'dead') {
+      // h65: Not interested is the true resolution. Three cases:
+      //  - never resolved  -> stamp dead (adds the dead stat)
+      //  - resolved as appt -> that booking never sat; flip to dead + add the
+      //    dead stat, so it leaves Appts set and lands in Not interested (the
+      //    Appts-set board filter already excludes Not-interested leads).
+      //  - already dead     -> do nothing (idempotent; no double count).
+      if (!c.resolved_at) {
+        await markResolvedOnce(c, 'dead');
+      } else if (c.resolved_as === 'appt') {
+        c.resolved_as = 'dead';
+        try { await sb.from('clients').update({ resolved_as: 'dead' }).eq('id', c.id); } catch(e) {}
+        await addStat('dead', 1);
+      }
+    }
     else { await addStat(statKey, 1); }
     await addStat('convos', 1);
   }
@@ -6298,6 +6339,9 @@ async function saveClient() {
   const name = document.getElementById('cl-name').value.trim();
   const phone = document.getElementById('cl-phone').value.trim();
   if (!name||!phone) return;
+  // Dedupe: manual add used to insert with no phone check at all. Catch it here.
+  const dupe = findDupeByPhone(phone);
+  if (dupe) { alert('That number is already on ' + (dupe.name || 'another lead') + '. No duplicate created.'); return; }
   const row = {name, phone, address:document.getElementById('cl-address').value.trim(), state:document.getElementById('cl-state').value.trim().toUpperCase(), source:document.getElementById('cl-src').value, assigned_date:document.getElementById('cl-assigned').value||todayStr(), notes:document.getElementById('cl-notes').value.trim(), health_notes:'', policy_notes:'', status:'New', call_log:[], sits:[]};
   showSync('Saving...');
   const {data} = await sb.from('clients').insert([row]).select();
@@ -7689,6 +7733,77 @@ async function toggleProspectSTP(cid, ci, ti, pi, val) {
   await saveClientRecord(c);
   render();
   openRecruitProspects();
+}
+
+// Every referral ever captured, from BOTH sources:
+//  1) ASR flow  -> referrer.referrals[] (these auto-created a lead; leadId links it)
+//  2) sit flow  -> touchpoint.ref_people[] (captured at the kitchen table; until
+//     now NO screen read these back, so they were stranded — saved, invisible).
+// Dedupes a sit capture that also became an ASR (same normalized phone).
+function _referralRows() {
+  const rows = [];
+  const asrPhones = new Set();
+  clients.forEach(c => {
+    (c.referrals || []).forEach(r => {
+      const np = normPhone(r.phone); if (np) asrPhones.add(np);
+      rows.push({ name: r.name||'', phone: r.phone||'', why: r.relationship||'',
+        from: c.name, fromId: c.id, leadId: r.id||null, source: 'ASR',
+        paid: !!r.paid, amount: r.amount||30 });
+    });
+  });
+  clients.forEach(c => (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp =>
+    (tp.ref_people||[]).forEach(p => {
+      if (p.phone && asrPhones.has(normPhone(p.phone))) return; // already shown as ASR
+      rows.push({ name: p.name||'', phone: p.phone||'', why: p.why||'',
+        from: c.name, fromId: c.id, leadId: null, source: 'sit' });
+    })
+  )));
+  return rows;
+}
+
+function renderReferralRows(q) {
+  const rows = _referralRows();
+  const needle = (q||'').trim().toLowerCase();
+  const filtered = !needle ? rows : rows.filter(r =>
+    [r.name, r.phone, r.why, r.from].filter(Boolean).join(' ').toLowerCase().includes(needle));
+  if (!filtered.length) {
+    return '<div style="font-size:13px;color:#5f7a99;padding:16px 0;">' +
+      (needle ? 'No referrals match "' + esc(q) + '".'
+              : 'No referrals captured yet. They show up here when you enter one at a sit or log an ASR.') + '</div>';
+  }
+  return filtered.map(r => {
+    const nameClick = r.leadId ? ' style="cursor:pointer;text-decoration:underline;" onclick="closeModal();openClient(\'' + r.leadId + '\')"' : '';
+    const tag = r.source === 'ASR'
+      ? (r.paid ? '<span style="font-size:10px;color:#138181;">paid $' + r.amount + '</span>'
+                : '<span style="font-size:10px;color:#A32D2D;">owe $' + r.amount + '</span>')
+      : '<span style="font-size:10px;color:#8fa8c0;">captured at sit</span>';
+    return '<div style="border:1px solid #e2eaf2;border-radius:8px;padding:10px;margin-bottom:6px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
+        '<div style="flex:1;">' +
+          '<div style="font-size:14px;font-weight:600;color:#1D3557;"' + nameClick + '>' + esc(r.name||'(no name)') + '</div>' +
+          (r.phone ? '<div style="font-size:12px;color:#138181;">' + esc(r.phone) + '</div>' : '') +
+          (r.why ? '<div style="font-size:12px;color:#5f7a99;margin-top:2px;">' + esc(r.why) + '</div>' : '') +
+          '<div style="font-size:10px;color:#8fa8c0;margin-top:3px;">via ' + esc(r.from||'') + '</div>' +
+        '</div>' +
+        '<div style="text-align:right;white-space:nowrap;">' + tag + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function filterReferrals(q) {
+  const el = document.getElementById('referral-list');
+  if (el) el.innerHTML = renderReferralRows(q);
+}
+
+function openReferralList() {
+  const rows = _referralRows();
+  const owed = rows.filter(r => r.source === 'ASR' && !r.paid).length;
+  showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">Referrals</div>' +
+    '<div class="modal-sub">' + rows.length + ' captured' + (owed ? ' \u00B7 ' + owed + ' payout' + (owed>1?'s':'') + ' owed' : '') + '</div>' +
+    '<input type="text" id="referral-search" placeholder="Search referrals — name, phone, who referred..." oninput="filterReferrals(this.value)" style="width:100%;padding:9px 10px;border:1px solid #d0dcea;border-radius:8px;font-size:13px;margin:8px 0 12px;box-sizing:border-box;">' +
+    '<div id="referral-list">' + renderReferralRows('') + '</div>');
 }
 
 function getAgentId() {
