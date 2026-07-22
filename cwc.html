@@ -4518,7 +4518,7 @@ function showContModal(id, ci) {
   const reasons = isRetirement
     ? ['Step 2','Step 3','PPU / Policy Pickup','Rewrite - declined app','Think about it']
     : ['PPU / Policy Pickup','Rewrite - declined app','Think about it'];
-  const reasonOpts = reasons.map((r,i) => '<option value="' + r + '"' + (i===0?' selected':'') + '>' + r + '</option>').join('');
+  const reasonOpts = '<option value="" selected disabled>\u2014 pick one \u2014</option>' + reasons.map(r => '<option value="' + r + '">' + r + '</option>').join('');
   showModal('<button class="close-x" onclick="closeModal()">x</button>' +
     '<div class="modal-title">Continuation</div>' +
     '<div class="modal-sub">' + c.name + '</div>' +
@@ -4561,6 +4561,7 @@ async function confirmSitOutcome(id, ci, outcome) {
   const reasonEl = document.getElementById('cont-reason');
   if (reasonEl) { contReason = reasonEl.value; ppu = contReason === 'PPU / Policy Pickup'; }
   if (outcome === 'cont') {
+    if (reasonEl && !reasonEl.value) { alert('Pick what the next meeting is \u2014 PPU, Think about it, or a Step \u2014 before saving.'); return; }
     const dtEl = document.getElementById('cont-next-dt');
     const notesEl = document.getElementById('cont-notes');
     if (dtEl && dtEl.value) {
