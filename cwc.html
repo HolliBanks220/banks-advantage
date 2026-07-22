@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h65</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h67</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -1320,6 +1320,31 @@ function render() {
   } catch(e) { console.error('renderClients:', e); }
 }
 
+// ── SUBMITTED-APP DEFINITION (single source of truth for h66) ───────────────
+// The board's "Apps written" tile and the Business > Submitted view must count
+// the SAME thing. This is that definition, in one place. An application is dated
+// by when it was WRITTEN (writtenDate), not by its touchpoint's datetime — and
+// every app record counts (a two-policy household is 2, a decline still counts),
+// Lapse/Cancel drop out, and an undated app only shows in the current period.
+function submittedAppDate(ap, tp, cs) {
+  return ap.writtenDate || (tp && tp.outcome === 'sale' ? tp.datetime : null) || (tp && tp.datetime) || (cs && cs.created);
+}
+function submittedDateInPeriod(dateVal, pStart, pEnd) {
+  const d = new Date(dateVal || 0);
+  if (!(d.getFullYear() > 2000)) return periodOffset === 0; // undated -> current period only
+  return d >= pStart && d <= pEnd;
+}
+function countSubmittedApps(pStart, pEnd) {
+  let n = 0;
+  clients.forEach(c => (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp =>
+    (tp.apps||[]).forEach(ap => {
+      if (['Lapse','Cancel'].includes(ap.status||'')) return;
+      if (submittedDateInPeriod(submittedAppDate(ap, tp, cs), pStart, pEnd)) n++;
+    })
+  )));
+  return n;
+}
+
 function renderScore() {
   const {start: aStart, end: aEnd, label} = getPeriodBounds('activity');
   const {start: pStart, end: pEnd} = getPeriodBounds('production');
@@ -1488,6 +1513,9 @@ function renderScore() {
   const totalAPV = periodApps.reduce((a,ap)=>a+premOf(ap),0);
   const totalApps = periodApps.length;
   const closedCount = saleTPs.filter(t=>(t.apps||[]).length>0).length + satSits.filter(s=>(s.apps||[]).length>0).length;
+  // h66: the board tile counts APPLICATIONS (matching the Business > Submitted
+  // view), not sale-events. Old closedCount kept above only for reference.
+  const appsWritten = countSubmittedApps(pStart, pEnd);
   const apvPerSale = totalSales>0 ? totalAPV/totalSales : 0;
 
   document.getElementById('p-first').textContent = periodAppts;
@@ -1508,8 +1536,8 @@ function renderScore() {
   document.getElementById('p-ppu').textContent = totalPPUs;
   document.getElementById('p-ppu-sub').textContent = ppuSales+' sold ('+ppuCloseRate+') vs '+nonPPUCloseRate+' w/o PPU';
   document.getElementById('p-resets').textContent = totalResets;
-  document.getElementById('p-closed').textContent = closedCount;
-  document.getElementById('p-close-rate').textContent = totalSales > 0 ? (closedCount/totalSales).toFixed(1) + ' per sale' : '- per sale';
+  document.getElementById('p-closed').textContent = appsWritten;
+  document.getElementById('p-close-rate').textContent = totalSales > 0 ? (appsWritten/totalSales).toFixed(1) + ' per sale' : '- per sale';
 
   // --- ASK RATES: the behaviours that compound. Denominator is resolved sits -
   // you can only ask someone who actually sat with you.
@@ -2508,17 +2536,7 @@ function renderAppsTab() {
     const activeStatuses = ['Written','Submitted','Approved','Issued'];
     // List AND summary both filtered by selected period
     const submittedApps = allApps
-      .filter(ap => {
-        if (!['Lapse','Cancel'].includes(ap.status||'')) {
-          const d = new Date(ap.tpDate||0);
-          const hasDate = d.getFullYear() > 2000;
-          // Undated apps only show in the CURRENT period (they were leaking
-          // into every period viewed, inflating comp totals everywhere)
-          if (!hasDate) return periodOffset === 0;
-          return d >= pStart && d <= pEnd;
-        }
-        return false;
-      })
+      .filter(ap => !['Lapse','Cancel'].includes(ap.status||'') && submittedDateInPeriod(ap.tpDate, pStart, pEnd))
       .filter(ap => !writtenOnly || (ap.status||'Written') === 'Written')
       .sort((a,b) => new Date(b.tpDate||0) - new Date(a.tpDate||0));
 
@@ -6033,6 +6051,32 @@ function loadPdfJs() {
   });
 }
 
+// OCR engine, loaded on demand (a few MB) only when a scanned card shows up.
+function loadTesseract() {
+  return new Promise((resolve, reject) => {
+    if (window.Tesseract) return resolve(window.Tesseract);
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    s.onload = () => resolve(window.Tesseract);
+    s.onerror = () => reject(new Error('Could not load OCR'));
+    document.head.appendChild(s);
+  });
+}
+
+// Does this page have a real digital text layer, or is it a scan/garbled OCR
+// candidate? A clean lead has a structural marker AND either a name or a good
+// phone. Everything else (blank text layer, or the broken-OCR gibberish that
+// half-scanned cards produce) goes to the OCR path instead of becoming a junk row.
+function importTextIsThin(text, row) {
+  if (!text || text.replace(/\s/g, '').length < 25) return true; // no real text layer
+  // Trust the page only if a name or phone came from a real label. A scan with a
+  // broken/OCR-garbled text layer produces neither, so it routes to the image.
+  return !(row && row._conf);
+}
+
+// Sort order for the preview: cards that need your eyes rise to the top.
+function rowPriority(r) { return r._scan ? 0 : (r.phone_flag ? 1 : 2); }
+
 async function handleImportFile(f) {
   const statusEl = document.getElementById('li-status');
   statusEl.textContent = 'Reading PDF...';
@@ -6041,37 +6085,57 @@ async function handleImportFile(f) {
     const buf = await f.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
     _importRows = [];
-    let scans = 0;
+    let scans = 0, ocrWorker = null;
     for (let p = 1; p <= pdf.numPages; p++) {
       const page = await pdf.getPage(p);
       const tc = await page.getTextContent();
       const text = tc.items.map(it => it.str).join(' ').replace(/\s+/g, ' ').trim();
-      const row = parseLeadText(text);
-      if (row) { _importRows.push(row); continue; }
-      // No lead came off this page. A scanned/handwritten card has no text
-      // layer - to the parser it looks blank, and until now it VANISHED
-      // silently. Instead: render the page as an image and hand it to the
-      // human. You read the handwriting, you type it, it imports with the
-      // rest. Machines misread a scrawled phone digit; people don't.
-      let img = '';
+      let row = parseLeadText(text);
+      const thin = importTextIsThin(text, row);
+      // Clean digital lead WITH a trustworthy phone -> take it as-is.
+      if (row && !thin && !row.phone_flag) { _importRows.push(row); continue; }
+
+      // Needs your eyes. Two cases land here: a thin/garbled/blank page (OCR it
+      // to recover the printed name/address/loan), or a mostly-digital card whose
+      // only gap is the handwritten phone (keep the parsed fields, just show the
+      // image). Either way the card image is on screen so the phone gets confirmed
+      // by eye. At 30-40 a batch, that's "glance and confirm" instead of retyping.
+      scans++;
+      let img = '', ocrRow = null;
       try {
-        const vp = page.getViewport({ scale: 1.4 });
+        const vp = page.getViewport({ scale: 2.0 });
         const canvas = document.createElement('canvas');
         canvas.width = vp.width; canvas.height = vp.height;
         await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
         img = canvas.toDataURL('image/jpeg', 0.82);
-      } catch (e) { /* render failed - still show the row, just without the picture */ }
-      scans++;
+        if (thin) {
+          statusEl.textContent = 'Reading scanned card ' + scans + ' with OCR\u2026';
+          try {
+            const T = await loadTesseract();
+            if (!ocrWorker) ocrWorker = await T.createWorker('eng');
+            const res = await ocrWorker.recognize(canvas);
+            const otext = (((res || {}).data || {}).text || '').replace(/\s+/g, ' ').trim();
+            if (otext) ocrRow = parseLeadText(otext, { ocr: true });
+          } catch (e) { /* OCR unavailable - fall back to blank type-from-image */ }
+        }
+      } catch (e) { /* render failed - still show the row without the picture */ }
+
+      // Thin page: use OCR result (or blank). Mostly-digital: keep the parsed row.
+      const base = thin ? (ocrRow || { name:'', phone:'', age:null, address:'', state:'', zip:'', mortgage_amount:'', source:'MIA', notes:'' }) : row;
       _importRows.push({
-        name: '', phone: '', age: '', address: '', state: '', zip: '',
-        mortgage_amount: '', source: 'MIA',
-        notes: 'Typed from scanned card (page ' + p + ')',
-        include: false, _scan: img || 'none', _page: p
+        ...base,
+        source: base.source || 'MIA',
+        notes: (base.notes ? base.notes + ' \u00B7 ' : '') + 'From scanned card (page ' + p + ')',
+        phone_flag: base.phone_flag || 'confirm phone against the card image',
+        include: false, _scan: img || 'none', _page: p, _ocr: thin && !!ocrRow
       });
     }
+    if (ocrWorker) { try { await ocrWorker.terminate(); } catch (e) {} }
+    // Needs-eyes rows first: scanned cards, then flagged phones, then clean.
+    _importRows.sort((a, b) => rowPriority(a) - rowPriority(b));
     const typed = _importRows.filter(r => !r._scan).length;
-    statusEl.innerHTML = pdf.numPages + ' page(s) \u2192 <b>' + typed + '</b> lead(s) read automatically' +
-      (scans ? ' \u00B7 <b style="color:#BA7517;">' + scans + '</b> scanned card(s) need your eyes below' : '');
+    statusEl.innerHTML = pdf.numPages + ' page(s) \u2192 <b>' + typed + '</b> read automatically' +
+      (scans ? ' \u00B7 <b style="color:#BA7517;">' + scans + '</b> card(s) need your eyes \u2014 confirm the phone below' : '');
     renderImportPreview();
   } catch (err) {
     statusEl.textContent = 'Could not read that PDF: ' + err.message + '. If it is a scanned/handwritten card, add it manually.';
@@ -6093,79 +6157,154 @@ function grab(text, label) {
   return m ? m[1].trim() : '';
 }
 
-function parseLeadText(text) {
+// All matches of a single-capture pattern, in order (borrower then co-borrower
+// share a label on the two-column templates, so order = person).
+function grabAll(text, re) {
+  const out = []; const r = new RegExp(re, 'ig'); let m;
+  while ((m = r.exec(text)) !== null) { if (m[1] && m[1].trim()) out.push(m[1].trim()); }
+  return out;
+}
+const IMPORT_HOTLINES = new Set(['8559209821','8447224712','8559591944','8447142707']);
+
+// opts.ocr = true  -> this text came from OCR of a scanned card. We still
+// pre-fill everything we can, but phone + DOB are forced to "confirm from the
+// image" because handwriting recognition is not trustworthy on those fields.
+function parseLeadText(text, opts) {
+  opts = opts || {};
   if (!text || text.length < 20) return null;
-  // PHONE: trust the LABEL first. The generic first-10-digits match grabbed
-  // digit runs out of Mortgage ID hex strings when one happened to contain
-  // ten consecutive digits (Brennan Olson got 365-203-5094 carved out of
-  // API-7ea36520350941... instead of his labeled 913 number). Order:
-  // 1) "Contact Phone" / "Primary Phone" (SFG), 2) "Phone:" (LeadPros),
-  // 3) generic - but only after scrubbing ID tokens and the SFG demo hotline.
+
+  // ---- PHONE: label first, then scrubbed generic (unchanged core) ----
   let phoneRaw = '';
-  const labeled = text.match(/(?:Contact|Primary)\s*Phone\s*:?\s*((?:1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})/i)
-    || text.match(/\bPhone\s*:?\s*\(?((?:1[-.\s]?)?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})/i);
+  const labeled = text.match(/(?:Contact|Primary|Work\s*Phone\/Cell|Cell)\s*Phone?\s*#?\s*:?\s*((?:1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})/i)
+    || text.match(/\bPhone\s*#?\s*:?\s*\(?((?:1[-.\s]?)?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})/i);
   if (labeled) phoneRaw = labeled[1];
   else {
-    const scrubbed = text.replace(/API-[0-9a-f]+/ig, ' ').replace(/Mortgage\s*ID\s*:?\s*[\d-]+/ig, ' ').replace(/1-855-920-9821/g, ' ');
+    const scrubbed = text.replace(/API-[0-9a-f]+/ig,' ').replace(/Mortgage\s*ID\s*:?\s*[\d-]+/ig,' ')
+      .replace(/1[-.\s]?8(?:00|33|44|55|66|77|88)[-.\s]?\d{3}[-.\s]?\d{4}/g,' '); // vendor toll-free hotlines
     const m = scrubbed.match(/\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
     phoneRaw = m ? m[0] : '';
   }
-  const phone = phoneRaw.replace(/\D/g, '').replace(/^1/, '').replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
-  // TRIPWIRE: no phone reaches the preview unvalidated. Catches formats we
-  // haven't seen yet: not a real NANP number, the SFG demo hotline, or a
-  // digit-run that also appears inside an ID token on the page (the shard
-  // signature). Flagged rows show amber and demand a human eye.
+  const phone = phoneRaw.replace(/\D/g,'').replace(/^1/,'').replace(/(\d{3})(\d{3})(\d{4})/,'$1-$2-$3');
   let phone_flag = '';
-  const pd = phone.replace(/\D/g, '');
+  const pd = phone.replace(/\D/g,'');
   if (!pd) phone_flag = 'no phone found';
   else if (!/^[2-9]\d{2}[2-9]\d{6}$/.test(pd)) phone_flag = 'not a valid US number';
-  else if (pd === '8559209821') phone_flag = 'this is the SFG demo hotline, not the client';
+  else if (IMPORT_HOTLINES.has(pd)) phone_flag = 'this is a vendor hotline, not the client';
   else if ((text.match(/API-[0-9a-f]+/ig)||[]).some(id => id.replace(/\D/g,'').includes(pd))) phone_flag = 'digits match the Mortgage ID - verify against the sheet';
+
+  // ---- NAME ----
   let first = grab(text, 'First Name'), last = grab(text, 'Last Name');
   let name = (first + ' ' + last).trim();
-  if (!name) name = grab(text, 'Name');
+  let coName = '';
+  // "Online Lead Template": the name is a bare line under "Current Information"
+  // with no label, often "Borrower & Co-Borrower" joined by an ampersand.
+  const ci = text.match(/Current Information\s+(.+?)\s+(?:Requested Changes|\d{2,})/i);
+  if (!name && ci) {
+    const parts = ci[1].split(/\s*&\s*/);
+    name = (parts[0]||'').trim();
+    if (parts[1]) coName = parts[1].trim();
+  }
+  if (!name) name = grab(text, 'Name') || grab(text, 'Contact Person');
   name = name.replace(/\b\w/g, ch => ch.toUpperCase());
-  const ageM = text.match(/Age\s*:?\s*(\d{1,3})/i);
-  const age = ageM ? parseInt(ageM[1]) : null;
-  let mort = (text.match(/Mortgage Amount\s*:?\s*\$?([\d,]+)/i) || text.match(/AMOUNT\s*:?\s*\$?([\d,]+)/i) || text.match(/\$\s?([\d,]{4,})/));
-  const mortgage = mort ? mort[1].replace(/,/g, '') : '';
-  const zipM = text.match(/\b[A-Z]{2}\s+(\d{5})(?:-\d{4})?\b/)   // zip right after a state
-            || text.match(/Postal\s*Code\s*:?\s*(\d{5})/i)        // labeled Postal Code
-            || text.match(/\b(\d{5})(?:-\d{4})?\b/);              // last resort: any 5-digit
+  // Confidence: did the phone or name come from a real LABEL (not the generic
+  // digit/word scrape)? Garbled scans of printed cards produce neither, which is
+  // how we tell "clean digital lead" from "scan with a broken text layer".
+  const phoneLabeled = !!labeled;
+  const nameLabeled = !!(first || last) || /\bName\s*:/i.test(text) || !!ci;
+
+  const ageMs = grabAll(text, 'Age\\s*:?\\s*(\\d{1,3})');
+  const age = ageMs.length ? parseInt(ageMs[0]) : null;
+
+  let mort = (text.match(/Mortgage Amount\s*:?\s*\$?([\d,]+)/i) || text.match(/AMOUNT\s*:?\s*\$?([\d,]+)/i) || text.match(/Loan Amount\s*:?\s*\$?([\d,]+)/i) || text.match(/\$\s?([\d,]{4,})/));
+  const mortgage = mort ? mort[1].replace(/,/g,'') : '';
+
+  const zipM = text.match(/\b[A-Z]{2}\s+(\d{5})(?:-\d{4})?\b/) || text.match(/Postal\s*Code\s*:?\s*(\d{5})/i) || text.match(/\b(\d{5})(?:-\d{4})?\b/);
   const zip = zipM ? zipM[1] : '';
   const stM = text.match(/\b([A-Z]{2})\b\s*(?:\d{5})/) || text.match(/State\s*:?\s*([A-Z]{2})\b/i);
   const state = stM ? stM[1].toUpperCase() : '';
   let addr = grab(text, 'Property Address') || grab(text, 'Address');
   const city = grab(text, 'City');
   if (city && addr) addr = addr + ', ' + city;
-  // Fallback for vendors with no address label (e.g. LeadPros): find "City, ST ZIP"
-  // and take the street that sits immediately in front of it. Anchored so it can't
-  // sweep in a preceding name or an ID number.
   if (!addr || !/\d/.test(addr)) {
-    const czM = text.match(/,\s*([A-Z]{2})\s+(\d{5})\b/); // ", TX 77016"
+    const czM = text.match(/,\s*([A-Z]{2})\s+(\d{5})\b/);
     if (czM) {
-      const before = text.slice(0, czM.index).trim();     // "...7450 Wheatley Gardens Dr Houston"
+      const before = text.slice(0, czM.index).trim();
       const m = before.match(/(\d{1,6}\s+(?:[A-Za-z][\w.'\-]*\s+)*[A-Za-z][\w.'\-]*)\s*$/);
-      if (m) addr = (m[1].trim() + ', ' + czM[1] + ' ' + czM[2]).replace(/\s+/g, ' ');
+      if (m) addr = (m[1].trim() + ', ' + czM[1] + ' ' + czM[2]).replace(/\s+/g,' ');
     }
   }
-  const cob = /co-?borrower[^?]*\?\s*(Y|N|Yes|No)/i.exec(text);
-  const coborrower = cob ? (/^y/i.test(cob[1]) ? 'Y' : 'N') : '';
-  // Make sure the stored address carries the state + zip so nothing gets lost.
   if (addr && zip && !addr.includes(zip)) {
-    if (state && !new RegExp('\\b' + state + '\\b').test(addr)) addr += ', ' + state;
+    if (state && !new RegExp('\\b'+state+'\\b').test(addr)) addr += ', ' + state;
     addr += ' ' + zip;
   }
+
+  // ---- SECOND PERSON + RICH FIELDS (everything possible -> notes) ----
+  const dobs = grabAll(text, 'Date of Birth\\s*:?\\s*(\\d{1,2}[\\/-]\\d{1,2}[\\/-]\\d{2,4})');
+  const genders = grabAll(text, 'Gender\\s*:?\\s*(Male|Female|M|F)\\b');
+  if (!coName) coName = grab(text, 'Spouse Name') || grab(text, 'Co-Borrower Name');
+  const coAgeM = text.match(/age of the co-?borrower\s*\??\s*:?\s*(\d{1,3})/i) || text.match(/Spouse'?s?\s*Age\s*:?\s*(\d{1,3})/i);
+  const coAge = coAgeM ? coAgeM[1] : (ageMs.length > 1 ? ageMs[1] : '');
+  const coGenderM = text.match(/gender of the co-?borrower\s*\??\s*:?\s*(Male|Female|M|F)\b/i);
+  const coGender = coGenderM ? coGenderM[1] : (genders.length > 1 ? genders[1] : '');
+  const cobFlag = /co-?borrower[^?]*\?\s*(Y|N|Yes|No)/i.exec(text);
+  const coborrower = cobFlag ? (/^y/i.test(cobFlag[1]) ? 'Y' : 'N') : (coName ? 'Y' : '');
+  const email = (text.match(/E-?mail(?:\s*Address)?\s*:?\s*([\w.+-]+@[\w.-]+\.\w{2,})/i)||[])[1] || '';
+  const lender = grab(text, 'Lender Name') || grab(text, 'Lender') || grab(text, 'Originating Lender');
+  const loanDate = (text.match(/Loan Date\s*:?\s*([\d\/-]{6,10})/i)||text.match(/ORIGINATED\s*:?\s*([\d\/-]{6,10})/i)||text.match(/\$[\d,]+\s*\((\d{1,2}\/\d{1,2}\/\d{2,4})\)/))||[];
+  const heights = grabAll(text, 'Height\\s*:?\\s*(\\d\\s*ft\\s*\\d{1,2}\\s*in|\\d\'\\s*\\d{1,2})');
+  const weights = grabAll(text, 'Weight\\s*:?\\s*(\\d{2,3})');
+  const smokers = grabAll(text, 'Smoker\\s*:?\\s*(Yes|No|Y|N)');
+  const occupation = grab(text, 'Occupation');
+  const bestTime = grab(text, 'Best Time To Call') || grab(text, 'Best times to call');
+  const county = grab(text, 'County');
+  const refId = (text.match(/Reference ID\s*:?\s*([\w-]+)/i)||[])[1] || '';
+
+  // OCR of a scanned card: never trust the handwritten phone/DOB — force review.
+  if (opts.ocr) {
+    if (!phone_flag) phone_flag = 'OCR \u2014 confirm phone against the card image';
+  }
+
   const source = classifyLeadSource(text);
-  const notesBits = [];
-  if (mortgage) notesBits.push('Mortgage: $' + mortgage);
-  if (source) notesBits.push(source);
-  if (coborrower) notesBits.push('co-borrower: ' + coborrower);
-  return { name, phone, age, address: addr, state: state || '', zip, mortgage_amount: mortgage, source, notes: notesBits.join(' \u00b7 '), include: !phone_flag, phone_flag };
+  const bits = [];
+  if (mortgage) bits.push('Mortgage: $' + mortgage);
+  if (source) bits.push(source);
+  if (dobs[0]) bits.push('DOB: ' + dobs[0]);
+  if (coName || coborrower === 'Y' || coAge || coGender || dobs[1]) {
+    const cp = [];
+    if (coName) cp.push(coName);
+    if (dobs[1]) cp.push('DOB ' + dobs[1]);
+    if (coAge) cp.push('age ' + coAge);
+    if (coGender) cp.push(coGender);
+    bits.push('Co-borrower: ' + (cp.length ? cp.join(', ') : 'Y'));
+  } else if (coborrower === 'N') { bits.push('Co-borrower: N'); }
+  if (email) bits.push('Email: ' + email);
+  if (lender) bits.push('Lender: ' + lender);
+  if (loanDate[1]) bits.push('Loan date: ' + loanDate[1]);
+  if (occupation) bits.push('Occupation: ' + occupation);
+  if (bestTime) bits.push('Best time: ' + bestTime);
+  if (heights[0] || weights[0] || smokers[0]) {
+    const hw = [];
+    if (heights[0]) hw.push(heights[0]); if (weights[0]) hw.push(weights[0] + ' lb'); if (smokers[0]) hw.push('smoker ' + smokers[0]);
+    bits.push('Borrower: ' + hw.join(', '));
+  }
+  if (heights[1] || weights[1] || smokers[1]) {
+    const hw = [];
+    if (heights[1]) hw.push(heights[1]); if (weights[1]) hw.push(weights[1] + ' lb'); if (smokers[1]) hw.push('smoker ' + smokers[1]);
+    bits.push('Co-borrower phys: ' + hw.join(', '));
+  }
+  if (county) bits.push('County: ' + county);
+  if (refId) bits.push('Ref: ' + refId);
+
+  return {
+    name, phone, age, address: addr, state: state || '', zip,
+    mortgage_amount: mortgage, source, notes: bits.join(' \u00b7 '),
+    include: !phone_flag, phone_flag, _conf: phoneLabeled || nameLabeled
+  };
 }
 
 function renderImportPreview() {
   const el = document.getElementById('li-preview');
+  if (!el) return;
   if (!_importRows.length) { el.innerHTML = ''; return; }
   el.innerHTML = _importRows.map((r, i) => {
     const isScan = !!r._scan;
@@ -6173,7 +6312,7 @@ function renderImportPreview() {
     const border = isScan ? 'border:1px solid #F0C888;background:#FFFDF8;' : flagged ? 'border:2px solid #E0A0A0;background:#FFF9F8;' : (r.source ? 'border:1px solid #e0e8f0;' : 'border:1px solid #E0A0A0;');
     return `<div style="${border}border-radius:8px;padding:8px;margin-bottom:8px;">
       ${flagged ? `<div style="font-size:11px;font-weight:600;color:#A32D2D;margin-bottom:6px;">\u26A0 Check this phone: ${r.phone_flag}</div>` : ''}
-      ${isScan ? `<div style="font-size:11px;font-weight:600;color:#854F0B;margin-bottom:6px;">Scanned card \u2014 page ${r._page}. Read it, type it, tick the box.</div>` : ''}
+      ${isScan ? `<div style="font-size:11px;font-weight:600;color:#854F0B;margin-bottom:6px;">Scanned card \u2014 page ${r._page}. ${r._ocr ? 'OCR pre-filled the printed fields \u2014 confirm the phone against the image.' : 'Read it, type it, tick the box.'}</div>` : ''}
       ${isScan && r._scan !== 'none' ? `<img src="${r._scan}" style="width:100%;border-radius:6px;border:1px solid #e0e8f0;margin-bottom:8px;" alt="Scanned lead card page ${r._page}">` : ''}
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;">
         <input type="checkbox" id="li-inc-${i}" ${r.include?'checked':''} onchange="_importRows[${i}].include=this.checked">
@@ -6185,13 +6324,16 @@ function renderImportPreview() {
         </select>
       </div>
       <div style="display:flex;gap:6px;">
-        <input value="${escAttr(r.phone)}" oninput="_importRows[${i}].phone=this.value;importAutoInclude(${i})" placeholder="Phone" style="flex:1;font-size:12px;">
+        <input value="${escAttr(r.phone)}" oninput="_importRows[${i}].phone=this.value;importAutoInclude(${i})" placeholder="Phone" style="flex:1;font-size:12px;${(flagged||isScan)?'border:1px solid #E0A0A0;background:#FFF9F8;':''}">
         <input value="${escAttr(r.age)}" oninput="_importRows[${i}].age=this.value" placeholder="Age" style="width:50px;font-size:12px;">
         <input value="${r.mortgage_amount||''}" oninput="_importRows[${i}].mortgage_amount=this.value" placeholder="Mortgage" style="width:90px;font-size:12px;">
         <input value="${r.state||''}" oninput="_importRows[${i}].state=this.value" placeholder="ST" style="width:44px;font-size:12px;">
       </div>
       <div style="margin-top:6px;">
         <input value="${escAttr(r.address)}" oninput="_importRows[${i}].address=this.value" placeholder="Address, City, ST ZIP" style="width:100%;font-size:12px;">
+      </div>
+      <div style="margin-top:6px;">
+        <input value="${escAttr(r.notes||'')}" oninput="_importRows[${i}].notes=this.value" placeholder="Notes (second person, DOB, lender\u2026)" style="width:100%;font-size:11px;color:#5f7a99;">
       </div>
     </div>`;
   }).join('') + `<button class="save-btn" id="li-import-btn" onclick="confirmLeadImport()">Import ${_importRows.filter(r=>r.include).length} lead(s)</button>`;
