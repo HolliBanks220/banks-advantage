@@ -2216,7 +2216,7 @@ function getClientAppts(c) {
   (c.cases||[]).forEach(cs => {
     if (cs.status !== 'Open') return;
     const pendingTps = (cs.touchpoints||[])
-      .filter(tp => tp.outcome === 'pending' && tp.datetime)
+      .filter(tp => tp.outcome === 'pending' && tp.datetime && !pastApptSuperseded(c, tp.datetime))
       .sort((a,b) => new Date(a.datetime) - new Date(b.datetime));
     const nextTp = pendingTps.find(tp => new Date(tp.datetime) >= now) || pendingTps[pendingTps.length-1];
     if (nextTp) {
@@ -3543,6 +3543,11 @@ function replacementBar(c) {
       'Uninsurable - no carrier would take them. The sale stands. ' +
       '<span onclick="undoUninsurable(\'' + c.id + '\')" style="color:#138181;text-decoration:underline;cursor:pointer;">Undo</span></div>';
   }
+  if (c.replacement_ack) {
+    return '<div style="background:#f0f4f8;border-radius:8px;padding:9px 11px;margin-bottom:8px;font-size:11px;color:#5f7a99;">' +
+      'Rewrite handled - reminder cleared. The declined app is unchanged. ' +
+      '<span onclick="undoRewriteDone(\'' + c.id + '\')" style="color:#138181;text-decoration:underline;cursor:pointer;">Undo</span></div>';
+  }
   if (!needsReplacement(c)) return '';
   const apps = allAppsOf(c);
   const dec = apps.find(ap => (ap.status||'') === 'Declined' && !isSuperseded(ap));
@@ -3554,12 +3559,30 @@ function replacementBar(c) {
     '<div style="font-size:12px;font-weight:600;color:#854F0B;margin-bottom:2px;">Needs a replacement policy</div>' +
     '<div style="font-size:11px;color:#854F0B;margin-bottom:8px;">' + esc(dec.carrier||'') + ' declined. They still want coverage - stays in your dial queue until this is resolved.</div>' +
     '<div style="display:flex;flex-direction:column;gap:6px;">' +
-      '<button onclick="rewriteApp(\'' + c.id + '\',' + loc.ci + ',' + loc.ti + ',' + loc.ai + ')" style="background:#138181;color:#fff;border:none;border-radius:6px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;">Log rewrite as new app written</button>' +
+      '<button onclick="rewriteApp(\'' + c.id + '\',' + loc.ci + ',' + loc.ti + ',' + loc.ai + ')" style="background:#138181;color:#fff;border:none;border-radius:6px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;">Log the rewrite</button>' +
       '<div style="display:flex;gap:6px;">' +
-        '<button onclick="window._rewriteOf=null;closeModal();openAddAppToTouchpoint(\'' + c.id + '\',' + loc.ci + ',' + loc.ti + ',\'New application\')" style="flex:1;background:#fff;border:1px solid #138181;color:#138181;border-radius:6px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;">Log new app</button>' +
+        '<button onclick="rewriteDone(\'' + c.id + '\')" style="flex:1;background:#fff;border:1px solid #138181;color:#138181;border-radius:6px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;">Rewrite done</button>' +
         '<button onclick="markUninsurable(\'' + c.id + '\')" style="flex:1;background:none;border:1px solid #BA7517;color:#BA7517;border-radius:6px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;">Out of options</button>' +
       '</div>' +
     '</div></div>';
+}
+
+// "Rewrite done": you handled coverage (wrote it elsewhere, or decided it's
+// covered). This ONLY silences the reminder - a flag on the lead. The declined
+// app keeps its status, premium, and place in history; nothing about it moves.
+async function rewriteDone(id) {
+  const c = clients.find(x=>x.id===id); if(!c) return;
+  c.replacement_ack = true;
+  showSync('Saving...');
+  try { await sb.from('clients').update({replacement_ack:true}).eq('id',id); } catch(e){}
+  hideSync(); render();
+}
+async function undoRewriteDone(id) {
+  const c = clients.find(x=>x.id===id); if(!c) return;
+  c.replacement_ack = false;
+  showSync('Saving...');
+  try { await sb.from('clients').update({replacement_ack:false}).eq('id',id); } catch(e){}
+  hideSync(); render();
 }
 
 // A lead that has served its rest and returned. Tells the agent what they're
@@ -3969,6 +3992,7 @@ async function undoUninsurable(cid) {
 
 function needsReplacement(c) {
   if (c.uninsurable) return false;   // no carrier will take them - a real ending, not a give-up
+  if (c.replacement_ack) return false;   // "Rewrite done" - reminder silenced, declined app untouched
   return allAppsOf(c).some(ap => (ap.status||'') === 'Declined' && !isSuperseded(ap));
 }
 
@@ -4389,10 +4413,10 @@ function openClient(id, keepDialCount) {
         }
       }
       return '<div style="margin-bottom:8px;"><div style="font-size:12px;font-weight:600;color:#BA7517;background:#FFF8E6;border:1px solid #F5D78E;border-radius:6px;padding:5px 10px;margin-bottom:4px;display:block;">[Callback] ' + apptLabel + '</div><button onclick="openMoveAppt(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit or delete</button>' + snoozeRow + '</div>';
-    } else if (hasOpenCase) {
-      return '<div style="margin-bottom:8px;"><div onclick="openSitOutcome(\'' + id + '\')" style="font-size:12px;font-weight:600;color:#138181;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:6px;padding:5px 10px;margin-bottom:4px;cursor:pointer;display:block;">[Appt] ' + apptLabel + ' <span style="font-size:10px;opacity:0.6;">tap to log outcome</span></div><button onclick="openMoveAppt(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit or delete</button></div>';
     } else {
-      return '<div style="margin-bottom:8px;"><div onclick="openSitOutcome(\'' + id + '\')" style="font-size:12px;font-weight:600;color:#138181;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:6px;padding:5px 10px;margin-bottom:4px;cursor:pointer;display:block;">[Appt] ' + apptLabel + ' <span style="font-size:10px;opacity:0.6;">tap to log outcome</span></div><button onclick="openMoveAppt(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit or delete</button></div>';
+      const isPast = new Date(c.appt_datetime).getTime() < Date.now();
+      const clearBtn = isPast ? '<button onclick="clearStuckAppt(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #E8B4B4;border-radius:6px;padding:3px 10px;color:#A32D2D;cursor:pointer;margin-left:6px;">Clear appointment</button>' : '';
+      return '<div style="margin-bottom:8px;"><div onclick="openSitOutcome(\'' + id + '\')" style="font-size:12px;font-weight:600;color:#138181;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:6px;padding:5px 10px;margin-bottom:4px;cursor:pointer;display:block;">[Appt] ' + apptLabel + ' <span style="font-size:10px;opacity:0.6;">tap to log outcome</span></div><button onclick="openMoveAppt(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit or delete</button>' + clearBtn + '</div>';
     }
   })():''}
   <div class="dial-row">
@@ -5156,6 +5180,47 @@ async function confirmReschedule(id) {
 
 function toLocalDT(d) {
   return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,16);
+}
+
+// The off-switch for a stuck appointment: a revived / rescheduled / handled-
+// elsewhere appointment that the sidebar keeps pinning with no clean way out.
+// Resolves every PAST pending touchpoint on open cases to 'cleared' (a resolved,
+// non-pending outcome that never counts as a sit or sale), then points the
+// appointment at the next FUTURE pending if one remains, else clears it and puts
+// the lead back in the queue. Never touches applications or history.
+async function clearStuckAppt(id) {
+  const c = clients.find(x=>x.id===id); if(!c) return;
+  if (!confirm('Clear this appointment so it drops out of your sidebar? Use this for a revived, rescheduled, or handled-elsewhere appointment that shouldn\u2019t be pinned. Nothing about applications or history changes.')) return;
+  const now = Date.now();
+  const cases = (c.cases||[]).map(cs => {
+    if (cs.status !== 'Open') return cs;
+    return {...cs, touchpoints: (cs.touchpoints||[]).map(tp =>
+      (tp && tp.outcome === 'pending' && tp.datetime && new Date(tp.datetime).getTime() <= now)
+        ? {...tp, outcome:'cleared', cleared_at:new Date().toISOString()} : tp)};
+  });
+  const futures = [];
+  cases.forEach(cs => { if (cs.status==='Open') (cs.touchpoints||[]).forEach(tp => {
+    if (tp.outcome==='pending' && tp.datetime && new Date(tp.datetime).getTime() > now) futures.push(tp.datetime);
+  }); });
+  futures.sort();
+  const nextDt = futures[0] || null;
+  const terminal = ['Closed','No sale','Dead'].includes(c.status);
+  const newStatus = nextDt ? 'Appointment set' : (terminal ? c.status : 'Working');
+  const payload = {cases, status:newStatus, appt_datetime: nextDt};
+  if (!nextDt) payload.appt_notes = null;
+  showSync('Clearing...');
+  try { await sb.from('clients').update(payload).eq('id',id); } catch(e){}
+  Object.assign(c, {cases, status:newStatus, appt_datetime:nextDt});
+  if (!nextDt) c.appt_notes = null;
+  hideSync(); if (typeof render==='function') render(); if (typeof renderSidebar==='function') renderSidebar();
+}
+
+// A past appointment that the call log shows was already no-showed or rescheduled
+// is handled - the sidebar shouldn't keep surfacing it as owed.
+function pastApptSuperseded(c, tpDatetime) {
+  const t = new Date(tpDatetime).getTime();
+  if (t >= Date.now()) return false;
+  return (c.call_log||[]).some(cl => (cl.outcome==='No show'||cl.outcome==='Rescheduled') && new Date(cl.ts).getTime() >= t - 5*60000);
 }
 
 // RESET TO NEW PRODUCT
