@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h67</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h68</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -3553,9 +3553,12 @@ function replacementBar(c) {
   return '<div style="background:#FFF6E8;border:1px solid #F0C888;border-radius:8px;padding:10px;margin-bottom:8px;">' +
     '<div style="font-size:12px;font-weight:600;color:#854F0B;margin-bottom:2px;">Needs a replacement policy</div>' +
     '<div style="font-size:11px;color:#854F0B;margin-bottom:8px;">' + esc(dec.carrier||'') + ' declined. They still want coverage - stays in your dial queue until this is resolved.</div>' +
-    '<div style="display:flex;gap:6px;">' +
-      '<button onclick="rewriteApp(\'' + c.id + '\',' + loc.ci + ',' + loc.ti + ',' + loc.ai + ')" style="flex:1;background:#138181;color:#fff;border:none;border-radius:6px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;">Write the replacement</button>' +
-      '<button onclick="markUninsurable(\'' + c.id + '\')" style="flex:1;background:none;border:1px solid #BA7517;color:#BA7517;border-radius:6px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;">Out of options</button>' +
+    '<div style="display:flex;flex-direction:column;gap:6px;">' +
+      '<button onclick="rewriteApp(\'' + c.id + '\',' + loc.ci + ',' + loc.ti + ',' + loc.ai + ')" style="background:#138181;color:#fff;border:none;border-radius:6px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;">Log rewrite as new app written</button>' +
+      '<div style="display:flex;gap:6px;">' +
+        '<button onclick="window._rewriteOf=null;closeModal();openAddAppToTouchpoint(\'' + c.id + '\',' + loc.ci + ',' + loc.ti + ',\'New application\')" style="flex:1;background:#fff;border:1px solid #138181;color:#138181;border-radius:6px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;">Log new app</button>' +
+        '<button onclick="markUninsurable(\'' + c.id + '\')" style="flex:1;background:none;border:1px solid #BA7517;color:#BA7517;border-radius:6px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;">Out of options</button>' +
+      '</div>' +
     '</div></div>';
 }
 
@@ -3939,7 +3942,7 @@ async function rewriteApp(cid, ci, ti, ai) {
   if (!old.id) { old.id = 'app_' + Math.random().toString(36).slice(2,10); await saveClientRecord(c); }
   closeModal();
   window._rewriteOf = old.id;   // picked up by the add-app save path
-  openAddApp(cid, ci, ti);
+  openAddAppToTouchpoint(cid, ci, ti, 'Rewrite \u2014 replacement for declined app');
 }
 
 // No carrier will take them. This is a real ending, not a give-up: the SALE stays
@@ -6977,13 +6980,13 @@ function productOptions(carrier, selected) {
   }).join('');
 }
 
-function openAddAppToTouchpoint(id, ci, ti) {
+function openAddAppToTouchpoint(id, ci, ti, label) {
   const c = clients.find(x=>x.id===id); if(!c) return;
   _appCount = 1;
   const defaultCarrier = getEnabledCarrierList()[0];
   showModal(`<button class="close-x" onclick="closeModal();openClient('${id}')">x</button>
   <div class="modal-title">Log application</div>
-  <div class="modal-sub">${c.name} - Sale!</div>
+  <div class="modal-sub">${c.name} - ${label || 'Sale!'}</div>
   <div id="app-entries">
     <div class="app-entry" id="app-entry-0">
       <div style="font-size:11px;font-weight:600;color:#138181;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;">Application 1</div>
@@ -7185,6 +7188,12 @@ async function saveAppsToTouchpoint(id, ci, ti) {
   showSync('Saving...');
   await sb.from('clients').update({cases:c.cases}).eq('id',id);
   hideSync();
+  // A rewrite links the new app to the declined one via window._rewriteOf. Now
+  // that it's saved: reset the one-shot marker so it can't tag the next app, and
+  // invalidate the "which declines are rewritten" cache so the replacement bar
+  // re-checks and dismisses itself instead of reading a stale answer.
+  window._rewriteOf = null;
+  clearRewriteCache();
   // After saving apps from a sale, offer reset
   showResetPromptAfterOutcome(id, 'Sale');
 }
@@ -7212,7 +7221,9 @@ function renderAppsSection(c) {
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
           <div style="background:${statusBg};color:${statusColor};font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid ${statusColor}44;">${ap.status}</div>
-          ${nextStatus ? `<button onclick="updateAppStatus('${c.id}',${ap.ci},${ap.ti},${ap.ai},'${nextStatus}')" style="font-size:9px;background:none;border:1px solid ${statusColor}66;border-radius:10px;padding:2px 8px;color:${statusColor};cursor:pointer;white-space:nowrap;">→ ${nextStatus}</button>` : '<div style="font-size:9px;color:#3B6D11;font-weight:600;">✓ Complete</div>'}
+          <select onchange="updateAppStatus('${c.id}',${ap.ci},${ap.ti},${ap.ai},this.value)" style="font-size:10px;font-weight:600;color:${statusColor};background:${statusColor}18;border:1px solid ${statusColor}44;border-radius:8px;padding:2px 6px;cursor:pointer;outline:none;">
+            ${['Written','Submitted','Approved','Issued','Paid','Free Look','Declined','Lapse','Cancel'].map(s=>`<option${s===ap.status?' selected':''}>${s}</option>`).join('')}
+          </select>
         </div>
       </div>
       <div style="display:flex;gap:6px;">
