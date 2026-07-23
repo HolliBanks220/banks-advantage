@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h68</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h69</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -2581,7 +2581,7 @@ function renderAppsTab() {
     }
 
     el.innerHTML = submittedApps.map(ap => {
-      const STATUS_OPTS = ['Written','Submitted','Approved','Issued','Paid','Free Look','Declined','Lapse','Cancel'];
+      const STATUS_OPTS = APP_STATUSES;   // one shared list - card and business always match
       const currentStatus = ap.status || 'Submitted';
       const statusColor = STATUS_COLOR[currentStatus] || '#1D3557';
       const dt = ap.tpDate ? new Date(ap.tpDate).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
@@ -2750,7 +2750,7 @@ function renderAppsTab() {
             <div style="font-size:12px;color:#138181;font-weight:600;">${fmt(monthAPV)}</div>
           </div>
           ${apps.map(ap => {
-            const STATUS_OPTS = ['Written','Submitted','Approved','Issued','Paid','Free Look','Declined','Lapse','Cancel'];
+            const STATUS_OPTS = APP_STATUSES;   // one shared list - card and business always match
             const currentStatus = ap.status || 'Placed';
             const statusColor = STATUS_COLOR[currentStatus] || '#138181';
             return `<div style="border:1px solid #e2eaf2;border-radius:10px;padding:10px 12px;margin-bottom:6px;background:#fff;">
@@ -3360,11 +3360,17 @@ function isApptImminent(c) {
   if (c.status !== 'Appointment set') return false;
   const now = new Date();
   const todayStr = now.toDateString();
+  const apptMs = c.appt_datetime ? new Date(c.appt_datetime).getTime() : null;
   return (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => {
     if (!tp || tp.outcome !== 'pending' || !tp.datetime) return false;
     if (isGhostPending(cs.touchpoints, tp)) return false;
     const dt = new Date(tp.datetime);
-    return dt.toDateString() === todayStr && now >= new Date(dt.getTime() - 2*60000);
+    if (dt.toDateString() !== todayStr || now < new Date(dt.getTime() - 2*60000)) return false;
+    // Only THE current appointment can be imminent. A stale pending on a duplicate
+    // or other case - whose real appointment was rescheduled elsewhere, so
+    // appt_datetime points somewhere else - must not keep firing APPT NOW.
+    if (apptMs !== null && Math.abs(dt.getTime() - apptMs) > 5*60000) return false;
+    return true;
   }));
 }
 
@@ -4485,7 +4491,13 @@ function openSitOutcome(id) {
     const caseButtons = openCases.map((cs, i) => {
       const realIdx = (c.cases||[]).findIndex(x=>x===cs);
       const color = cs.type==='Retirement'?'#138181':cs.type==='Debt Free Life'||cs.type==='Infinite Banking'?'#534AB7':'#1D3557';
-      return '<button onclick="closeModal();showSitOutcomeModal(\''+id+'\','+realIdx+')" style="flex:1;background:'+color+';color:#fff;border:none;border-radius:8px;padding:10px;font-size:12px;font-weight:500;cursor:pointer;">'+cs.type+'</button>';
+      // Distinguisher so two same-type cases aren't identical buttons: show the
+      // case's pending appointment time (or its latest touchpoint if none pending).
+      const pend = (cs.touchpoints||[]).filter(tp=>tp&&tp.outcome==='pending'&&tp.datetime).sort((a,b)=>new Date(a.datetime)-new Date(b.datetime))[0];
+      const ref = pend || (cs.touchpoints||[]).slice().reverse().find(tp=>tp&&tp.datetime);
+      const sub = ref && ref.datetime ? new Date(ref.datetime).toLocaleDateString('en-US',{month:'short',day:'numeric'})+' '+new Date(ref.datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : '';
+      const subLine = sub ? '<div style="font-size:10px;opacity:.85;font-weight:400;margin-top:2px;">'+(pend?'appt ':'last ')+sub+'</div>' : '';
+      return '<button onclick="closeModal();showSitOutcomeModal(\''+id+'\','+realIdx+')" style="flex:1;background:'+color+';color:#fff;border:none;border-radius:8px;padding:10px;font-size:12px;font-weight:500;cursor:pointer;">'+cs.type+subLine+'</button>';
     }).join('');
     showModal('<button class="close-x" onclick="closeModal()">x</button>' +
       '<div class="modal-title">Which case?</div>' +
@@ -6688,14 +6700,14 @@ function renderCasesHtml(c) {
     // Apps for this case
     const caseApps = (cs.touchpoints||[]).flatMap((tp,ti) => (tp.apps||[]).map((ap,ai) => ({...ap, ti, ai})));
     const appsHtml = caseApps.length ? caseApps.map(ap => {
-      const sc = {'Paid':'#3B6D11','Placed':'#138181','Approved':'#534AB7','Submitted':'#BA7517','Written':'#1D3557'}[ap.status]||'#1D3557';
+      const sc = appStatusColor(ap.status);
       return '<div style="background:#f7fafd;border:1px solid #e2eaf2;border-radius:6px;padding:6px 8px;margin-top:4px;display:flex;justify-content:space-between;align-items:center;">' +
         '<div>' +
           '<div style="font-size:11px;font-weight:500;color:#1D3557;">' + ap.carrier + ' - ' + ap.product + '</div>' +
           '<div style="font-size:10px;color:#5f7a99;"><strong style="color:#1D3557;">$' + ((ap.premium||0)/12).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + '/mo</strong> · $' + (ap.premium||0).toLocaleString() + ' APV · ' + (ap.who||'Borrower') + '</div>' +
         '</div>' +
         '<select onchange="updateAppStatus(\''+c.id+'\','+ci+','+ap.ti+','+ap.ai+',this.value)" style="font-size:10px;border:1px solid #e2eaf2;border-radius:4px;padding:2px 4px;color:'+sc+';font-weight:600;background:#fff;">' +
-          ['Written','Submitted','Approved','Issued','Paid'].map(s => '<option' + (ap.status===s?' selected':'') + '>' + s + '</option>').join('') +
+          appStatusOptions(ap.status) +
         '</select>' +
       '</div>';
     }).join('') : '';
@@ -7037,7 +7049,19 @@ async function saveEditTouchpoint(id, ci, ti) {
 }
 
 // APPLICATION SYSTEM
-const APP_STATUSES = ['Written','Submitted','Approved','Issued','Paid'];
+// ONE list, used by every status control on the card, in the Edit app modal, and
+// in Business. They all read and write the same ap.status, so matching the option
+// list is what makes the card and the business list agree in both directions.
+const APP_STATUSES = ['Written','Submitted','Approved','Issued','Paid','Free Look','Declined','Lapse','Cancel'];
+const APP_STATUS_COLORS = {
+  'Written':'#1D3557','Submitted':'#BA7517','Approved':'#534AB7','Issued':'#138181',
+  'Paid':'#3B6D11','Placed':'#138181','Free Look':'#BA7517',
+  'Declined':'#A32D2D','Lapse':'#A32D2D','Cancel':'#A32D2D'
+};
+function appStatusColor(s) { return APP_STATUS_COLORS[s] || '#1D3557'; }
+function appStatusOptions(sel) {
+  return APP_STATUSES.map(s => '<option' + (s === sel ? ' selected' : '') + '>' + s + '</option>').join('');
+}
 
 function carrierOptions(selected) {
   return getEnabledCarrierList().map(c => `<option${selected===c?' selected':''}>${c}</option>`).join('');
@@ -7284,7 +7308,6 @@ function renderAppsSection(c) {
     const statusColor = statusColors[ap.status]||'#1D3557';
     const statusBg = statusBgs[ap.status]||'#EEF1F6';
     const dt = ap.tpDate ? new Date(ap.tpDate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
-    const nextStatus = APP_STATUSES[APP_STATUSES.indexOf(ap.status)+1] || null;
     return `<div style="border:1px solid ${statusColor}33;border-radius:8px;padding:10px 12px;margin-bottom:6px;background:#fff;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
         <div>
@@ -7295,7 +7318,7 @@ function renderAppsSection(c) {
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
           <div style="background:${statusBg};color:${statusColor};font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid ${statusColor}44;">${ap.status}</div>
           <select onchange="updateAppStatus('${c.id}',${ap.ci},${ap.ti},${ap.ai},this.value)" style="font-size:10px;font-weight:600;color:${statusColor};background:${statusColor}18;border:1px solid ${statusColor}44;border-radius:8px;padding:2px 6px;cursor:pointer;outline:none;">
-            ${['Written','Submitted','Approved','Issued','Paid','Free Look','Declined','Lapse','Cancel'].map(s=>`<option${s===ap.status?' selected':''}>${s}</option>`).join('')}
+            ${appStatusOptions(ap.status)}
           </select>
         </div>
       </div>
