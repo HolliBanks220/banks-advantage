@@ -148,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h89</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h91</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -3526,6 +3526,21 @@ function previewRunner() {
   pv.textContent = tone ? person.cp.replace(base, base + tone) : person.cp;
 }
 
+// The only mark a fresh lead gets. No badge, no words - the emoji is the whole
+// message, and it disappears the moment it stops being true.
+//   never called  -> nobody has touched this yet
+//   called, behind -> you're on it, not done
+// Fresh only (days 0-3). Older leads say what they need through their status
+// and their place in the queue.
+function freshMark(c) {
+  try {
+    if (leadStage(c) !== 'fresh') return null;
+    if (attemptCount(c) === 0) return {label:'\uD83D\uDE33', color:'#A32D2D', bg:'transparent', fire:false, bare:true};
+    if (isBehindPace(c)) return {label:runnerEmoji(), color:'#A32D2D', bg:'transparent', fire:false, bare:true};
+    return null;
+  } catch (e) { return null; }
+}
+
 function statusBadge(s) { const m={'New':'b-New','Working':'b-Working','Appointment set':'b-Appt','Closed':'b-Closed','No sale':'b-No','No show':'b-Noshow','Dead':'b-Dead','Follow-up':'b-Followup'}; return 'badge '+(m[s]||'b-New'); }
 function dotClass(s) { if(s.outcome==='showed')return'jd-showed'; if(s.outcome==='noshow')return'jd-noshow'; if(s.outcome==='canceled')return'jd-cancel'; return'jd-pending'; }
 
@@ -4182,12 +4197,10 @@ function getUrgencyBadge(c) {
     if (isFollowUpDue(c)) return {label:'\uD83D\uDCCB Follow-up due', color:'#534AB7', bg:'#F3EEFF', fire:false};
     // A real timed callback that's due (the -300 band) still reads Callback.
     if (isCallbackDueNow(c) && !isCallbackSnoozeActive(c)) return {label:'\uD83D\uDD04 Callback', color:'#BA7517', bg:'#FFF8E6', fire:false};
-    // Everything else under 20 is a fresh, never-dialed, in-window lead. It's
-    // your top new lead - but "call now" only repeats the sort order, so it
-    // earns a badge only when it's actually falling behind its pace.
-    return isBehindPace(c)
-      ? {label:runnerEmoji()+' Fresh \u2014 falling behind', color:'#A32D2D', bg:'#FFE9E9', fire:false}
-      : null;
+    // A fresh lead in its window. No badge, no words - just one mark, and only
+    // while it needs one: nobody has touched it yet, or you're on it but not
+    // done. Everything else here is already said by its place in the list.
+    return freshMark(c);
   }
 
   if (score < 30) return null;   // no-show recovery: the sort already puts it here
@@ -4196,9 +4209,7 @@ function getUrgencyBadge(c) {
   // position in the list doesn't - except a text that's actually owed.
   if (score < 120) {
     if (isReadyForText(c)) return {label:'\uD83D\uDCAC Text needed', color:'#138181', bg:'#F0FBF7', fire:false};
-    return isBehindPace(c)
-      ? {label:runnerEmoji()+' Falling behind', color:'#BA7517', bg:'#FFF6E8', fire:false}
-      : null;
+    return freshMark(c);
   }
 
   if (status === 'Follow-up') return {label:'\uD83D\uDCCB Follow-up', color:'#534AB7', bg:'#F3EEFF', fire:false};
@@ -4295,6 +4306,9 @@ function getNoShowBadge(c) {
 function getUrgencyBadgeHtml(c) {
   const badge = getUrgencyBadge(c);
   if (!badge) return '';
+  // A bare mark is the emoji and nothing else - no pill, no label. It's meant
+  // to catch your eye, not to be read.
+  if (badge.bare) return '<div style="font-size:15px;line-height:1;margin-top:3px;">' + badge.label + '</div>';
   return '<div style="font-size:9px;font-weight:600;color:' + badge.color + ';background:' + badge.bg + ';border-radius:4px;padding:2px 6px;margin-top:3px;display:inline-block;">' + badge.label + '</div>';
 }
 
@@ -5228,7 +5242,7 @@ function openClient(id, keepDialCount) {
   <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
     <a href="tel:${(c.phone||'').replace(/[^0-9+]/g,'')}" onclick="autoIncrementDial();setTimeout(()=>window.focus(),3000)" style="font-size:13px;color:#138181;font-weight:500;text-decoration:none;margin-right:4px;"> ${c.phone||''}</a>
     <input id="edit-phone" value="${escAttr(c.phone)}" style="font-size:11px;color:#5f7a99;border:none;border-bottom:1px solid transparent;outline:none;background:transparent;font-family:inherit;width:120px;padding:0;" onfocus="this.style.borderBottomColor='#138181'" onblur="this.style.borderBottomColor='transparent'" placeholder="edit number">
-    <span style="color:#5f7a99;font-size:13px;">- ${c.state||''} - <span class="${badgeClass(c.source)}">${c.source||''}</span></span>
+    <span style="color:#5f7a99;font-size:13px;">${(c.state && !(c.address||'').includes(c.state)) ? '- ' + c.state + ' ' : ''}- <span class="${badgeClass(c.source)}">${c.source||''}</span></span>
   </div>
   ${c.address?`<div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">${c.address}</div>`:''}
   ${(()=>{
