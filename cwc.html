@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h75</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h76</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -258,18 +258,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-val val-white" id="p-first" style="cursor:pointer;" onclick="drillDown('appts')">0</div>
         <div class="stat-sub sub-white" id="p-first-rate">- show rate</div>
       </div>
-      <div class="stat" style="background:#EBF3FF;">
-        <div class="stat-lbl" style="color:#1D3557;">Upcoming</div>
-        <div class="stat-val" style="color:#1D3557;cursor:pointer;" id="p-upcoming" onclick="drillDown('upcoming')">0</div>
-        <div class="stat-sub" style="color:#5f7a99;" id="p-upcoming-sub">-</div>
-      </div>
-      <div class="stat" style="background:#FFF6E8;">
-        <div class="stat-lbl" style="color:#854F0B;">Needs outcome</div>
-        <div class="stat-val" style="color:#854F0B;cursor:pointer;" id="p-needs-outcome" onclick="drillDown('needsoutcome')">0</div>
-        <div class="stat-sub" style="color:#854F0B;" id="p-needs-sub">-</div>
-      </div>
-    </div>
-    <div class="stat-row">
       <div class="stat stat-teal">
         <div class="stat-lbl lbl-white">Sits</div>
         <div class="stat-val val-white" id="p-showed" style="cursor:pointer;" onclick="drillDown('showed')">0</div>
@@ -279,6 +267,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-lbl lbl-amber">No Shows</div>
         <div class="stat-val val-amber" id="p-noshow" style="cursor:pointer;" onclick="drillDown('noshow')">0</div>
         <div class="stat-sub" style="color:#854F0B;" id="p-cancel">-</div>
+      </div>
+    </div>
+    <div class="stat-row">
+      <div class="stat" style="background:#EBF3FF;">
+        <div class="stat-lbl" style="color:#1D3557;">Upcoming</div>
+        <div class="stat-val" style="color:#1D3557;cursor:pointer;" id="p-upcoming" onclick="drillDown('upcoming')">0</div>
+        <div class="stat-sub" style="color:#5f7a99;" id="p-upcoming-sub">-</div>
+      </div>
+      <div class="stat stat-navy-lt" id="p-cont-tile">
+        <div class="stat-lbl lbl-navy">Continuations</div>
+        <div class="stat-val val-navy" id="p-cont" style="cursor:pointer;" onclick="drillDown('cont')">0</div>
+        <div class="stat-sub sub-navy" id="p-cont-sub">-</div>
+      </div>
+      <div class="stat stat-purple">
+        <div class="stat-lbl lbl-purple">Resets</div>
+        <div class="stat-val val-purple" id="p-resets" style="cursor:pointer;" onclick="drillDown('resets')">0</div>
+        <div class="stat-sub" style="color:#3C3489;" id="p-resets-sub">-</div>
       </div>
     </div>
     <div class="stat-row">
@@ -292,27 +297,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-val val-red" id="p-nosales" style="cursor:pointer;" onclick="drillDown('nosales')">0</div>
         <div class="stat-sub" style="color:#791F1F;" id="p-nosales-sub">-</div>
       </div>
-      <div class="stat stat-navy-lt">
-        <div class="stat-lbl lbl-navy">Continuations</div>
-        <div class="stat-val val-navy" id="p-cont" style="cursor:pointer;" onclick="drillDown('cont')">0</div>
-        <div class="stat-sub sub-navy" id="p-cont-sub">-</div>
-      </div>
-    </div>
-    <div class="stat-row">
       <div class="stat stat-green">
         <div class="stat-lbl lbl-green">Apps submitted</div>
         <div class="stat-val val-green" id="p-closed">0</div>
         <div class="stat-sub sub-green" id="p-close-rate">- per sale</div>
-      </div>
-      <div class="stat stat-purple">
-        <div class="stat-lbl lbl-purple">Resets</div>
-        <div class="stat-val val-purple" id="p-resets" style="cursor:pointer;" onclick="drillDown('resets')">0</div>
-        <div class="stat-sub" style="color:#3C3489;" id="p-resets-sub">-</div>
-      </div>
-      <div class="stat stat-amber">
-        <div class="stat-lbl lbl-amber">PPUs</div>
-        <div class="stat-val val-amber" id="p-ppu" style="cursor:pointer;" onclick="drillDown('ppu')">0</div>
-        <div class="stat-sub" style="color:#854F0B;" id="p-ppu-sub">- sold</div>
       </div>
     </div>
     <div class="stat-row">
@@ -1243,28 +1231,53 @@ function collectProduction(start, end) {
 function renderProduction() {
   const el = document.getElementById('production-panel');
   if (!el) return;
-  // The old "Production detail" block was removed. This slot now surfaces
-  // referral payouts you still owe, so nobody who sent you business gets missed.
+  // This strip holds the two things that only matter when they're pending:
+  // a referral thank-you you owe, and appointments still needing an outcome.
+  // Both stay hidden otherwise so the board isn't carrying dead weight.
+  const APPROVED = ['Approved','Issued','Paid','Free Look','Lapse','Cancel'];
+  const reachedApproved = (lead) => !!lead && (lead.cases||[]).some(cs =>
+    (cs.touchpoints||[]).some(tp => (tp.apps||[]).some(ap => APPROVED.includes(ap.status||''))));
   const owed = [];
   clients.forEach(c => {
     (c.referrals || []).forEach(r => {
-      if (!r.paid) {
-        const lead = clients.find(x => x.id === r.id);
-        owed.push({ referrerId: c.id, referrerName: c.name, refId: r.id, refName: r.name || (lead && lead.name) || 'referral', amount: r.amount || 30 });
-      }
+      if (r.paid) return;
+      const lead = clients.find(x => x.id === r.id);
+      // A thank-you is owed once their referral actually got approved - not when
+      // the app is merely written or submitted, and never on a decline.
+      if (!reachedApproved(lead)) return;
+      owed.push({ referrerId: c.id, referrerName: c.name, refId: r.id, refName: r.name || (lead && lead.name) || 'referral', amount: r.amount || 30 });
     });
   });
-  if (!owed.length) { el.style.display = 'none'; return; }
+
+  let needsN = 0, fixableN = 0;
+  try {
+    const nowMs = Date.now();
+    const {start: qS, end: qE} = getPeriodBounds('production');
+    clients.forEach(c => (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+      if (!tp || !tp.datetime) return;
+      if (tp.outcome && tp.outcome !== 'pending') return;
+      const d = new Date(tp.datetime);
+      if (d < qS || d > qE || d.getTime() >= nowMs) return;
+      needsN++;
+    })));
+    fixableN = findUnloggedSits().length;
+  } catch(e) {}
+
+  if (!owed.length && !needsN) { el.style.display = 'none'; el.innerHTML = ''; return; }
   el.style.display = 'block';
   const total = owed.reduce((s, o) => s + (o.amount || 30), 0);
-  el.innerHTML = `
-    <div style="font-size:11px;font-weight:700;color:#1D3557;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Referral payouts owed &middot; $${total}</div>
+  const needsBtn = needsN ? '<div style="margin-top:' + (owed.length ? '10px' : '0') + ';display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+      '<button onclick="drillDown(\'needsoutcome\')" style="font-size:11px;font-weight:600;background:#FFF6E8;border:1px solid #F0C888;color:#854F0B;border-radius:6px;padding:4px 10px;cursor:pointer;">' + needsN + ' need an outcome</button>' +
+      (fixableN ? '<span onclick="reviewUnloggedSits()" style="font-size:11px;color:#138181;text-decoration:underline;cursor:pointer;">' + fixableN + ' resolved elsewhere \u2014 fix</span>' : '') +
+    '</div>' : '';
+  el.innerHTML =
+    (owed.length ? `
+    <div style="font-size:11px;font-weight:700;color:#1D3557;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Referral thank you &middot; $${total}</div>
     ${owed.map(o => `
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0;border-top:1px solid #eef2f7;">
         <div style="font-size:12px;color:#1D3557;">$${o.amount||30} to <strong onclick="openClient('${o.referrerId}')" style="cursor:pointer;text-decoration:underline;">${o.referrerName}</strong> <span style="color:#8fa8c0;">(ref: ${o.refName})</span></div>
         <button onclick="markReferralPaid('${o.referrerId}','${o.refId}')" style="font-size:11px;background:#138181;color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-weight:500;flex-shrink:0;">Mark paid</button>
-      </div>`).join('')}
-  `;
+      </div>`).join('')}` : '') + needsBtn;
 }
 
 async function markReferralPaid(referrerId, refId) {
@@ -1460,6 +1473,22 @@ function renderScore() {
   const legacyNoSales = allSits.filter(s=>s.outcome==='showed'&&(s.apps||[]).length===0).length;
   const totalNoSales = allTPs.filter(t=>t.outcome==='nosale').length + legacyNoSales;
   const totalCont = allTPs.filter(t=>t.outcome==='cont').length;
+  // What each continuation booked next. The reason lives on the pending
+  // touchpoint the continuation created, so read the next one in that case.
+  let contPPU = 0, contTAI = 0;
+  clients.forEach(c => (c.cases||[]).forEach(cs => {
+    const tps = (cs.touchpoints||[]).slice().sort((a,b)=> new Date(a.datetime)-new Date(b.datetime));
+    tps.forEach((tp,i) => {
+      if (tp.outcome !== 'cont' || !tp.datetime) return;
+      const d = new Date(tp.datetime);
+      if (d < pStart || d > pEnd) return;
+      const nxt = tps[i+1];
+      const ty = (nxt && nxt.type) || tp.next_type || '';
+      if (/ppu|policy\s*pickup/i.test(ty)) contPPU++;
+      else if (/think/i.test(ty)) contTAI++;
+      // anything else is advance market - counted in the total, not broken out
+    });
+  }));
 
   // EVERY appointment lands in exactly one bucket. Anything that falls through
   // these is a leak - before this, 22 of 138 appointments sat in no bucket at
@@ -1562,25 +1591,15 @@ function renderScore() {
   if (upEl) upEl.textContent = upcomingAppts;
   const upSub = document.getElementById('p-upcoming-sub');
   if (upSub) upSub.textContent = upcomingAppts ? 'still to come' : '-';
-  const noEl = document.getElementById('p-needs-outcome');
-  if (noEl) noEl.textContent = needsOutcome;
-  const noSub = document.getElementById('p-needs-sub');
-  if (noSub) {
-    let fixable = 0;
-    try { fixable = findUnloggedSits().length; } catch(e) {}
-    if (fixable) {
-      noSub.innerHTML = '<span onclick="event.stopPropagation();reviewUnloggedSits()" style="text-decoration:underline;cursor:pointer;">' + fixable + ' resolved elsewhere \u2014 fix</span>';
-    } else {
-      noSub.textContent = needsOutcome ? 'log these' : 'all logged';
-    }
-  }
-  // Reconciliation: the buckets must account for every appointment. If they ever
-  // don't, say so loudly rather than letting sits quietly vanish again.
+  // Rates measure what HAPPENED. An appointment still in the future can't have
+  // shown or no-showed, so it stays out of the denominator - otherwise a week
+  // with a full calendar ahead reads as a bad show week.
+  const heldAppts = Math.max(0, periodAppts - upcomingAppts);
   const recEl = document.getElementById('p-first-rate');
   if (recEl) {
     recEl.textContent = unbucketed === 0
-      ? pct(totalShowed, periodAppts) + ' show rate'
-      : pct(totalShowed, periodAppts) + ' show rate \u00b7 \u26a0 ' + unbucketed + ' unaccounted';
+      ? pct(totalShowed, heldAppts) + ' show rate'
+      : pct(totalShowed, heldAppts) + ' show rate \u00b7 \u26a0 ' + unbucketed + ' unaccounted';
   }
   document.getElementById('p-showed').textContent = totalShowed;
   // Continuations decided nothing yet, so they're excluded here AND from the
@@ -1588,15 +1607,18 @@ function renderScore() {
   const decidedSits = totalSales + totalNoSales;
   document.getElementById('p-sit-rate').textContent = decidedSits > 0 ? decidedSits + ' decided' : '- decided';
   document.getElementById('p-noshow').textContent = totalNoShows;
-  document.getElementById('p-cancel').textContent = periodAppts>0 ? pct(totalNoShows,periodAppts)+' no-show rate' : '-';
+  document.getElementById('p-cancel').textContent = heldAppts>0 ? pct(totalNoShows,heldAppts)+' no-show rate' : '-';
   document.getElementById('p-sales').textContent = totalSales;
   document.getElementById('p-sales-sub').textContent = decidedSits > 0 ? pct(totalSales, decidedSits) + ' close rate' : '- close rate';
   document.getElementById('p-nosales').textContent = totalNoSales;
   document.getElementById('p-nosales-sub').textContent = pct(totalNoSales,totalShowed)+' of sits';
   document.getElementById('p-cont').textContent = totalCont;
-  document.getElementById('p-cont-sub').textContent = pct(totalCont,totalShowed)+' of sits';
-  document.getElementById('p-ppu').textContent = totalPPUs;
-  document.getElementById('p-ppu-sub').textContent = ppuSales+' sold ('+ppuCloseRate+') vs '+nonPPUCloseRate+' w/o PPU';
+  const contBits = [];
+  if (contPPU) contBits.push(contPPU + ' PPU');
+  if (contTAI) contBits.push(contTAI + ' TAI');
+  document.getElementById('p-cont-sub').textContent = contBits.length ? contBits.join(' \u00b7 ') : pct(totalCont,totalShowed)+' of sits';
+  const contTile = document.getElementById('p-cont-tile');
+  if (contTile) contTile.title = 'PPU close rate ' + ppuCloseRate + ' (' + ppuSales + ' sold of ' + totalPPUs + ') vs ' + nonPPUCloseRate + ' without PPU';
   document.getElementById('p-resets').textContent = totalResets;
   document.getElementById('p-closed').textContent = appsWritten;
   document.getElementById('p-close-rate').textContent = totalSales > 0 ? (appsWritten/totalSales).toFixed(1) + ' per sale' : '- per sale';
