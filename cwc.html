@@ -148,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h87</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h89</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -3487,6 +3487,45 @@ function isBehindPace(c) {
   } catch (e) { return false; }
 }
 
+// ── YOUR RUNNER ─────────────────────────────────────────────────────────────
+// The falling-behind badge, made yours. Built from the base runner plus the
+// standard modifiers, stored per agent so it follows the person, not the device.
+const RUNNER_PEOPLE = [
+  {v:'n', n:'Runner',       cp:'\uD83C\uDFC3'},
+  {v:'f', n:'Woman',        cp:'\uD83C\uDFC3\u200D\u2640\uFE0F'},
+  {v:'m', n:'Man',          cp:'\uD83C\uDFC3\u200D\u2642\uFE0F'}
+];
+const RUNNER_TONES = [
+  {v:'0', n:'Default',      mod:''},
+  {v:'1', n:'Light',        mod:'\uD83C\uDFFB'},
+  {v:'2', n:'Medium light', mod:'\uD83C\uDFFC'},
+  {v:'3', n:'Medium',       mod:'\uD83C\uDFFD'},
+  {v:'4', n:'Medium dark',  mod:'\uD83C\uDFFE'},
+  {v:'5', n:'Dark',         mod:'\uD83C\uDFFF'}
+];
+function runnerPrefs() {
+  const st = getAgentSettings() || {};
+  return { person: st.runnerPerson || 'n', tone: st.runnerTone || '0' };
+}
+function runnerEmoji() {
+  const p = runnerPrefs();
+  const person = RUNNER_PEOPLE.find(x=>x.v===p.person) || RUNNER_PEOPLE[0];
+  const tone = (RUNNER_TONES.find(x=>x.v===p.tone) || RUNNER_TONES[0]).mod;
+  if (!tone) return person.cp;
+  // The tone modifier attaches to the base figure, before any gender sequence.
+  const base = '\uD83C\uDFC3';
+  return person.cp.replace(base, base + tone);
+}
+function previewRunner() {
+  const pe = document.getElementById('s-runner-person'), to = document.getElementById('s-runner-tone');
+  const pv = document.getElementById('s-runner-preview');
+  if (!pv) return;
+  const person = RUNNER_PEOPLE.find(x=>x.v===(pe&&pe.value)) || RUNNER_PEOPLE[0];
+  const tone = (RUNNER_TONES.find(x=>x.v===(to&&to.value)) || RUNNER_TONES[0]).mod;
+  const base = '\uD83C\uDFC3';
+  pv.textContent = tone ? person.cp.replace(base, base + tone) : person.cp;
+}
+
 function statusBadge(s) { const m={'New':'b-New','Working':'b-Working','Appointment set':'b-Appt','Closed':'b-Closed','No sale':'b-No','No show':'b-Noshow','Dead':'b-Dead','Follow-up':'b-Followup'}; return 'badge '+(m[s]||'b-New'); }
 function dotClass(s) { if(s.outcome==='showed')return'jd-showed'; if(s.outcome==='noshow')return'jd-noshow'; if(s.outcome==='canceled')return'jd-cancel'; return'jd-pending'; }
 
@@ -4147,7 +4186,7 @@ function getUrgencyBadge(c) {
     // your top new lead - but "call now" only repeats the sort order, so it
     // earns a badge only when it's actually falling behind its pace.
     return isBehindPace(c)
-      ? {label:'\uD83D\uDE92 Fresh \u2014 falling behind', color:'#A32D2D', bg:'#FFE9E9', fire:false}
+      ? {label:runnerEmoji()+' Fresh \u2014 falling behind', color:'#A32D2D', bg:'#FFE9E9', fire:false}
       : null;
   }
 
@@ -4158,7 +4197,7 @@ function getUrgencyBadge(c) {
   if (score < 120) {
     if (isReadyForText(c)) return {label:'\uD83D\uDCAC Text needed', color:'#138181', bg:'#F0FBF7', fire:false};
     return isBehindPace(c)
-      ? {label:'\uD83D\uDE92 Falling behind', color:'#BA7517', bg:'#FFF6E8', fire:false}
+      ? {label:runnerEmoji()+' Falling behind', color:'#BA7517', bg:'#FFF6E8', fire:false}
       : null;
   }
 
@@ -9526,6 +9565,16 @@ function openSettings() {
         '<div class="field" style="flex:1;"><label>Push-off rest</label><input type="number" id="s-pushoff" value="' + dodgeDays() + '"></div>' +
       '</div>' +
       '<div style="font-size:10px;color:#8fa8c0;margin:2px 0 8px 0;">A lead goes dormant at either gate: heavily worked (gate 1) or moderately worked but aged (gate 2).</div>' +
+      '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin:10px 0 6px 0;">Your runner</div>' +
+      '<div style="display:flex;gap:8px;align-items:flex-end;">' +
+        '<div style="font-size:30px;line-height:1;" id="s-runner-preview">' + runnerEmoji() + '</div>' +
+        '<div class="field" style="flex:1;"><label>Person</label><select id="s-runner-person" onchange="previewRunner()">' +
+          RUNNER_PEOPLE.map(p => '<option value="' + p.v + '"' + (runnerPrefs().person===p.v?' selected':'') + '>' + p.n + '</option>').join('') +
+        '</select></div>' +
+        '<div class="field" style="flex:1;"><label>Tone</label><select id="s-runner-tone" onchange="previewRunner()">' +
+          RUNNER_TONES.map(t => '<option value="' + t.v + '"' + (runnerPrefs().tone===t.v?' selected':'') + '>' + t.n + '</option>').join('') +
+        '</select></div>' +
+      '</div>' +
       '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Attempt pace bars (per lead, by age)</div>' +
       '<div style="display:flex;gap:8px;">' +
         '<div class="field" style="flex:1;"><label>Fresh target (day 0-3)</label><input type="number" id="s-pace-1" value="' + paceRules().fresh + '"></div>' +
@@ -9585,6 +9634,9 @@ function saveProfileSettings() {
   if (dd2) settings.dormantDays2 = parseInt(dd2.value) || 28;
   const nst = document.getElementById('s-noshow-tries'), dkc = document.getElementById('s-dorm-kill');
   if (nst) settings.noShowTries = parseInt(nst.value) || 3;
+  const rp = document.getElementById('s-runner-person'), rt = document.getElementById('s-runner-tone');
+  if (rp) settings.runnerPerson = rp.value;
+  if (rt) settings.runnerTone = rt.value;
   if (dkc) settings.dormantKillCount = parseInt(dkc.value) || 3;
   const p1 = document.getElementById('s-pace-1'), p2 = document.getElementById('s-pace-2'), p3 = document.getElementById('s-pace-3');
   if (p1) settings.paceFresh = parseInt(p1.value) || 3;
