@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h81</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h82</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -1572,6 +1572,23 @@ function renderScore() {
   const supersededAppts = countableTPs.filter(t => t.outcome === 'superseded').length;
   const bucketed = attendedAppts + totalNoShows + needsOutcome
                  + rescheduledAppts + cancelledAppts;
+
+  // Coaching split. Same total, three different diagnoses:
+  //   first + lost      -> qualification. No real why; shouldn't have been booked.
+  //   first + recovered -> mechanics. They meant it; tie-down/confirmation/lead time.
+  //   in-process        -> urgency and logistics. They already bought in.
+  let nsFirstLost = 0, nsFirstRecovered = 0, nsInProcess = 0;
+  const recoveredLeads = [];
+  clients.forEach(c => (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+    if (!tp || tp.outcome !== 'noshow' || !tp.datetime) return;
+    const d = new Date(tp.datetime);
+    if (d < pStart || d > pEnd) return;
+    if (!isFirstAppt(cs, tp)) { nsInProcess++; return; }
+    if (caseEverSat(cs)) { nsFirstRecovered++; recoveredLeads.push({c, tp}); }
+    else nsFirstLost++;
+  })));
+  const leadDays = recoveredLeads.map(r => apptLeadDays(r.c, r.tp)).filter(n => n !== null);
+  const avgLeadDays = leadDays.length ? Math.round(leadDays.reduce((a,b)=>a+b,0)/leadDays.length) : null;
   const unbucketed = periodAppts - bucketed;   // must be 0; shown if it ever isn't
 
   const allCasesInPeriod = clients.flatMap(c => (c.cases||[]).filter(cs => {
@@ -1674,7 +1691,18 @@ function renderScore() {
   const decidedSits = totalSales + totalNoSales;   // saw options and answered
   document.getElementById('p-sit-rate').textContent = decidedSits > 0 ? decidedSits + ' decided' : '- decided';
   document.getElementById('p-noshow').textContent = totalNoShows;
-  document.getElementById('p-cancel').textContent = heldAppts>0 ? pct(totalNoShows,heldAppts)+' no-show rate' : '-';
+  const nsSub = document.getElementById('p-cancel');
+  if (nsSub) {
+    if (totalNoShows) {
+      const parts = [];
+      if (nsFirstLost || nsFirstRecovered) parts.push((nsFirstLost + nsFirstRecovered) + ' first');
+      if (nsInProcess) parts.push(nsInProcess + ' in-process');
+      nsSub.innerHTML = '<span onclick="event.stopPropagation();openCoaching()" style="text-decoration:underline;cursor:pointer;">' + parts.join(' \u00b7 ') + '</span>';
+    } else {
+      nsSub.textContent = heldAppts>0 ? pct(totalNoShows,heldAppts)+' no-show rate' : '-';
+    }
+  }
+  window._coach = {nsFirstLost, nsFirstRecovered, nsInProcess, avgLeadDays, pStart, pEnd};
   document.getElementById('p-sales').textContent = totalSales;
   const withDropped = decidedSits + totalDropped;
   document.getElementById('p-sales-sub').textContent = decidedSits > 0
@@ -3239,6 +3267,111 @@ function hasSold(c) {
   return (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp =>
       tp && (tp.outcome === 'sale' || (tp.apps||[]).length)))
     || (c.sits||[]).some(s => (s.apps||[]).length);
+}
+
+// ── COACHING SIGNALS ────────────────────────────────────────────────────────
+// The case is the unit, not the appointment. One client who no-showed, sat,
+// missed two PPUs and came back to close is SIX appointments and ONE sale -
+// counted as appointments that reads like chaos, counted as a case it's a
+// grind that closed. These helpers say which kind of trouble each one is.
+const ATTENDED_OUTCOMES = ['sale','nosale','cont','dropped'];
+
+// Appointments on a case, oldest first, ignoring PPU/TAI legs of the same one.
+function caseAppts(cs) {
+  return (cs.touchpoints||[])
+    .filter(tp => tp && tp.datetime && !tp.continues_appt && !['closed','superseded'].includes(tp.outcome))
+    .sort((a,b) => new Date(a.datetime) - new Date(b.datetime));
+}
+// Is this the FIRST appointment on its case? A first-appointment no-show is a
+// booking problem; a no-show on a PPU or step is a logistics problem, and they
+// coach in opposite directions.
+function isFirstAppt(cs, tp) {
+  const a = caseAppts(cs);
+  if (!a.length || !tp) return false;
+  return a[0] === tp || (a[0].datetime === tp.datetime && a[0].outcome === tp.outcome);
+}
+// Did this case ever produce a sit? Recovery is the real signal: a no-show who
+// came back and sat HAD a why - the mechanics failed (tie-down, confirmation,
+// booked too far out). One who never came back never had a why at all.
+function caseEverSat(cs) {
+  return (cs.touchpoints||[]).some(tp => ATTENDED_OUTCOMES.includes(tp.outcome));
+}
+// Days between booking it and the appointment itself. Long lead times are the
+// usual cause of a recovered no-show - they meant it, they just forgot.
+function apptLeadDays(c, tp) {
+  let booked = tp.created ? new Date(tp.created) : null;
+  if (!booked) {
+    const set = (c.call_log||[]).filter(l => l.outcome === 'Appt set' && new Date(l.ts) <= new Date(tp.datetime))
+      .sort((a,b) => new Date(b.ts) - new Date(a.ts))[0];
+    booked = set ? new Date(set.ts) : null;
+  }
+  if (!booked) return null;
+  const d = (new Date(tp.datetime) - booked) / 86400000;
+  return d >= 0 ? Math.round(d) : null;
+}
+// How much work a case took: clean 1-2 appointments, friction 3-4, grind 5+.
+function caseEffort(n) { return n <= 2 ? 'clean' : n <= 4 ? 'friction' : 'grind'; }
+
+// The coaching view. Counts tell you the game is going badly; this tells you
+// which skill to work on. Every number here sums to one already on the board -
+// it's the same events, cut by what they mean.
+function openCoaching() {
+  const {start, end, label} = getPeriodBounds('production');
+  const K = window._coach || {};
+  const inP = d => d && d >= start && d <= end;
+
+  // Cases that sold in this period, and how many appointments each took.
+  const sold = [];
+  clients.forEach(c => (c.cases||[]).forEach(cs => {
+    const tps = cs.touchpoints||[];
+    const saleTp = tps.filter(t=>t.outcome==='sale'&&t.datetime).sort((a,b)=>new Date(b.datetime)-new Date(a.datetime))[0];
+    if (!saleTp || !inP(new Date(saleTp.datetime))) return;
+    sold.push({c, cs, n: caseAppts(cs).length});
+  }));
+  const effort = {clean:0, friction:0, grind:0};
+  sold.forEach(s => effort[caseEffort(s.n)]++);
+  const apptsPerSale = sold.length ? (sold.reduce((a,s)=>a+s.n,0)/sold.length).toFixed(1) : null;
+
+  // Every case with a no-show this period, as a timeline.
+  const stories = [];
+  clients.forEach(c => (c.cases||[]).forEach(cs => {
+    const appts = caseAppts(cs);
+    if (!appts.some(t => t.outcome==='noshow' && inP(new Date(t.datetime)))) return;
+    stories.push({c, cs, appts});
+  }));
+
+  const row = (lbl, n, why, color) => n ? '<div style="padding:7px 0;border-top:1px solid #eef2f7;">' +
+    '<div style="display:flex;justify-content:space-between;"><span style="font-size:12px;font-weight:600;color:' + color + ';">' + lbl + '</span>' +
+    '<span style="font-size:12px;font-weight:700;color:#1D3557;">' + n + '</span></div>' +
+    '<div style="font-size:11px;color:#5f7a99;">' + why + '</div></div>' : '';
+
+  const OUT = {sale:'Sale', nosale:'No sale', cont:'Sat', dropped:'Dropped', noshow:'No show', cancelled:'Cancelled'};
+  const timeline = stories.slice(0,25).map(s => {
+    const steps = s.appts.map(t => {
+      const o = t.outcome && t.outcome!=='pending' ? (OUT[t.outcome]||t.outcome) : 'Upcoming';
+      const col = t.outcome==='noshow' ? '#BA7517' : t.outcome==='sale' ? '#3B6D11' : '#5f7a99';
+      return '<span style="color:' + col + ';">' + o + '</span>';
+    }).join(' <span style="color:#d0dcea;">\u2192</span> ');
+    return '<div style="padding:7px 0;border-top:1px solid #eef2f7;">' +
+      '<div style="font-size:12px;font-weight:600;color:#1D3557;cursor:pointer;" onclick="closeModal();setTimeout(()=>openClient(\'' + s.c.id + '\'),100)">' + esc(s.c.name||'') +
+      ' <span style="font-size:10px;color:#8fa8c0;font-weight:400;">' + esc(s.cs.type||'') + ' \u00b7 ' + s.appts.length + ' appts</span></div>' +
+      '<div style="font-size:11px;margin-top:2px;">' + steps + '</div></div>';
+  }).join('');
+
+  showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">What to work on</div>' +
+    '<div class="modal-sub">' + label + '</div>' +
+    '<div style="margin:10px 0;">' +
+      row('First appointment, never sat', K.nsFirstLost||0, 'Qualification. There was no real why - these shouldn\u2019t have been booked.', '#A32D2D') +
+      row('First appointment, came back and sat', K.nsFirstRecovered||0,
+        'Mechanics, not qualification. They meant it.' + (K.avgLeadDays!=null ? ' Booked ' + K.avgLeadDays + ' days out on average' + (K.avgLeadDays>=5?' \u2014 try booking closer in.':'.') : ''), '#BA7517') +
+      row('PPU or step no-show', K.nsInProcess||0, 'They already bought in. Urgency and logistics, not qualification.', '#1D3557') +
+    '</div>' +
+    (sold.length ? '<div style="background:#f7fafd;border-radius:8px;padding:10px;margin-bottom:10px;">' +
+      '<div style="font-size:12px;font-weight:700;color:#1D3557;">' + apptsPerSale + ' appointments per sale</div>' +
+      '<div style="font-size:11px;color:#5f7a99;margin-top:2px;">' + effort.clean + ' clean (1-2) \u00b7 ' + effort.friction + ' friction (3-4) \u00b7 ' + effort.grind + ' grind (5+)</div></div>' : '') +
+    (timeline ? '<div style="font-size:11px;font-weight:700;color:#1D3557;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px;">How they went</div>' +
+      '<div style="max-height:40vh;overflow-y:auto;">' + timeline + '</div>' : ''));
 }
 
 function statusBadge(s) { const m={'New':'b-New','Working':'b-Working','Appointment set':'b-Appt','Closed':'b-Closed','No sale':'b-No','No show':'b-Noshow','Dead':'b-Dead','Follow-up':'b-Followup'}; return 'badge '+(m[s]||'b-New'); }
