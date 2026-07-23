@@ -116,8 +116,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .journey-row{display:flex;gap:4px;align-items:center;margin-top:6px;flex-wrap:wrap;}
 .journey-dot{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;flex-shrink:0;}
 .jd-showed{background:#138181;} .jd-noshow{background:#E24B4A;} .jd-cancel{background:#BA7517;} .jd-pending{background:#c0cdd8;}
-.filter-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;}
-.filter-btn{font-size:10px;padding:4px 10px;border-radius:20px;border:1px solid #d0dcea;background:#fff;color:#5f7a99;cursor:pointer;font-weight:500;}
+.filter-row{display:flex;gap:5px;overflow-x:auto;padding-bottom:2px;margin-bottom:8px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.filter-row::-webkit-scrollbar{display:none;}
+.filter-btn{font-size:10px;padding:4px 9px;border-radius:20px;border:1px solid #e2eaf2;background:#fff;color:#8fa8c0;cursor:pointer;font-weight:500;white-space:nowrap;flex:0 0 auto;}
 .filter-btn.on{background:#1D3557;color:#fff;border-color:#1D3557;}
 .sync-bar{background:#1D3557;color:rgba(255,255,255,0.8);font-size:10px;text-align:center;padding:4px;border-radius:6px;margin-bottom:8px;}
 .dial-row{display:flex;gap:5px;margin-bottom:6px;align-items:center;}
@@ -147,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h83</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h85</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -170,7 +171,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div id="sync-bar" class="sync-bar" style="display:none;">Syncing...</div>
 
   <div id="appt-banner" class="appt-banner" onclick="showTab('appts',document.querySelector('.tab:nth-child(3)'))">
-    [Cal] <span id="next-appt-text">Loading...</span>
+    <span id="next-appt-text">Loading...</span>
   </div>
   <div style="display:flex;gap:6px;margin-bottom:8px;">
     <button id="task-mobile-btn" onclick="openTaskModal()" style="display:none;flex:1;background:#1D3557;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:500;cursor:pointer;">Tasks <span id="task-badge"></span></button>
@@ -418,8 +419,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div id="pace-line" style="font-size:11px;font-weight:600;margin-top:2px;display:none;"></div>
       </div>
       <div style="display:flex;gap:6px;">
-        <button class="add-btn" style="background:#138181;" onclick="openLeadImport()">[Import] Import</button>
-        <button class="add-btn" onclick="openAddClient()">+ Add lead</button>
+        <button class="add-btn" onclick="openAddLeads()">+ Add leads</button>
       </div>
     </div>
     <input class="search" placeholder="Search by name or phone..." oninput="renderClients(this.value)" id="client-search">
@@ -470,7 +470,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
   </div>
   <div class="appt-sidebar" id="appt-sidebar" style="display:block!important;">
-    <div class="appt-sidebar-title">[Cal] Today & upcoming</div>
+    <div class="appt-sidebar-title">Today & upcoming</div>
     <div id="sidebar-appts"><div style="font-size:11px;color:#a0b8cc;">No appointments</div></div>
   </div>
 </div>
@@ -2451,7 +2451,7 @@ function drillDown(type) {
 
   const rows = leads.map(c => {
     const apptStr = c.appt_datetime ? 
-      `<div style="font-size:11px;color:#138181;font-weight:500;">[Cal] ${new Date(c.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(c.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>` : '';
+      `<div style="font-size:11px;color:#138181;font-weight:500;">${new Date(c.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(c.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>` : '';
     return `<div class="client-card" onclick="closeModal();setTimeout(()=>openClient('${c.id}'),100)">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
         <div>
@@ -3228,7 +3228,7 @@ function renderAppts() {
         <div>
           <div class="client-name">${a.clientName||'Unknown'}</div>
           <div class="client-meta">${a.clientPhone||''} - ${a.clientState||''}</div>
-          ${a.clientAddress?`<div style="font-size:10px;color:#8fa8c0;margin-top:2px;">[Addr] ${a.clientAddress}</div>`:''}
+          ${a.clientAddress?`<div style="font-size:10px;color:#8fa8c0;margin-top:2px;">${a.clientAddress}</div>`:''}
           ${a.caseType?`<div style="font-size:10px;font-weight:500;color:${typeColor};margin-top:2px;">${a.caseType}${a.tpType?' - '+a.tpType:''}</div>`:''}
         </div>
         <div style="text-align:right;">
@@ -3921,6 +3921,11 @@ function getUrgencyScore(c) {
   if (status === 'Appointment set') return 8000;
   if (status === 'Nurture') return 7000; // Nurture leads sink below active, surface on schedule separately
 
+  // A scheduled callback or follow-up PARKS the lead until it's due. They told
+  // you when to call - calling ahead of that is calling at the wrong time. When
+  // it comes due, isCallbackDueNow lifts it back up the queue.
+  if (isCallbackFuture(c) || isFollowUpFuture(c)) return 7500;
+
   const days = getDaysSinceAssigned(c);
   const attempts = getAttemptCount(c);
   const daysSinceLast = getDaysSinceLastAttempt(c);
@@ -4048,6 +4053,16 @@ function getUrgencyBadge(c) {
 
   if (score <= -1000) return {label:'\uD83D\uDD25 APPT NOW', color:'#A32D2D', bg:'#FFE9E9', fire:true};
   if (status === 'Appointment set') return {label:'Appt set', color:'#138181', bg:'#E1F5EE', fire:false};
+
+  // Parked until a scheduled time - say when, so it's obvious why it isn't
+  // in today's call list rather than looking like it was skipped.
+  if (score === 7500) {
+    const cb = getScheduledCallback(c);
+    const when = cb && cb.callback_dt ? new Date(cb.callback_dt) : null;
+    const lbl = when ? new Date(when).toLocaleDateString('en-US',{weekday:'short'}) + ' ' +
+      new Date(when).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : 'scheduled';
+    return {label:'\uD83D\uDCC5 ' + lbl, color:'#8fa8c0', bg:'#f3f7fb', fire:false};
+  }
 
   if (score < 20) {
     if (isFollowUpDue(c)) return {label:'\uD83D\uDCCB Follow-up due', color:'#534AB7', bg:'#F3EEFF', fire:false};
@@ -4538,17 +4553,16 @@ function renderPaceLine() {
   if (!el) return;
   const s = paceStats();
   el.style.display = 'block';
-  const done = s.doneThisBlock ? '  \u00b7 \u2713 ' + s.doneThisBlock + ' done this block' : '';
+  const done = s.doneThisBlock
+    ? '<div style="font-size:10px;color:#8fa8c0;font-weight:500;">\u2713 ' + s.doneThisBlock + ' done this block</div>' : '';
   if (!s.behind) {
     el.style.color = '#138181';
-    el.textContent = '\u2713 Caught up \u2014 every lead in your window is at pace' + done;
+    el.innerHTML = '\u2713 Caught up' + done;
     return;
   }
   if (!s.now) {
-    // Behind, but nothing is callable this minute - that's a "come back", not a nag.
     el.style.color = '#138181';
-    el.textContent = '\u2713 Caught up for now \u2014 come back ' + nextBlockLabel() +
-      ' (' + s.later + ' waiting)' + done;
+    el.innerHTML = '\u2713 Caught up \u2014 back ' + nextBlockLabel() + ' (' + s.later + ' waiting)' + done;
     return;
   }
   el.style.color = '#BA7517';
@@ -4556,7 +4570,7 @@ function renderPaceLine() {
   if (s.fresh) bits.push(s.fresh + ' fresh');
   if (s.warm) bits.push(s.warm + ' warm');
   if (s.cooling) bits.push(s.cooling + ' cooling');
-  el.textContent = 'Behind pace \u2014 call ' + bits.join(', ') + ' now' + done;
+  el.innerHTML = 'Call now \u00b7 ' + bits.join(' \u00b7 ') + done;
 }
 
 // --- DECLINES & REWRITES ---------------------------------------------------
@@ -4950,11 +4964,10 @@ function renderClients(q='') {
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
         <div>
           <div class="client-name">${c.name||'Unknown'}${fresh?'<span class="fresh-tag">fresh</span>':''}</div>
-          <div class="client-meta">${c.phone||''} - ${c.state||''}${c.age?' - <span style="color:#1D3557;font-weight:500;">'+c.age+'</span>':''} - <span style="color:#8fa8c0;">${Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24))}d</span> - <span style="color:#8fa8c0;">${(c.call_log||[]).length} att</span>${getOutcomeBadge(c)}${getDodgeBadge(c)}${getReplaceBadge(c)}${getNoShowBadge(c)}${getCallTimeBadge(c)}</div>
+          <div class="client-meta">${c.phone||''} - ${c.state||''}${c.age?' - <span style="color:#1D3557;font-weight:500;">'+c.age+'</span>':''} - <span style="color:#8fa8c0;">${Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24))}d</span> - <span style="color:#8fa8c0;">${(c.call_log||[]).length} att</span>${c.source?' - <span style="color:#a0b8cc;font-weight:500;">'+esc(c.source)+'</span>':''}${getOutcomeBadge(c)}${getDodgeBadge(c)}${getReplaceBadge(c)}${getNoShowBadge(c)}${getCallTimeBadge(c)}</div>
           ${getUrgencyBadgeHtml(c)}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
-          <span class="${badgeClass(c.source)}">${c.source||''}</span>
           <span class="${statusBadge(c.status)}">${c.status||'New'}</span>
         </div>
       </div>
@@ -5043,7 +5056,7 @@ function openClient(id, keepDialCount) {
       <div style="width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0;background:${cl.outcome==='Appt set'?'#138181':cl.outcome==='No show'?'#E24B4A':cl.outcome==='Not interested'?'#E24B4A':cl.outcome==='Cancelled'?'#E24B4A':cl.outcome==='Pushed off'?'#8fa8c0':cl.outcome==='Callback'?'#BA7517':'#1D3557'};"></div>
       <div style="flex:1;">
         <div style="font-size:12px;color:#1a2e44;font-weight:500;">${cl.outcome}${cl.dials>1?' <span style="font-size:10px;color:#5f7a99;">('+cl.dials+'x dialed)</span>':''}</div>
-        ${cl.appt_datetime?`<div style="font-size:11px;font-weight:600;color:#138181;">[Cal] ${new Date(cl.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(cl.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>`:''}
+        ${cl.appt_datetime?`<div style="font-size:11px;font-weight:600;color:#138181;">${new Date(cl.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(cl.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>`:''}
         ${cl.appt_notes?`<div style="font-size:10px;color:#5f7a99;font-style:italic;">${esc(cl.appt_notes)}</div>`:''}
         ${detail?`<div style="font-size:11px;color:#1D3557;">${esc(detail)}</div>`:''}
         <div style="display:flex;gap:6px;align-items:center;">
@@ -5098,7 +5111,7 @@ function openClient(id, keepDialCount) {
     <input id="edit-phone" value="${escAttr(c.phone)}" style="font-size:11px;color:#5f7a99;border:none;border-bottom:1px solid transparent;outline:none;background:transparent;font-family:inherit;width:120px;padding:0;" onfocus="this.style.borderBottomColor='#138181'" onblur="this.style.borderBottomColor='transparent'" placeholder="edit number">
     <span style="color:#5f7a99;font-size:13px;">- ${c.state||''} - <span class="${badgeClass(c.source)}">${c.source||''}</span></span>
   </div>
-  ${c.address?`<div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">[Addr] ${c.address}</div>`:''}
+  ${c.address?`<div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">${c.address}</div>`:''}
   ${(()=>{
     let h='';
     if (c.referred_by) {
@@ -5174,7 +5187,7 @@ function openClient(id, keepDialCount) {
           rebookNote = '<div style="font-size:10px;font-weight:600;color:#BA7517;margin-bottom:4px;">Rebooked after a no-show' + (ns>1 ? ' \u00b7 ' + ns + ' no-shows so far' : '') + '</div>';
         }
       } catch(e) {}
-      return '<div style="margin-bottom:8px;">' + rebookNote + '<div onclick="openSitOutcome(\'' + id + '\')" style="font-size:12px;font-weight:600;color:#138181;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:6px;padding:5px 10px;margin-bottom:4px;cursor:pointer;display:block;">[Appt] ' + apptLabel + ' <span style="font-size:10px;opacity:0.6;">tap to log outcome</span></div><button onclick="openMoveAppt(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit or delete</button></div>';
+      return '<div style="margin-bottom:8px;">' + rebookNote + '<div onclick="openSitOutcome(\'' + id + '\')" style="font-size:12px;font-weight:600;color:#138181;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:6px;padding:5px 10px;margin-bottom:4px;cursor:pointer;display:block;">' + apptLabel + ' <span style="font-size:10px;opacity:0.6;">tap to log outcome</span></div><button onclick="openMoveAppt(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit or delete</button></div>';
     }
   })():''}
   <div class="dial-row">
@@ -6892,6 +6905,21 @@ async function saveNamePhone(id) {
 // Self-contained module. CIA/MIA classification is isolated in classifyLeadSource()
 // so team levels / new-agent views can extend or hide it later without unpicking this.
 let _importRows = [];
+
+// One way in. Typing a lead and importing a sheet of them are the same job,
+// so they belong behind one button rather than two competing for the corner.
+function openAddLeads() {
+  showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">Add leads</div>' +
+    '<div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">' +
+      '<button onclick="closeModal();openAddClient()" style="text-align:left;background:#fff;border:1px solid #d0dcea;border-radius:10px;padding:12px 14px;cursor:pointer;">' +
+        '<div style="font-size:13px;font-weight:600;color:#1D3557;">Type one in</div>' +
+        '<div style="font-size:11px;color:#8fa8c0;margin-top:1px;">Name and phone, the rest optional</div></button>' +
+      '<button onclick="closeModal();openLeadImport()" style="text-align:left;background:#138181;border:none;border-radius:10px;padding:12px 14px;cursor:pointer;">' +
+        '<div style="font-size:13px;font-weight:600;color:#fff;">Upload a PDF</div>' +
+        '<div style="font-size:11px;color:#cfeee6;margin-top:1px;">One lead or a whole batch \u2014 scanned cards too</div></button>' +
+    '</div>');
+}
 
 function openLeadImport() {
   showModal(`<button class="close-x" onclick="closeModal()">x</button>
