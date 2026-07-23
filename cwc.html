@@ -148,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h86</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h87</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -3474,6 +3474,19 @@ function apptNotesOf(c) {
   return (tp && tp.notes) || (c && c.appt_notes) || '';
 }
 
+// Is this lead short of the attempts its stage calls for? Same targets the pace
+// line uses, so a badge can never disagree with the number in the header.
+function isBehindPace(c) {
+  try {
+    if (!c || c.appt_datetime && apptOf(c)) { /* fall through - appt handled elsewhere */ }
+    const stage = leadStage(c);
+    if (!stage || stage === 'open' || stage === 'dormant') return false;
+    const p = paceRules();
+    const bar = stage === 'fresh' ? p.fresh : stage === 'warm' ? p.warm : p.cooling;
+    return attemptCount(c) < bar;
+  } catch (e) { return false; }
+}
+
 function statusBadge(s) { const m={'New':'b-New','Working':'b-Working','Appointment set':'b-Appt','Closed':'b-Closed','No sale':'b-No','No show':'b-Noshow','Dead':'b-Dead','Follow-up':'b-Followup'}; return 'badge '+(m[s]||'b-New'); }
 function dotClass(s) { if(s.outcome==='showed')return'jd-showed'; if(s.outcome==='noshow')return'jd-noshow'; if(s.outcome==='canceled')return'jd-cancel'; return'jd-pending'; }
 
@@ -3869,12 +3882,25 @@ function isCallbackDueNow(c) {
 }
 
 function isCallbackFuture(c) {
-  // Has a scheduled callback that is more than 2 minutes away
-  const lastCb = getScheduledCallback(c);
-  if (!lastCb) return false;
-  const cbTime = new Date(lastCb.callback_dt);
-  const minutesUntil = (cbTime - new Date()) / (1000 * 60);
-  return minutesUntil > 2;
+  // A callback with a DATE is a callback, whether or not you set an hour.
+  // Requiring a clock time meant a date-only callback was invisible here, so
+  // the lead never parked and still read "call now" days early.
+  const cb = getAnyScheduledCallback(c);
+  if (!cb) return false;
+  const t = new Date(cb.callback_dt);
+  if (isNaN(t)) return false;
+  if (cb.callback_has_time === false) {
+    // No hour given - it's owed that DAY, so it parks until that morning.
+    const startOfDay = new Date(t); startOfDay.setHours(0,0,0,0);
+    return startOfDay.getTime() > new Date().setHours(0,0,0,0);
+  }
+  return (t - new Date()) / 60000 > 2;
+}
+// The most recent callback that has a date, with or without a time. Distinct
+// from getScheduledCallback, which deliberately only returns clock-timed ones
+// for the queue's "jump the ladder" rule.
+function getAnyScheduledCallback(c) {
+  return [...(c.call_log||[])].reverse().find(cl => cl.outcome === 'Callback' && cl.callback_dt) || null;
 }
 
 function isCallbackToday(c) {
@@ -4101,10 +4127,15 @@ function getUrgencyBadge(c) {
   // Parked until a scheduled time - say when, so it's obvious why it isn't
   // in today's call list rather than looking like it was skipped.
   if (score === 7500) {
-    const cb = getScheduledCallback(c);
-    const when = cb && cb.callback_dt ? new Date(cb.callback_dt) : null;
-    const lbl = when ? new Date(when).toLocaleDateString('en-US',{weekday:'short'}) + ' ' +
-      new Date(when).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : 'scheduled';
+    const cb = getAnyScheduledCallback(c);
+    const fu = cb ? null : getScheduledFollowUp(c);
+    const raw = (cb && cb.callback_dt) || (fu && fu.datetime) || null;
+    const when = raw ? new Date(raw) : null;
+    let lbl = 'scheduled';
+    if (when && !isNaN(when)) {
+      lbl = when.toLocaleDateString('en-US',{weekday:'short'});
+      if (!(cb.callback_has_time === false)) lbl += ' ' + when.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    }
     return {label:'\uD83D\uDCC5 ' + lbl, color:'#8fa8c0', bg:'#f3f7fb', fire:false};
   }
 
@@ -4112,19 +4143,23 @@ function getUrgencyBadge(c) {
     if (isFollowUpDue(c)) return {label:'\uD83D\uDCCB Follow-up due', color:'#534AB7', bg:'#F3EEFF', fire:false};
     // A real timed callback that's due (the -300 band) still reads Callback.
     if (isCallbackDueNow(c) && !isCallbackSnoozeActive(c)) return {label:'\uD83D\uDD04 Callback', color:'#BA7517', bg:'#FFF8E6', fire:false};
-    // Everything else under 20 is a fresh, never-dialed, in-window lead (the
-    // speed-to-lead -100 band). It is NOT a callback — it's your top new lead.
-    return {label:'\uD83D\uDD25 New \u2014 call first', color:'#A32D2D', bg:'#FFE9E9', fire:false};
+    // Everything else under 20 is a fresh, never-dialed, in-window lead. It's
+    // your top new lead - but "call now" only repeats the sort order, so it
+    // earns a badge only when it's actually falling behind its pace.
+    return isBehindPace(c)
+      ? {label:'\uD83D\uDE92 Fresh \u2014 falling behind', color:'#A32D2D', bg:'#FFE9E9', fire:false}
+      : null;
   }
 
-  // No-show recovery window
-  if (score < 30) return {label:'\uD83D\uDD25 Call now', color:'#A32D2D', bg:'#FFF5F5', fire:false};
+  if (score < 30) return null;   // no-show recovery: the sort already puts it here
 
-  // Actionable band: in window, not resting
+  // Actionable band: in window, not resting. A badge here would say nothing the
+  // position in the list doesn't - except a text that's actually owed.
   if (score < 120) {
     if (isReadyForText(c)) return {label:'\uD83D\uDCAC Text needed', color:'#138181', bg:'#F0FBF7', fire:false};
-    if (getAttemptCount(c) === 0 || getDaysSinceLastAttempt(c) >= 7) return {label:'\uD83D\uDD25 Call now', color:'#A32D2D', bg:'#FFF5F5', fire:false};
-    return {label:'\uD83D\uDFE2 Call now', color:'#138181', bg:'#E1F5EE', fire:false};
+    return isBehindPace(c)
+      ? {label:'\uD83D\uDE92 Falling behind', color:'#BA7517', bg:'#FFF6E8', fire:false}
+      : null;
   }
 
   if (status === 'Follow-up') return {label:'\uD83D\uDCCB Follow-up', color:'#534AB7', bg:'#F3EEFF', fire:false};
@@ -5008,11 +5043,12 @@ function renderClients(q='') {
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
         <div>
           <div class="client-name">${c.name||'Unknown'}${fresh?'<span class="fresh-tag">fresh</span>':''}</div>
-          <div class="client-meta">${c.phone||''} - ${c.state||''}${c.age?' - <span style="color:#1D3557;font-weight:500;">'+c.age+'</span>':''} - <span style="color:#8fa8c0;">${Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24))}d</span> - <span style="color:#8fa8c0;">${(c.call_log||[]).length} att</span>${c.source?' - <span style="color:#a0b8cc;font-weight:500;">'+esc(c.source)+'</span>':''}${getOutcomeBadge(c)}${getDodgeBadge(c)}${getReplaceBadge(c)}${getNoShowBadge(c)}${getCallTimeBadge(c)}</div>
+          <div class="client-meta">${c.phone||''}${c.state?' - '+c.state:''}${c.age?' - <span style="color:#1D3557;font-weight:500;">'+c.age+'</span>':''}${c.source?' - <span style="color:#a0b8cc;font-weight:500;">'+esc(c.source)+'</span>':''}${getOutcomeBadge(c)}${getDodgeBadge(c)}${getReplaceBadge(c)}${getNoShowBadge(c)}${getCallTimeBadge(c)}</div>
           ${getUrgencyBadgeHtml(c)}
         </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
           <span class="${statusBadge(c.status)}">${c.status||'New'}</span>
+          <span style="font-size:10px;color:#a0b8cc;white-space:nowrap;">${Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24))}d \u00b7 ${(c.call_log||[]).length} att</span>
         </div>
       </div>
       ${sits.length?`<div class="journey-row">${journey}</div>`:''}
