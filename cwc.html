@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h71</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h72</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -417,15 +417,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
     <input class="search" placeholder="Search by name or phone..." oninput="renderClients(this.value)" id="client-search">
     <div class="filter-row">
-      <button class="filter-btn on" onclick="setFilter('active',this)">Active</button>
-      <button class="filter-btn" onclick="setFilter('all',this)">All</button>
-      <button class="filter-btn" onclick="setFilter('fresh',this)">Fresh</button>
-      <button class="filter-btn" onclick="setFilter('warm',this)">Warm</button>
-      <button class="filter-btn" onclick="setFilter('open',this)">Open</button>
-      <button class="filter-btn" onclick="setFilter('none',this)">0 attempts</button>
-      <button class="filter-btn" onclick="setFilter('working',this)">Working</button>
-      <button class="filter-btn" onclick="setFilter('noshow',this)">No show</button>
-      <button class="filter-btn" onclick="setFilter('Appointment set',this)">Appt</button>
+      <button class="filter-btn on" onclick="setFilter('active',this)">Active (<span id="chip-n-active">0</span>)</button>
+      <button class="filter-btn" onclick="setFilter('fresh',this)">Fresh (<span id="chip-n-fresh">0</span>)</button>
+      <button class="filter-btn" onclick="setFilter('warm',this)">Warm (<span id="chip-n-warm">0</span>)</button>
+      <button class="filter-btn" onclick="setFilter('cooling',this)">Cooling (<span id="chip-n-cooling">0</span>)</button>
+      <button class="filter-btn" onclick="setFilter('open',this)">Open (<span id="chip-n-open">0</span>)</button>
+      <button class="filter-btn" onclick="setFilter('noshow',this)">No show (<span id="chip-n-noshow">0</span>)</button>
       <button class="filter-btn" onclick="setFilter('dormant',this)">Dormant (<span id="dormant-chip-n">0</span>)</button>
     </div>
     <div id="clients-list"><div class="loading">Loading clients...</div></div>
@@ -3860,13 +3857,19 @@ function renderAlerts() {
     html = '<div onclick="setFilterAlert(\'active\')" style="background:#EAF3DE;border:1px solid #9FE1CB;border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:600;color:#3B6D11;">' + msg + '</div>';
   } else {
     let parts = [];
-    if (dueNow > 0) parts.push(dueNow + ' lead' + (dueNow>1?'s':'') + ' due now');
+    // Board = scoreboard: one number, only when there's something to act on.
+    // The per-stage breakdown lives on the Leads page (the cockpit).
+    let behindNow = 0;
+    try { behindNow = paceStats().now; } catch(e) {}
+    if (behindNow > 0) parts.push('Behind pace \u2014 call ' + behindNow + ' now');
+    else if (dueNow > 0) parts.push(dueNow + ' lead' + (dueNow>1?'s':'') + ' due now');
     if (overdue > 0) parts.push('<span onclick="event.stopPropagation();setFilterAlert(\'overdue\')" style="text-decoration:underline;cursor:pointer;">' + overdue + ' overdue</span>');
-    if (earliestUpcomingLabel && dueNow === 0) parts.push('next at ' + earliestUpcomingLabel);
+    if (earliestUpcomingLabel && dueNow === 0 && behindNow === 0) parts.push('next at ' + earliestUpcomingLabel);
     parts.push(apptPart + apptFire);
-    const color = overdue > 0 ? '#A32D2D' : '#1D3557';
-    const bg = overdue > 0 ? '#FFF5F5' : '#EBF3FF';
-    const border = overdue > 0 ? '#F5A0A0' : '#B3D1F7';
+    const alert = overdue > 0 || behindNow > 0;
+    const color = overdue > 0 ? '#A32D2D' : behindNow > 0 ? '#854F0B' : '#1D3557';
+    const bg = overdue > 0 ? '#FFF5F5' : behindNow > 0 ? '#FFF6E8' : '#EBF3FF';
+    const border = overdue > 0 ? '#F5A0A0' : behindNow > 0 ? '#F0C888' : '#B3D1F7';
     html = '<div onclick="setFilterAlert(\'active\')" style="background:' + bg + ';border:1px solid ' + border + ';border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:600;color:' + color + ';">' + parts.join(' &middot; ') + '</div>';
   }
 
@@ -3888,6 +3891,49 @@ function timedCommitmentDue(c) {
   return false;
 }
 
+// --- LEAD STAGES -----------------------------------------------------------
+// ONE definition of what stage a lead is in, used by the filter chips, the pace
+// line, the board, and Settings. Every live lead is in exactly one stage.
+//   Fresh   day 0-3    the speed-to-lead window
+//   Warm    day 4-9    still exclusive, still very workable
+//   Cooling day 10-16  end of the exclusivity window, last real push
+//   Open    day 17+    window closed - worked when the active queue is clear
+//   Dormant worn out   EFFORT, not age: 10 att AND 21 days, or 8 att AND 28 days
+// Dormant wins over everything: a lead is dormant because you exhausted it, not
+// because it got old. A 40-day lead you dialled twice is Open and neglected -
+// it needs a call, not a grave.
+const LEAD_STAGES = ['fresh','warm','cooling','open','dormant'];
+const LEAD_STAGE_LABEL = {fresh:'Fresh',warm:'Warm',cooling:'Cooling',open:'Open',dormant:'Dormant'};
+function leadStage(c) {
+  if (!c) return null;
+  if (['Dead','Removed','Closed','No sale'].includes(c.status)) return null;
+  if (isDormant(c)) return 'dormant';
+  const days = getDaysSinceAssigned(c);
+  if (days <= 3) return 'fresh';
+  if (days <= 9) return 'warm';
+  if (days <= 16) return 'cooling';
+  return 'open';
+}
+function leadStageCounts() {
+  const out = {fresh:0,warm:0,cooling:0,open:0,dormant:0,noshow:0,active:0};
+  clients.forEach(c => {
+    if (!c) return;
+    if (c.status === 'No show') out.noshow++;
+    const s = leadStage(c);
+    if (s) out[s]++;
+  });
+  try { out.active = getFilteredClientsForCount('active'); } catch(e) { out.active = 0; }
+  return out;
+}
+
+function getFilteredClientsForCount(filter) {
+  const prev = activeFilter;
+  activeFilter = filter;
+  let n = 0;
+  try { n = getFilteredClients('').length; } finally { activeFilter = prev; }
+  return n;
+}
+
 function getFilteredClients(q='') {
   const filtered = clients.filter(c => {
     const matchQ = !q || (c.name||'').toLowerCase().includes(q.toLowerCase()) || (c.phone||'').includes(q);
@@ -3897,9 +3943,7 @@ function getFilteredClients(q='') {
     const hasOpenCase = (c.cases||[]).some(cs => cs.status === 'Open' && (cs.touchpoints||[]).length > 0);
     let matchF = false;
     if (activeFilter==='active') matchF = (c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale' && c.status !== 'Appointment set' && !isCallbackFuture(c) && !isFollowUpFuture(c) && !isOnBreak(c)) || isApptImminent(c);    else if (activeFilter==='all') matchF = true;
-    else if (activeFilter==='fresh') matchF = days <= 4 && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale';
-    else if (activeFilter==='warm') matchF = days >= 5 && days <= 17 && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale';
-    else if (activeFilter==='open') matchF = days > 17 && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale';
+    else if (LEAD_STAGES.includes(activeFilter)) matchF = leadStage(c) === activeFilter && !isAppt && !isNoShow;
     else if (activeFilter==='none') matchF = (c.call_log||[]).length === 0 && c.status !== 'Dead';
     else if (activeFilter==='working') matchF = hasOpenCase && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed';
     else if (activeFilter==='noshow') matchF = isNoShow;
@@ -3973,7 +4017,11 @@ function dormantRules() {
     // Gate 2: moderately worked - needs an extra week past the exclusivity
     // window to prove it's cooked. Catches the purgatory band that youngest-
     // due-first starves: old enough to never surface, never reaching gate 1.
-    attempts2: parseInt(st.dormantAttempts2) || 8,  days2: parseInt(st.dormantDays2) || 28
+    attempts2: parseInt(st.dormantAttempts2) || 8,  days2: parseInt(st.dormantDays2) || 28,
+    // Dedicated rebook attempts a no-show gets before it's treated as worn out.
+    noShowTries: parseInt(st.noShowTries) || 3,
+    // Dead-end passes through the dormant pile before a lead retires out of it.
+    killCount: parseInt(st.dormantKillCount) || 3
   };
 }
 function attemptCount(c) { return (c.call_log || []).length; }
@@ -3990,31 +4038,72 @@ function attemptCount(c) { return (c.call_log || []).length; }
 function paceRules() {
   const st = getAgentSettings();
   return {
-    fresh:    parseInt(st.paceFresh)    || 3,   // by day 4
-    building: parseInt(st.paceBuilding) || 6,   // by day 10
-    closing:  parseInt(st.paceClosing)  || 8    // by day 17
+    fresh:   parseInt(st.paceFresh)    || 3,   // target attempts while Fresh  (day 0-3)
+    warm:    parseInt(st.paceBuilding) || 6,   // target attempts by end of Warm    (day 4-9)
+    cooling: parseInt(st.paceClosing)  || 8    // target attempts by end of Cooling (day 10-16)
   };
 }
 
+// Pace answers ONE question: who should I call right now?
+// It counts LEADS, not attempts - "87 attempts" is a wall, "call 16 fresh" is a
+// task. A lead clears for this block as soon as you touch it once, even if it's
+// still under its overall attempt bar, so the number goes DOWN as you dial
+// instead of sitting there all day. Appointments and dormant leads are out.
 function paceStats() {
   const p = paceRules();
-  let fresh = 0, building = 0, closing = 0, catchup = 0;
+  const bars = {fresh:p.fresh, warm:p.warm, cooling:p.cooling};
+  const out = {
+    fresh:0, warm:0, cooling:0,              // behind AND callable right now
+    laterFresh:0, laterWarm:0, laterCooling:0, // behind but outside their window
+    behind:0, now:0, later:0, doneThisBlock:0
+  };
   clients.forEach(c => {
     if (!c || c.resolved_at) return;
-    if (['Dead','Removed'].includes(c.status)) return;
+    if (['Dead','Removed','Closed','No sale'].includes(c.status)) return;
     if (c.appt_datetime) return;
-    const days = getDaysSinceAssigned(c), att = attemptCount(c);
-    let bar = 0, band = null;
-    if (days < 4) { bar = p.fresh; band = 'f'; }
-    else if (days <= 9) { bar = p.building; band = 'b'; }
-    else if (days <= 16) { bar = p.closing; band = 'c'; }
-    else return;
-    if (att < bar) {
-      if (band === 'f') fresh++; else if (band === 'b') building++; else closing++;
-      catchup += bar - att;
-    }
+    const stage = leadStage(c);
+    if (!stage || !bars[stage]) return;          // open + dormant aren't "behind"
+    if (touchedThisBlock(c)) { out.doneThisBlock++; return; }  // handled for now
+    if (attemptCount(c) >= bars[stage]) return;  // at pace
+    out.behind++;
+    if (isCallableRightNow(c)) { out[stage]++; out.now++; }
+    else { out['later' + stage.charAt(0).toUpperCase() + stage.slice(1)]++; out.later++; }
   });
-  return { fresh, building, closing, catchup };
+  return out;
+}
+
+// One touch in the current call block clears a lead from the "call now" list.
+function touchedThisBlock(c) {
+  const log = c.call_log || [];
+  if (!log.length) return false;
+  const last = new Date(log[log.length-1].ts);
+  if (isNaN(last)) return false;
+  const now = new Date();
+  if (last.toDateString() !== now.toDateString()) return false;
+  return callBlockOf(last) === callBlockOf(now);
+}
+function callBlockOf(d) {
+  const h = d.getHours();
+  if (h < 12) return 'morning';
+  if (h < 17) return 'afternoon';
+  return 'evening';
+}
+// Callable right now = the queue would actually surface it (in-window, not on
+// break, not parked on a future callback). Reuses the existing urgency scoring
+// rather than inventing a second definition of "callable".
+function isCallableRightNow(c) {
+  try {
+    if (isOnBreak(c)) return false;
+    if (isCallbackFuture(c) || isFollowUpFuture(c)) return false;
+    return getUrgencyScore(c) < 150;
+  } catch(e) { return true; }
+}
+// When everything callable is cleared, say when the next block opens.
+function nextBlockLabel() {
+  const h = new Date().getHours();
+  if (h < 12) return '~1:00';
+  if (h < 17) return '~5:00';
+  return 'tomorrow morning';
 }
 
 function renderPaceLine() {
@@ -4022,17 +4111,25 @@ function renderPaceLine() {
   if (!el) return;
   const s = paceStats();
   el.style.display = 'block';
-  if (!s.catchup) {
+  const done = s.doneThisBlock ? '  \u00b7 \u2713 ' + s.doneThisBlock + ' done this block' : '';
+  if (!s.behind) {
     el.style.color = '#138181';
-    el.textContent = '\u2713 On pace \u2014 every lead in your window is at attempt pace';
+    el.textContent = '\u2713 Caught up \u2014 every lead in your window is at pace' + done;
+    return;
+  }
+  if (!s.now) {
+    // Behind, but nothing is callable this minute - that's a "come back", not a nag.
+    el.style.color = '#138181';
+    el.textContent = '\u2713 Caught up for now \u2014 come back ' + nextBlockLabel() +
+      ' (' + s.later + ' waiting)' + done;
     return;
   }
   el.style.color = '#BA7517';
   const bits = [];
   if (s.fresh) bits.push(s.fresh + ' fresh');
-  if (s.building) bits.push(s.building + ' building');
-  if (s.closing) bits.push(s.closing + ' closing');
-  el.textContent = 'Behind pace: ' + bits.join(' \u00B7 ') + ' \u2014 catch-up: ' + s.catchup + ' attempts';
+  if (s.warm) bits.push(s.warm + ' warm');
+  if (s.cooling) bits.push(s.cooling + ' cooling');
+  el.textContent = 'Behind pace \u2014 call ' + bits.join(', ') + ' now' + done;
 }
 
 // --- DECLINES & REWRITES ---------------------------------------------------
@@ -4238,10 +4335,43 @@ function isDormant(c) {
   if (c.appt_datetime) return false;                           // has an appointment - never dormant
   if (needsReplacement(c)) return false;                       // declined and unreplaced - you owe them a policy
   if (isResting(c) || apptNeedsOutcome(c)) return false;       // these come BACK - they can never fall out of sight
+  if (hasSignsOfLife(c)) return false;                         // they moved - back in the active queue
   const r = dormantRules();
   const att = attemptCount(c), days = getDaysSinceAssigned(c);
+  // A no-show gets a fixed number of dedicated rebook tries before it's treated
+  // like any other worn-out lead. Chasing a no-show forever is how the queue
+  // silently fills with people who already told you no by not showing up.
+  if (c.status === 'No show') {
+    const tries = noShowRebookTries(c);
+    if (tries < dormantRules().noShowTries) return false;
+    return true;
+  }
   return (att >= r.attempts && days >= r.days) || (att >= r.attempts2 && days >= r.days2);
 }
+
+// SIGNS OF LIFE: a dormant lead that does something - books a callback, answers,
+// shows interest - is not dormant any more. Only counts if it happened AFTER the
+// lead went quiet, so an old conversation can't hold a lead out of the pile forever.
+function hasSignsOfLife(c) {
+  const log = c.call_log || [];
+  if (!log.length) return false;
+  const last = log[log.length-1];
+  if (!last) return false;
+  if (isCallbackFuture(c) || isFollowUpFuture(c)) return true;
+  return /callback|conversation|interested|reschedul/i.test(last.outcome || '');
+}
+// Dial attempts made on a lead since its no-show.
+function noShowRebookTries(c) {
+  const log = c.call_log || [];
+  let i = -1;
+  for (let k = log.length - 1; k >= 0; k--) { if (/no show/i.test(log[k].outcome||'')) { i = k; break; } }
+  if (i === -1) return 0;
+  return log.length - 1 - i;
+}
+// The dormant pile is a finite practice pile, not a landfill. After this many
+// dead-end passes with nothing to show, a lead retires out of it for good.
+function dormantPasses(c) { return parseInt(c.dormant_passes || 0) || 0; }
+function isRetiredFromDormant(c) { return dormantPasses(c) >= dormantRules().killCount; }
 
 // Rank the dormant pile by SIGNAL OF LIFE, not by age. Someone you actually
 // spoke to who said "call me after the move" is worth more than 10 rings into
@@ -4309,6 +4439,13 @@ function renderClients(q='') {
   renderPaceLine();
   const dchip = document.getElementById('dormant-chip-n');
   if (dchip) dchip.textContent = clients.filter(isDormant).length;
+  try {
+    const sc = leadStageCounts();
+    ['active','fresh','warm','cooling','open','noshow'].forEach(k => {
+      const n = document.getElementById('chip-n-' + k);
+      if (n) n.textContent = sc[k] || 0;
+    });
+  } catch(e) {}
   if (!list.length) {
     // Caught up. The dormant pile is offered as a REWARD, not seeded back into
     // the queue - you get the "you're on top of it" moment first, and the extra
@@ -8624,14 +8761,16 @@ function openSettings() {
         '<div class="field" style="flex:1;"><label>Gate 1 days</label><input type="number" id="s-dorm-days" value="' + dormantRules().days + '"></div>' +
         '<div class="field" style="flex:1;"><label>Gate 2 attempts</label><input type="number" id="s-dorm-att2" value="' + dormantRules().attempts2 + '"></div>' +
         '<div class="field" style="flex:1;"><label>Gate 2 days</label><input type="number" id="s-dorm-days2" value="' + dormantRules().days2 + '"></div>' +
+        '<div class="field" style="flex:1;"><label>No-show rebook tries</label><input type="number" id="s-noshow-tries" value="' + dormantRules().noShowTries + '"></div>' +
+        '<div class="field" style="flex:1;"><label>Dormant kill-count</label><input type="number" id="s-dorm-kill" value="' + dormantRules().killCount + '"></div>' +
         '<div class="field" style="flex:1;"><label>Push-off rest</label><input type="number" id="s-pushoff" value="' + dodgeDays() + '"></div>' +
       '</div>' +
       '<div style="font-size:10px;color:#8fa8c0;margin:2px 0 8px 0;">A lead goes dormant at either gate: heavily worked (gate 1) or moderately worked but aged (gate 2).</div>' +
       '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Attempt pace bars (per lead, by age)</div>' +
       '<div style="display:flex;gap:8px;">' +
-        '<div class="field" style="flex:1;"><label>By day 4</label><input type="number" id="s-pace-1" value="' + paceRules().fresh + '"></div>' +
-        '<div class="field" style="flex:1;"><label>By day 10</label><input type="number" id="s-pace-2" value="' + paceRules().building + '"></div>' +
-        '<div class="field" style="flex:1;"><label>By day 17</label><input type="number" id="s-pace-3" value="' + paceRules().closing + '"></div>' +
+        '<div class="field" style="flex:1;"><label>Fresh target (day 0-3)</label><input type="number" id="s-pace-1" value="' + paceRules().fresh + '"></div>' +
+        '<div class="field" style="flex:1;"><label>Warm target (day 4-9)</label><input type="number" id="s-pace-2" value="' + paceRules().warm + '"></div>' +
+        '<div class="field" style="flex:1;"><label>Cooling target (day 10-16)</label><input type="number" id="s-pace-3" value="' + paceRules().cooling + '"></div>' +
       '</div>' +
       '<button onclick="restoreDefaultSettings()" style="width:100%;background:none;border:1px solid #d0dcea;border-radius:8px;padding:8px;font-size:12px;color:#5f7a99;cursor:pointer;margin-top:4px;">\u21BA Restore defaults</button>' +
       '<div style="font-size:10px;color:#8fa8c0;">A lead goes dormant only when BOTH are met. Never deleted - it comes back when you are caught up.</div>' +
@@ -8684,6 +8823,9 @@ function saveProfileSettings() {
   const da2 = document.getElementById('s-dorm-att2'), dd2 = document.getElementById('s-dorm-days2');
   if (da2) settings.dormantAttempts2 = parseInt(da2.value) || 8;
   if (dd2) settings.dormantDays2 = parseInt(dd2.value) || 28;
+  const nst = document.getElementById('s-noshow-tries'), dkc = document.getElementById('s-dorm-kill');
+  if (nst) settings.noShowTries = parseInt(nst.value) || 3;
+  if (dkc) settings.dormantKillCount = parseInt(dkc.value) || 3;
   const p1 = document.getElementById('s-pace-1'), p2 = document.getElementById('s-pace-2'), p3 = document.getElementById('s-pace-3');
   if (p1) settings.paceFresh = parseInt(p1.value) || 3;
   if (p2) settings.paceBuilding = parseInt(p2.value) || 6;
@@ -8704,6 +8846,7 @@ function restoreDefaultSettings() {
   const settings = getAgentSettings();
   settings.dormantAttempts = 10; settings.dormantDays = 21;
   settings.dormantAttempts2 = 8; settings.dormantDays2 = 28;
+  settings.noShowTries = 3; settings.dormantKillCount = 3;
   settings.paceFresh = 3; settings.paceBuilding = 6; settings.paceClosing = 8;
   settings.pushOffDays = 18;
   settings.defaultApptMins = 40;
