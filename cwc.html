@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h70</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h71</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -4070,8 +4070,12 @@ function isSuperseded(ap) {
   return rewrittenIds().has(ap.id);
 }
 
-// The premium that should actually count. Zero if a rewrite has replaced it.
-function premOf(ap) { return isSuperseded(ap) ? 0 : (ap.premium || 0); }
+// The premium that counts. Every app that reached a carrier counts its full
+// premium - including a decline that was later rewritten. Both were real
+// submissions, so both are real submitted business. This used to zero out a
+// rewritten decline, which made the board read lower than the business list for
+// the same 37 apps; one number, one definition, and Business is the definition.
+function premOf(ap) { return ap && ap.premium || 0; }
 
 // Every app on a client, across all cases - the pool a rewrite is matched within.
 function allAppsOf(c) {
