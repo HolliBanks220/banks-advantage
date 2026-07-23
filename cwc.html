@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h69</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h70</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -441,6 +441,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <button id="apps-view-submitted" onclick="setAppsView('submitted')" style="flex:1;padding:7px;font-size:12px;font-weight:600;border-radius:8px;border:none;background:#1D3557;color:#fff;cursor:pointer;">Submitted</button>
         <button id="apps-view-placed" onclick="setAppsView('placed')" style="flex:1;padding:7px;font-size:12px;font-weight:600;border-radius:8px;border:2px solid #e2eaf2;background:#fff;color:#5f7a99;cursor:pointer;">Placed</button>
         <button id="apps-view-written" onclick="setAppsView('written')" style="flex:1;padding:7px;font-size:12px;font-weight:600;border-radius:8px;border:2px solid #e2eaf2;background:#fff;color:#5f7a99;cursor:pointer;">Written</button>
+        <button id="apps-view-report" onclick="setAppsView('report')" style="flex:1;padding:7px;font-size:12px;font-weight:600;border-radius:8px;border:2px solid #e2eaf2;background:#fff;color:#5f7a99;cursor:pointer;">Report</button>
         <button id="apps-view-commissions" onclick="setAppsView('commissions')" style="display:none;flex:1;padding:7px;font-size:12px;font-weight:600;border-radius:8px;border:2px solid #e2eaf2;background:#fff;color:#5f7a99;cursor:pointer;">Commissions</button>
         <input id="apps-search" oninput="renderAppsTab()" placeholder="Search by client, insured, carrier or status..." style="flex:1.5;padding:7px 10px;font-size:12px;border:1px solid #d0dcea;border-radius:8px;color:#1D3557;outline:none;">
       </div>
@@ -2409,6 +2410,8 @@ function setAppsView(v) {
   if (pl)  { pl.style.background  = v==='placed'?'#138181':'#fff';   pl.style.color  = v==='placed'?'#fff':'#5f7a99';  pl.style.border  = v==='placed'?'none':'2px solid #e2eaf2'; }
   const wr = document.getElementById('apps-view-written');
   if (wr)  { wr.style.background  = v==='written'?'#1D3557':'#fff';  wr.style.color  = v==='written'?'#fff':'#5f7a99'; wr.style.border  = v==='written'?'none':'2px solid #e2eaf2'; }
+  const rp = document.getElementById('apps-view-report');
+  if (rp)  { rp.style.background  = v==='report'?'#138181':'#fff';   rp.style.color  = v==='report'?'#fff':'#5f7a99';  rp.style.border  = v==='report'?'none':'2px solid #e2eaf2'; }
   if (cm)  { cm.style.background  = v==='commissions'?'#3B6D11':'#fff'; cm.style.color = v==='commissions'?'#fff':'#5f7a99'; cm.style.border = v==='commissions'?'none':'2px solid #e2eaf2'; }
   renderAppsTab();
 }
@@ -2481,8 +2484,49 @@ async function deleteApp(clientId, ci, ti, ai) {
   renderAppsTab();
 }
 
-async function toggleAppOPT(clientId, ci, ti, ai) {
-  const c = clients.find(x=>x.id===clientId); if (!c) return;
+// --- Submitted business report (the OPT handoff sheet) ---
+let _optReportUnuploadedOnly = false;
+let _optReportRows = [];
+const OPT_REPORT_HEAD = ['Lead','Applicant','Carrier','Product','Face','Monthly'];
+function _optReportMatrix() {
+  return [OPT_REPORT_HEAD].concat(_optReportRows.map(r => [
+    r.lead, r.applicant, r.carrier, r.product,
+    r.face, r.monthly.toFixed(2)
+  ]));
+}
+function copyOPTReport() {
+  if (!_optReportRows.length) { alert('Nothing to copy for this period.'); return; }
+  const text = _optReportMatrix().map(row => row.join('\t')).join('\n');
+  const done = () => { showSync('Copied'); setTimeout(hideSync, 900); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done).catch(()=>_optFallbackCopy(text, done));
+  } else { _optFallbackCopy(text, done); }
+}
+function _optFallbackCopy(text, done) {
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); done(); } catch(e) { alert('Could not copy automatically.'); }
+  ta.remove();
+}
+function downloadOPTReport() {
+  if (!_optReportRows.length) { alert('Nothing to export for this period.'); return; }
+  const csv = _optReportMatrix()
+    .map(row => row.map(v => {
+      const s = String(v == null ? '' : v);
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+    }).join(','))
+    .join('\r\n');
+  const stamp = new Date().toISOString().slice(0,10);
+  const blob = new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'submitted-business-' + stamp + '.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+
+async function toggleAppOPT(clientId, ci, ti, ai) {  const c = clients.find(x=>x.id===clientId); if (!c) return;
   const ap = (((c.cases||[])[ci]||{}).touchpoints||[])[ti];
   if (!ap || !ap.apps || !ap.apps[ai]) return;
   ap.apps[ai].opted = !ap.apps[ai].opted;
@@ -2531,6 +2575,75 @@ function renderAppsTab() {
   };
 
   const fmt = v => '$'+Math.round(v).toLocaleString();
+
+  if (appsView === 'report') {
+    // --- SUBMITTED BUSINESS REPORT: the OPT handoff sheet ---
+    // Everything that reached the carrier in this period, ready to hand to an
+    // assistant for OPT entry. Written apps are excluded (not submitted yet).
+    if (summaryBar) summaryBar.style.display = 'none';
+    if (placementBar) placementBar.style.display = 'none';
+
+    const rows = allApps
+      .filter(ap => isSubmitted(ap) && !['Lapse','Cancel'].includes(ap.status||''))
+      .filter(ap => submittedDateInPeriod(ap.tpDate, pStart, pEnd))
+      .filter(ap => !_optReportUnuploadedOnly || !ap.opted)
+      .sort((a,b) => new Date(a.tpDate||0) - new Date(b.tpDate||0));
+
+    _optReportRows = rows.map(ap => ({
+      lead: ap.clientName || '',
+      applicant: ap.who || 'Borrower',
+      carrier: ap.carrier || '',
+      product: ap.product || '',
+      face: ap.face || 0,
+      monthly: Math.round(((ap.premium||0)/12) * 100) / 100
+    }));
+
+    const totalMonthly = _optReportRows.reduce((a,r)=>a+r.monthly,0);
+    const totalFace = _optReportRows.reduce((a,r)=>a+r.face,0);
+    const pending = rows.filter(ap => !ap.opted).length;
+
+    const head = ['Lead','Applicant','Carrier','Product','Face','Monthly'];
+    const tableRows = _optReportRows.map((r,i) => {
+      const ap = rows[i];
+      return '<tr style="border-bottom:1px solid #eef2f7;">' +
+        '<td style="padding:7px 8px;font-size:12px;color:#1D3557;font-weight:600;">' + esc(r.lead) + '</td>' +
+        '<td style="padding:7px 8px;font-size:12px;color:#5f7a99;">' + esc(r.applicant) + '</td>' +
+        '<td style="padding:7px 8px;font-size:12px;color:#5f7a99;">' + esc(r.carrier) + '</td>' +
+        '<td style="padding:7px 8px;font-size:12px;color:#5f7a99;">' + esc(r.product) + '</td>' +
+        '<td style="padding:7px 8px;font-size:12px;color:#1D3557;text-align:right;">$' + r.face.toLocaleString() + '</td>' +
+        '<td style="padding:7px 8px;font-size:12px;color:#1D3557;text-align:right;font-weight:600;">$' + r.monthly.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</td>' +
+        '<td style="padding:7px 8px;text-align:right;"><button onclick="toggleAppOPT(\'' + ap.clientId + '\',' + ap.ci + ',' + ap.ti + ',' + ap.ai + ')" style="font-size:10px;border:1px solid ' + (ap.opted?'#3B6D11':'#d0dcea') + ';background:' + (ap.opted?'#EAF3DE':'#fff') + ';color:' + (ap.opted?'#3B6D11':'#5f7a99') + ';border-radius:6px;padding:3px 8px;cursor:pointer;white-space:nowrap;">' + (ap.opted?'\u2713 OPT':'+ OPT') + '</button></td>' +
+      '</tr>';
+    }).join('');
+
+    el.innerHTML =
+      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">' +
+        '<div style="font-size:13px;font-weight:600;color:#1D3557;">Submitted business \u00b7 ' + esc(label) + '</div>' +
+        '<button onclick="_optReportUnuploadedOnly=false;renderAppsTab()" style="padding:5px 10px;font-size:11px;font-weight:600;border-radius:7px;cursor:pointer;border:' + (!_optReportUnuploadedOnly?'none':'2px solid #e2eaf2') + ';background:' + (!_optReportUnuploadedOnly?'#1D3557':'#fff') + ';color:' + (!_optReportUnuploadedOnly?'#fff':'#5f7a99') + ';">All</button>' +
+        '<button onclick="_optReportUnuploadedOnly=true;renderAppsTab()" style="padding:5px 10px;font-size:11px;font-weight:600;border-radius:7px;cursor:pointer;border:' + (_optReportUnuploadedOnly?'none':'2px solid #e2eaf2') + ';background:' + (_optReportUnuploadedOnly?'#BA7517':'#fff') + ';color:' + (_optReportUnuploadedOnly?'#fff':'#5f7a99') + ';">Not yet in OPT' + (pending?' ('+pending+')':'') + '</button>' +
+        '<div style="margin-left:auto;display:flex;gap:6px;">' +
+          '<button onclick="copyOPTReport()" style="padding:5px 10px;font-size:11px;font-weight:600;border-radius:7px;border:1px solid #138181;background:#fff;color:#138181;cursor:pointer;">Copy</button>' +
+          '<button onclick="downloadOPTReport()" style="padding:5px 10px;font-size:11px;font-weight:600;border-radius:7px;border:none;background:#138181;color:#fff;cursor:pointer;">CSV</button>' +
+        '</div>' +
+      '</div>' +
+      (_optReportRows.length
+        ? '<div style="overflow-x:auto;border:1px solid #e2eaf2;border-radius:10px;background:#fff;">' +
+            '<table style="width:100%;border-collapse:collapse;">' +
+              '<thead><tr style="background:#f7fafd;">' +
+                head.map((h,i) => '<th style="padding:8px;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#8fa8c0;text-align:' + (i>=4?'right':'left') + ';">' + h + '</th>').join('') +
+                '<th style="padding:8px;"></th>' +
+              '</tr></thead>' +
+              '<tbody>' + tableRows + '</tbody>' +
+              '<tfoot><tr style="background:#f7fafd;font-weight:700;">' +
+                '<td colspan="4" style="padding:8px;font-size:11px;color:#1D3557;">' + _optReportRows.length + ' app' + (_optReportRows.length===1?'':'s') + '</td>' +
+                '<td style="padding:8px;font-size:12px;color:#1D3557;text-align:right;">$' + totalFace.toLocaleString() + '</td>' +
+                '<td style="padding:8px;font-size:12px;color:#1D3557;text-align:right;">$' + totalMonthly.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</td>' +
+                '<td></td>' +
+              '</tr></tfoot>' +
+            '</table></div>'
+        : '<div style="padding:24px;text-align:center;color:#8fa8c0;font-size:12px;background:#fff;border:1px solid #e2eaf2;border-radius:10px;">Nothing submitted in this period' + (_optReportUnuploadedOnly?' still needing OPT entry.':'.') + '</div>');
+    return;
+  }
 
   if (appsView === 'submitted' || appsView === 'written') {
     // --- SUBMITTED VIEW: filter by production period ---
@@ -7240,14 +7353,12 @@ async function saveAppsToTouchpoint(id, ci, ti) {
   // Rule: a sale dates to the SIT it was run on — this specific touchpoint's
   // datetime — not the day it was logged. Falls back to now only if the sit
   // has no datetime for some reason.
-  const _sitTp = c.cases[ci] && c.cases[ci].touchpoints ? c.cases[ci].touchpoints[ti] : null;
-  // An app dates to the SIT IT CAME FROM, not the moment you typed it in. You run an
-  // appointment at 7pm and enter the paperwork next morning - that business belongs to
-  // the day of the appointment. This used to stamp new Date(), so every app entered the
-  // morning after landed in the wrong day's submitted business. An app added at a LATER
-  // touchpoint still dates right: ti points at the sit it was actually written on.
-  const sitDate = (_sitTp && _sitTp.datetime) ? new Date(_sitTp.datetime).toISOString()
-                                              : new Date().toISOString();
+  // An app dates to THE DAY YOU ADD IT. Continuations, rewrites, and PPUs hang off
+  // touchpoints that can be weeks old - stamping those dates silently dropped new
+  // apps into a past week, where they fell off the current submitted list and got
+  // missed for OPT upload. Entry day is what you can see and act on; if the
+  // paperwork was genuinely done earlier, change it in Edit app.
+  const appDate = new Date().toISOString();
   const entries = document.querySelectorAll('.app-entry');
   const apps = [];
   let _missingProduct = false;
@@ -7266,7 +7377,7 @@ async function saveAppsToTouchpoint(id, ci, ti) {
       const comp = carrier && productName && apv ? calcAppComp(carrier, productName, apv, null, undefined, age, productRange) : null;
       apps.push({
         carrier, product: productName, product_range: productRange, face, premium: apv, who, age,
-        status:'Written', written_date: sitDate, writtenDate: sitDate, id: Date.now()+idx,
+        status:'Written', written_date: appDate, writtenDate: appDate, id: Date.now()+idx,
         // Set when this app replaces a declined one. The declined app is then
         // superseded and its premium stops counting - one sale, one premium.
         rewrite_of: (idx === 0 && window._rewriteOf) ? window._rewriteOf : null,
