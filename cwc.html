@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h73</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h74</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -1559,7 +1559,15 @@ function renderScore() {
   const noEl = document.getElementById('p-needs-outcome');
   if (noEl) noEl.textContent = needsOutcome;
   const noSub = document.getElementById('p-needs-sub');
-  if (noSub) noSub.textContent = needsOutcome ? 'log these' : 'all logged';
+  if (noSub) {
+    let fixable = 0;
+    try { fixable = findUnloggedSits().length; } catch(e) {}
+    if (fixable) {
+      noSub.innerHTML = '<span onclick="event.stopPropagation();reviewUnloggedSits()" style="text-decoration:underline;cursor:pointer;">' + fixable + ' are written sits \u2014 fix</span>';
+    } else {
+      noSub.textContent = needsOutcome ? 'log these' : 'all logged';
+    }
+  }
   // Reconciliation: the buckets must account for every appointment. If they ever
   // don't, say so loudly rather than letting sits quietly vanish again.
   const recEl = document.getElementById('p-first-rate');
@@ -7401,6 +7409,56 @@ function appStatusOptions(sel) {
   return APP_STATUSES.map(s => '<option' + (s === sel ? ' selected' : '') + '>' + s + '</option>').join('');
 }
 
+// BACKFILL: appointments where business was written but the appointment was
+// never marked as a sit (the saveAppsToTouchpoint bug). Having applications on
+// it is proof it happened and sold, so these are inferable with certainty - no
+// guessing. Nothing changes until you've seen the list and approved it.
+function findUnloggedSits() {
+  const out = [];
+  const now = Date.now();
+  clients.forEach(c => (c.cases||[]).forEach((cs,ci) => (cs.touchpoints||[]).forEach((tp,ti) => {
+    if (!tp || !tp.datetime) return;
+    if (tp.outcome && tp.outcome !== 'pending') return;
+    if (new Date(tp.datetime).getTime() >= now) return;      // still upcoming
+    if (!(tp.apps||[]).length) return;                       // no proof it happened
+    out.push({ id:c.id, name:c.name, ci, ti, when:tp.datetime,
+      apps:(tp.apps||[]).map(a=>(a.carrier||'')+' '+(a.product||'')).join(', ') });
+  })));
+  return out.sort((a,b)=> new Date(a.when)-new Date(b.when));
+}
+function reviewUnloggedSits() {
+  const rows = findUnloggedSits();
+  if (!rows.length) { alert('Nothing to backfill - every appointment with applications on it is already logged as a sit.'); return; }
+  const list = rows.map(r =>
+    '<div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-top:1px solid #eef2f7;font-size:12px;">' +
+      '<div><strong>' + esc(r.name) + '</strong><div style="font-size:10px;color:#8fa8c0;">' + esc(r.apps) + '</div></div>' +
+      '<div style="color:#5f7a99;white-space:nowrap;">' + new Date(r.when).toLocaleDateString('en-US',{month:'short',day:'numeric'}) + '</div>' +
+    '</div>').join('');
+  showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">Log these as sits?</div>' +
+    '<div class="modal-sub">' + rows.length + ' appointment(s) have applications written on them but were never marked as a sit.</div>' +
+    '<div style="max-height:320px;overflow-y:auto;margin:8px 0;">' + list + '</div>' +
+    '<div style="font-size:11px;color:#5f7a99;margin-bottom:8px;">Each becomes a sit with a sale. Applications, premiums and dates are untouched.</div>' +
+    '<button class="save-btn" onclick="applyUnloggedSits()">Log all ' + rows.length + ' as sits</button>');
+}
+async function applyUnloggedSits() {
+  const rows = findUnloggedSits();
+  const byClient = {};
+  rows.forEach(r => { (byClient[r.id] = byClient[r.id] || []).push(r); });
+  showSync('Logging...');
+  for (const id of Object.keys(byClient)) {
+    const c = clients.find(x=>x.id===id); if (!c) continue;
+    byClient[id].forEach(r => {
+      const tp = ((c.cases||[])[r.ci]||{}).touchpoints[r.ti];
+      if (tp) { tp.outcome = 'sale'; tp.backfilled_sit = true; }
+    });
+    try { await sb.from('clients').update({cases:c.cases}).eq('id',id); } catch(e){}
+  }
+  hideSync(); closeModal();
+  alert('Logged ' + rows.length + ' appointment(s) as sits.');
+  render();
+}
+
 function carrierOptions(selected) {
   return getEnabledCarrierList().map(c => `<option${selected===c?' selected':''}>${c}</option>`).join('');
 }
@@ -7625,7 +7683,11 @@ async function saveAppsToTouchpoint(id, ci, ti) {
   if (_missingProduct) { alert('Pick a product for each app before saving — otherwise the comp saves wrong.'); return; }
   _appCount = 1;
   if (c.cases[ci]?.touchpoints[ti]) {
-    c.cases[ci].touchpoints[ti].apps = [...(c.cases[ci].touchpoints[ti].apps||[]), ...apps];
+    const _tp = c.cases[ci].touchpoints[ti];
+    _tp.apps = [...(_tp.apps||[]), ...apps];
+    // You wrote an application here, so this appointment happened and it sold.
+    // Leaving it 'pending' is what buried real sits in the Needs-outcome pile.
+    if (apps.length && (!_tp.outcome || _tp.outcome === 'pending')) _tp.outcome = 'sale';
   }
   showSync('Saving...');
   await sb.from('clients').update({cases:c.cases}).eq('id',id);
