@@ -148,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h85</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h86</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -2187,9 +2187,9 @@ function timerUpdateStatusLabel() {
 }
 
 function timerIsApptWindow(c) {
-  if (!c || !c.appt_datetime) return false;
+  if (!c || !apptOf(c)) return false;
   const now = new Date();
-  const apptTime = new Date(c.appt_datetime);
+  const apptTime = new Date(apptOf(c));
   const mins = (now - apptTime) / 60000;
   return mins >= -30 && mins <= 180; // 30 min before to 3 hrs after
 }
@@ -2358,7 +2358,7 @@ function drillDown(type) {
         const d = new Date(tp.datetime);
         if (d >= start && d <= end && (!t || d < t)) t = d;
       }));
-      if (!t && c.appt_datetime) { const d = new Date(c.appt_datetime); if (d >= start && d <= end) t = d; }
+      if (!t && apptOf(c)) { const d = new Date(apptOf(c)); if (d >= start && d <= end) t = d; }
       return t;
     };
     leads = clients.filter(c => apptTime(c) !== null)
@@ -2450,8 +2450,8 @@ function drillDown(type) {
   }
 
   const rows = leads.map(c => {
-    const apptStr = c.appt_datetime ? 
-      `<div style="font-size:11px;color:#138181;font-weight:500;">${new Date(c.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(c.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>` : '';
+    const apptStr = apptOf(c) ? 
+      `<div style="font-size:11px;color:#138181;font-weight:500;">${new Date(apptOf(c)).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(apptOf(c)).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>` : '';
     return `<div class="client-card" onclick="closeModal();setTimeout(()=>openClient('${c.id}'),100)">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
         <div>
@@ -2483,10 +2483,10 @@ function getClientAppts(c) {
   if (['Closed','No sale','Dead','No show'].includes(c.status)) return appts;
 
   // Primary: use appt_datetime as the main appointment indicator
-  if (c.appt_datetime) {
+  if (apptOf(c)) {
     // If a touchpoint at this time already has a LOGGED outcome, the appointment
     // happened and was recorded — it disappears from the sidebar.
-    const apptMs = new Date(c.appt_datetime).getTime();
+    const apptMs = new Date(apptOf(c)).getTime();
     const outcomeLogged = (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp =>
       tp && tp.outcome && tp.outcome !== 'pending' && tp.datetime &&
       Math.abs(new Date(tp.datetime).getTime() - apptMs) < 5 * 60 * 1000
@@ -2495,7 +2495,7 @@ function getClientAppts(c) {
     // Find the matching touchpoint for context (case type, tp type)
     let matchedCase = null;
     let matchedTp = null;
-    const apptTime = new Date(c.appt_datetime).getTime();
+    const apptTime = new Date(apptOf(c)).getTime();
     (c.cases||[]).forEach(cs => {
       if (cs.status !== 'Open') return;
       (cs.touchpoints||[]).forEach(tp => {
@@ -2511,8 +2511,8 @@ function getClientAppts(c) {
     });
 
     appts.push({
-      datetime: c.appt_datetime,
-      notes: c.appt_notes || '', // no fallback to case type — the type label already shows it
+      datetime: apptOf(c),
+      notes: apptNotesOf(c) || '', // no fallback to case type — the type label already shows it
       caseType: matchedCase ? matchedCase.type : '',
       tpType: matchedTp ? matchedTp.type : '',
       clientId: c.id,
@@ -2534,7 +2534,7 @@ function getClientAppts(c) {
     const nextTp = pendingTps.find(tp => new Date(tp.datetime) >= now) || pendingTps[pendingTps.length-1];
     if (nextTp) {
       const tpTime = new Date(nextTp.datetime).getTime();
-      const primaryTime = c.appt_datetime ? new Date(c.appt_datetime).getTime() : 0;
+      const primaryTime = apptOf(c) ? new Date(apptOf(c)).getTime() : 0;
       // Only add if this is a DIFFERENT time from the primary appt (more than 5 min apart)
       if (Math.abs(tpTime - primaryTime) > 5 * 60 * 1000) {
         appts.push({
@@ -3430,6 +3430,50 @@ function openCoaching() {
       '<div style="max-height:40vh;overflow-y:auto;">' + timeline + '</div>' : ''));
 }
 
+// ── THE APPOINTMENT, DERIVED ────────────────────────────────────────────────
+// An appointment used to live in two places: `appt_datetime` on the lead AND a
+// pending touchpoint on the case. Sixteen functions kept them in sync by hand,
+// and every ghost we chased came from one of them missing a copy - stale
+// pointers on dead leads, appointments that survived their case closing,
+// duplicates that appeared out of a reschedule.
+//
+// So it stops being stored. This works it out from the touchpoints each time
+// it's asked for. There is nothing to keep in sync, so nothing can drift.
+//
+// The rule: the earliest UNRESOLVED appointment on an OPEN case. A future one
+// wins over one that already came due, because that's the one you're driving to.
+// The stored column is a fallback for legacy rows that have no touchpoints yet.
+function apptTpOf(c) {
+  if (!c) return null;
+  const now = Date.now();
+  let future = null, past = null;
+  (c.cases||[]).forEach(cs => {
+    if (cs.status && cs.status !== 'Open') return;
+    (cs.touchpoints||[]).forEach(tp => {
+      if (!tp || !tp.datetime) return;
+      if (tp.outcome && tp.outcome !== 'pending') return;
+      const t = new Date(tp.datetime).getTime();
+      if (isNaN(t)) return;
+      if (t >= now) { if (!future || t < new Date(future.datetime).getTime()) future = tp; }
+      else { if (!past || t > new Date(past.datetime).getTime()) past = tp; }
+    });
+  });
+  return future || past;
+}
+function apptOf(c) {
+  const tp = apptTpOf(c);
+  if (tp) return tp.datetime;
+  // Legacy fallback: a record from before touchpoints existed. Only trusted
+  // when the lead has no cases at all - otherwise the cases are the truth and
+  // a stored value is exactly the stale pointer we're getting rid of.
+  if (c && c.appt_datetime && !(c.cases||[]).length) return c.appt_datetime;
+  return null;
+}
+function apptNotesOf(c) {
+  const tp = apptTpOf(c);
+  return (tp && tp.notes) || (c && c.appt_notes) || '';
+}
+
 function statusBadge(s) { const m={'New':'b-New','Working':'b-Working','Appointment set':'b-Appt','Closed':'b-Closed','No sale':'b-No','No show':'b-Noshow','Dead':'b-Dead','Follow-up':'b-Followup'}; return 'badge '+(m[s]||'b-New'); }
 function dotClass(s) { if(s.outcome==='showed')return'jd-showed'; if(s.outcome==='noshow')return'jd-noshow'; if(s.outcome==='canceled')return'jd-cancel'; return'jd-pending'; }
 
@@ -3689,7 +3733,7 @@ function getScheduledFollowUp(c) {
     return { datetime: log[fuIdx].followup_dt || null, note: log[fuIdx].note || '', logIdx: fuIdx };
   }
   // Legacy fallback: Follow-up status with only appt_datetime set
-  if (c.status === 'Follow-up' && c.appt_datetime) return { datetime: c.appt_datetime, note: c.appt_notes || '', logIdx: -1 };
+  if (c.status === 'Follow-up' && apptOf(c)) return { datetime: apptOf(c), note: apptNotesOf(c) || '', logIdx: -1 };
   return null;
 }
 
@@ -3893,7 +3937,7 @@ function isApptImminent(c) {
   if (c.status !== 'Appointment set') return false;
   const now = new Date();
   const todayStr = now.toDateString();
-  const apptMs = c.appt_datetime ? new Date(c.appt_datetime).getTime() : null;
+  const apptMs = apptOf(c) ? new Date(apptOf(c)).getTime() : null;
   return (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => {
     if (!tp || tp.outcome !== 'pending' || !tp.datetime) return false;
     if (isGhostPending(cs.touchpoints, tp)) return false;
@@ -4502,7 +4546,7 @@ function paceStats() {
   clients.forEach(c => {
     if (!c || c.resolved_at) return;
     if (['Dead','Removed','Closed','No sale'].includes(c.status)) return;
-    if (c.appt_datetime) return;
+    if (apptOf(c)) return;
     const stage = leadStage(c);
     if (!stage || !bars[stage]) return;          // open + dormant aren't "behind"
     if (touchedThisBlock(c)) { out.doneThisBlock++; return; }  // handled for now
@@ -4779,9 +4823,9 @@ function restReturnsOn(c) {
 // these sat in "Needs an outcome" the whole time and still didn't get worked,
 // because status 'Appointment set' excludes a lead from dialing. Dead zone.
 function apptNeedsOutcome(c) {
-  if (!c.appt_datetime || c.status !== 'Appointment set') return false;
-  if (new Date(c.appt_datetime) >= new Date(Date.now() - 86400000)) return false;  // 1 day grace
-  const apptMs = new Date(c.appt_datetime).getTime();
+  if (!apptOf(c) || c.status !== 'Appointment set') return false;
+  if (new Date(apptOf(c)) >= new Date(Date.now() - 86400000)) return false;  // 1 day grace
+  const apptMs = new Date(apptOf(c)).getTime();
   const logged = (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp =>
     tp && tp.outcome && tp.outcome !== 'pending' && tp.datetime &&
     Math.abs(new Date(tp.datetime).getTime() - apptMs) < 5*60*1000));
@@ -4791,7 +4835,7 @@ function apptNeedsOutcome(c) {
 function isDormant(c) {
   if (!c || c.resolved_at) return false;                       // resolved is not dormant
   if (['Dead','Removed'].includes(c.status)) return false;     // dead is a decision, dormant is not
-  if (c.appt_datetime) return false;                           // has an appointment - never dormant
+  if (apptOf(c)) return false;                           // has an appointment - never dormant
   if (needsReplacement(c)) return false;                       // declined and unreplaced - you owe them a policy
   if (isResting(c) || apptNeedsOutcome(c)) return false;       // these come BACK - they can never fall out of sight
   if (hasSignsOfLife(c)) return false;                         // they moved - back in the active queue
@@ -4972,7 +5016,7 @@ function renderClients(q='') {
         </div>
       </div>
       ${sits.length?`<div class="journey-row">${journey}</div>`:''}
-      ${lastCall?`<div class="log-row"><span class="log-time">${new Date(lastCall.ts).toLocaleDateString('en-US',{month:'short',day:'numeric'})} ${new Date(lastCall.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</span> - ${lastCall.outcome}${lastCall.outcome==='No show'&&c.appt_datetime?' <span style="color:#BA7517;font-weight:500;">(appt: '+new Date(c.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})+' at '+new Date(c.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})+')</span>':''}</div>`:''}
+      ${lastCall?`<div class="log-row"><span class="log-time">${new Date(lastCall.ts).toLocaleDateString('en-US',{month:'short',day:'numeric'})} ${new Date(lastCall.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</span> - ${lastCall.outcome}${lastCall.outcome==='No show'&&apptOf(c)?' <span style="color:#BA7517;font-weight:500;">(appt: '+new Date(apptOf(c)).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})+' at '+new Date(apptOf(c)).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})+')</span>':''}</div>`:''}
     </div>`;
   }).join('');
 }
@@ -5056,8 +5100,8 @@ function openClient(id, keepDialCount) {
       <div style="width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0;background:${cl.outcome==='Appt set'?'#138181':cl.outcome==='No show'?'#E24B4A':cl.outcome==='Not interested'?'#E24B4A':cl.outcome==='Cancelled'?'#E24B4A':cl.outcome==='Pushed off'?'#8fa8c0':cl.outcome==='Callback'?'#BA7517':'#1D3557'};"></div>
       <div style="flex:1;">
         <div style="font-size:12px;color:#1a2e44;font-weight:500;">${cl.outcome}${cl.dials>1?' <span style="font-size:10px;color:#5f7a99;">('+cl.dials+'x dialed)</span>':''}</div>
-        ${cl.appt_datetime?`<div style="font-size:11px;font-weight:600;color:#138181;">${new Date(cl.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(cl.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>`:''}
-        ${cl.appt_notes?`<div style="font-size:10px;color:#5f7a99;font-style:italic;">${esc(cl.appt_notes)}</div>`:''}
+        ${apptOf(cl)?`<div style="font-size:11px;font-weight:600;color:#138181;">${new Date(apptOf(cl)).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(apptOf(cl)).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>`:''}
+        ${apptNotesOf(cl)?`<div style="font-size:10px;color:#5f7a99;font-style:italic;">${esc(apptNotesOf(cl))}</div>`:''}
         ${detail?`<div style="font-size:11px;color:#1D3557;">${esc(detail)}</div>`:''}
         <div style="display:flex;gap:6px;align-items:center;">
           <div style="font-size:10px;color:#a0b8cc;">${new Date(cl.ts).toLocaleDateString('en-US',{month:'short',day:'numeric'})} ${new Date(cl.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
@@ -5129,13 +5173,13 @@ function openClient(id, keepDialCount) {
     return h;
   })()}
 
-  ${(c.appt_datetime || getScheduledFollowUp(c))?(()=>{
+  ${(apptOf(c) || getScheduledFollowUp(c))?(()=>{
     const fu = getScheduledFollowUp(c);
     // Banner must match reality: if the appointment's outcome is already logged
     // (sale / no sale / no-show touchpoint, or a No show call_log entry at that
     // time), the 'tap to log outcome' banner is resolved business — hide it.
-    if (c.appt_datetime && c.status !== 'Follow-up') {
-      const apptMs = new Date(c.appt_datetime).getTime();
+    if (apptOf(c) && c.status !== 'Follow-up') {
+      const apptMs = new Date(apptOf(c)).getTime();
       const tpLogged = (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp =>
         tp && tp.outcome && tp.outcome !== 'pending' && tp.datetime &&
         Math.abs(new Date(tp.datetime).getTime() - apptMs) < 5 * 60 * 1000
@@ -5151,8 +5195,8 @@ function openClient(id, keepDialCount) {
       const fuLabel = fu.datetime ? new Date(fu.datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + new Date(fu.datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + (fu.note?' - '+fu.note:'') : (fu.note || 'No date set');
       return '<div style="margin-bottom:8px;"><div style="font-size:12px;font-weight:600;color:#534AB7;background:#F3EEFF;border:1px solid #C4AAFF;border-radius:6px;padding:5px 10px;margin-bottom:4px;display:block;">Follow-up: ' + fuLabel + '</div><div style="display:flex;gap:6px;"><button onclick="openFollowUpPicker(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit</button><button onclick="doneFollowUp(\'' + id + '\')" style="font-size:10px;background:#534AB7;color:#fff;border:none;border-radius:6px;padding:3px 10px;cursor:pointer;">Done</button><button onclick="removeFollowUp(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #E8B4B4;border-radius:6px;padding:3px 10px;color:#A32D2D;cursor:pointer;">Remove</button></div></div>';
     }
-    if (!c.appt_datetime) return '';
-    const apptLabel = new Date(c.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + new Date(c.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + (c.appt_notes?' - '+c.appt_notes:'');
+    if (!apptOf(c)) return '';
+    const apptLabel = new Date(apptOf(c)).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + new Date(apptOf(c)).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + (apptNotesOf(c)?' - '+apptNotesOf(c):'');
     if (isCallback) {
       let snoozeRow = '';
       if (callbackHasClockTime(getScheduledCallback(c) || {}) && isCallbackDueNow(c)) {
@@ -5177,7 +5221,7 @@ function openClient(id, keepDialCount) {
       // you drive out there.
       let rebookNote = '';
       try {
-        const at = c.appt_datetime ? new Date(c.appt_datetime).getTime() : null;
+        const at = apptOf(c) ? new Date(apptOf(c)).getTime() : null;
         let tp = null;
         (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(t => {
           if (t && t.datetime && at && Math.abs(new Date(t.datetime).getTime() - at) < 60000) tp = t;
@@ -5277,8 +5321,8 @@ function showSitOutcomeModal(id, ci) {
   }
   const c = clients.find(x=>x.id===id); if (!c) return;
   const cs = ci !== null ? c.cases[ci] : null;
-  const apptDt = c.appt_datetime ? new Date(c.appt_datetime) : new Date();
-  const apptStr = c.appt_datetime ? apptDt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + apptDt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : 'Today';
+  const apptDt = apptOf(c) ? new Date(apptOf(c)) : new Date();
+  const apptStr = apptOf(c) ? apptDt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + apptDt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : 'Today';
   const caseLabel = cs ? cs.type : 'New case';
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+7); tomorrow.setHours(10,0,0,0);
   const contDt = toLocalDT(tomorrow);
@@ -5390,7 +5434,7 @@ async function confirmSitOutcome(id, ci, outcome) {
   }
 
   // WHICH SIT IS BEING RESOLVED? The one that HAPPENED: the most recent
-  // pending whose time has passed. The old logic trusted c.appt_datetime -
+  // pending whose time has passed. The old logic trusted apptOf(c) -
   // correct only if you log the outcome BEFORE booking the next meeting.
   // Booking first (a completely legitimate workflow) updated the field to
   // the FUTURE date, so the resolver stamped the outcome onto the future
@@ -5406,14 +5450,14 @@ async function confirmSitOutcome(id, ci, outcome) {
   }
   if (pendIdx === -1) {
     // No past pending: fall back to the appt-field match, then any pending.
-    const sitMs0 = new Date(c.appt_datetime || now.toISOString()).getTime();
+    const sitMs0 = new Date(apptOf(c) || now.toISOString()).getTime();
     pendIdx = existingTps.findIndex(t => t && t.outcome === 'pending' && t.datetime && Math.abs(new Date(t.datetime).getTime() - sitMs0) < 6 * 3600000);
     if (pendIdx === -1) pendIdx = existingTps.findIndex(t => t && t.outcome === 'pending');
   }
   // The sit's datetime is calendar truth: the resolved touchpoint's own time.
   // Fallbacks: a PAST appt field, else now - never a future date.
   const sitDatetime = pendIdx !== -1 ? existingTps[pendIdx].datetime
-    : (c.appt_datetime && new Date(c.appt_datetime) <= now ? c.appt_datetime : now.toISOString());
+    : (apptOf(c) && new Date(apptOf(c)) <= now ? apptOf(c) : now.toISOString());
   if (pendIdx !== -1) {
     tp = existingTps[pendIdx];
     tp.outcome = outcome;
@@ -5487,8 +5531,8 @@ async function confirmSitOutcome(id, ci, outcome) {
 
   // Update lead status and appt
   let newStatus = c.status;
-  let newApptDt = c.appt_datetime;
-  let newApptNotes = c.appt_notes;
+  let newApptDt = apptOf(c);
+  let newApptNotes = apptNotesOf(c);
 
   if (outcome === 'sale') { newStatus = 'Closed'; }
   else if (outcome === 'nosale') { newStatus = 'No sale'; newApptDt = null; newApptNotes = null; }
@@ -5660,8 +5704,8 @@ function renderWeekGrid(excludeId, weekOffset, containerId) {
     days.push(d);
   }
   const booked = clients
-    .filter(c => c.appt_datetime && c.id !== excludeId)
-    .map(c => ({name: c.name, dt: new Date(c.appt_datetime)}))
+    .filter(c => apptOf(c) && c.id !== excludeId)
+    .map(c => ({name: c.name, dt: new Date(apptOf(c))}))
     .filter(a => a.dt >= now);
   const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const cols = days.map(d => {
@@ -5702,8 +5746,8 @@ function buildWeekGrid_OLD(excludeId) {
     days.push(d);
   }
   const booked = clients
-    .filter(c => c.appt_datetime && c.id !== excludeId)
-    .map(c => ({name: c.name, dt: new Date(c.appt_datetime)}))
+    .filter(c => apptOf(c) && c.id !== excludeId)
+    .map(c => ({name: c.name, dt: new Date(apptOf(c))}))
     .filter(a => a.dt >= now);
   const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const cols = days.map(d => {
@@ -5726,7 +5770,7 @@ function buildWeekGrid_OLD(excludeId) {
 
 function openMoveAppt(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
-  const current = new Date(c.appt_datetime);
+  const current = new Date(apptOf(c));
   const dtVal = new Date(current.getTime() - current.getTimezoneOffset()*60000).toISOString().slice(0,16);
   showModal(`<button class="close-x" onclick="closeModal()">x</button>
   <div class="modal-title">Edit or delete time</div>
@@ -5734,7 +5778,7 @@ function openMoveAppt(id) {
   <div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:6px 10px;margin-bottom:10px;">Fixing the time — no stats logged, no reschedule tracked.</div>
   ${buildWeekGrid(id)}
   <div class="field"><label>New date & time</label><input type="datetime-local" id="move-dt" value="${dtVal}" style="font-size:16px;"></div>
-  <div class="field"><label>Notes (optional)</label><input type="text" id="move-notes" value="${escAttr(c.appt_notes)}" placeholder="Notes..."></div>
+  <div class="field"><label>Notes (optional)</label><input type="text" id="move-notes" value="${escAttr(apptNotesOf(c))}" placeholder="Notes..."></div>
   <button class="save-btn" style="background:#138181;" onclick="confirmMoveAppt('${id}')">Save correction</button>
   <div style="border-top:1px solid #e6ecf3;margin:14px 0 10px;"></div>
   <div style="font-size:11px;color:#8fa0b3;margin-bottom:8px;">Or delete this appointment:</div>
@@ -5948,7 +5992,7 @@ async function confirmReschedule(id) {
     const tps = (cs.touchpoints||[]).slice();
     const pendIdxs = tps.map((t,i)=>({t,i})).filter(x=>x.t.outcome==='pending' && x.t.datetime);
     if (!pendIdxs.length) return cs;
-    let pick = pendIdxs.find(x => c.appt_datetime && Math.abs(new Date(x.t.datetime)-new Date(c.appt_datetime)) < 60000);
+    let pick = pendIdxs.find(x => apptOf(c) && Math.abs(new Date(x.t.datetime)-new Date(apptOf(c))) < 60000);
     if (!pick) pick = pendIdxs.sort((a,b)=> new Date(a.t.datetime)-new Date(b.t.datetime))[0];
     tps[pick.i] = {...pick.t, datetime: apptDatetime, notes: apptNotes || pick.t.notes};
     return {...cs, touchpoints: tps};
@@ -6500,7 +6544,7 @@ const TEXT_TEMPLATES = [
     stage: ['appt_upcoming', 'appt'],
     text: (c) => {
       const fn = (c.name||'').split(' ')[0];
-      const dt = c.appt_datetime ? new Date(c.appt_datetime) : null;
+      const dt = apptOf(c) ? new Date(apptOf(c)) : null;
       const when = dt ? dt.toLocaleDateString('en-US',{weekday:'long'}) + ' at ' + dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : 'our scheduled time';
       return `Hi ${fn}, Holli here. You're all set for ${when}. Takes about 15 minutes - I'll call you then. If anything changes, just text me back.`;
     }
@@ -6511,7 +6555,7 @@ const TEXT_TEMPLATES = [
     stage: ['appt_upcoming'],
     text: (c) => {
       const fn = (c.name||'').split(' ')[0];
-      const dt = c.appt_datetime ? new Date(c.appt_datetime) : null;
+      const dt = apptOf(c) ? new Date(apptOf(c)) : null;
       const when = dt ? dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : 'our scheduled time';
       return `Hi ${fn}, it's Holli - looking forward to our call today at ${when}. Talk soon!`;
     }
@@ -6573,9 +6617,9 @@ function getLeadTextStage(c) {
     cl.outcome === 'Conversation'
   );
   const isNoShow = c.status === 'No show';
-  const hasAppt = !!c.appt_datetime;
+  const hasAppt = !!apptOf(c);
   const now = new Date();
-  const apptTime = hasAppt ? new Date(c.appt_datetime) : null;
+  const apptTime = hasAppt ? new Date(apptOf(c)) : null;
   const minsToAppt = apptTime ? (apptTime - now) / 60000 : 999;
   const isAtApptTime = minsToAppt >= -30 && minsToAppt <= 120;
   const nsCount = getNoShowCount(c);
@@ -6812,7 +6856,7 @@ async function quickLog(id, outcome, statKey) {
     return;
   }
 
-  const ts = (outcome === 'No show' && c.appt_datetime) ? c.appt_datetime : new Date().toISOString();
+  const ts = (outcome === 'No show' && apptOf(c)) ? apptOf(c) : new Date().toISOString();
   const callLog = [...(c.call_log||[]), {ts, outcome, dials:dialCount}];
   let newStatus = c.status;
   if (outcome==='Not interested') newStatus='Dead';
@@ -6840,7 +6884,7 @@ async function quickLog(id, outcome, statKey) {
   c.call_log = callLog; c.status = newStatus;
   showSync('Saving...');
   await sb.from('clients').update({call_log:callLog, status:newStatus, ...updatePayloadExtra}).eq('id',id);
-  if (updatePayloadExtra.appt_datetime === null) { c.appt_datetime = null; c.appt_notes = null; }
+  if (apptOf(updatePayloadExtra) === null) { c.appt_datetime = null; c.appt_notes = null; }
   if (updatePayloadExtra.cases) c.cases = updatePayloadExtra.cases;
   await addStat('dials', dialCount);
   if (statKey !== 'dials') {
@@ -7748,7 +7792,7 @@ async function saveTouchpoint(id, ci) {
   else if (outcome==='pending') newLeadStatus='Appointment set';
 
   const updatePayload = {cases:c.cases, status:newLeadStatus};
-  if (c.appt_datetime) { updatePayload.appt_datetime=c.appt_datetime; updatePayload.appt_notes=c.appt_notes; }
+  if (apptOf(c)) { updatePayload.appt_datetime=apptOf(c); updatePayload.appt_notes=apptNotesOf(c); }
 
   showSync('Saving...');
   await sb.from('clients').update(updatePayload).eq('id',id);
@@ -7858,7 +7902,7 @@ async function saveEditTouchpoint(id, ci, ti) {
     updatePayload.appt_datetime = newIso;
     updatePayload.appt_notes = c.cases[ci].type + ' - ' + c.cases[ci].touchpoints[ti].type;
     c.appt_datetime = newIso;
-    c.appt_notes = updatePayload.appt_notes;
+    c.appt_notes = apptNotesOf(updatePayload);
   }
 
   showSync('Saving...'); await sb.from('clients').update(updatePayload).eq('id',id);
@@ -9013,7 +9057,7 @@ function getDefaultApptMins() {
 
 async function syncExistingAppts() {
   const now = new Date();
-  const upcoming = clients.filter(c => c.appt_datetime && new Date(c.appt_datetime) >= now && c.status === 'Appointment set');
+  const upcoming = clients.filter(c => apptOf(c) && new Date(apptOf(c)) >= now && c.status === 'Appointment set');
   if (!upcoming.length) { alert('No upcoming appointments to sync.'); return; }
   if (!confirm('Push ' + upcoming.length + ' upcoming appointment(s) to your Google Calendar?')) return;
   showSync('Syncing ' + upcoming.length + '...');
@@ -9062,7 +9106,7 @@ async function pushApptToCalendar(client, action) {
         event_id: client.gcal_event_id || null,
         summary: client.name + ' - appointment',
         description: 'CWC lead - ' + (client.phone || '') + (client.address ? '\n' + client.address : ''),
-        start: client.appt_datetime,
+        start: apptOf(client),
         minutes: client.appt_mins || getDefaultApptMins()
       })
     });
