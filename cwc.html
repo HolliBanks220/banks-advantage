@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h72</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h73</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -258,6 +258,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-val val-white" id="p-first" style="cursor:pointer;" onclick="drillDown('appts')">0</div>
         <div class="stat-sub sub-white" id="p-first-rate">- show rate</div>
       </div>
+      <div class="stat" style="background:#EBF3FF;">
+        <div class="stat-lbl" style="color:#1D3557;">Upcoming</div>
+        <div class="stat-val" style="color:#1D3557;cursor:pointer;" id="p-upcoming" onclick="drillDown('upcoming')">0</div>
+        <div class="stat-sub" style="color:#5f7a99;" id="p-upcoming-sub">-</div>
+      </div>
+      <div class="stat" style="background:#FFF6E8;">
+        <div class="stat-lbl" style="color:#854F0B;">Needs outcome</div>
+        <div class="stat-val" style="color:#854F0B;cursor:pointer;" id="p-needs-outcome" onclick="drillDown('needsoutcome')">0</div>
+        <div class="stat-sub" style="color:#854F0B;" id="p-needs-sub">-</div>
+      </div>
+    </div>
+    <div class="stat-row">
       <div class="stat stat-teal">
         <div class="stat-lbl lbl-white">Sits</div>
         <div class="stat-val val-white" id="p-showed" style="cursor:pointer;" onclick="drillDown('showed')">0</div>
@@ -408,8 +420,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
   <div id="tab-clients" style="display:none;">
     <div class="leads-hdr">
-      <div style="font-size:13px;font-weight:500;color:#1D3557;" id="client-count">Loading...</div>
-      <div id="pace-line" style="font-size:11px;font-weight:600;margin-top:2px;display:none;"></div>
+      <div style="display:flex;flex-direction:column;min-width:0;flex:1;">
+        <div style="font-size:13px;font-weight:500;color:#1D3557;" id="client-count">Loading...</div>
+        <div id="pace-line" style="font-size:11px;font-weight:600;margin-top:2px;display:none;"></div>
+      </div>
       <div style="display:flex;gap:6px;">
         <button class="add-btn" style="background:#138181;" onclick="openLeadImport()">[Import] Import</button>
         <button class="add-btn" onclick="openAddClient()">+ Add lead</button>
@@ -1355,25 +1369,24 @@ function renderScore() {
   document.getElementById('period-label').textContent = label;
 
   const dials=sumStat('dials',aStart,aEnd), convos=sumStat('convos',aStart,aEnd);
-  // DIAL LEDGER: appointments SET (phone results), derived from logged outcomes.
-  // Continuations, reschedules, and retirement steps never touch this number.
-  // FIRST 'Appt set' per lead, EVER - the activity tracker measures
-  // resolution: turning a lead into its first appointment. Rebooks, resets,
-  // and revivals never count here again. Production's show-rate math counts
-  // every appointment on the books - deliberately different.
+  // RESOLUTION: a lead's resolution is its LATEST 'Appt set' or 'Not interested'.
+  // Not its first. If a lead booked in June and went Not interested in July, it
+  // belongs to July as a dead - June's appt-set drops it. That way each lead is
+  // counted exactly once, in the period it actually landed in, and
+  // Appt set + Not interested == Resolved by construction, not by patching.
   const appts = clients.filter(c => {
-    const log = c.call_log||[];
-    const first = log.find(cl => cl.outcome === 'Appt set');
-    if (!first || !first.ts) return false;
-    // h65: if this lead was ever marked Not interested, it never really sat —
-    // that 'Appt set' was a mis-qualified booking, so it does NOT count as a
-    // resolved appointment here. (Production show-rate is touchpoint-based and
-    // untouched — a genuinely SAT appointment still counts there.)
-    if (log.some(cl => cl.outcome === 'Not interested')) return false;
-    const t = new Date(first.ts);
+    const r = lastResolution(c);
+    if (!r || r.kind !== 'appt') return false;
+    const t = new Date(r.ts);
     return t >= aStart && t <= aEnd;
   }).length;
-  const callbacks=sumStat('callbacks',aStart,aEnd), dead=sumStat('dead',aStart,aEnd);
+  const dead = clients.filter(c => {
+    const r = lastResolution(c);
+    if (!r || r.kind !== 'dead') return false;
+    const t = new Date(r.ts);
+    return t >= aStart && t <= aEnd;
+  }).length;
+  const callbacks=sumStat('callbacks',aStart,aEnd);
   const texts=sumStat('texts',aStart,aEnd);
   try { renderProduction(); } catch(e) { console.error('renderProduction:', e); }
   const resolved = appts + dead;
@@ -1415,12 +1428,15 @@ function renderScore() {
   // Respects the day/week/month filter like every other card.
   const resolvedLeads = trueResolvedCount(aStart, aEnd);
   document.getElementById('s-resolved').textContent = resolvedLeads;
-  const assignedInPeriod = clients.filter(c => {
-    const d = new Date(c.assigned_date || c.created_at);
-    return d >= aStart && d <= aEnd;
-  }).length;
-  document.getElementById('s-resolved-pct').textContent = resolvedLeads + ' resolved / ' + assignedInPeriod + ' assigned';
-  document.getElementById('s-resolved-fresh').textContent = assignedInPeriod > 0 ? pct(resolvedLeads, assignedInPeriod) + ' resolution rate' : '-';
+  // Cohort rate: follows the batch that arrived in this period, not the leads
+  // that happened to resolve during it. Recent periods read low because those
+  // leads haven't had time yet - "so far" says that out loud.
+  const coh = cohortResolution(aStart, aEnd);
+  document.getElementById('s-resolved-pct').textContent =
+    coh.resolved + ' of ' + coh.assigned + ' uploaded resolved';
+  document.getElementById('s-resolved-fresh').textContent = coh.assigned > 0
+    ? pct(coh.resolved, coh.assigned) + ' of this batch so far'
+    : '-';
 
   const allTPs = clients.flatMap(c => (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).filter(tp => {
     const d = new Date(tp.datetime); return d >= pStart && d <= pEnd;
@@ -1444,6 +1460,18 @@ function renderScore() {
   const legacyNoSales = allSits.filter(s=>s.outcome==='showed'&&(s.apps||[]).length===0).length;
   const totalNoSales = allTPs.filter(t=>t.outcome==='nosale').length + legacyNoSales;
   const totalCont = allTPs.filter(t=>t.outcome==='cont').length;
+
+  // EVERY appointment lands in exactly one bucket. Anything that falls through
+  // these is a leak - before this, 22 of 138 appointments sat in no bucket at
+  // all, which is how sits went missing without anyone noticing.
+  const nowMs = Date.now();
+  const isPending = t => !t.outcome || t.outcome === 'pending';
+  const upcomingAppts = allTPs.filter(t => isPending(t) && new Date(t.datetime).getTime() >= nowMs).length;
+  const needsOutcome = allTPs.filter(t => isPending(t) && new Date(t.datetime).getTime() < nowMs).length;
+  const rescheduledAppts = allTPs.filter(t => t.outcome === 'rescheduled').length;
+  const cancelledAppts = allTPs.filter(t => t.outcome === 'cancelled').length;
+  const bucketed = totalShowed + totalNoShows + upcomingAppts + needsOutcome + rescheduledAppts + cancelledAppts;
+  const unbucketed = periodAppts - bucketed;   // must be 0; shown if it ever isn't
 
   const allCasesInPeriod = clients.flatMap(c => (c.cases||[]).filter(cs => {
     return (cs.touchpoints||[]).some(tp => {
@@ -1524,7 +1552,22 @@ function renderScore() {
   const apvPerSale = totalSales>0 ? totalAPV/totalSales : 0;
 
   document.getElementById('p-first').textContent = periodAppts;
-  document.getElementById('p-first-rate').textContent = pct(totalShowed, periodAppts) + ' show rate'; // totalShowed includes continuation sits
+  const upEl = document.getElementById('p-upcoming');
+  if (upEl) upEl.textContent = upcomingAppts;
+  const upSub = document.getElementById('p-upcoming-sub');
+  if (upSub) upSub.textContent = upcomingAppts ? 'still to come' : '-';
+  const noEl = document.getElementById('p-needs-outcome');
+  if (noEl) noEl.textContent = needsOutcome;
+  const noSub = document.getElementById('p-needs-sub');
+  if (noSub) noSub.textContent = needsOutcome ? 'log these' : 'all logged';
+  // Reconciliation: the buckets must account for every appointment. If they ever
+  // don't, say so loudly rather than letting sits quietly vanish again.
+  const recEl = document.getElementById('p-first-rate');
+  if (recEl) {
+    recEl.textContent = unbucketed === 0
+      ? pct(totalShowed, periodAppts) + ' show rate'
+      : pct(totalShowed, periodAppts) + ' show rate \u00b7 \u26a0 ' + unbucketed + ' unaccounted';
+  }
   document.getElementById('p-showed').textContent = totalShowed;
   // Continuations decided nothing yet, so they're excluded here AND from the
   // close-rate denominator on the Sales card. This is that denominator, shown.
@@ -2073,6 +2116,24 @@ function drillDown(type) {
     };
     leads = clients.filter(c => apptTime(c) !== null)
       .sort((a,b) => apptTime(a) - apptTime(b));
+  } else if (type === 'upcoming' || type === 'needsoutcome') {
+    const wantPast = (type === 'needsoutcome');
+    title = (wantPast ? 'Needs an outcome - ' : 'Upcoming appointments - ') + label;
+    const nowMs = Date.now();
+    const slot = (c) => {
+      let t = null;
+      (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+        if (!tp || !tp.datetime) return;
+        if (tp.outcome && tp.outcome !== 'pending') return;
+        const d = new Date(tp.datetime);
+        if (d < start || d > end) return;
+        const isPast = d.getTime() < nowMs;
+        if (isPast !== wantPast) return;
+        if (!t || d < t) t = d;
+      }));
+      return t;
+    };
+    leads = clients.filter(c => slot(c) !== null).sort((a,b) => slot(a) - slot(b));
   } else if (type === 'showed') {
     title = 'Sits - ' + label;
     leads = clients.filter(c =>
@@ -3696,6 +3757,10 @@ function replacementBar(c) {
 async function rewriteDone(id) {
   const c = clients.find(x=>x.id===id); if(!c) return;
   c.replacement_ack = true;
+  // If an appointment was pending, that appointment WAS the sit - log it as one.
+  // If there wasn't, the rewrite happened outside a scheduled appointment and
+  // there's no sit to record.
+  await resolvePendingAsSit(id, 'sale', 'Rewrite completed');
   showSync('Saving...');
   try { await sb.from('clients').update({replacement_ack:true}).eq('id',id); } catch(e){}
   hideSync(); render();
@@ -4270,12 +4335,23 @@ async function removeApptMistake(id) {
 
 async function cancelAppt(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
-  if (!confirm('Cancel ' + c.name + "'s appointment?\n\nThey told you ahead of time it's off. They go into the dodgers cadence - rest " + dodgeDays() + " days, then back in your queue automatically.\n\nIf you know when to call them, use Follow-up instead.")) return;
-  c.call_log = [...(c.call_log||[]), {ts:new Date().toISOString(), outcome:'Cancelled', dials:window._dialCount||1}];
+  // A cancel is a fork, not a bucket: some are done, some just need calling back.
+  // OK = done (resolves the lead), Cancel = call back (stays alive on cadence).
+  const done = confirm(c.name + ' cancelled.\n\nOK = Not interested / done \u2014 resolves this lead.\nCancel = Call back \u2014 keep them alive, rest ' + dodgeDays() + ' days then back in your queue.');
+  const ts = new Date().toISOString();
+  c.call_log = [...(c.call_log||[]), {ts, outcome:'Cancelled', dials:window._dialCount||1}];
+  if (done) c.call_log.push({ts, outcome:'Not interested', dials:0});
+  // Stamp the pending appointment so it lands in a bucket instead of leaking.
+  const now = Date.now();
+  (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+    if (tp && (!tp.outcome || tp.outcome === 'pending') && tp.datetime && new Date(tp.datetime).getTime() >= now - 86400000) {
+      tp.outcome = 'cancelled';
+    }
+  }));
   if (c.gcal_event_id) pushApptToCalendar(c, 'delete');   // don't leave a dead event making your day look full
   c.appt_datetime = null;
   c.appt_notes = '';
-  c.status = 'Working';
+  c.status = done ? 'Dead' : 'Working';
   await saveClientRecord(c);
   window._dialCount = 1;
   closeModal();
@@ -4681,9 +4757,7 @@ function openClient(id, keepDialCount) {
       }
       return '<div style="margin-bottom:8px;"><div style="font-size:12px;font-weight:600;color:#BA7517;background:#FFF8E6;border:1px solid #F5D78E;border-radius:6px;padding:5px 10px;margin-bottom:4px;display:block;">[Callback] ' + apptLabel + '</div><button onclick="openMoveAppt(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit or delete</button>' + snoozeRow + '</div>';
     } else {
-      const isPast = new Date(c.appt_datetime).getTime() < Date.now();
-      const clearBtn = isPast ? '<button onclick="clearStuckAppt(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #E8B4B4;border-radius:6px;padding:3px 10px;color:#A32D2D;cursor:pointer;margin-left:6px;">Clear appointment</button>' : '';
-      return '<div style="margin-bottom:8px;"><div onclick="openSitOutcome(\'' + id + '\')" style="font-size:12px;font-weight:600;color:#138181;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:6px;padding:5px 10px;margin-bottom:4px;cursor:pointer;display:block;">[Appt] ' + apptLabel + ' <span style="font-size:10px;opacity:0.6;">tap to log outcome</span></div><button onclick="openMoveAppt(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit or delete</button>' + clearBtn + '</div>';
+      return '<div style="margin-bottom:8px;"><div onclick="openSitOutcome(\'' + id + '\')" style="font-size:12px;font-weight:600;color:#138181;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:6px;padding:5px 10px;margin-bottom:4px;cursor:pointer;display:block;">[Appt] ' + apptLabel + ' <span style="font-size:10px;opacity:0.6;">tap to log outcome</span></div><button onclick="openMoveAppt(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit or delete</button></div>';
     }
   })():''}
   <div class="dial-row">
@@ -5425,13 +5499,21 @@ async function confirmReschedule(id) {
   const dialCount = window._dialCount || 1;
   // Log to call_log for report tracking only — does NOT affect sits/sales/convos
   const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(), outcome:'Rescheduled', reason, dials:dialCount, appt_datetime:apptDatetime, appt_notes:apptNotes}];
-  // Update pending touchpoint datetime — no outcome change, stays pending
+  // A PAST pending slot didn't happen - it moved. Stamp it 'rescheduled' so it
+  // lands in a bucket and stops sitting there pending forever (this is what left
+  // revived / rebooked appointments stuck in the sidebar). Only the live slot moves.
+  const nowMs = Date.now();
   const cases = (c.cases||[]).map(cs => {
     if (cs.status !== 'Open') return cs;
+    let moved = false;
     const touchpoints = (cs.touchpoints||[]).map(tp => {
-      if (tp.outcome === 'pending') return {...tp, datetime: apptDatetime, notes: apptNotes || tp.notes};
+      if (tp.outcome !== 'pending') return tp;
+      const isPast = tp.datetime && new Date(tp.datetime).getTime() < nowMs;
+      if (isPast) return {...tp, outcome:'rescheduled'};
+      if (!moved) { moved = true; return {...tp, datetime: apptDatetime, notes: apptNotes || tp.notes}; }
       return tp;
     });
+    if (!moved) touchpoints.push({type:'Rebook', outcome:'pending', datetime: apptDatetime, notes: apptNotes, apps:[]});
     return {...cs, touchpoints};
   });
 
@@ -5455,37 +5537,39 @@ function toLocalDT(d) {
   return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,16);
 }
 
-// The off-switch for a stuck appointment: a revived / rescheduled / handled-
-// elsewhere appointment that the sidebar keeps pinning with no clean way out.
-// Resolves every PAST pending touchpoint on open cases to 'cleared' (a resolved,
-// non-pending outcome that never counts as a sit or sale), then points the
-// appointment at the next FUTURE pending if one remains, else clears it and puts
-// the lead back in the queue. Never touches applications or history.
-async function clearStuckAppt(id) {
-  const c = clients.find(x=>x.id===id); if(!c) return;
-  if (!confirm('Clear this appointment so it drops out of your sidebar? Use this for a revived, rescheduled, or handled-elsewhere appointment that shouldn\u2019t be pinned. Nothing about applications or history changes.')) return;
+// When work actually happened, the pending appointment IS a sit - it was never
+// something to "clear". Resolves the most recent PAST pending touchpoint on an
+// open case to a real sit outcome. Returns false when there was no pending
+// appointment, so callers know not to invent a sit for unscheduled work.
+async function resolvePendingAsSit(id, outcome, note) {
+  const c = clients.find(x=>x.id===id); if(!c) return false;
   const now = Date.now();
-  const cases = (c.cases||[]).map(cs => {
-    if (cs.status !== 'Open') return cs;
-    return {...cs, touchpoints: (cs.touchpoints||[]).map(tp =>
-      (tp && tp.outcome === 'pending' && tp.datetime && new Date(tp.datetime).getTime() <= now)
-        ? {...tp, outcome:'cleared', cleared_at:new Date().toISOString()} : tp)};
+  let best = null, bestCs = null;
+  (c.cases||[]).forEach(cs => {
+    if (cs.status !== 'Open') return;
+    (cs.touchpoints||[]).forEach(tp => {
+      if (!tp || (tp.outcome && tp.outcome !== 'pending') || !tp.datetime) return;
+      if (new Date(tp.datetime).getTime() > now) return;      // future = still upcoming
+      if (!best || new Date(tp.datetime) > new Date(best.datetime)) { best = tp; bestCs = cs; }
+    });
   });
+  if (!best) return false;                                    // no scheduled appt - nothing to resolve
+  best.outcome = outcome || 'sale';
+  if (note) best.outcome_note = note;
+  // Point the lead at its next real appointment, if any.
   const futures = [];
-  cases.forEach(cs => { if (cs.status==='Open') (cs.touchpoints||[]).forEach(tp => {
-    if (tp.outcome==='pending' && tp.datetime && new Date(tp.datetime).getTime() > now) futures.push(tp.datetime);
+  (c.cases||[]).forEach(cs => { if (cs.status==='Open') (cs.touchpoints||[]).forEach(tp => {
+    if ((!tp.outcome || tp.outcome==='pending') && tp.datetime && new Date(tp.datetime).getTime() > now) futures.push(tp.datetime);
   }); });
   futures.sort();
   const nextDt = futures[0] || null;
-  const terminal = ['Closed','No sale','Dead'].includes(c.status);
-  const newStatus = nextDt ? 'Appointment set' : (terminal ? c.status : 'Working');
-  const payload = {cases, status:newStatus, appt_datetime: nextDt};
-  if (!nextDt) payload.appt_notes = null;
-  showSync('Clearing...');
-  try { await sb.from('clients').update(payload).eq('id',id); } catch(e){}
-  Object.assign(c, {cases, status:newStatus, appt_datetime:nextDt});
-  if (!nextDt) c.appt_notes = null;
-  hideSync(); if (typeof render==='function') render(); if (typeof renderSidebar==='function') renderSidebar();
+  c.appt_datetime = nextDt;
+  if (!nextDt && !['Closed','No sale','Dead'].includes(c.status)) c.status = 'Working';
+  else if (nextDt) c.status = 'Appointment set';
+  showSync('Saving...');
+  try { await sb.from('clients').update({cases:c.cases, status:c.status, appt_datetime:nextDt}).eq('id',id); } catch(e){}
+  hideSync();
+  return true;
 }
 
 // A past appointment that the call log shows was already no-showed or rescheduled
@@ -7333,6 +7417,15 @@ function productOptions(carrier, selected) {
 
 function openAddAppToTouchpoint(id, ci, ti, label) {
   const c = clients.find(x=>x.id===id); if(!c) return;
+  // Only when a decline is actually outstanding - never on a normal sale.
+  if (!window._rewriteOf && needsReplacement(c)) {
+    const dec = allAppsOf(c).find(ap => (ap.status||'') === 'Declined' && !isSuperseded(ap));
+    if (dec && confirm('Is this the rewrite for the declined ' + (dec.carrier||'') + ' app?\n\nOK = yes, link it as the replacement.\nCancel = no, this is a separate application.')) {
+      if (!dec.id) dec.id = 'app_' + Math.random().toString(36).slice(2,10);
+      window._rewriteOf = dec.id;
+      label = label || 'Rewrite \u2014 replacement for declined app';
+    }
+  }
   _appCount = 1;
   const defaultCarrier = getEnabledCarrierList()[0];
   showModal(`<button class="close-x" onclick="closeModal();openClient('${id}')">x</button>
@@ -7541,8 +7634,11 @@ async function saveAppsToTouchpoint(id, ci, ti) {
   // that it's saved: reset the one-shot marker so it can't tag the next app, and
   // invalidate the "which declines are rewritten" cache so the replacement bar
   // re-checks and dismisses itself instead of reading a stale answer.
+  const wasRewrite = !!window._rewriteOf;
   window._rewriteOf = null;
   clearRewriteCache();
+  // Logging a rewrite IS the sit - if an appointment was pending, resolve it.
+  if (wasRewrite) { try { await resolvePendingAsSit(id, 'sale', 'Rewrite written'); } catch(e){} }
   // After saving apps from a sale, offer reset
   showResetPromptAfterOutcome(id, 'Sale');
 }
@@ -8004,6 +8100,19 @@ function esc(v) { return escAttr(v); }
 // resolution. This stamps the lead on first resolve and refuses to double-count.
 // Walk a lead's real history and find the ONE moment it resolved (first appt set,
 // or first not-interested). Used to backfill leads that predate the resolution gate.
+// A lead's resolution is its LATEST 'Appt set' or 'Not interested' - the state
+// it's actually in now. A June appointment that turned into a July "not
+// interested" belongs to July, and June gives it up. One lead, one resolution,
+// living in one period, so the tiles can never disagree with the total.
+function lastResolution(c) {
+  const log = (c.call_log||[]).slice().sort((a,b) => new Date(a.ts) - new Date(b.ts));
+  let r = null;
+  for (const cl of log) {
+    if (cl.outcome === 'Appt set') r = { ts: cl.ts, kind: 'appt' };
+    else if (cl.outcome === 'Not interested') r = { ts: cl.ts, kind: 'dead' };
+  }
+  return r;
+}
 function firstResolution(c) {
   const log = (c.call_log||[]).slice().sort((a,b) => new Date(a.ts) - new Date(b.ts));
   for (const cl of log) {
@@ -8013,16 +8122,28 @@ function firstResolution(c) {
   return null;
 }
 
-// True resolution count: distinct LEADS that ever resolved. One lead = one
-// resolution, no matter how many appointments, resets or revivals it went through.
+// Distinct LEADS resolved in this period, by latest resolution.
 function trueResolvedCount(start, end) {
   return clients.filter(c => {
-    const r = c.resolved_at ? { ts: c.resolved_at } : firstResolution(c);
+    const r = lastResolution(c);
     if (!r) return false;
     if (!start || !end) return true;          // no bounds = all time
     const d = new Date(r.ts);
-    return d >= start && d <= end;            // resolved DURING this period
+    return d >= start && d <= end;
   }).length;
+}
+
+// COHORT RESOLUTION: of the leads UPLOADED in this period, how many are resolved
+// as of now? The old number compared leads that resolved this month against leads
+// that arrived this month - two different sets, so the ratio meant little. This
+// follows one batch: "of the 40 leads from last week, 28 are resolved."
+function cohortResolution(start, end) {
+  const cohort = clients.filter(c => {
+    const d = new Date(c.assigned_date || c.created_at);
+    return d >= start && d <= end;
+  });
+  const resolved = cohort.filter(c => !!lastResolution(c)).length;
+  return { assigned: cohort.length, resolved };
 }
 
 async function backfillResolutions() {
