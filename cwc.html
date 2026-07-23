@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h78</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h81</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -991,9 +991,10 @@ async function commitPendingDial() {
 
 function sumStat(key, start, end) {
   return stats.filter(s => {
+    if (!s || !s.recorded_at) return false;
     const t = new Date(s.recorded_at);
     return s.stat_key === key && t >= start && t <= end;
-  }).reduce((a,s) => a + s.value, 0);
+  }).reduce((a,s) => a + (s.value||0), 0);
 }
 
 async function setStat(key, total) {
@@ -1006,7 +1007,7 @@ async function setStat(key, total) {
 
   // Delete all existing entries for this stat on this day
   const existingIds = stats
-    .filter(s => s.stat_key === key && new Date(s.recorded_at) >= useStart && new Date(s.recorded_at) <= useEnd)
+    .filter(s => s && s.stat_key === key && new Date(s.recorded_at) >= useStart && new Date(s.recorded_at) <= useEnd)
     .map(s => s.id)
     .filter(Boolean);
 
@@ -1014,7 +1015,7 @@ async function setStat(key, total) {
     await sb.from('stats').delete().eq('id', id);
   }
   // Remove from local array
-  stats = stats.filter(s => !(s.stat_key === key && new Date(s.recorded_at) >= useStart && new Date(s.recorded_at) <= useEnd));
+  stats = stats.filter(s => !(s && s.stat_key === key && new Date(s.recorded_at) >= useStart && new Date(s.recorded_at) <= useEnd));
 
   // Insert one clean entry with the correct total
   if (total > 0) {
@@ -1435,9 +1436,9 @@ function renderScore() {
   // Time tracking - sum from stats table for the period
   const dialSecs = sumStat('time_dial_' + aStart.toISOString().slice(0,10) + (aStart.toISOString().slice(0,10) === aEnd.toISOString().slice(0,10) ? '' : '_multi'), aStart, aEnd);
   // Better: sum all time_dial_ keys in period
-  const timeDialSecs = stats.filter(s => s.stat_key.startsWith('time_dial_') && new Date(s.recorded_at) >= aStart && new Date(s.recorded_at) <= aEnd).reduce((a,s) => a+s.value, 0);
-  const timeApptSecs = stats.filter(s => s.stat_key.startsWith('time_appt_') && new Date(s.recorded_at) >= aStart && new Date(s.recorded_at) <= aEnd).reduce((a,s) => a+s.value, 0);
-  const timeAdminSecs = stats.filter(s => s.stat_key.startsWith('time_admin_') && new Date(s.recorded_at) >= aStart && new Date(s.recorded_at) <= aEnd).reduce((a,s) => a+s.value, 0);
+  const timeDialSecs = stats.filter(s => s && s.stat_key && s.stat_key.startsWith('time_dial_') && new Date(s.recorded_at) >= aStart && new Date(s.recorded_at) <= aEnd).reduce((a,s) => a+(s.value||0), 0);
+  const timeApptSecs = stats.filter(s => s && s.stat_key && s.stat_key.startsWith('time_appt_') && new Date(s.recorded_at) >= aStart && new Date(s.recorded_at) <= aEnd).reduce((a,s) => a+(s.value||0), 0);
+  const timeAdminSecs = stats.filter(s => s && s.stat_key && s.stat_key.startsWith('time_admin_') && new Date(s.recorded_at) >= aStart && new Date(s.recorded_at) <= aEnd).reduce((a,s) => a+(s.value||0), 0);
 
   function fmtHrMin(secs) {
     const h = Math.floor(secs/3600);
@@ -1490,8 +1491,18 @@ function renderScore() {
   // counts as a second appointment. A retirement step does. Rescheduling moves
   // an appointment rather than making one, so nothing is double-counted.
   const ATTENDED = ['sale','nosale','cont','dropped'];
-  const countableTPs = allTPs.filter(t => !t.continues_appt);
-  const periodAppts = countableTPs.length + allSits.length;
+  // 'closed' and 'superseded' are artifacts of resolving a stranded record -
+  // the appointment never happened. Counting them made 37 appointments out of
+  // 34, and put resolved leads (Gwendolyn) back in this week's list.
+  const APPT_ARTIFACT = ['closed','superseded'];
+  const countableTPs = allTPs.filter(t => !t.continues_appt && !APPT_ARTIFACT.includes(t.outcome));
+  const _isPend = t => !t.outcome || t.outcome === 'pending';
+  const _nowMs = Date.now();
+  // Appts = appointments that CAME DUE. Ones still ahead of you live in Upcoming,
+  // so this number divides visibly into attended + no-shows and the show rate
+  // reads straight off the board instead of needing arithmetic.
+  const dueTPs = countableTPs.filter(t => !(_isPend(t) && new Date(t.datetime).getTime() >= _nowMs));
+  const periodAppts = dueTPs.length + allSits.length;
   const attendedAppts = countableTPs.filter(t => ATTENDED.includes(t.outcome)).length
                       + allSits.filter(s => s.outcome==='showed').length;
   const totalNoShows = countableTPs.filter(t=>t.outcome==='noshow').length
@@ -1559,8 +1570,8 @@ function renderScore() {
   const cancelledAppts = countableTPs.filter(t => t.outcome === 'cancelled').length;
   const closedNoOutcome = countableTPs.filter(t => t.outcome === 'closed').length;
   const supersededAppts = countableTPs.filter(t => t.outcome === 'superseded').length;
-  const bucketed = attendedAppts + totalNoShows + upcomingAppts + needsOutcome
-                 + rescheduledAppts + cancelledAppts + closedNoOutcome + supersededAppts;
+  const bucketed = attendedAppts + totalNoShows + needsOutcome
+                 + rescheduledAppts + cancelledAppts;
   const unbucketed = periodAppts - bucketed;   // must be 0; shown if it ever isn't
 
   const allCasesInPeriod = clients.flatMap(c => (c.cases||[]).filter(cs => {
@@ -1973,7 +1984,7 @@ async function editTimerTime(activity) {
   viewedDay.setDate(viewedDay.getDate() + periodOffset);
   const todayKey = viewedDay.toISOString().slice(0,10);
   const statKey = 'time_' + activity + '_' + todayKey;
-  const currentSecs = stats.filter(s => s.stat_key === statKey).reduce((a,s) => a+s.value, 0);
+  const currentSecs = stats.filter(s => s && s.stat_key === statKey).reduce((a,s) => a+(s.value||0), 0);
   const hh = Math.floor(currentSecs/3600);
   const mm = Math.floor((currentSecs%3600)/60);
   const currentStr = `${hh}:${String(mm).padStart(2,'0')}`;
@@ -1986,9 +1997,9 @@ async function editTimerTime(activity) {
   if (isNaN(seconds) || seconds < 0) { alert('Invalid format. Use H:MM like 3:00'); return; }
 
   // Delete existing Supabase entries for this activity today
-  const toDelete = stats.filter(s => s.stat_key === statKey).map(s => s.id).filter(Boolean);
+  const toDelete = stats.filter(s => s && s.stat_key === statKey).map(s => s.id).filter(Boolean);
   for (const id of toDelete) await sb.from('stats').delete().eq('id', id);
-  stats = stats.filter(s => s.stat_key !== statKey);
+  stats = stats.filter(s => s && s.stat_key !== statKey);
 
   // Insert corrected entry
   if (seconds > 0) {
@@ -2200,6 +2211,59 @@ function drillDown(type) {
   let title = '';
 
   if (type === 'appts') {
+    // ONE ROW PER APPOINTMENT, not per lead. 37 appointments across 25 leads was
+    // impossible to reconcile when the list showed leads and rendered each one's
+    // NEXT appointment date - a lead who sat on the 18th and rebooked for Aug 3
+    // appeared to be an August appointment sitting in July.
+    const ARTIFACT = ['closed','superseded'];
+    const LBL = {sale:'Sale', nosale:'No sale', cont:'Continuation', dropped:'Dropped',
+      noshow:'No show', cancelled:'Cancelled', rescheduled:'Rescheduled'};
+    const COL = {sale:'#3B6D11', nosale:'#A32D2D', cont:'#1D3557', dropped:'#3C3489',
+      noshow:'#BA7517', cancelled:'#8fa8c0', rescheduled:'#8fa8c0'};
+    const appts = [];
+    const nowMs = Date.now();
+    clients.forEach(c => (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+      if (!tp || !tp.datetime || tp.continues_appt) return;
+      if (ARTIFACT.includes(tp.outcome)) return;
+      const d = new Date(tp.datetime);
+      if (d < start || d > end) return;
+      const pending = !tp.outcome || tp.outcome === 'pending';
+      if (pending && d.getTime() >= nowMs) return;      // upcoming has its own tile
+      appts.push({c, cs, tp, d, pending});
+    })));
+    appts.sort((a,b) => a.d - b.d);
+    if (!appts.length) {
+      showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+        '<div class="modal-title">Appointments - ' + label + '</div>' +
+        '<div style="font-size:13px;color:#a0b8cc;padding:1rem 0;">None for this period.</div>');
+      return;
+    }
+    const body = appts.map(a => {
+      const key = a.pending ? '' : (a.tp.outcome||'');
+      const lbl = a.pending ? 'Needs an outcome' : (LBL[key] || key);
+      const col = a.pending ? '#A32D2D' : (COL[key] || '#5f7a99');
+      // Say when this appointment is a rebook after a no-show - that changes how
+      // you'd treat it, and it's why one lead can hold two appointments in a week.
+      const ns = (a.c.call_log||[]).filter(l => /no show/i.test(l.outcome||'')).length;
+      const rebook = a.tp.revived_from
+        ? '<div style="font-size:10px;color:#BA7517;font-weight:600;">Rebooked after a no-show' + (ns>1 ? ' \u00b7 ' + ns + ' so far' : '') + '</div>' : '';
+      return '<div class="client-card" onclick="closeModal();setTimeout(()=>openClient(\'' + a.c.id + '\'),100)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">' +
+          '<div><div class="client-name">' + esc(a.c.name||'Unknown') + '</div>' +
+          '<div class="client-meta">' + esc(a.cs.type||'') + (a.tp.type ? ' \u00b7 ' + esc(a.tp.type) : '') + '</div>' +
+          '<div style="font-size:11px;color:#138181;font-weight:500;">' + a.d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + a.d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + '</div>' +
+          rebook + '</div>' +
+          '<span style="font-size:11px;font-weight:700;color:' + col + ';white-space:nowrap;">' + lbl + '</span>' +
+        '</div></div>';
+    }).join('');
+    showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+      '<div class="modal-title">Appointments - ' + label + '</div>' +
+      '<div class="modal-sub">' + appts.length + ' appointment' + (appts.length===1?'':'s') + ' \u00b7 ' + new Set(appts.map(a=>a.c.id)).size + ' leads</div>' +
+      '<div style="max-height:70vh;overflow-y:auto;margin-top:8px;">' + body + '</div>');
+    return;
+  }
+
+  if (type === '__legacy_appts') {
     title = 'Appointments - ' + label;
     // Count from touchpoints (the permanent record of an appointment, held or
     // pending) — appt_datetime is mutable and gets cleared by follow-ups/outcomes.
@@ -3167,6 +3231,16 @@ function setFilter(f, btn) {
 
 //  CLIENT LIST 
 function badgeClass(src) { return 'badge b-' + (src||'').split(' ')[0]; }
+// Has this lead actually bought? Drives whether the card offers prospecting
+// actions (callback) or client actions (follow-up). A sold client can't be
+// "not interested" in a policy they already own.
+function hasSold(c) {
+  if (!c) return false;
+  return (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp =>
+      tp && (tp.outcome === 'sale' || (tp.apps||[]).length)))
+    || (c.sits||[]).some(s => (s.apps||[]).length);
+}
+
 function statusBadge(s) { const m={'New':'b-New','Working':'b-Working','Appointment set':'b-Appt','Closed':'b-Closed','No sale':'b-No','No show':'b-Noshow','Dead':'b-Dead','Follow-up':'b-Followup'}; return 'badge '+(m[s]||'b-New'); }
 function dotClass(s) { if(s.outcome==='showed')return'jd-showed'; if(s.outcome==='noshow')return'jd-noshow'; if(s.outcome==='canceled')return'jd-cancel'; return'jd-pending'; }
 
@@ -4744,16 +4818,49 @@ function openClient(id, keepDialCount) {
   const callLog = c.call_log || [];
   const statuses = ['New','Working','Appointment set','No show','Closed','No sale','Dead'];
 
+  // A log entry should answer "what am I doing next", not just "what happened".
+  // Completed events describe themselves from data already entered (a sale lists
+  // its applications); forward commitments carry the note you wrote when you made
+  // the promise. Anything can be annotated after the fact.
+  const logDetail = (cl) => {
+    const bits = [];
+    if (cl.outcome === 'Sale') {
+      // Self-describing: "2 Gerber ADV, 1 Americo Eagle" straight off the apps.
+      const at = new Date(cl.ts).getTime();
+      const apps = [];
+      (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+        if (!tp || !tp.datetime) return;
+        if (Math.abs(new Date(tp.datetime).getTime() - at) > 5*60000) return;
+        (tp.apps||[]).forEach(ap => apps.push(ap));
+      }));
+      if (apps.length) {
+        const tally = {};
+        apps.forEach(ap => { const k = ((ap.carrier||'')+' '+(ap.product||'')).trim(); tally[k] = (tally[k]||0)+1; });
+        bits.push(Object.keys(tally).map(k => tally[k] + ' ' + k).join(', '));
+      }
+    }
+    const due = cl.followup_dt || cl.callback_dt;
+    if (due) bits.push('due ' + new Date(due).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) +
+      ' ' + new Date(due).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}));
+    const note = cl.note || cl.callback_note || cl.followup_note || cl.reason || '';
+    if (note) bits.push(note);
+    return bits.join(' \u00b7 ');
+  };
   const callHistory = callLog.slice().reverse().slice(0,6).map((cl, ri) => {
     const realIdx = callLog.length - 1 - ri;
+    const detail = logDetail(cl);
     return `
     <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:5px;">
       <div style="width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0;background:${cl.outcome==='Appt set'?'#138181':cl.outcome==='No show'?'#E24B4A':cl.outcome==='Not interested'?'#E24B4A':cl.outcome==='Cancelled'?'#E24B4A':cl.outcome==='Pushed off'?'#8fa8c0':cl.outcome==='Callback'?'#BA7517':'#1D3557'};"></div>
       <div style="flex:1;">
         <div style="font-size:12px;color:#1a2e44;font-weight:500;">${cl.outcome}${cl.dials>1?' <span style="font-size:10px;color:#5f7a99;">('+cl.dials+'x dialed)</span>':''}</div>
         ${cl.appt_datetime?`<div style="font-size:11px;font-weight:600;color:#138181;">[Cal] ${new Date(cl.appt_datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(cl.appt_datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>`:''}
-        ${cl.appt_notes?`<div style="font-size:10px;color:#5f7a99;font-style:italic;">${cl.appt_notes}</div>`:''}
-        <div style="font-size:10px;color:#a0b8cc;">${new Date(cl.ts).toLocaleDateString('en-US',{month:'short',day:'numeric'})} ${new Date(cl.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
+        ${cl.appt_notes?`<div style="font-size:10px;color:#5f7a99;font-style:italic;">${esc(cl.appt_notes)}</div>`:''}
+        ${detail?`<div style="font-size:11px;color:#1D3557;">${esc(detail)}</div>`:''}
+        <div style="display:flex;gap:6px;align-items:center;">
+          <div style="font-size:10px;color:#a0b8cc;">${new Date(cl.ts).toLocaleDateString('en-US',{month:'short',day:'numeric'})} ${new Date(cl.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
+          <span onclick="editLogNote('${id}',${realIdx})" style="font-size:10px;color:#8fa8c0;text-decoration:underline;cursor:pointer;">${(cl.note||cl.callback_note||cl.followup_note)?'edit note':'+ note'}</span>
+        </div>
       </div>
       <button onclick="deleteCallLogEntry('${id}',${realIdx})" style="background:none;border:none;color:#d0dcea;font-size:14px;cursor:pointer;padding:0 2px;flex-shrink:0;" title="Delete this entry">x</button>
     </div>`;
@@ -4863,7 +4970,22 @@ function openClient(id, keepDialCount) {
       }
       return '<div style="margin-bottom:8px;"><div style="font-size:12px;font-weight:600;color:#BA7517;background:#FFF8E6;border:1px solid #F5D78E;border-radius:6px;padding:5px 10px;margin-bottom:4px;display:block;">[Callback] ' + apptLabel + '</div><button onclick="openMoveAppt(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit or delete</button>' + snoozeRow + '</div>';
     } else {
-      return '<div style="margin-bottom:8px;"><div onclick="openSitOutcome(\'' + id + '\')" style="font-size:12px;font-weight:600;color:#138181;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:6px;padding:5px 10px;margin-bottom:4px;cursor:pointer;display:block;">[Appt] ' + apptLabel + ' <span style="font-size:10px;opacity:0.6;">tap to log outcome</span></div><button onclick="openMoveAppt(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit or delete</button></div>';
+      // Say when this appointment came from a revive - a rebook after a no-show
+      // is not the same thing as a first booking, and you want to know before
+      // you drive out there.
+      let rebookNote = '';
+      try {
+        const at = c.appt_datetime ? new Date(c.appt_datetime).getTime() : null;
+        let tp = null;
+        (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(t => {
+          if (t && t.datetime && at && Math.abs(new Date(t.datetime).getTime() - at) < 60000) tp = t;
+        }));
+        if (tp && tp.revived_from) {
+          const ns = (c.call_log||[]).filter(l => /no show/i.test(l.outcome||'')).length;
+          rebookNote = '<div style="font-size:10px;font-weight:600;color:#BA7517;margin-bottom:4px;">Rebooked after a no-show' + (ns>1 ? ' \u00b7 ' + ns + ' no-shows so far' : '') + '</div>';
+        }
+      } catch(e) {}
+      return '<div style="margin-bottom:8px;">' + rebookNote + '<div onclick="openSitOutcome(\'' + id + '\')" style="font-size:12px;font-weight:600;color:#138181;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:6px;padding:5px 10px;margin-bottom:4px;cursor:pointer;display:block;">[Appt] ' + apptLabel + ' <span style="font-size:10px;opacity:0.6;">tap to log outcome</span></div><button onclick="openMoveAppt(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit or delete</button></div>';
     }
   })():''}
   <div class="dial-row">
@@ -4875,7 +4997,9 @@ function openClient(id, keepDialCount) {
   <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;">
     <button class="call-btn cb-navy" onclick="quickLog('${id}','No answer','dials')">No answer</button>${isReadyForText(c)?`<button class="call-btn" style="background:#1D3557;color:#fff;border:2px solid #138181;" onclick="quickLogAndText('${id}')">No answer + 📱</button>`:''}
     <button class="call-btn cb-green" onclick="openApptSet('${id}')">Appt set</button>
-    <button class="call-btn cb-amber" onclick="openCallbackPicker('${id}')">Callback</button>
+    ${hasSold(c)
+      ? `<button class="call-btn" style="background:#534AB7;color:#fff;" onclick="openFollowUpPicker('${id}')">Follow-up</button>`
+      : `<button class="call-btn cb-amber" onclick="openCallbackPicker('${id}')">Callback</button>`}
     <button class="call-btn cb-red" onclick="quickLog('${id}','Not interested','dead')">Not interested</button>
   </div>
   <button onclick="openTextModal('${id}')" style="font-size:10px;background:none;border:1px solid #9FE1CB;border-radius:6px;padding:3px 10px;color:#138181;cursor:pointer;margin-bottom:8px;">📱 Text templates</button>
@@ -5977,6 +6101,23 @@ function setDialCount(n) {
   });
 }
 
+// Annotate any log entry after the fact. Notes written when you made the
+// promise are best, but memory arrives late sometimes.
+async function editLogNote(id, idx) {
+  const c = clients.find(x=>x.id===id); if(!c) return;
+  const log = (c.call_log||[]).slice();
+  const cl = log[idx]; if(!cl) return;
+  const cur = cl.note || cl.callback_note || cl.followup_note || '';
+  const next = prompt('Note for "' + cl.outcome + '" \u2014 what are you doing next?', cur);
+  if (next === null) return;
+  log[idx] = {...cl, note: next.trim()};
+  showSync('Saving...');
+  try { await sb.from('clients').update({call_log:log}).eq('id',id); } catch(e){}
+  c.call_log = log;
+  hideSync();
+  closeModal(); openClient(id);
+}
+
 //  DELETE CALL LOG ENTRY 
 async function deleteCallLogEntry(id, idx) {
   const c = clients.find(x=>x.id===id); if (!c) return;
@@ -6034,6 +6175,7 @@ function openCallbackPicker(id) {
     '<div class="modal-sub">' + c.name + '</div>' +
     '<div class="field"><label>Date</label><input type="date" id="cb-date" value="' + tomorrowStr + '" style="font-size:16px;"></div>' +
     '<div class="field"><label>Time (optional)</label><input type="time" id="cb-time" placeholder="Leave blank if no specific time" style="font-size:16px;"></div>' +
+    '<div class="field"><label>What are you doing next?</label><input type="text" id="cb-note" placeholder="e.g. send illustrations, 20 vs 30 year" style="font-size:15px;"></div>' +
     '<button class="save-btn" style="background:#BA7517;" onclick="confirmCallback(\''+id+'\',true)">Save callback date</button>' +
     '<button onclick="confirmCallback(\''+id+'\',false)" style="width:100%;background:none;border:none;padding:8px;font-size:12px;color:#8fa8c0;cursor:pointer;">No specific date — just log callback</button>');
 }
@@ -6069,7 +6211,11 @@ async function confirmCallback(id, hasDate) {
   const nextLead = getNextLead(id, searchVal);
 
   const ts = new Date().toISOString();
-  const callLog = [...(c.call_log||[]), {ts, outcome:'Callback', dials:dialCount, callback_dt:callbackDt, callback_note:callbackNote, callback_has_time:callbackHasTime}];
+  // callback_note holds the date label; the user's own note is separate - it's
+  // what you told them you'd do, and it's the whole point of the log entry.
+  const noteEl = document.getElementById('cb-note');
+  const userNote = noteEl && noteEl.value ? noteEl.value.trim() : '';
+  const callLog = [...(c.call_log||[]), {ts, outcome:'Callback', dials:dialCount, callback_dt:callbackDt, callback_note:callbackNote, callback_has_time:callbackHasTime, note:userNote}];
   // Scheduling a callback on an appointment holder ("call Friday to confirm
   // Monday") must not demote the appointment - the callback rides alongside.
   c.call_log = callLog; c.status = (c.status === 'Appointment set') ? c.status : 'Working';
@@ -6451,7 +6597,12 @@ async function quickLog(id, outcome, statKey) {
 
   // If this is a repeat Callback (already has one in call log), just advance - no stats
   const alreadyCallbacked = outcome === 'Callback' && (c.call_log||[]).some(cl => cl.outcome === 'Callback');
-  if (alreadyCallbacked) {
+  // Not interested is a RESOLUTION - it happens once. Clicking it again used to
+  // append another entry, and because resolution follows the latest one, those
+  // repeat clicks dragged the lead's resolution date into the current week and
+  // put long-dead leads back in this week's numbers.
+  const alreadyDead = outcome === 'Not interested' && (c.call_log||[]).some(cl => cl.outcome === 'Not interested');
+  if (alreadyCallbacked || alreadyDead) {
     window._dialCount = 1;
     closeModal();
     renderClients(searchVal);
