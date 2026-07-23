@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h74</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h75</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -1470,7 +1470,13 @@ function renderScore() {
   const needsOutcome = allTPs.filter(t => isPending(t) && new Date(t.datetime).getTime() < nowMs).length;
   const rescheduledAppts = allTPs.filter(t => t.outcome === 'rescheduled').length;
   const cancelledAppts = allTPs.filter(t => t.outcome === 'cancelled').length;
-  const bucketed = totalShowed + totalNoShows + upcomingAppts + needsOutcome + rescheduledAppts + cancelledAppts;
+  // Resolved elsewhere: the lead or case ended, so the appointment can never get
+  // a real outcome. 'superseded' means the sale is logged on another touchpoint -
+  // it must never count as a sit, or sales double-count.
+  const closedNoOutcome = allTPs.filter(t => t.outcome === 'closed').length;
+  const supersededAppts = allTPs.filter(t => t.outcome === 'superseded').length;
+  const bucketed = totalShowed + totalNoShows + upcomingAppts + needsOutcome
+                 + rescheduledAppts + cancelledAppts + closedNoOutcome + supersededAppts;
   const unbucketed = periodAppts - bucketed;   // must be 0; shown if it ever isn't
 
   const allCasesInPeriod = clients.flatMap(c => (c.cases||[]).filter(cs => {
@@ -1563,7 +1569,7 @@ function renderScore() {
     let fixable = 0;
     try { fixable = findUnloggedSits().length; } catch(e) {}
     if (fixable) {
-      noSub.innerHTML = '<span onclick="event.stopPropagation();reviewUnloggedSits()" style="text-decoration:underline;cursor:pointer;">' + fixable + ' are written sits \u2014 fix</span>';
+      noSub.innerHTML = '<span onclick="event.stopPropagation();reviewUnloggedSits()" style="text-decoration:underline;cursor:pointer;">' + fixable + ' resolved elsewhere \u2014 fix</span>';
     } else {
       noSub.textContent = needsOutcome ? 'log these' : 'all logged';
     }
@@ -7409,10 +7415,27 @@ function appStatusOptions(sel) {
   return APP_STATUSES.map(s => '<option' + (s === sel ? ' selected' : '') + '>' + s + '</option>').join('');
 }
 
-// BACKFILL: appointments where business was written but the appointment was
-// never marked as a sit (the saveAppsToTouchpoint bug). Having applications on
-// it is proof it happened and sold, so these are inferable with certainty - no
-// guessing. Nothing changes until you've seen the list and approved it.
+// BACKFILL: appointments left pending because the lead or case resolved
+// elsewhere. Each gets the outcome the data already proves, and anything still
+// live is left alone - that's genuinely hers to log. Nothing changes until
+// the list has been reviewed and approved.
+//   apps on it            -> sale        (business was written here)
+//   lead is No show       -> noshow      (already logged at lead level)
+//   lead Dead/Closed/etc  -> closed      (resolved, unknowable, unactionable)
+//   case Closed Won       -> superseded  (the sale is logged on another touchpoint;
+//                                         stamping a sit here would double-count)
+//   case Closed Lost      -> closed
+//   otherwise             -> leave it; the lead is live
+function classifyStrandedAppt(c, cs, tp) {
+  if ((tp.apps||[]).length) return 'sale';
+  if (c.status === 'No show') return 'noshow';
+  if (cs.status === 'Closed Won') return 'superseded';
+  if (['Dead','Closed','No sale'].includes(c.status)) return 'closed';
+  if (cs.status === 'Closed Lost') return 'closed';
+  return null;                                    // live lead - she logs this one
+}
+const STRANDED_LABEL = {sale:'Sit (sale)', noshow:'No show', closed:'Closed, no outcome', superseded:'Superseded (sale logged elsewhere)'};
+
 function findUnloggedSits() {
   const out = [];
   const now = Date.now();
@@ -7420,42 +7443,51 @@ function findUnloggedSits() {
     if (!tp || !tp.datetime) return;
     if (tp.outcome && tp.outcome !== 'pending') return;
     if (new Date(tp.datetime).getTime() >= now) return;      // still upcoming
-    if (!(tp.apps||[]).length) return;                       // no proof it happened
-    out.push({ id:c.id, name:c.name, ci, ti, when:tp.datetime,
+    const kind = classifyStrandedAppt(c, cs, tp);
+    if (!kind) return;
+    out.push({ id:c.id, name:c.name, ci, ti, when:tp.datetime, kind,
       apps:(tp.apps||[]).map(a=>(a.carrier||'')+' '+(a.product||'')).join(', ') });
   })));
   return out.sort((a,b)=> new Date(a.when)-new Date(b.when));
 }
 function reviewUnloggedSits() {
   const rows = findUnloggedSits();
-  if (!rows.length) { alert('Nothing to backfill - every appointment with applications on it is already logged as a sit.'); return; }
+  if (!rows.length) { alert('Nothing to backfill - every stranded appointment is already resolved.'); return; }
+  const counts = {};
+  rows.forEach(r => counts[r.kind] = (counts[r.kind]||0)+1);
+  const summary = Object.keys(counts).map(k =>
+    '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;">' +
+      '<span style="color:#1D3557;font-weight:600;">' + STRANDED_LABEL[k] + '</span>' +
+      '<span style="color:#5f7a99;">' + counts[k] + '</span></div>').join('');
   const list = rows.map(r =>
-    '<div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-top:1px solid #eef2f7;font-size:12px;">' +
-      '<div><strong>' + esc(r.name) + '</strong><div style="font-size:10px;color:#8fa8c0;">' + esc(r.apps) + '</div></div>' +
-      '<div style="color:#5f7a99;white-space:nowrap;">' + new Date(r.when).toLocaleDateString('en-US',{month:'short',day:'numeric'}) + '</div>' +
+    '<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-top:1px solid #eef2f7;font-size:11px;">' +
+      '<div><strong>' + esc(r.name) + '</strong>' + (r.apps ? '<div style="font-size:10px;color:#8fa8c0;">' + esc(r.apps) + '</div>' : '') + '</div>' +
+      '<div style="text-align:right;white-space:nowrap;color:#5f7a99;">' + STRANDED_LABEL[r.kind] +
+        '<div style="font-size:10px;color:#a0b8cc;">' + new Date(r.when).toLocaleDateString('en-US',{month:'short',day:'numeric'}) + '</div></div>' +
     '</div>').join('');
   showModal('<button class="close-x" onclick="closeModal()">x</button>' +
-    '<div class="modal-title">Log these as sits?</div>' +
-    '<div class="modal-sub">' + rows.length + ' appointment(s) have applications written on them but were never marked as a sit.</div>' +
-    '<div style="max-height:320px;overflow-y:auto;margin:8px 0;">' + list + '</div>' +
-    '<div style="font-size:11px;color:#5f7a99;margin-bottom:8px;">Each becomes a sit with a sale. Applications, premiums and dates are untouched.</div>' +
-    '<button class="save-btn" onclick="applyUnloggedSits()">Log all ' + rows.length + ' as sits</button>');
+    '<div class="modal-title">Resolve stranded appointments</div>' +
+    '<div class="modal-sub">' + rows.length + ' appointment(s) never got an outcome because the lead or case resolved elsewhere.</div>' +
+    '<div style="background:#f7fafd;border-radius:8px;padding:8px 10px;margin:8px 0;">' + summary + '</div>' +
+    '<div style="max-height:260px;overflow-y:auto;margin-bottom:8px;">' + list + '</div>' +
+    '<div style="font-size:11px;color:#5f7a99;margin-bottom:8px;">Appointments on live leads are left alone for you to log. Applications, premiums and dates are untouched. Superseded ones never count as sits, so your sales cannot double-count.</div>' +
+    '<button class="save-btn" onclick="applyUnloggedSits()">Resolve all ' + rows.length + '</button>');
 }
 async function applyUnloggedSits() {
   const rows = findUnloggedSits();
   const byClient = {};
   rows.forEach(r => { (byClient[r.id] = byClient[r.id] || []).push(r); });
-  showSync('Logging...');
+  showSync('Resolving...');
   for (const id of Object.keys(byClient)) {
     const c = clients.find(x=>x.id===id); if (!c) continue;
     byClient[id].forEach(r => {
       const tp = ((c.cases||[])[r.ci]||{}).touchpoints[r.ti];
-      if (tp) { tp.outcome = 'sale'; tp.backfilled_sit = true; }
+      if (tp) { tp.outcome = r.kind; tp.backfilled = true; }
     });
     try { await sb.from('clients').update({cases:c.cases}).eq('id',id); } catch(e){}
   }
   hideSync(); closeModal();
-  alert('Logged ' + rows.length + ' appointment(s) as sits.');
+  alert('Resolved ' + rows.length + ' appointment(s).');
   render();
 }
 
