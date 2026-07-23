@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h76</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h78</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -297,13 +297,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-val val-red" id="p-nosales" style="cursor:pointer;" onclick="drillDown('nosales')">0</div>
         <div class="stat-sub" style="color:#791F1F;" id="p-nosales-sub">-</div>
       </div>
+      <div class="stat" style="background:#F4F1FA;">
+        <div class="stat-lbl" style="color:#3C3489;">Dropped</div>
+        <div class="stat-val" style="color:#3C3489;" id="p-dropped">0</div>
+        <div class="stat-sub" style="color:#3C3489;" id="p-dropped-sub">-</div>
+      </div>
+    </div>
+    <div class="stat-row">
       <div class="stat stat-green">
         <div class="stat-lbl lbl-green">Apps submitted</div>
         <div class="stat-val val-green" id="p-closed">0</div>
         <div class="stat-sub sub-green" id="p-close-rate">- per sale</div>
       </div>
-    </div>
-    <div class="stat-row">
       <div class="stat stat-teal">
         <div class="stat-lbl lbl-white">Ref asks</div>
         <div class="stat-val val-white" id="p-refask" style="cursor:pointer;" onclick="openReferralList()">0</div>
@@ -1387,15 +1392,32 @@ function renderScore() {
   // belongs to July as a dead - June's appt-set drops it. That way each lead is
   // counted exactly once, in the period it actually landed in, and
   // Appt set + Not interested == Resolved by construction, not by patching.
+  // DIAL LEDGER vs PRODUCTION. The dial's job ends when a lead becomes a real
+  // appointment - and sitting is what makes it real. So a lead only loses its
+  // appt-set here if the booking never produced a sit at all. Everything after
+  // the sit (continuations, PPUs, TAI, rewrites, retirement steps) is production
+  // and can never reach back and strip credit for work the phone already did.
+  const everSat = (c) => (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp =>
+      ['sale','nosale','cont','dropped'].includes(tp.outcome)))
+    || (c.sits||[]).some(s => s.outcome==='showed');
   const appts = clients.filter(c => {
     const r = lastResolution(c);
-    if (!r || r.kind !== 'appt') return false;
+    if (!r || r.kind !== 'appt') {
+      // Resolved as dead, but they DID sit - the appointment was real, so the
+      // dial keeps its credit and the death belongs to production.
+      if (!(r && r.kind === 'dead' && everSat(c))) return false;
+      const fa = (c.call_log||[]).find(cl => cl.outcome === 'Appt set');
+      if (!fa) return false;
+      const ft = new Date(fa.ts);
+      return ft >= aStart && ft <= aEnd;
+    }
     const t = new Date(r.ts);
     return t >= aStart && t <= aEnd;
   }).length;
   const dead = clients.filter(c => {
     const r = lastResolution(c);
     if (!r || r.kind !== 'dead') return false;
+    if (everSat(c)) return false;        // died in production, not on the phone
     const t = new Date(r.ts);
     return t >= aStart && t <= aEnd;
   }).length;
@@ -1463,15 +1485,51 @@ function renderScore() {
   // (Counting clients instead of events is what let no-show rate exceed 100%:
   // one client who no-showed 3 times was 3 no-shows over 1 "appointment".)
   // These numbers are operational only - lead VALUE is measured per-lead below.
-  const periodAppts = allTPs.length + allSits.length;
+  // ---- APPOINTMENTS: per meeting -------------------------------------------
+  // A PPU or TAI continuation is the same appointment carrying on, so it never
+  // counts as a second appointment. A retirement step does. Rescheduling moves
+  // an appointment rather than making one, so nothing is double-counted.
+  const ATTENDED = ['sale','nosale','cont','dropped'];
+  const countableTPs = allTPs.filter(t => !t.continues_appt);
+  const periodAppts = countableTPs.length + allSits.length;
+  const attendedAppts = countableTPs.filter(t => ATTENDED.includes(t.outcome)).length
+                      + allSits.filter(s => s.outcome==='showed').length;
+  const totalNoShows = countableTPs.filter(t=>t.outcome==='noshow').length
+                     + allSits.filter(s=>s.outcome==='noshow').length;
 
-  const tpSits = allTPs.filter(t => t.outcome==='sale'||t.outcome==='nosale'||t.outcome==='cont').length;
-  const legacySits = allSits.filter(s => s.outcome==='showed').length;
-  const totalShowed = tpSits + legacySits;
-  const totalNoShows = allTPs.filter(t=>t.outcome==='noshow').length + allSits.filter(s=>s.outcome==='noshow').length;
-  const totalSales = allTPs.filter(t=>t.outcome==='sale').length;
-  const legacyNoSales = allSits.filter(s=>s.outcome==='showed'&&(s.apps||[]).length===0).length;
-  const totalNoSales = allTPs.filter(t=>t.outcome==='nosale').length + legacyNoSales;
+  // ---- CASES: one sit, one outcome -----------------------------------------
+  // However many meetings it took, you sat that case once. Two cases (mortgage
+  // protection and retirement) means two sits. Continuations never add sits.
+  const caseAttendedTPs = cs => (cs.touchpoints||[]).filter(tp => ATTENDED.includes(tp.outcome) && tp.datetime)
+      .sort((a,b)=> new Date(a.datetime)-new Date(b.datetime));
+  const caseSatDate = cs => { const a = caseAttendedTPs(cs); return a.length ? new Date(a[0].datetime) : null; };
+  const caseVerdict = cs => {
+    if (cs.verdict) return cs.verdict;              // set explicitly (e.g. a cancel that ended it)
+    const tps = cs.touchpoints||[];
+    if (tps.some(t=>t.outcome==='sale')) return 'sale';
+    if (tps.some(t=>t.outcome==='nosale')) return 'nosale';
+    if (tps.some(t=>t.outcome==='dropped')) return 'dropped';
+    return null;                                   // still moving - not decided
+  };
+  const caseVerdictDate = cs => {
+    const v = caseVerdict(cs); if (!v) return null;
+    if (cs.verdict && cs.verdict_at) return new Date(cs.verdict_at);
+    const t = (cs.touchpoints||[]).filter(x=>x.outcome===v && x.datetime)
+      .sort((a,b)=> new Date(b.datetime)-new Date(a.datetime))[0];
+    return t ? new Date(t.datetime) : null;
+  };
+  const inP = d => d && d >= pStart && d <= pEnd;
+  const allCases = clients.flatMap(c => (c.cases||[]));
+  const satCases = allCases.filter(cs => inP(caseSatDate(cs)));
+  const totalShowed = satCases.length;                    // SITS - one per case
+  const decidedCases = allCases.filter(cs => inP(caseVerdictDate(cs)));
+  const totalSales = decidedCases.filter(cs => caseVerdict(cs)==='sale').length;
+  const totalNoSales = decidedCases.filter(cs => caseVerdict(cs)==='nosale').length;
+  const totalDropped = decidedCases.filter(cs => caseVerdict(cs)==='dropped').length;
+
+  const tpSits = attendedAppts;    // kept for downstream references
+  const legacySits = 0;
+  const legacyNoSales = 0;
   const totalCont = allTPs.filter(t=>t.outcome==='cont').length;
   // What each continuation booked next. The reason lives on the pending
   // touchpoint the continuation created, so read the next one in that case.
@@ -1495,16 +1553,13 @@ function renderScore() {
   // all, which is how sits went missing without anyone noticing.
   const nowMs = Date.now();
   const isPending = t => !t.outcome || t.outcome === 'pending';
-  const upcomingAppts = allTPs.filter(t => isPending(t) && new Date(t.datetime).getTime() >= nowMs).length;
-  const needsOutcome = allTPs.filter(t => isPending(t) && new Date(t.datetime).getTime() < nowMs).length;
-  const rescheduledAppts = allTPs.filter(t => t.outcome === 'rescheduled').length;
-  const cancelledAppts = allTPs.filter(t => t.outcome === 'cancelled').length;
-  // Resolved elsewhere: the lead or case ended, so the appointment can never get
-  // a real outcome. 'superseded' means the sale is logged on another touchpoint -
-  // it must never count as a sit, or sales double-count.
-  const closedNoOutcome = allTPs.filter(t => t.outcome === 'closed').length;
-  const supersededAppts = allTPs.filter(t => t.outcome === 'superseded').length;
-  const bucketed = totalShowed + totalNoShows + upcomingAppts + needsOutcome
+  const upcomingAppts = countableTPs.filter(t => isPending(t) && new Date(t.datetime).getTime() >= nowMs).length;
+  const needsOutcome = countableTPs.filter(t => isPending(t) && new Date(t.datetime).getTime() < nowMs).length;
+  const rescheduledAppts = countableTPs.filter(t => t.outcome === 'rescheduled').length;
+  const cancelledAppts = countableTPs.filter(t => t.outcome === 'cancelled').length;
+  const closedNoOutcome = countableTPs.filter(t => t.outcome === 'closed').length;
+  const supersededAppts = countableTPs.filter(t => t.outcome === 'superseded').length;
+  const bucketed = attendedAppts + totalNoShows + upcomingAppts + needsOutcome
                  + rescheduledAppts + cancelledAppts + closedNoOutcome + supersededAppts;
   const unbucketed = periodAppts - bucketed;   // must be 0; shown if it ever isn't
 
@@ -1591,27 +1646,35 @@ function renderScore() {
   if (upEl) upEl.textContent = upcomingAppts;
   const upSub = document.getElementById('p-upcoming-sub');
   if (upSub) upSub.textContent = upcomingAppts ? 'still to come' : '-';
-  // Rates measure what HAPPENED. An appointment still in the future can't have
-  // shown or no-showed, so it stays out of the denominator - otherwise a week
-  // with a full calendar ahead reads as a bad show week.
-  const heldAppts = Math.max(0, periodAppts - upcomingAppts);
+  // Show rate answers one question: when an appointment came due, did they turn
+  // up? So the denominator is only appointments that resolved to showed-or-not.
+  // Upcoming, rescheduled, cancelled and still-unlogged ones are none of the
+  // above - counting them as failures to show made 2 of 3 look like no-shows.
+  const heldAppts = attendedAppts + totalNoShows;   // appointments that resolved to showed-or-not
   const recEl = document.getElementById('p-first-rate');
   if (recEl) {
     recEl.textContent = unbucketed === 0
-      ? pct(totalShowed, heldAppts) + ' show rate'
-      : pct(totalShowed, heldAppts) + ' show rate \u00b7 \u26a0 ' + unbucketed + ' unaccounted';
+      ? pct(attendedAppts, heldAppts) + ' show rate'
+      : pct(attendedAppts, heldAppts) + ' show rate \u00b7 \u26a0 ' + unbucketed + ' unaccounted';
   }
   document.getElementById('p-showed').textContent = totalShowed;
   // Continuations decided nothing yet, so they're excluded here AND from the
   // close-rate denominator on the Sales card. This is that denominator, shown.
-  const decidedSits = totalSales + totalNoSales;
+  const decidedSits = totalSales + totalNoSales;   // saw options and answered
   document.getElementById('p-sit-rate').textContent = decidedSits > 0 ? decidedSits + ' decided' : '- decided';
   document.getElementById('p-noshow').textContent = totalNoShows;
   document.getElementById('p-cancel').textContent = heldAppts>0 ? pct(totalNoShows,heldAppts)+' no-show rate' : '-';
   document.getElementById('p-sales').textContent = totalSales;
-  document.getElementById('p-sales-sub').textContent = decidedSits > 0 ? pct(totalSales, decidedSits) + ' close rate' : '- close rate';
+  const withDropped = decidedSits + totalDropped;
+  document.getElementById('p-sales-sub').textContent = decidedSits > 0
+    ? pct(totalSales, decidedSits) + ' close' + (totalDropped ? ' \u00b7 ' + pct(totalSales, withDropped) + ' w/ dropped' : ' rate')
+    : '- close rate';
   document.getElementById('p-nosales').textContent = totalNoSales;
   document.getElementById('p-nosales-sub').textContent = pct(totalNoSales,totalShowed)+' of sits';
+  const drEl = document.getElementById('p-dropped');
+  if (drEl) drEl.textContent = totalDropped;
+  const drSub = document.getElementById('p-dropped-sub');
+  if (drSub) drSub.textContent = totalShowed>0 ? pct(totalDropped,totalShowed)+' of sits' : '-';
   document.getElementById('p-cont').textContent = totalCont;
   const contBits = [];
   if (contPPU) contBits.push(contPPU + ' PPU');
@@ -4371,23 +4434,30 @@ async function removeApptMistake(id) {
 
 async function cancelAppt(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
-  // A cancel is a fork, not a bucket: some are done, some just need calling back.
-  // OK = done (resolves the lead), Cancel = call back (stays alive on cadence).
-  const done = confirm(c.name + ' cancelled.\n\nOK = Not interested / done \u2014 resolves this lead.\nCancel = Call back \u2014 keep them alive, rest ' + dodgeDays() + ' days then back in your queue.');
+  // Where they fell out is what matters. After options = they saw it and passed,
+  // that's a no sale. Before options = they never got to see it, that's a
+  // dropped. Two different problems: closing vs getting to the presentation.
+  // (If they're rebooking, that's a reschedule - it just moves the appointment.)
+  const afterOptions = confirm(c.name + ' cancelled.\n\nHad you already shown them options?\n\nOK = yes \u2014 logs a No sale.\nCancel = no \u2014 logs a Dropped.');
   const ts = new Date().toISOString();
   c.call_log = [...(c.call_log||[]), {ts, outcome:'Cancelled', dials:window._dialCount||1}];
-  if (done) c.call_log.push({ts, outcome:'Not interested', dials:0});
-  // Stamp the pending appointment so it lands in a bucket instead of leaking.
+  const verdict = afterOptions ? 'nosale' : 'dropped';
   const now = Date.now();
-  (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
-    if (tp && (!tp.outcome || tp.outcome === 'pending') && tp.datetime && new Date(tp.datetime).getTime() >= now - 86400000) {
-      tp.outcome = 'cancelled';
-    }
-  }));
+  (c.cases||[]).forEach(cs => {
+    if (cs.status !== 'Open') return;
+    let touched = false;
+    (cs.touchpoints||[]).forEach(tp => {
+      if (tp && (!tp.outcome || tp.outcome === 'pending') && tp.datetime && new Date(tp.datetime).getTime() >= now - 86400000) {
+        tp.outcome = 'cancelled';   // neither a show nor a no-show
+        touched = true;
+      }
+    });
+    if (touched) { cs.verdict = verdict; cs.verdict_at = ts; cs.status = 'Closed Lost'; }
+  });
   if (c.gcal_event_id) pushApptToCalendar(c, 'delete');   // don't leave a dead event making your day look full
   c.appt_datetime = null;
   c.appt_notes = '';
-  c.status = done ? 'Dead' : 'Working';
+  c.status = 'No sale';
   await saveClientRecord(c);
   window._dialCount = 1;
   closeModal();
@@ -5067,7 +5137,14 @@ async function confirmSitOutcome(id, ci, outcome) {
 
   // Add continuation touchpoint for next appt
   if (outcome === 'cont' && nextDt) {
-    const pendingTp = {type: contReason || (ppu ? 'PPU / Policy Pickup' : 'Continuation'), datetime: nextDt, outcome:'pending', notes:'', apps:[], created:now.toISOString()};
+    // A PPU or a think-about-it is the SAME appointment carrying on - out to the
+    // PPU and back is one appointment, and a TAI follow-up is the same
+    // conversation finishing. Only a retirement step is a genuinely new
+    // appointment. The flag keeps the calendar entry while keeping the
+    // appointment count (and show ratio) honest.
+    const _r = String(contReason||'');
+    const sameAppt = /ppu|policy\s*pickup/i.test(_r) || /think/i.test(_r);
+    const pendingTp = {type: contReason || (ppu ? 'PPU / Policy Pickup' : 'Continuation'), datetime: nextDt, outcome:'pending', notes:'', apps:[], created:now.toISOString(), continues_appt: sameAppt || undefined};
     // One upcoming appointment per lead: if the next meeting was already
     // booked through Set Appointment before logging this outcome (book-then-
     // log workflow), that future pending is superseded by this one - keep
@@ -5535,22 +5612,20 @@ async function confirmReschedule(id) {
   const dialCount = window._dialCount || 1;
   // Log to call_log for report tracking only — does NOT affect sits/sales/convos
   const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(), outcome:'Rescheduled', reason, dials:dialCount, appt_datetime:apptDatetime, appt_notes:apptNotes}];
-  // A PAST pending slot didn't happen - it moved. Stamp it 'rescheduled' so it
-  // lands in a bucket and stops sitting there pending forever (this is what left
-  // revived / rebooked appointments stuck in the sidebar). Only the live slot moves.
-  const nowMs = Date.now();
+  // A reschedule MOVES the appointment. It is the same appointment at a new
+  // time, so it creates nothing and leaves nothing behind. (Only a revive AFTER
+  // a logged no-show makes a new appointment - the no-show already happened.)
+  // Moving every pending at once is what left duplicate touchpoints behind, so
+  // exactly one moves: the one this appointment actually is.
   const cases = (c.cases||[]).map(cs => {
     if (cs.status !== 'Open') return cs;
-    let moved = false;
-    const touchpoints = (cs.touchpoints||[]).map(tp => {
-      if (tp.outcome !== 'pending') return tp;
-      const isPast = tp.datetime && new Date(tp.datetime).getTime() < nowMs;
-      if (isPast) return {...tp, outcome:'rescheduled'};
-      if (!moved) { moved = true; return {...tp, datetime: apptDatetime, notes: apptNotes || tp.notes}; }
-      return tp;
-    });
-    if (!moved) touchpoints.push({type:'Rebook', outcome:'pending', datetime: apptDatetime, notes: apptNotes, apps:[]});
-    return {...cs, touchpoints};
+    const tps = (cs.touchpoints||[]).slice();
+    const pendIdxs = tps.map((t,i)=>({t,i})).filter(x=>x.t.outcome==='pending' && x.t.datetime);
+    if (!pendIdxs.length) return cs;
+    let pick = pendIdxs.find(x => c.appt_datetime && Math.abs(new Date(x.t.datetime)-new Date(c.appt_datetime)) < 60000);
+    if (!pick) pick = pendIdxs.sort((a,b)=> new Date(a.t.datetime)-new Date(b.t.datetime))[0];
+    tps[pick.i] = {...pick.t, datetime: apptDatetime, notes: apptNotes || pick.t.notes};
+    return {...cs, touchpoints: tps};
   });
 
   showSync('Saving...');
