@@ -148,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h91</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h92</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -9569,19 +9569,29 @@ function openSettings() {
 
     '<div style="background:#f0f4f8;border-radius:10px;padding:12px;margin-bottom:12px;">' +
       '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Dormancy</div>' +
-      '<div style="display:flex;gap:8px;">' +
-        '<div class="field" style="flex:1;"><label>Gate 1 attempts</label><input type="number" id="s-dorm-att" value="' + dormantRules().attempts + '"></div>' +
-        '<div class="field" style="flex:1;"><label>Gate 1 days</label><input type="number" id="s-dorm-days" value="' + dormantRules().days + '"></div>' +
-        '<div class="field" style="flex:1;"><label>Gate 2 attempts</label><input type="number" id="s-dorm-att2" value="' + dormantRules().attempts2 + '"></div>' +
-        '<div class="field" style="flex:1;"><label>Gate 2 days</label><input type="number" id="s-dorm-days2" value="' + dormantRules().days2 + '"></div>' +
+      '<div style="font-size:10px;color:#8fa8c0;margin-bottom:6px;">A lead goes dormant at either gate: heavily worked, or moderately worked but aged. Never deleted.</div>' +
+      '<div style="display:flex;gap:8px;margin-bottom:6px;">' +
+        '<div class="field" style="flex:1;"><label>Gate 1 &mdash; attempts</label><input type="number" id="s-dorm-att" value="' + dormantRules().attempts + '"></div>' +
+        '<div class="field" style="flex:1;"><label>Gate 1 &mdash; days</label><input type="number" id="s-dorm-days" value="' + dormantRules().days + '"></div>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;margin-bottom:6px;">' +
+        '<div class="field" style="flex:1;"><label>Gate 2 &mdash; attempts</label><input type="number" id="s-dorm-att2" value="' + dormantRules().attempts2 + '"></div>' +
+        '<div class="field" style="flex:1;"><label>Gate 2 &mdash; days</label><input type="number" id="s-dorm-days2" value="' + dormantRules().days2 + '"></div>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;margin-bottom:6px;">' +
         '<div class="field" style="flex:1;"><label>No-show rebook tries</label><input type="number" id="s-noshow-tries" value="' + dormantRules().noShowTries + '"></div>' +
         '<div class="field" style="flex:1;"><label>Dormant kill-count</label><input type="number" id="s-dorm-kill" value="' + dormantRules().killCount + '"></div>' +
-        '<div class="field" style="flex:1;"><label>Push-off rest</label><input type="number" id="s-pushoff" value="' + dodgeDays() + '"></div>' +
+        '<div class="field" style="flex:1;"><label>Push-off rest (days)</label><input type="number" id="s-pushoff" value="' + dodgeDays() + '"></div>' +
       '</div>' +
-      '<div style="font-size:10px;color:#8fa8c0;margin:2px 0 8px 0;">A lead goes dormant at either gate: heavily worked (gate 1) or moderately worked but aged (gate 2).</div>' +
-      '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin:10px 0 6px 0;">Your runner</div>' +
+      '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin:12px 0 6px 0;">Attempt pace (per lead, by stage)</div>' +
+      '<div style="display:flex;gap:8px;">' +
+        '<div class="field" style="flex:1;"><label>Fresh (day 0-3)</label><input type="number" id="s-pace-1" value="' + paceRules().fresh + '"></div>' +
+        '<div class="field" style="flex:1;"><label>Warm (day 4-9)</label><input type="number" id="s-pace-2" value="' + paceRules().warm + '"></div>' +
+        '<div class="field" style="flex:1;"><label>Cooling (day 10-16)</label><input type="number" id="s-pace-3" value="' + paceRules().cooling + '"></div>' +
+      '</div>' +
+      '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin:12px 0 6px 0;">Your runner</div>' +
       '<div style="display:flex;gap:8px;align-items:flex-end;">' +
-        '<div style="font-size:30px;line-height:1;" id="s-runner-preview">' + runnerEmoji() + '</div>' +
+        '<div style="font-size:30px;line-height:1;padding-bottom:4px;" id="s-runner-preview">' + runnerEmoji() + '</div>' +
         '<div class="field" style="flex:1;"><label>Person</label><select id="s-runner-person" onchange="previewRunner()">' +
           RUNNER_PEOPLE.map(p => '<option value="' + p.v + '"' + (runnerPrefs().person===p.v?' selected':'') + '>' + p.n + '</option>').join('') +
         '</select></div>' +
@@ -9589,21 +9599,14 @@ function openSettings() {
           RUNNER_TONES.map(t => '<option value="' + t.v + '"' + (runnerPrefs().tone===t.v?' selected':'') + '>' + t.n + '</option>').join('') +
         '</select></div>' +
       '</div>' +
-      '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Attempt pace bars (per lead, by age)</div>' +
-      '<div style="display:flex;gap:8px;">' +
-        '<div class="field" style="flex:1;"><label>Fresh target (day 0-3)</label><input type="number" id="s-pace-1" value="' + paceRules().fresh + '"></div>' +
-        '<div class="field" style="flex:1;"><label>Warm target (day 4-9)</label><input type="number" id="s-pace-2" value="' + paceRules().warm + '"></div>' +
-        '<div class="field" style="flex:1;"><label>Cooling target (day 10-16)</label><input type="number" id="s-pace-3" value="' + paceRules().cooling + '"></div>' +
-      '</div>' +
-      '<button onclick="restoreDefaultSettings()" style="width:100%;background:none;border:1px solid #d0dcea;border-radius:8px;padding:8px;font-size:12px;color:#5f7a99;cursor:pointer;margin-top:4px;">\u21BA Restore defaults</button>' +
-      '<div style="font-size:10px;color:#8fa8c0;">A lead goes dormant only when BOTH are met. Never deleted - it comes back when you are caught up.</div>' +
+      '<button onclick="saveProfileSettings()" style="width:100%;background:#1D3557;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;margin-top:12px;">Save</button>' +
+      '<button onclick="restoreDefaultSettings()" style="width:100%;background:none;border:1px solid #d0dcea;border-radius:8px;padding:8px;font-size:12px;color:#5f7a99;cursor:pointer;margin-top:6px;">\u21BA Restore defaults</button>' +
     '</div>' +
 
     '<div style="background:#f0f4f8;border-radius:10px;padding:12px;margin-bottom:12px;">' +
       '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Data</div>' +
-      '<button onclick="backfillResolutions()" style="width:100%;background:#1D3557;color:#fff;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:6px;">Recount resolutions</button>' +
       '<button onclick="recheckComp()" style="width:100%;background:#138181;color:#fff;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;">Recheck comp on all apps</button>' +
-      '<div style="font-size:10px;color:#8fa8c0;margin-top:4px;">Stamps each already-resolved lead with its true first resolution. Fixes the inflated count.</div>' +
+      '<div style="font-size:10px;color:#8fa8c0;margin-top:4px;">Recalculates commission on every application using current rates.</div>' +
     '</div>' +
 
     '<div style="background:#f0f4f8;border-radius:10px;padding:12px;">' +
