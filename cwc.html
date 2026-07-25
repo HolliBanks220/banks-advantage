@@ -148,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h92</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h95</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -260,9 +260,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-sub sub-white" id="p-first-rate">- show rate</div>
       </div>
       <div class="stat stat-teal">
-        <div class="stat-lbl lbl-white">Sits</div>
-        <div class="stat-val val-white" id="p-showed" style="cursor:pointer;" onclick="drillDown('showed')">0</div>
-        <div class="stat-sub sub-white" id="p-sit-rate">- decided</div>
+        <div class="stat-lbl lbl-white">Attended</div>
+        <div class="stat-val val-white" id="p-attended" style="cursor:pointer;" onclick="drillDown('attended')">0</div>
+        <div class="stat-sub sub-white" id="p-attended-sub">-</div>
       </div>
       <div class="stat stat-amber">
         <div class="stat-lbl lbl-amber">No Shows</div>
@@ -270,6 +270,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-sub" style="color:#854F0B;" id="p-cancel">-</div>
       </div>
     </div>
+    <div class="stat-row">
     <div class="stat-row">
       <div class="stat" style="background:#EBF3FF;">
         <div class="stat-lbl" style="color:#1D3557;">Upcoming</div>
@@ -288,6 +289,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
     </div>
     <div class="stat-row">
+      <div class="stat stat-teal">
+        <div class="stat-lbl lbl-white">Sits</div>
+        <div class="stat-val val-white" id="p-showed" style="cursor:pointer;" onclick="drillDown('showed')">0</div>
+        <div class="stat-sub sub-white" id="p-sit-rate">- decided</div>
+      </div>
       <div class="stat stat-teal">
         <div class="stat-lbl lbl-white">Sales</div>
         <div class="stat-val val-white" id="p-sales" style="cursor:pointer;" onclick="drillDown('sales')">0</div>
@@ -1735,6 +1741,15 @@ function renderScore() {
   // Upcoming, rescheduled, cancelled and still-unlogged ones are none of the
   // above - counting them as failures to show made 2 of 3 look like no-shows.
   const heldAppts = attendedAppts + totalNoShows;   // appointments that resolved to showed-or-not
+  const atEl = document.getElementById('p-attended');
+  if (atEl) atEl.textContent = attendedAppts;
+  const atSub = document.getElementById('p-attended-sub');
+  // Say what it's made of, so the show ratio is visibly these two numbers.
+  if (atSub) {
+    const parts = [];
+    if (totalCont) parts.push(totalCont + ' cont');
+    atSub.textContent = parts.length ? parts.join(' \u00b7 ') + ' incl.' : 'appointments you sat';
+  }
   const recEl = document.getElementById('p-first-rate');
   if (recEl) {
     recEl.textContent = unbucketed === 0
@@ -2363,7 +2378,35 @@ function drillDown(type) {
     };
     leads = clients.filter(c => apptTime(c) !== null)
       .sort((a,b) => apptTime(a) - apptTime(b));
-  } else if (type === 'upcoming' || type === 'needsoutcome') {
+  } else if (type === 'upcoming' || type === 'needsoutcome' || type === 'attended') {
+    if (type === 'attended') {
+      // The numerator of the show ratio: every appointment you turned up to,
+      // continuations included. Listed per appointment, like the Appts drill.
+      const A = ['sale','nosale','cont','dropped'];
+      const rows = [];
+      clients.forEach(c => (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+        if (!tp || !tp.datetime || tp.continues_appt) return;
+        if (!A.includes(tp.outcome)) return;
+        const d = new Date(tp.datetime);
+        if (d < start || d > end) return;
+        rows.push({c, cs, tp, d});
+      })));
+      rows.sort((a,b) => a.d - b.d);
+      const LBL = {sale:'Sale', nosale:'No sale', cont:'Continuation', dropped:'Dropped'};
+      const body = rows.map(r =>
+        '<div class="client-card" onclick="closeModal();setTimeout(()=>openClient(\'' + r.c.id + '\'),100)">' +
+        '<div style="display:flex;justify-content:space-between;gap:8px;">' +
+          '<div><div class="client-name">' + esc(r.c.name||'') + '</div>' +
+          '<div class="client-meta">' + esc(r.cs.type||'') + (r.tp.type ? ' \u00b7 ' + esc(r.tp.type) : '') + '</div>' +
+          '<div style="font-size:11px;color:#138181;font-weight:500;">' + r.d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + '</div></div>' +
+          '<span style="font-size:11px;font-weight:700;color:#3B6D11;white-space:nowrap;">' + (LBL[r.tp.outcome]||r.tp.outcome) + '</span>' +
+        '</div></div>').join('');
+      showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+        '<div class="modal-title">Attended - ' + label + '</div>' +
+        '<div class="modal-sub">' + rows.length + ' appointment' + (rows.length===1?'':'s') + ' you sat \u00b7 ' + new Set(rows.map(r=>r.c.id)).size + ' leads</div>' +
+        '<div style="max-height:70vh;overflow-y:auto;margin-top:8px;">' + (body || '<div style="padding:1rem;color:#a0b8cc;font-size:13px;">None for this period.</div>') + '</div>');
+      return;
+    }
     const wantPast = (type === 'needsoutcome');
     title = (wantPast ? 'Needs an outcome - ' : 'Upcoming appointments - ') + label;
     const nowMs = Date.now();
@@ -3276,7 +3319,7 @@ function setFilterAlert(f) {
         <div style="display:flex;justify-content:space-between;align-items:flex-start;">
           <div>
             <div class="client-name">${c.name||'Unknown'}${fresh?'<span class="fresh-tag">fresh</span>':''}</div>
-            <div class="client-meta">${c.phone||''} - ${c.state||''} - ${Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24))}d - ${(c.call_log||[]).length} att${getNoShowBadge(c)}</div>
+            <div class="client-meta">${c.phone||''} - ${c.state||''} - ${Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24))}d - ${attemptCount(c)} att${getNoShowBadge(c)}</div>
             <div style="font-size:9px;font-weight:600;color:#138181;background:#F0FBF7;border-radius:4px;padding:2px 6px;margin-top:3px;display:inline-block;">Ready for text</div>
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
@@ -4598,7 +4641,17 @@ function dormantRules() {
     killCount: parseInt(st.dormantKillCount) || 3
   };
 }
-function attemptCount(c) { return (c.call_log || []).length; }
+// An ATTEMPT is a dial - you picked up the phone and tried to reach them.
+// This used to be the length of the whole call log, so a text, an appointment,
+// a no-show and the sale itself all counted. Leads went dormant early and pace
+// read better than it was. One log entry is one attempt regardless of how many
+// times it rang: a double-dial is one attempt.
+const NON_DIAL_OUTCOMES = new Set([
+  'Text sent','Sale','No sale','Continuation','No show','Cancelled','Rescheduled',
+  'Follow-up scheduled','Follow-up complete','Follow-up canceled','Pushed off'
+]);
+function isDialAttempt(cl) { return !!cl && !NON_DIAL_OUTCOMES.has(cl.outcome); }
+function attemptCount(c) { return (c.call_log || []).filter(isDialAttempt).length; }
 
 // --- ATTEMPT PACE ------------------------------------------------------------
 // The 17-day exclusivity window is the whole economics of an A lead: drive
@@ -5101,7 +5154,7 @@ function renderClients(q='') {
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
           <span class="${statusBadge(c.status)}">${c.status||'New'}</span>
-          <span style="font-size:10px;color:#a0b8cc;white-space:nowrap;">${Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24))}d \u00b7 ${(c.call_log||[]).length} att</span>
+          <span style="font-size:10px;color:#a0b8cc;white-space:nowrap;">${Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24))}d \u00b7 ${attemptCount(c)} att</span>
         </div>
       </div>
       ${sits.length?`<div class="journey-row">${journey}</div>`:''}
@@ -7468,11 +7521,12 @@ async function updateClient(id) {
     window._dialCount = 1;
     window._dialCountSet = false;
   }
-  // Capture next lead BEFORE status update so filter still includes current lead
+  // Whoever matters most right now - not whoever happened to sit next to this
+  // lead in the list. Index+1 walked you PAST anything that arrived at the top
+  // (a fresh lead, a callback coming due), so it never got served until you
+  // closed out and went to find it. Same rule the quick outcome buttons use.
   const searchVal = document.getElementById('client-search').value;
-  const filteredList = getFilteredClients(searchVal);
-  const idx = filteredList.findIndex(cl => cl.id === id);
-  const next = filteredList[idx + 1];
+  const next = getNextLead(id, searchVal);
 
   showSync('Saving...');
   await sb.from('clients').update(updates).eq('id',id);
