@@ -148,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h99</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h100</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -6308,6 +6308,68 @@ const RESET_TYPE_MAP = {
   'IBC/DFL': 'Debt Free Life'
 };
 
+// BOARD ROUTING. Every case belongs to exactly one board. New cases get stamped
+// at reset time (confirmResetTo / saveTouchpoint); a legacy case with no flag is
+// treated as mp_life so nothing breaks before the one-time backfill runs.
+//   mp_life         = main pipeline (Mortgage Protection / General Life)
+//   advanced_market = reset kept by her (retirement income) - her second board
+//   sme_handoff     = reset handed to an outside SME (DFL/IBC/IUL) - off her boards, bonus-only
+function boardOf(cs) { return (cs && cs.board) || 'mp_life'; }
+
+// What board an EXISTING (unstamped) case should get, from the evidence already
+// on it. SME markers win; then retirement / next-level products; everything else
+// is main-board life. Never guesses mp_life for a non-life product.
+function inferBoard(cs) {
+  if (!cs) return 'mp_life';
+  if (cs.board) return cs.board;                                   // already stamped
+  const smeMarked = (cs.touchpoints||[]).some(tp => tp && tp.resetSME) || /SME:/i.test(cs.notes||'');
+  if (smeMarked) return 'sme_handoff';
+  if (cs.type === 'Retirement') return 'advanced_market';
+  if (cs.type === 'Debt Free Life' || cs.type === 'Infinite Banking') return 'sme_handoff';
+  return 'mp_life';
+}
+
+// ONE-TIME, additive, idempotent. Walks existing cases and stamps board on any
+// that lack it. Only ever WRITES a label - never deletes, moves, or alters a
+// case, outcome, app, or appointment. Safe to re-run; a wrong sticker is fixed
+// by correcting inferBoard and running again. Run from the console after deploy:
+//   backfillBoards()
+async function backfillBoards() {
+  const plan = [];       // {client, cases (mutated copy), counts}
+  const totals = { advanced_market:0, sme_handoff:0, mp_life:0 };
+  clients.forEach(c => {
+    let changed = false;
+    const cases = (c.cases||[]).map(cs => {
+      if (cs.board) return cs;
+      const board = inferBoard(cs);
+      totals[board] = (totals[board]||0) + 1;
+      changed = true;
+      return { ...cs, board };
+    });
+    if (changed) plan.push({ c, cases });
+  });
+  if (!plan.length) { alert('All cases already labelled - nothing to backfill.'); return; }
+  const msg = 'Backfill ' + (totals.advanced_market+totals.sme_handoff+totals.mp_life) +
+    ' unlabelled cases:\n  advanced_market: ' + totals.advanced_market +
+    '\n  sme_handoff: ' + totals.sme_handoff +
+    '\n  mp_life: ' + totals.mp_life +
+    '\n\nThis only ADDS a label. Nothing is deleted or moved. Proceed?';
+  if (!confirm(msg)) { console.log('backfillBoards: cancelled'); return; }
+  showSync('Backfilling boards...');
+  let ok = 0;
+  for (const p of plan) {
+    try { await sb.from('clients').update({ cases: p.cases }).eq('id', p.c.id); p.c.cases = p.cases; ok++; }
+    catch (e) { console.error('backfillBoards failed for', p.c.id, e); }
+  }
+  hideSync();
+  const done = 'Backfill complete: ' + ok + '/' + plan.length + ' leads updated.';
+  console.log('backfillBoards:', done, totals);
+  alert(done);
+  if (typeof renderScore === 'function') renderScore();
+}
+if (typeof window !== 'undefined') window.backfillBoards = backfillBoards;
+
+
 function toggleSMEField() {
   const val = (document.getElementById('reset-to-type')||{value:''}).value;
   const el = document.getElementById('sme-name-field');
@@ -6337,6 +6399,7 @@ async function confirmResetTo(id) {
   const newCase = {
     type: caseType,
     status: 'Open',
+    board: resetLabel === 'IBC/DFL' ? 'sme_handoff' : 'advanced_market',
     notes: caseNotes,
     touchpoints: [{
       type: 'Initial',
@@ -7977,6 +8040,7 @@ async function saveTouchpoint(id, ci) {
     const resetDtIso = resetDtVal ? new Date(resetDtVal).toISOString() : null;
     const newCase = {
       type: newCaseType, status: 'Open',
+      board: addons.resetself ? 'advanced_market' : 'sme_handoff',
       notes: `Reset from ${c.cases[ci].type}${addons.resetsme?' - SME: '+tp.resetSMEName:''}`,
       touchpoints: resetDtIso ? [{type:'Initial',datetime:resetDtIso,outcome:'pending',notes:'',apps:[],created:new Date().toISOString()}] : [],
       created: new Date().toISOString()
