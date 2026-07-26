@@ -148,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h95</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h96</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -5518,7 +5518,8 @@ function showContModal(id, ci) {
     '<button class="save-btn" style="background:#534AB7;" onclick="confirmSitOutcome(\''+id+'\','+ci+',\'cont\')">Save continuation</button>');
 }
 
-async function confirmSitOutcome(id, ci, outcome) {
+async function confirmSitOutcome(id, ci, outcome, opts) {
+  opts = opts || {};
   const c = clients.find(x=>x.id===id); if (!c) return;
   // "No show - dead": the slot still evaporated, so it logs a REAL no-show in
   // production (calendar truth). But the lead isn't recoverable, so it also gets
@@ -5529,14 +5530,17 @@ async function confirmSitOutcome(id, ci, outcome) {
   // The three compounding behaviours, captured at the sit.
   // Read the gate. These are true/false, never null - the buttons were locked
   // until all three were answered, so by the time we're here they're real answers.
-  const refAsk     = window._q.ref === true;
-  const recruitAsk = window._q.rec === true;
-  const didReset   = window._q.reset === true;
-  const resetTo    = didReset ? (document.getElementById('sit-reset-to')||{value:''}).value.trim() : '';
-  const resetNotes = didReset ? (document.getElementById('sit-reset-notes')||{value:''}).value.trim() : '';
+  // When banking the outcome up front (skipCapture), the referral/reset/recruit
+  // answers haven't been given yet — the capture screen writes them straight
+  // onto this touchpoint afterward, persisting as you type. So default to empty.
+  const refAsk     = opts.skipCapture ? false : (window._q.ref === true);
+  const recruitAsk = opts.skipCapture ? false : (window._q.rec === true);
+  const didReset   = opts.skipCapture ? false : (window._q.reset === true);
+  const resetTo    = (!opts.skipCapture && didReset) ? (document.getElementById('sit-reset-to')||{value:''}).value.trim() : '';
+  const resetNotes = (!opts.skipCapture && didReset) ? (document.getElementById('sit-reset-notes')||{value:''}).value.trim() : '';
   // Drop blank rows - an empty name is not a person.
-  const refPeople = (window._people.ref||[]).filter(x => x.name && x.name.trim());
-  const recPeople = (window._people.rec||[]).filter(x => x.name && x.name.trim());
+  const refPeople = opts.skipCapture ? [] : (window._people.ref||[]).filter(x => x.name && x.name.trim());
+  const recPeople = opts.skipCapture ? [] : (window._people.rec||[]).filter(x => x.name && x.name.trim());
   // Logging the outcome proves you were in the appointment until now, so credit the
   // full appt session even if the idle banner had capped it while you were heads-down.
   if (window._timer && window._timer.activity === 'appt') { window._lastInteraction = Date.now(); timerStop({full:true}); timerUpdateStatusLabel(); }
@@ -5706,6 +5710,10 @@ async function confirmSitOutcome(id, ci, outcome) {
   c.call_log = callLog;
   Object.assign(c, {cases, status:newStatus, appt_datetime:newApptDt, appt_notes:newApptNotes});
   hideSync();
+
+  // Bank-only mode: outcome is saved; hand the capture screen the exact
+  // touchpoint it should write referrals/resets/recruits onto.
+  if (opts.skipCapture) { return { ci: targetCi, ti: cases[targetCi].touchpoints.indexOf(tp) }; }
 
   if (outcome === 'sale') {
     // Open app entry, then offer reset after apps saved
@@ -8200,7 +8208,7 @@ function openAddAppToTouchpoint(id, ci, ti, label) {
   </div>
   <button onclick="addAnotherApp()" style="width:100%;background:none;border:1px solid #138181;border-radius:8px;padding:8px;font-size:12px;color:#138181;cursor:pointer;margin-bottom:10px;">+ Add another application</button>
   <button class="save-btn" onclick="saveAppsToTouchpoint('${id}',${ci},${ti})">Save applications</button>
-  <button onclick="closeModal();openClient('${id}')" style="width:100%;background:none;border:none;padding:8px;font-size:12px;color:#8fa8c0;cursor:pointer;">Skip - no applications</button>`);
+  <button onclick="if(window._capReturnAfterApps){window._capReturnAfterApps=false;if(window._cap){window._cap.phase='post';}showCaptureScreen();}else{closeModal();openClient('${id}')}" style="width:100%;background:none;border:none;padding:8px;font-size:12px;color:#8fa8c0;cursor:pointer;">Skip - no applications</button>`);
 }
 
 let _appCount = 1;
@@ -8386,7 +8394,8 @@ async function saveAppsToTouchpoint(id, ci, ti) {
   // Logging a rewrite IS the sit - if an appointment was pending, resolve it.
   if (wasRewrite) { try { await resolvePendingAsSit(id, 'sale', 'Rewrite written'); } catch(e){} }
   // After saving apps from a sale, offer reset
-  showResetPromptAfterOutcome(id, 'Sale');
+  if (window._capReturnAfterApps) { window._capReturnAfterApps = false; if (window._cap) { window._cap.phase = 'post'; } showCaptureScreen(); }
+  else { showResetPromptAfterOutcome(id, 'Sale'); }
 }
 
 function renderAppsSection(c) {
@@ -8945,8 +8954,17 @@ function sitStepDetail(k) {
     '</div>';
 }
 
-function startSitFlow(id, ci, outcome) {
+async function startSitFlow(id, ci, outcome) {
   const c = clients.find(x=>x.id===id); if (!c) return;
+  // NEW (h96): bank the outcome immediately, then open ONE capture screen
+  // (Referrals / Resets / Recruits). The sale/no-sale is saved before any
+  // capture happens, so it can never be lost, and each person/toggle persists
+  // as it's entered. Replaces the old one-question-per-screen step machine.
+  const _res = await confirmSitOutcome(id, ci, outcome, {skipCapture:true});
+  if (!_res) return;
+  window._cap = {id, ci:_res.ci, ti:_res.ti, outcome, phase:'pre'};
+  showCaptureScreen();
+  return; // legacy step-machine below is retained but unreachable
   window._sitCtx = {id, ci, outcome, step: 0};
   const badge = outcome === 'sale'
     ? '<span style="background:#3B6D11;color:#fff;border-radius:6px;padding:2px 10px;font-size:12px;font-weight:600;vertical-align:middle;">✓ Sale</span>'
@@ -9972,6 +9990,165 @@ function loadCustomCarriers() {
 }
 
 </script>
+<script>
+// ============================================================
+// h96 — SIT CAPTURE SCREEN (Referrals / Resets / Recruits)
+// One screen, shown before apps and again after. Each section:
+// Did/Didn't-ask toggle + expandable editable script + entry rows
+// + Add another. Everything persists the instant it's entered
+// (writes straight onto the banked touchpoint inside cases jsonb).
+// ============================================================
+const CAP_DEFAULT_SCRIPTS = {
+  ref: "Before I let you go \u2014 what was your favorite part of what we put together? What's it going to do for you?\n\nYou know, I always try to help as many people as I can. Who in your immediate circle \u2014 a family member, a close friend \u2014 could benefit from a conversation like the one we just had? Someone who'd want a quick review of their current coverage, or just to see what's appropriate for them \u2014 could be mortgage protection, could be life insurance in general. Who are the top five that come to mind?\n\nMy schedule stays pretty full, but I'll move them to the top of my list so they can get some clarity on where they stand.",
+  reset: "Quick one \u2014 on a scale of 1 to 10: 10 is you know every nook and cranny of your retirement accounts \u2014 every fee, your average rate of return, all of it \u2014 and 1 is you just kind of know the balance. Where would you say you land?\n\n(most land between 1 and 4)\n\nThat's really common \u2014 most people are right there. We've actually got a whole division that does nothing but help people get their arms around their retirement: flagging anything that looks off, pointing out what's worth knowing. No pressure \u2014 it's just about you having a clear picture. Worth a quick look?",
+  rec: "One more, off the top of your head \u2014 who do you know who's sharp and really good with people? Someone who might be able to do what I just did, and who could use more income or a better working environment?"
+};
+function capGetScript(k){ try{ const v=localStorage.getItem('cwc_script_'+k); return v!==null?v:CAP_DEFAULT_SCRIPTS[k]; }catch(e){ return CAP_DEFAULT_SCRIPTS[k]; } }
+function capScriptEdited(k){ try{ return localStorage.getItem('cwc_script_'+k)!==null; }catch(e){ return false; } }
+function capTp(){ const cap=window._cap; if(!cap) return null; const c=clients.find(x=>x.id===cap.id); if(!c) return null; const cs=(c.cases||[])[cap.ci]; if(!cs) return null; return (cs.touchpoints||[])[cap.ti]||null; }
+async function capPersist(){ const cap=window._cap; if(!cap) return; const c=clients.find(x=>x.id===cap.id); if(!c) return; try{ await sb.from('clients').update({cases:c.cases}).eq('id',cap.id); }catch(e){ console.warn('capPersist',e); } }
+let _capT=null;
+function capPersistSoon(){ clearTimeout(_capT); _capT=setTimeout(capPersist,400); }
+
+const CAP_SECTIONS = [
+  {k:'ref',   ask:'ref_ask',     people:'ref_people',     title:'Referrals'},
+  {k:'reset', ask:'did_reset',   people:null,             title:'Resets'},
+  {k:'rec',   ask:'recruit_ask', people:'recruit_people', title:'Recruits'}
+];
+
+function showCaptureScreen(){
+  const cap=window._cap; if(!cap) return;
+  const c=clients.find(x=>x.id===cap.id); const tp=capTp();
+  if(!c||!tp){ closeModal(); if(c) openClient(cap.id); return; }
+  const isSale = cap.outcome==='sale';
+  const badge = isSale
+    ? '<span style="background:#3B6D11;color:#fff;border-radius:6px;padding:2px 10px;font-size:12px;font-weight:600;">\u2713 Sale</span>'
+    : '<span style="background:#A32D2D;color:#fff;border-radius:6px;padding:2px 10px;font-size:12px;font-weight:600;">\u2717 No Sale</span>';
+  const phaseLbl = cap.phase==='post' ? 'After the application \u2014 confirm or add' : "While you're still with them";
+  let body = '<button class="close-x" onclick="capDone()">x</button>'
+    + '<div class="modal-title">Capture &nbsp;'+badge+'</div>'
+    + '<div class="modal-sub">'+esc(c.name)+'</div>'
+    + '<div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:5px 10px;margin:8px 0 14px;">'+phaseLbl+' \u00b7 saves as you type</div>';
+  CAP_SECTIONS.forEach(s => { body += capSectionHtml(s, tp); });
+  const contLabel = (isSale && cap.phase==='pre') ? 'Continue to application \u2192' : 'Done';
+  body += '<button class="save-btn" style="background:#1D3557;margin-top:6px;" onclick="capContinue()">'+contLabel+'</button>';
+  showModal(body);
+  capRenderPeople('ref'); capRenderPeople('rec');
+}
+
+function capSectionHtml(s, tp){
+  const asked = tp[s.ask]===true;
+  const notAsked = tp[s.ask]===false;
+  let h = '<div style="border:1px solid #e2eaf2;border-radius:10px;padding:12px;margin-bottom:12px;">';
+  h += '<div style="font-size:14px;font-weight:600;color:#1D3557;margin-bottom:8px;">'+s.title+'</div>';
+  h += '<div style="display:flex;gap:8px;margin-bottom:8px;">'
+    + '<button id="cap-'+s.k+'-yes" onclick="capToggle(\''+s.k+'\',true)" style="flex:1;background:'+(asked?'#138181':'#fff')+';color:'+(asked?'#fff':'#5f7a99')+';border:1px solid '+(asked?'#138181':'#e2eaf2')+';border-radius:8px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;">Did ask</button>'
+    + '<button id="cap-'+s.k+'-no" onclick="capToggle(\''+s.k+'\',false)" style="flex:1;background:'+(notAsked?'#5f7a99':'#fff')+';color:'+(notAsked?'#fff':'#5f7a99')+';border:1px solid '+(notAsked?'#5f7a99':'#e2eaf2')+';border-radius:8px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;">Didn\'t ask</button>'
+    + '</div>';
+  h += '<button onclick="capToggleScript(\''+s.k+'\')" style="background:none;border:none;color:#138181;font-size:12px;cursor:pointer;padding:2px 0;margin-bottom:2px;">\u25b8 Script'+(capScriptEdited(s.k)?' (edited)':'')+'</button>';
+  h += '<div id="cap-script-'+s.k+'" style="display:none;margin-bottom:8px;">'
+    + '<textarea id="cap-scripttext-'+s.k+'" style="width:100%;font-size:12px;padding:8px;border:1px solid #e2eaf2;border-radius:6px;min-height:120px;line-height:1.45;color:#33475b;">'+esc(capGetScript(s.k))+'</textarea>'
+    + '<div style="display:flex;gap:6px;margin-top:4px;">'
+    + '<button onclick="capSaveScript(\''+s.k+'\')" style="flex:1;background:#138181;color:#fff;border:none;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;">Save script</button>'
+    + '<button onclick="capRevertScript(\''+s.k+'\')" style="flex:1;background:#f0f4f8;color:#5f7a99;border:none;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;">Revert to default</button>'
+    + '</div></div>';
+  if (s.people){
+    h += '<div id="cap-people-'+s.k+'"></div>';
+    h += '<button onclick="capAddPerson(\''+s.k+'\')" style="background:none;border:1px dashed #138181;color:#138181;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;margin-top:2px;">+ Add another</button>';
+  } else {
+    h += '<div id="cap-reset-detail" style="display:'+(asked?'block':'none')+';">'
+      + '<input type="text" id="cap-reset-to" value="'+escAttr(tp.reset_to||'')+'" oninput="capResetField()" placeholder="Reset to whom / what? (e.g. Holli for retirement)" style="width:100%;font-size:12px;padding:7px;border:1px solid #e2eaf2;border-radius:6px;margin-bottom:6px;">'
+      + '<textarea id="cap-reset-notes" oninput="capResetField()" placeholder="Notes" style="width:100%;font-size:12px;padding:7px;border:1px solid #e2eaf2;border-radius:6px;min-height:44px;">'+esc(tp.reset_notes||'')+'</textarea>'
+      + '<button onclick="closeModal();openResetToPicker(\''+window._cap.id+'\')" style="background:none;border:1px solid #BA7517;color:#BA7517;border-radius:6px;padding:6px 10px;font-size:11px;cursor:pointer;margin-top:6px;">\u21ba Book the reset appointment</button>'
+      + '</div>';
+  }
+  h += '</div>';
+  return h;
+}
+
+function capToggleScript(k){ const el=document.getElementById('cap-script-'+k); if(el) el.style.display = el.style.display==='none'?'block':'none'; }
+function capSaveScript(k){ const t=document.getElementById('cap-scripttext-'+k); if(!t) return; try{ localStorage.setItem('cwc_script_'+k, t.value); }catch(e){} showCaptureScreen(); }
+function capRevertScript(k){ try{ localStorage.removeItem('cwc_script_'+k); }catch(e){} showCaptureScreen(); }
+
+function capToggle(k, val){
+  const s = CAP_SECTIONS.find(x=>x.k===k); const tp=capTp(); if(!tp) return;
+  tp[s.ask]=val;
+  const yes=document.getElementById('cap-'+k+'-yes'), no=document.getElementById('cap-'+k+'-no');
+  if(yes){ yes.style.background=val?'#138181':'#fff'; yes.style.color=val?'#fff':'#5f7a99'; yes.style.borderColor=val?'#138181':'#e2eaf2'; }
+  if(no){ no.style.background=!val?'#5f7a99':'#fff'; no.style.color=!val?'#fff':'#5f7a99'; no.style.borderColor=!val?'#5f7a99':'#e2eaf2'; }
+  if(val && s.people){ tp[s.people]=tp[s.people]||[]; if(!tp[s.people].length){ tp[s.people].push({name:'',phone:'',why:''}); } capRenderPeople(k); }
+  if(k==='reset'){ const d=document.getElementById('cap-reset-detail'); if(d) d.style.display=val?'block':'none'; }
+  capPersistSoon();
+}
+
+function capRenderPeople(k){
+  const s=CAP_SECTIONS.find(x=>x.k===k); if(!s||!s.people) return;
+  const tp=capTp(); const el=document.getElementById('cap-people-'+k);
+  if(!el||!tp) return;
+  const rows=tp[s.people]||[];
+  el.innerHTML = rows.map((pp,i)=>
+    '<div style="display:flex;gap:4px;margin-bottom:4px;align-items:center;">'
+    + '<input type="text" value="'+escAttr(pp.name||'')+'" oninput="capSyncPerson(\''+k+'\','+i+',\'name\',this.value)" placeholder="Name" style="flex:1.1;font-size:12px;padding:6px;border:1px solid #e2eaf2;border-radius:6px;">'
+    + '<input type="tel" value="'+escAttr(pp.phone||'')+'" oninput="capSyncPerson(\''+k+'\','+i+',\'phone\',this.value)" onblur="capMaybeCreateASR(\''+k+'\','+i+')" placeholder="Phone" style="flex:1;font-size:12px;padding:6px;border:1px solid #e2eaf2;border-radius:6px;">'
+    + '<input type="text" value="'+escAttr(pp.why||'')+'" oninput="capSyncPerson(\''+k+'\','+i+',\'why\',this.value)" placeholder="Why them?" style="flex:1.3;font-size:12px;padding:6px;border:1px solid #e2eaf2;border-radius:6px;">'
+    + (pp._asrId?'<span title="Lead created" style="color:#138181;font-size:14px;">\u2713</span>':'')
+    + '<button onclick="capRemovePerson(\''+k+'\','+i+')" style="background:none;border:none;color:#c0392b;font-size:16px;cursor:pointer;padding:0 4px;">&times;</button>'
+    + '</div>').join('');
+}
+function capReflectYes(k){ const yes=document.getElementById('cap-'+k+'-yes'),no=document.getElementById('cap-'+k+'-no'); if(yes){yes.style.background='#138181';yes.style.color='#fff';yes.style.borderColor='#138181';} if(no){no.style.background='#fff';no.style.color='#5f7a99';no.style.borderColor='#e2eaf2';} }
+function capAddPerson(k){ const s=CAP_SECTIONS.find(x=>x.k===k); const tp=capTp(); if(!tp||!s.people) return; tp[s.people]=tp[s.people]||[]; tp[s.people].push({name:'',phone:'',why:''}); if(tp[s.ask]!==true){ tp[s.ask]=true; capReflectYes(k); } capRenderPeople(k); capPersistSoon(); }
+function capRemovePerson(k,i){ const s=CAP_SECTIONS.find(x=>x.k===k); const tp=capTp(); if(!tp||!tp[s.people]) return; tp[s.people].splice(i,1); capRenderPeople(k); capPersistSoon(); }
+function capSyncPerson(k,i,f,v){ const s=CAP_SECTIONS.find(x=>x.k===k); const tp=capTp(); if(!tp||!tp[s.people]||!tp[s.people][i]) return; tp[s.people][i][f]=v; capPersistSoon(); }
+function capResetField(){ const tp=capTp(); if(!tp) return; const to=document.getElementById('cap-reset-to'), nt=document.getElementById('cap-reset-notes'); if(to) tp.reset_to=to.value; if(nt) tp.reset_notes=nt.value; capPersistSoon(); }
+
+// A referral with a real name + phone becomes a live ASR lead the moment it's
+// entered \u2014 created once per row, deduped by phone, linked to the referrer.
+async function capMaybeCreateASR(k,i){
+  if(k!=='ref') return;
+  const tp=capTp(); const cap=window._cap; if(!tp||!cap) return;
+  const row=(tp.ref_people||[])[i]; if(!row) return;
+  const name=(row.name||'').trim(), phone=(row.phone||'').trim();
+  if(!name||!phone||row._asrId) return;
+  const referrer=clients.find(x=>x.id===cap.id); if(!referrer) return;
+  const dupe = (typeof findDupeByPhone==='function') ? findDupeByPhone(phone) : null;
+  if(dupe){ row._asrId=dupe.id; row._dupe=true; capRenderPeople(k); capPersistSoon(); return; }
+  const newLead={ name, phone, source:'ASR', status:'New',
+    assigned_date:new Date().toISOString().slice(0,10),
+    notes:'ASR from '+(referrer.name||'')+(row.why?'. '+row.why:''),
+    health_notes:'', policy_notes:'', call_log:[], sits:[], cases:[],
+    state:referrer.state||'', referred_by:cap.id };
+  try{
+    const {data,error}=await sb.from('clients').insert([newLead]).select();
+    if(error){ console.warn('ASR insert',error); return; }
+    if(data&&data[0]){ clients.push(data[0]); row._asrId=data[0].id;
+      referrer.referrals=referrer.referrals||[];
+      referrer.referrals.push({id:data[0].id,name,phone,relationship:row.relationship||'',paid:false,amount:30,paidDate:null});
+      capRenderPeople(k); await capPersist();
+    }
+  }catch(e){ console.warn('capMaybeCreateASR',e); }
+}
+
+function capContinue(){
+  const cap=window._cap; if(!cap){ closeModal(); return; }
+  const to=document.getElementById('cap-reset-to'); const nt=document.getElementById('cap-reset-notes'); const tp=capTp();
+  if(tp){ if(to) tp.reset_to=to.value; if(nt) tp.reset_notes=nt.value; }
+  if(cap.outcome==='sale' && cap.phase==='pre'){
+    capPersist();
+    window._capReturnAfterApps=true;
+    openAddAppToTouchpoint(cap.id, cap.ci, cap.ti);
+  } else {
+    capDone();
+  }
+}
+async function capDone(){
+  const cap=window._cap;
+  const tp=capTp();
+  if(tp){ ['ref_people','recruit_people'].forEach(key=>{ if(Array.isArray(tp[key])) tp[key]=tp[key].filter(p=>p&&(p.name||'').trim()); }); }
+  await capPersist(); window._cap=null; window._capReturnAfterApps=false;
+  closeModal(); if(cap) openClient(cap.id); if(typeof renderScore==='function') renderScore(); if(typeof renderSidebar==='function') renderSidebar();
+}
+</script>
+
 </body>
 </html>
 
