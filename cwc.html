@@ -148,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h101</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h102</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -249,6 +249,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
     </div>
     <div class="section-lbl">Production</div>
+    <div id="prod-board-toggle" style="display:flex;gap:6px;margin-bottom:8px;">
+      <button id="pbt-mp_life" onclick="setProdBoard('mp_life')" style="flex:1;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;background:#1D3557;color:#fff;">Life / MP</button>
+      <button id="pbt-advanced_market" onclick="setProdBoard('advanced_market')" style="flex:1;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;background:#e8eef5;color:#5f7a99;">Advanced Market</button>
+    </div>
     <div class="stat-row">
       <div class="stat stat-navy">
         <div class="stat-lbl lbl-white">Appts</div>
@@ -593,6 +597,9 @@ async function init() {
     await loadClients();
   }
   hideSync();
+  // One-time, silent, idempotent: label any case that predates board routing so
+  // the Life and Advanced Market boards read clean without any console step.
+  try { await backfillBoards({silent:true}); } catch(e) { console.error('auto backfillBoards:', e); }
   renderScore();
   renderTasks();
   // Small delay to ensure all async data is settled before rendering sidebar/alerts
@@ -1439,10 +1446,29 @@ function countSubmittedApps(pStart, pEnd) {
   return n;
 }
 
+// PRODUCTION BOARD TOGGLE. Life/MP is the main pipeline; Advanced Market shows
+// the retirement (reset-to-self) business on its own. Flipping just re-scopes
+// the same tiles - one source of truth, two views.
+function setProdBoard(board) {
+  window._prodBoard = (board === 'advanced_market') ? 'advanced_market' : 'mp_life';
+  updateProdBoardToggle();
+  renderScore();
+}
+function updateProdBoardToggle() {
+  const pb = window._prodBoard || 'mp_life';
+  const life = document.getElementById('pbt-mp_life');
+  const am = document.getElementById('pbt-advanced_market');
+  if (life) { const on = pb === 'mp_life';
+    life.style.background = on ? '#1D3557' : '#e8eef5'; life.style.color = on ? '#fff' : '#5f7a99'; }
+  if (am) { const on = pb === 'advanced_market';
+    am.style.background = on ? '#138181' : '#e8eef5'; am.style.color = on ? '#fff' : '#5f7a99'; }
+}
+
 function renderScore() {
   const {start: aStart, end: aEnd, label} = getPeriodBounds('activity');
   const {start: pStart, end: pEnd} = getPeriodBounds('production');
   document.getElementById('period-label').textContent = label;
+  updateProdBoardToggle();
 
   const dials=sumStat('dials',aStart,aEnd), convos=sumStat('convos',aStart,aEnd);
   // RESOLUTION: a lead's resolution is its LATEST 'Appt set' or 'Not interested'.
@@ -1538,7 +1564,10 @@ function renderScore() {
   const allTPsRaw = clients.flatMap(c => (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).filter(tp => {
     const d = new Date(tp.datetime); return d >= pStart && d <= pEnd;
   })));
-  const allTPs = clients.flatMap(c => (c.cases||[]).filter(cs => boardOf(cs) === 'mp_life').flatMap(cs => (cs.touchpoints||[]).filter(tp => {
+  // Which production board is showing. Life is the default; the toggle flips it
+  // to advanced_market (retirement). Every scoped tile below reads this.
+  const _pb = window._prodBoard || 'mp_life';
+  const allTPs = clients.flatMap(c => (c.cases||[]).filter(cs => boardOf(cs) === _pb).flatMap(cs => (cs.touchpoints||[]).filter(tp => {
     const d = new Date(tp.datetime); return d >= pStart && d <= pEnd;
   })));
   const allSits = clients.flatMap(c => (c.sits||[]).filter(s => {
@@ -1597,7 +1626,7 @@ function renderScore() {
   // Life-only for board one (see allTPs note); allCasesRaw stays whole for APV
   // rollup checks and the Advanced Market board.
   const allCasesRaw = clients.flatMap(c => (c.cases||[]));
-  const allCases = allCasesRaw.filter(cs => boardOf(cs) === 'mp_life');
+  const allCases = allCasesRaw.filter(cs => boardOf(cs) === _pb);
   const satCases = allCases.filter(cs => inP(caseSatDate(cs)));
   const totalShowed = satCases.length;                    // SITS - one per case
   const decidedCases = allCases.filter(cs => inP(caseVerdictDate(cs)));
@@ -6344,7 +6373,9 @@ function inferBoard(cs) {
 // case, outcome, app, or appointment. Safe to re-run; a wrong sticker is fixed
 // by correcting inferBoard and running again. Run from the console after deploy:
 //   backfillBoards()
-async function backfillBoards() {
+async function backfillBoards(opts) {
+  opts = opts || {};
+  const silent = opts.silent === true;
   const plan = [];       // {client, cases (mutated copy), counts}
   const totals = { advanced_market:0, sme_handoff:0, mp_life:0 };
   clients.forEach(c => {
@@ -6358,24 +6389,24 @@ async function backfillBoards() {
     });
     if (changed) plan.push({ c, cases });
   });
-  if (!plan.length) { alert('All cases already labelled - nothing to backfill.'); return; }
-  const msg = 'Backfill ' + (totals.advanced_market+totals.sme_handoff+totals.mp_life) +
-    ' unlabelled cases:\n  advanced_market: ' + totals.advanced_market +
-    '\n  sme_handoff: ' + totals.sme_handoff +
-    '\n  mp_life: ' + totals.mp_life +
-    '\n\nThis only ADDS a label. Nothing is deleted or moved. Proceed?';
-  if (!confirm(msg)) { console.log('backfillBoards: cancelled'); return; }
-  showSync('Backfilling boards...');
+  if (!plan.length) { if (!silent) alert('All cases already labelled - nothing to backfill.'); return; }
+  if (!silent) {
+    const msg = 'Backfill ' + (totals.advanced_market+totals.sme_handoff+totals.mp_life) +
+      ' unlabelled cases:\n  advanced_market: ' + totals.advanced_market +
+      '\n  sme_handoff: ' + totals.sme_handoff +
+      '\n  mp_life: ' + totals.mp_life +
+      '\n\nThis only ADDS a label. Nothing is deleted or moved. Proceed?';
+    if (!confirm(msg)) { console.log('backfillBoards: cancelled'); return; }
+    showSync('Backfilling boards...');
+  }
   let ok = 0;
   for (const p of plan) {
     try { await sb.from('clients').update({ cases: p.cases }).eq('id', p.c.id); p.c.cases = p.cases; ok++; }
     catch (e) { console.error('backfillBoards failed for', p.c.id, e); }
   }
-  hideSync();
-  const done = 'Backfill complete: ' + ok + '/' + plan.length + ' leads updated.';
-  console.log('backfillBoards:', done, totals);
-  alert(done);
-  if (typeof renderScore === 'function') renderScore();
+  if (!silent) hideSync();
+  console.log('backfillBoards:', ok + '/' + plan.length + ' leads updated', totals);
+  if (!silent) { alert('Backfill complete: ' + ok + '/' + plan.length + ' leads updated.'); if (typeof renderScore === 'function') renderScore(); }
 }
 if (typeof window !== 'undefined') window.backfillBoards = backfillBoards;
 
