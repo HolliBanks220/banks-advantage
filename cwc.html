@@ -148,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h98</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h99</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -3512,6 +3512,50 @@ function apptNotesOf(c) {
   return (tp && tp.notes) || (c && c.appt_notes) || '';
 }
 
+// A logged sit outcome writes to two places: the touchpoint (metrics truth) and
+// a call_log entry (the timeline), linked only by timestamp. These maps and the
+// finder let the Edit/fix control jump from a timeline row back to the real
+// touchpoint, and let updateTpOutcome keep the timeline honest when an outcome
+// flips. Only these four call_log labels correspond to a resolvable touchpoint;
+// dials/callbacks/appt-sets are timeline-only and are never touched.
+const CL_TO_TP_OUTCOME = { 'Sale':'sale', 'No sale':'nosale', 'No show':'noshow', 'Continuation':'cont' };
+const TP_TO_CL_OUTCOME = { 'sale':'Sale', 'nosale':'No sale', 'noshow':'No show', 'cont':'Continuation' };
+// Find the (ci,ti) touchpoint a sit-outcome call_log entry came from: same
+// mapped outcome, datetime within 5 min of the log's ts. Returns null for
+// non-sit entries or when no match exists (nothing to edit from the timeline).
+function findTpForLog(c, cl) {
+  if (!c || !cl) return null;
+  const want = CL_TO_TP_OUTCOME[cl.outcome];
+  if (!want) return null;
+  const at = new Date(cl.ts).getTime();
+  const cases = c.cases || [];
+  for (let ci = 0; ci < cases.length; ci++) {
+    const tps = cases[ci].touchpoints || [];
+    for (let ti = 0; ti < tps.length; ti++) {
+      const tp = tps[ti];
+      if (!tp || !tp.datetime || tp.outcome !== want) continue;
+      if (Math.abs(new Date(tp.datetime).getTime() - at) <= 5 * 60000) return { ci, ti };
+    }
+  }
+  return null;
+}
+// Reverse: the call_log index of the sit-outcome row written alongside a
+// touchpoint (its ts equals the tp datetime). Optionally scoped to a specific
+// label so a flip can find the STALE row before relabelling or dropping it.
+// Returns -1 when there's nothing to clean.
+function logIdxForTp(c, tp, outcomeLabel) {
+  if (!c || !tp || !tp.datetime) return -1;
+  const at = new Date(tp.datetime).getTime();
+  const log = c.call_log || [];
+  for (let i = log.length - 1; i >= 0; i--) {
+    const cl = log[i];
+    if (!cl || !CL_TO_TP_OUTCOME[cl.outcome]) continue;   // sit-outcome rows only
+    if (outcomeLabel && cl.outcome !== outcomeLabel) continue;
+    if (Math.abs(new Date(cl.ts).getTime() - at) <= 5 * 60000) return i;
+  }
+  return -1;
+}
+
 // Is this lead short of the attempts its stage calls for? Same targets the pace
 // line uses, so a badge can never disagree with the number in the header.
 function isBehindPace(c) {
@@ -5243,6 +5287,7 @@ function openClient(id, keepDialCount) {
   const callHistory = callLog.slice().reverse().slice(0,6).map((cl, ri) => {
     const realIdx = callLog.length - 1 - ri;
     const detail = logDetail(cl);
+    const tpRef = findTpForLog(c, cl);   // sit outcome -> its touchpoint, else null
     return `
     <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:5px;">
       <div style="width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0;background:${cl.outcome==='Appt set'?'#138181':cl.outcome==='No show'?'#E24B4A':cl.outcome==='Not interested'?'#E24B4A':cl.outcome==='Cancelled'?'#E24B4A':cl.outcome==='Pushed off'?'#8fa8c0':cl.outcome==='Callback'?'#BA7517':'#1D3557'};"></div>
@@ -5254,6 +5299,7 @@ function openClient(id, keepDialCount) {
         <div style="display:flex;gap:6px;align-items:center;">
           <div style="font-size:10px;color:#a0b8cc;">${new Date(cl.ts).toLocaleDateString('en-US',{month:'short',day:'numeric'})} ${new Date(cl.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
           <span onclick="editLogNote('${id}',${realIdx})" style="font-size:10px;color:#8fa8c0;text-decoration:underline;cursor:pointer;">${(cl.note||cl.callback_note||cl.followup_note)?'edit note':'+ note'}</span>
+          ${tpRef?`<span onclick="openEditTouchpoint('${id}',${tpRef.ci},${tpRef.ti})" style="font-size:10px;color:#138181;text-decoration:underline;cursor:pointer;">Edit / fix</span>`:''}
         </div>
       </div>
       <button onclick="deleteCallLogEntry('${id}',${realIdx})" style="background:none;border:none;color:#d0dcea;font-size:14px;cursor:pointer;padding:0 2px;flex-shrink:0;" title="Delete this entry">x</button>
@@ -7975,9 +8021,14 @@ async function deleteTouchpoint(id, ci, ti) {
   if (!confirm('Delete this ' + label + '? Any apps attached to it will also be removed. This cannot be undone.')) return;
   const cases = JSON.parse(JSON.stringify(c.cases||[]));
   cases[ci].touchpoints.splice(ti, 1);
+  // Pull the sit-outcome timeline row written alongside this touchpoint, so a
+  // deleted sale/no-sale/no-show/continuation doesn't leave a ghost in history.
+  let callLog = c.call_log;
+  const li = logIdxForTp(c, tp);
+  if (li !== -1) { callLog = (c.call_log||[]).slice(); callLog.splice(li, 1); }
   showSync('Deleting...');
-  await sb.from('clients').update({cases}).eq('id', id);
-  c.cases = cases;
+  await sb.from('clients').update(li !== -1 ? {cases, call_log:callLog} : {cases}).eq('id', id);
+  c.cases = cases; if (li !== -1) c.call_log = callLog;
   hideSync(); closeModal();
   openClient(id); renderScore(); renderSidebar();
 }
@@ -8017,7 +8068,9 @@ function openEditTouchpoint(id, ci, ti) {
 
 async function updateTpOutcome(id, ci, ti, val) {
   const c = clients.find(x=>x.id===id); if (!c) return;
-  c.cases[ci].touchpoints[ti].outcome = val;
+  const tp = c.cases[ci].touchpoints[ti];
+  const prevOutcome = tp.outcome;                 // capture before overwrite
+  tp.outcome = val;
   if (val==='sale') c.cases[ci].status='Closed Won';
   else if (val==='nosale') c.cases[ci].status='Closed Lost';
   else c.cases[ci].status='Open';
@@ -8026,8 +8079,21 @@ async function updateTpOutcome(id, ci, ti, val) {
   else if (val==='nosale') newLeadStatus='No sale';
   else if (val==='noshow') newLeadStatus='No show';
   else if (val==='cont') newLeadStatus='Appointment set';
+  // Keep the timeline honest: the sit-outcome call_log row written alongside
+  // this touchpoint must follow the flip. Relabel Sale -> No sale, or drop the
+  // row entirely when flipping back to pending - so she never hand-deletes.
+  const oldLbl = TP_TO_CL_OUTCOME[prevOutcome];
+  const newLbl = TP_TO_CL_OUTCOME[val];
+  if (oldLbl) {
+    if (!c.call_log) c.call_log = [];
+    const li = logIdxForTp(c, tp, oldLbl);
+    if (li !== -1) {
+      if (newLbl) c.call_log[li].outcome = newLbl;
+      else c.call_log.splice(li, 1);
+    }
+  }
   showSync('Saving...');
-  await sb.from('clients').update({cases:c.cases, status:newLeadStatus}).eq('id',id);
+  await sb.from('clients').update({cases:c.cases, status:newLeadStatus, call_log:c.call_log||[]}).eq('id',id);
   c.status = newLeadStatus; hideSync(); renderScore();
   if (val === 'sale') {
     openAddAppToTouchpoint(id, ci, ti);
