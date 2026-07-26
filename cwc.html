@@ -148,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h96</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h97</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -271,7 +271,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
     </div>
     <div class="stat-row">
-    <div class="stat-row">
       <div class="stat" style="background:#EBF3FF;">
         <div class="stat-lbl" style="color:#1D3557;">Upcoming</div>
         <div class="stat-val" style="color:#1D3557;cursor:pointer;" id="p-upcoming" onclick="drillDown('upcoming')">0</div>
@@ -288,7 +287,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-sub" style="color:#3C3489;" id="p-resets-sub">-</div>
       </div>
     </div>
-    <div class="stat-row">
+    <div class="stat-row" style="grid-template-columns:repeat(4,minmax(0,1fr));">
       <div class="stat stat-teal">
         <div class="stat-lbl lbl-white">Sits</div>
         <div class="stat-val val-white" id="p-showed" style="cursor:pointer;" onclick="drillDown('showed')">0</div>
@@ -310,7 +309,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-sub" style="color:#3C3489;" id="p-dropped-sub">-</div>
       </div>
     </div>
-    <div class="stat-row">
+    <div class="stat-row" style="grid-template-columns:repeat(4,minmax(0,1fr));">
       <div class="stat stat-green">
         <div class="stat-lbl lbl-green">Apps submitted</div>
         <div class="stat-val val-green" id="p-closed">0</div>
@@ -10000,7 +9999,7 @@ function loadCustomCarriers() {
 // ============================================================
 const CAP_DEFAULT_SCRIPTS = {
   ref: "Before I let you go \u2014 what was your favorite part of what we put together? What's it going to do for you?\n\nYou know, I always try to help as many people as I can. Who in your immediate circle \u2014 a family member, a close friend \u2014 could benefit from a conversation like the one we just had? Someone who'd want a quick review of their current coverage, or just to see what's appropriate for them \u2014 could be mortgage protection, could be life insurance in general. Who are the top five that come to mind?\n\nMy schedule stays pretty full, but I'll move them to the top of my list so they can get some clarity on where they stand.",
-  reset: "Quick one \u2014 on a scale of 1 to 10: 10 is you know every nook and cranny of your retirement accounts \u2014 every fee, your average rate of return, all of it \u2014 and 1 is you just kind of know the balance. Where would you say you land?\n\n(most land between 1 and 4)\n\nThat's really common \u2014 most people are right there. We've actually got a whole division that does nothing but help people get their arms around their retirement: flagging anything that looks off, pointing out what's worth knowing. No pressure \u2014 it's just about you having a clear picture. Worth a quick look?",
+  reset: "Quick one \u2014 on a scale of 1 to 10: 10 is you know every nook and cranny of your retirement accounts \u2014 every fee, your average rate of return, all of it \u2014 and 1 is you just kind of know the balance. Where would you say you land?\n\n(most land between 1 and 4)\n\nThat's really common \u2014 most people are right there. We've actually got a whole division that does nothing but help people get their arms around their retirement: flagging anything that looks off, pointing out what's worth knowing. No pressure \u2014 it's just about you having a clear picture. Holli is excellent with all of our clients. You'll really like her. Does this time next week work for you? I'll see if she's available.",
   rec: "One more, off the top of your head \u2014 who do you know who's sharp and really good with people? Someone who might be able to do what I just did, and who could use more income or a better working environment?"
 };
 function capGetScript(k){ try{ const v=localStorage.getItem('cwc_script_'+k); return v!==null?v:CAP_DEFAULT_SCRIPTS[k]; }catch(e){ return CAP_DEFAULT_SCRIPTS[k]; } }
