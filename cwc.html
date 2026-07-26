@@ -148,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h102</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h103</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -314,11 +314,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-lbl lbl-green">Apps submitted</div>
         <div class="stat-val val-green" id="p-closed">0</div>
         <div class="stat-sub sub-green" id="p-close-rate">- per sale</div>
+        <div class="stat-sub sub-green" id="p-lead2app">- lead&#8594;app</div>
       </div>
       <div class="stat stat-teal">
         <div class="stat-lbl lbl-white">Ref asks</div>
         <div class="stat-val val-white" id="p-refask" style="cursor:pointer;" onclick="openReferralList()">0</div>
         <div class="stat-sub sub-white" id="p-refask-sub">- of sits</div>
+        <div class="stat-sub sub-white" id="p-refs2s">- ref sit&#8594;sale</div>
       </div>
       <div class="stat stat-navy">
         <div class="stat-lbl lbl-white">Recruit asks</div>
@@ -338,6 +340,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-lbl lbl-white">Submitted APV</div>
         <div class="stat-val val-white" id="p-apv" style="font-size:20px;">$0</div>
         <div class="stat-sub sub-white" id="p-apps">0 apps</div>
+        <div class="stat-sub sub-white" id="p-netplaced">- net placed</div>
       </div>
       <div class="stat stat-navy-lt">
         <div class="stat-lbl lbl-navy">APV / Sale</div>
@@ -1552,9 +1555,9 @@ function renderScore() {
   // leads haven't had time yet - "so far" says that out loud.
   const coh = cohortResolution(aStart, aEnd);
   document.getElementById('s-resolved-pct').textContent =
-    coh.resolved + ' of ' + coh.assigned + ' uploaded resolved';
+    coh.assigned > 0 ? pct(coh.resolved, coh.assigned) + ' lead resolution' : '- lead resolution';
   document.getElementById('s-resolved-fresh').textContent = coh.assigned > 0
-    ? pct(coh.resolved, coh.assigned) + ' of this batch so far'
+    ? coh.resolved + ' of ' + coh.assigned + ' so far'
     : '-';
 
   // Board ONE is life only. Resets spin up advanced_market / sme_handoff cases
@@ -1787,8 +1790,8 @@ function renderScore() {
   const recEl = document.getElementById('p-first-rate');
   if (recEl) {
     recEl.textContent = unbucketed === 0
-      ? pct(attendedAppts, heldAppts) + ' show rate'
-      : pct(attendedAppts, heldAppts) + ' show rate \u00b7 \u26a0 ' + unbucketed + ' unaccounted';
+      ? pct(attendedAppts, heldAppts) + ' sit ratio'
+      : pct(attendedAppts, heldAppts) + ' sit ratio \u00b7 \u26a0 ' + unbucketed + ' unaccounted';
   }
   document.getElementById('p-showed').textContent = totalShowed;
   // Continuations decided nothing yet, so they're excluded here AND from the
@@ -1811,8 +1814,8 @@ function renderScore() {
   document.getElementById('p-sales').textContent = totalSales;
   const withDropped = decidedSits + totalDropped;
   document.getElementById('p-sales-sub').textContent = decidedSits > 0
-    ? pct(totalSales, decidedSits) + ' close' + (totalDropped ? ' \u00b7 ' + pct(totalSales, withDropped) + ' w/ dropped' : ' rate')
-    : '- close rate';
+    ? pct(totalSales, decidedSits) + ' sit\u2192sale' + (totalDropped ? ' \u00b7 ' + pct(totalSales, withDropped) + ' w/ dropped' : '')
+    : '- sit\u2192sale';
   document.getElementById('p-nosales').textContent = totalNoSales;
   document.getElementById('p-nosales-sub').textContent = pct(totalNoSales,totalShowed)+' of sits';
   const drEl = document.getElementById('p-dropped');
@@ -1829,6 +1832,9 @@ function renderScore() {
   document.getElementById('p-resets').textContent = totalResets;
   document.getElementById('p-closed').textContent = appsWritten;
   document.getElementById('p-close-rate').textContent = totalSales > 0 ? (appsWritten/totalSales).toFixed(1) + ' per sale' : '- per sale';
+  // Lead-to-App CR: submitted apps on THIS board in period over leads assigned.
+  const boardApps = clients.reduce((n,c)=> n + (c.cases||[]).filter(cs=>boardOf(cs)===_pb).reduce((m,cs)=> m + (cs.touchpoints||[]).reduce((k,tp)=> k + (tp.apps||[]).filter(ap=>{ const d=new Date(ap.writtenDate||tp.datetime||cs.created||0); return isSubmitted(ap) && d>=pStart && d<=pEnd; }).length,0),0),0);
+  { const e=document.getElementById('p-lead2app'); if (e) e.textContent = coh.assigned > 0 ? pct(boardApps, coh.assigned) + ' lead\u2192app' : '- lead\u2192app'; }
 
   // --- ASK RATES: the behaviours that compound. Denominator is resolved sits -
   // you can only ask someone who actually sat with you.
@@ -1844,12 +1850,24 @@ function renderScore() {
   const setTxt = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
   setTxt('p-refask', nAsk);
   setTxt('p-refask-sub', resolvedTps.length ? pct(nAsk, resolvedTps.length) + ' of sits' : '- of sits');
+  // Referral Sit-to-Sale: among referral leads (referred_by set), decided sits
+  // and sales on THIS board in period - mirrors the sit-to-sale ratio.
+  let refSits = 0, refSales = 0;
+  clients.filter(c => c.referred_by).forEach(c => (c.cases||[]).filter(cs=>boardOf(cs)===_pb).forEach(cs => {
+    const v = caseVerdict(cs); if (!v || !inP(caseVerdictDate(cs))) return;
+    if (v==='sale' || v==='nosale') refSits++;
+    if (v==='sale') refSales++;
+  }));
+  setTxt('p-refs2s', refSits > 0 ? pct(refSales, refSits) + ' ref sit\u2192sale' : '- ref sit\u2192sale');
   setTxt('p-recask', nRec);
   setTxt('p-recask-sub', resolvedTps.length ? pct(nRec, resolvedTps.length) + ' of sits' : '- of sits');
   setTxt('p-stp', nStp);
   setTxt('p-stp-sub', allProspects.length ? nStp + ' of ' + allProspects.length + ' prospects' : 'no prospects yet');
   document.getElementById('p-apv').textContent = fmt(totalAPV);
   document.getElementById('p-apps').textContent = totalApps+' apps';
+  // Net Placed Ratio: placed APV over submitted APV (whole-business, like the tile).
+  { const placedAPV = periodApps.filter(ap => ['Placed','Issued','Paid'].includes(ap.status||'')).reduce((a,ap)=>a+premOf(ap),0);
+    const e=document.getElementById('p-netplaced'); if (e) e.textContent = totalAPV > 0 ? pct(placedAPV, totalAPV) + ' net placed' : '- net placed'; }
   document.getElementById('p-apv-hh').textContent = fmt(apvPerSale);
   document.getElementById('p-apv-ppu').textContent = fmt(ppuAvgAPV)+' PPU vs '+fmt(nonPPUAvgAPV)+' non-PPU';
 
