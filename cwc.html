@@ -148,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h97</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h98</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -238,7 +238,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
     </div>
     <div class="divider"></div>
-    <div class="stat-row">
+    <div class="stat-row" style="grid-template-columns:repeat(2,minmax(0,1fr));">
       <div class="stat" style="background:#EBF3FF;border:1px solid #B3D1F7;">
         <div class="stat-lbl" style="color:#1D3557;">Dial time</div>
         <div class="stat-val" id="s-time-dial" style="color:#1D3557;font-size:18px;cursor:pointer;" onclick="editTimerTime('dial')" title="Tap to correct">0:00</div>
@@ -246,10 +246,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="stat" style="background:#F0FBF7;border:1px solid #9FE1CB;">
         <div class="stat-lbl" style="color:#138181;">Appt time</div>
         <div class="stat-val" id="s-time-appt" style="color:#138181;font-size:18px;cursor:pointer;" onclick="editTimerTime('appt')" title="Tap to correct">0:00</div>
-      </div>
-      <div class="stat" style="background:#F5F3FF;border:1px solid #C4BBEF;">
-        <div class="stat-lbl" style="color:#534AB7;">Admin time</div>
-        <div class="stat-val" id="s-time-admin" style="color:#534AB7;font-size:18px;cursor:pointer;" onclick="editTimerTime('admin')" title="Tap to correct">0:00</div>
       </div>
     </div>
     <div class="section-lbl">Production</div>
@@ -653,7 +649,7 @@ window._lastInteraction = Date.now();
         const cardOpen = !!document.querySelector('#modal-ov .modal') && window._openClientId;
         if (cardOpen) {
           const c = clients.find(x => x.id === window._openClientId);
-          timerStart(c && isApptImminent(c) ? 'appt' : (inLeads ? 'dial' : 'admin'));
+          timerStart(c && hasApptContext(c) ? 'appt' : (inLeads ? 'dial' : 'admin'));
           timerUpdateStatusLabel();
         } else if (inLeads && window._dialArmed) {
           timerStart('dial');
@@ -4055,6 +4051,16 @@ function isGhostPending(tps, tp) {
 
 // Is this lead's appointment imminent? (2 min before start, or started and not yet logged, today only)
 // Pinned to the very top of the list until the outcome is logged.
+// h98: broader than imminent. Any client with a LIVE (non-ghost) pending
+// appointment — upcoming or current — is in "appt context", so time spent in
+// their card (prep included) clocks as appt time. Ghost/superseded pendings are
+// filtered so a stale appt can't jam the clock (the old stuck-clock hazard).
+function hasApptContext(c) {
+  if (!c) return false;
+  return (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp =>
+    tp && tp.outcome === 'pending' && tp.datetime && !isGhostPending(cs.touchpoints, tp)
+  ));
+}
 function isApptImminent(c) {
   if (c.status !== 'Appointment set') return false;
   const now = new Date();
@@ -5189,10 +5195,11 @@ function openClient(id, keepDialCount) {
   const c = clients.find(x => x.id === id);
   if (!c) return;
   if (!keepDialCount) { window._dialCount = 1; window._dialCountSet = false; }
-  // Appt mode ONLY for the genuinely imminent appointment (same 2-min pin rule
-  // as the queue). The old +/-hours window on mutable appt_datetime hijacked the
-  // clock: one poisoned card flipped the timer and nothing flipped it back.
-  if (isApptImminent(c)) {
+  // h98: appt mode for ANY client with a live (non-ghost) pending appointment —
+  // upcoming or current — so prep time counts as appt time. Guarded by
+  // isGhostPending (inside hasApptContext) so a stale/superseded appt can't
+  // hijack the clock; opening a no-appt lead below still self-heals to dial.
+  if (hasApptContext(c)) {
     timerStart('appt');
   } else {
     // On the Leads tab, dial is the default everything returns to — opening any
