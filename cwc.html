@@ -141,9 +141,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 /* Neutral base: even two-tone, both mid navy-slate and close in value so it's
    calm structure - not a harsh dark/light checkerboard. Goal glow + alerts carry
    the only real color. */
-.tile-a{background:#3E5273 !important;border:1px solid #344561 !important;}
+.tile-a{background:#233F5E !important;border:1px solid #1B334E !important;}
 .tile-a .stat-lbl,.tile-a .stat-val,.tile-a .stat-sub{color:#ffffff !important;}
-.tile-b{background:#586E90 !important;border:1px solid #4A5D7B !important;}
+.tile-b{background:#365679 !important;border:1px solid #2C486688 !important;}
 .tile-b .stat-lbl,.tile-b .stat-val,.tile-b .stat-sub{color:#ffffff !important;}
 .tile-slate{background:#E6EBF1 !important;border:1px solid #D2DBE6 !important;}
 .tile-slate .stat-lbl,.tile-slate .stat-val,.tile-slate .stat-sub{color:#1D3557 !important;}
@@ -169,7 +169,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h127</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h128</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -1868,8 +1868,9 @@ function renderScore() {
   const noTile = document.getElementById('needsoutcome-tile');
   const noLbl = document.getElementById('needsoutcome-lbl');
   if (noEl && noTile) {
-    noEl.textContent = needsOutcome;
-    if (needsOutcome > 0) {
+    const noCount = needsOutcomeList().length;
+    noEl.textContent = noCount;
+    if (noCount > 0) {
       noTile.style.background = '#FDECEC'; noTile.style.border = '1px solid #E39B9B';
       noEl.style.color = '#A32D2D'; if (noLbl) noLbl.style.color = '#A32D2D';
     } else {
@@ -2444,6 +2445,27 @@ async function resolveGhost(id, ci, outcome, stage, type) {
   drillDown(type);   // refresh the card list in place
 }
 
+// Everything that owes an outcome: any past-due appointment with no outcome yet,
+// across ALL cases and boards (PPU/TAI continuations included) - the broad set
+// the old strip used, so nothing slips past. Period-scoped like the old strip.
+function needsOutcomeList(){
+  const nowMs = Date.now();
+  const { start, end } = getPeriodBounds('production');
+  const rows = [];
+  clients.forEach(c => (c.cases||[]).forEach(cs => {
+    const ci = (c.cases||[]).indexOf(cs);
+    (cs.touchpoints||[]).forEach(tp => {
+      if (!tp || !tp.datetime) return;
+      if (tp.outcome && tp.outcome !== 'pending') return;
+      const d = new Date(tp.datetime);
+      if (d < start || d > end || d.getTime() >= nowMs) return;
+      rows.push({ c, cs, ci, tp, d });
+    });
+  }));
+  rows.sort((a,b) => a.d - b.d);
+  return rows;
+}
+
 function drillDown(type) {
   const {start, end, label} = getPeriodBounds('production');
   // Every drill-down list is scoped to the board you're viewing, so the list
@@ -2508,7 +2530,28 @@ function drillDown(type) {
     };
     leads = clients.filter(c => apptTime(c) !== null)
       .sort((a,b) => apptTime(a) - apptTime(b));
-  } else if (type === 'upcoming' || type === 'needsoutcome' || type === 'attended') {
+  } else if (type === 'needsoutcome') {
+    const rows = needsOutcomeList();
+    if (!rows.length) {
+      showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+        '<div class="modal-title">Needs an outcome - ' + label + '</div>' +
+        '<div style="font-size:13px;color:#a0b8cc;padding:1rem 0;">Nothing owed right now.</div>');
+      return;
+    }
+    const body = rows.map(a => {
+      const when = a.d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + a.d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+      return '<div class="client-card" onclick="closeModal();setTimeout(()=>openClient(\'' + a.c.id + '\'),100)">' +
+        '<div class="client-name">' + esc(a.c.name||'Unknown') + '</div>' +
+        '<div class="client-meta">' + esc((a.cs.type||'') + (a.tp.type ? ' \u00b7 ' + a.tp.type : '')) + '</div>' +
+        '<div style="font-size:11px;color:#A32D2D;font-weight:600;">Past due \u00b7 ' + when + '</div>' +
+      '</div>';
+    }).join('');
+    showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+      '<div class="modal-title">Needs an outcome - ' + label + '</div>' +
+      '<div class="modal-sub">' + rows.length + ' past-due appointment' + (rows.length===1?'':'s') + ' owed an outcome</div>' +
+      '<div style="max-height:70vh;overflow-y:auto;margin-top:8px;">' + body + '</div>');
+    return;
+  } else if (type === 'upcoming' || type === 'attended') {
     if (type === 'attended') {
       // The numerator of the show ratio: every appointment you turned up to,
       // continuations included. Listed per appointment, like the Appts drill.
