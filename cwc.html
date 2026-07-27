@@ -138,8 +138,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 @media(max-width:719px){.appt-sidebar{display:none!important;}.appt-banner{display:block;}#task-mobile-btn{display:block!important;}}
 .task-item{display:flex;align-items:flex-start;gap:6px;padding:6px 0;border-bottom:1px solid #f0f4f8;}
 .task-item:last-child{border-bottom:none;}
-/* Neutral base palette: color earns meaning (goal glow + alerts). Base tiles are
-   one calm soft-slate so the goal tiles are the loudest thing on the board. */
+/* Neutral base: even two-tone, both mid navy-slate and close in value so it's
+   calm structure - not a harsh dark/light checkerboard. Goal glow + alerts carry
+   the only real color. */
+.tile-a{background:#3E5273 !important;border:1px solid #344561 !important;}
+.tile-a .stat-lbl,.tile-a .stat-val,.tile-a .stat-sub{color:#ffffff !important;}
+.tile-b{background:#586E90 !important;border:1px solid #4A5D7B !important;}
+.tile-b .stat-lbl,.tile-b .stat-val,.tile-b .stat-sub{color:#ffffff !important;}
 .tile-slate{background:#E6EBF1 !important;border:1px solid #D2DBE6 !important;}
 .tile-slate .stat-lbl,.tile-slate .stat-val,.tile-slate .stat-sub{color:#1D3557 !important;}
 .tile-navy{background:#1D3557 !important;border:1px solid #1D3557 !important;}
@@ -164,7 +169,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h126</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h127</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -308,7 +313,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-val" id="p-needsoutcome" style="color:#5f7a99;">0</div>
       </div>
     </div>
-    <div id="production-panel" style="background:#fff;border-radius:12px;padding:12px 16px;margin-bottom:6px;box-shadow:0 1px 3px rgba(29,53,87,0.08);"></div>
+    <!-- old production-panel strip removed; the Needs Outcome tile is the single source now -->
     <!-- Mid-process: TAI / PPU / Dropped (Dropped is PPU-only) -->
     <div class="stat-row">
       <div class="stat stat-navy-lt" id="p-tai-tile">
@@ -9901,9 +9906,9 @@ function goalStatusColor(actual, target){
 // color; goal tiles get the glow. Run each render so freshly-shown tiles paint.
 function applyNeutralPalette(){
   const tiles = [...document.querySelectorAll('.stat')].filter(el => !el.closest('#modal-ov') && el.id !== 'needsoutcome-tile');
-  tiles.forEach(el => {
-    el.classList.remove('tile-navy','tile-lblue','tile-goal-red','tile-goal-yellow','tile-goal-green');
-    el.classList.add('tile-slate');
+  tiles.forEach((el, i) => {
+    el.classList.remove('tile-navy','tile-lblue','tile-slate','tile-a','tile-b','tile-goal-red','tile-goal-yellow','tile-goal-green');
+    el.classList.add(i % 2 === 0 ? 'tile-a' : 'tile-b');
   });
 }
 
@@ -9917,7 +9922,7 @@ function renderGoalZones(vals){
     const slot = document.getElementById(m.slotId); if (!slot) return;
     const valEl = document.getElementById(m.valId);
     const tile = slot.closest('.stat');
-    const dark = tile ? tile.classList.contains('tile-navy') : m.dark;
+    const dark = tile ? !tile.classList.contains('tile-slate') : true;
     const faint  = dark ? 'rgba(255,255,255,0.5)'  : 'rgba(29,53,87,0.5)';
     const bright = dark ? '#ffffff' : '#1D3557';
     const track  = dark ? 'rgba(255,255,255,0.22)' : 'rgba(29,53,87,0.14)';
@@ -9929,7 +9934,7 @@ function renderGoalZones(vals){
       const actual = (vals && vals[m.metric] != null) ? Number(vals[m.metric]) : goalNumFromTile(valEl, m.money);
       const fillPct = target > 0 ? Math.min(100, (actual/target)*100) : 0;
       const st = goalStatusColor(actual, target);
-      if (tile) { tile.classList.remove('tile-navy','tile-lblue','tile-slate'); tile.classList.add('tile-goal-'+st.state); }
+      if (tile) { tile.classList.remove('tile-navy','tile-lblue','tile-slate','tile-a','tile-b'); tile.classList.add('tile-goal-'+st.state); }
       const onLight = st.state === 'yellow';   // yellow tile is light; red/green are dark
       const txt   = onLight ? '#1D3557' : '#ffffff';
       const soft  = onLight ? 'rgba(29,53,87,0.55)' : 'rgba(255,255,255,0.7)';
