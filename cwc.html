@@ -138,6 +138,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 @media(max-width:719px){.appt-sidebar{display:none!important;}.appt-banner{display:block;}#task-mobile-btn{display:block!important;}}
 .task-item{display:flex;align-items:flex-start;gap:6px;padding:6px 0;border-bottom:1px solid #f0f4f8;}
 .task-item:last-child{border-bottom:none;}
+/* Neutral base palette: color earns meaning (goal status + alerts); everything
+   else is a calm alternating navy / light-blue. Forces child text to contrast. */
+.tile-navy{background:#1D3557 !important;border:1px solid #1D3557 !important;}
+.tile-navy .stat-lbl,.tile-navy .stat-val,.tile-navy .stat-sub{color:#ffffff !important;}
+.tile-lblue{background:#EAF1F8 !important;border:1px solid #D3E0EE !important;}
+.tile-lblue .stat-lbl,.tile-lblue .stat-val,.tile-lblue .stat-sub{color:#1D3557 !important;}
 </style>
 </head>
 <body>
@@ -148,7 +154,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h121</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h123</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -282,7 +288,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-sub" style="color:#791F1F;" id="p-nosales-sub">-</div>
       </div>
       <div class="stat stat-green">
-        <div class="stat-lbl lbl-green">Apps submitted</div>
+        <div class="stat-lbl lbl-green">Applications</div>
         <div class="stat-val val-green" id="p-closed">0</div>
         <div class="stat-sub sub-green" id="p-close-rate"></div>
       </div>
@@ -295,12 +301,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <!-- Mid-process: TAI / PPU / Dropped (Dropped is PPU-only) -->
     <div class="stat-row">
       <div class="stat stat-navy-lt" id="p-tai-tile">
-        <div class="stat-lbl lbl-navy">TAI</div>
+        <div class="stat-lbl lbl-navy" style="font-size:10px;">Think About It</div>
         <div class="stat-val val-navy" id="p-tai" style="cursor:pointer;" onclick="drillDown('tai')">0</div>
         <div class="stat-sub sub-navy" id="p-tai-sub">-</div>
       </div>
       <div class="stat stat-navy-lt" id="p-ppu-tile">
-        <div class="stat-lbl lbl-navy">PPU</div>
+        <div class="stat-lbl lbl-navy" style="font-size:10px;">Policy Pickup</div>
         <div class="stat-val val-navy" id="p-ppu" style="cursor:pointer;" onclick="drillDown('ppu')">0</div>
         <div class="stat-sub sub-navy" id="p-ppu-sub">-</div>
       </div>
@@ -337,8 +343,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="stat stat-teal">
         <div class="stat-lbl lbl-white">Submitted APV</div>
         <div class="stat-val val-white" id="p-apv" style="font-size:20px;">$0</div>
-        <div class="stat-sub sub-white" id="p-apps">0 apps</div>
-        <div class="stat-sub sub-white" id="p-netplaced">- net placed</div>
+        <div class="stat-sub sub-white" id="p-apv-goalsub"></div>
       </div>
       <div class="stat stat-navy-lt">
         <div class="stat-lbl lbl-navy">APV / Sale</div>
@@ -1856,6 +1861,7 @@ function renderScore() {
       noEl.style.color = '#5f7a99'; if (noLbl) noLbl.style.color = '#5f7a99';
     }
   }
+  applyNeutralPalette();   // calm navy/light-blue base; alerts + goal bars carry color
   renderGoalZones();   // paint per-period goal zones on their tiles
   document.getElementById('p-closed').textContent = appsWritten;
   { const e=document.getElementById('p-close-rate'); if (e) e.textContent = ''; }   // per-sale removed; slot serves the Apps goal
@@ -1891,7 +1897,7 @@ function renderScore() {
   setTxt('p-stp', nStp);
   setTxt('p-stp-sub', allProspects.length ? nStp + ' of ' + allProspects.length + ' prospects' : 'no prospects yet');
   document.getElementById('p-apv').textContent = fmt(totalAPV);
-  document.getElementById('p-apps').textContent = totalApps+' apps';
+  { const e=document.getElementById('p-apps'); if (e) e.textContent = totalApps+' apps'; }
   // Net Placed Ratio: placed APV over submitted APV (whole-business, like the tile).
   { const placedAPV = periodApps.filter(ap => ['Placed','Issued','Paid'].includes(ap.status||'')).reduce((a,ap)=>a+premOf(ap),0);
     const e=document.getElementById('p-netplaced'); if (e) e.textContent = totalAPV > 0 ? pct(placedAPV, totalAPV) + ' net placed' : '- net placed'; }
@@ -9848,7 +9854,7 @@ const GOAL_TILES = [
   { metric:'sales',     valId:'p-sales',  slotId:'p-sales-sub',    cls:'outcome',  label:'Sales',     dark:true  },
   { metric:'apps',      valId:'p-closed', slotId:'p-close-rate',   cls:'outcome',  label:'Apps',      dark:false },
   { metric:'resets',    valId:'p-resets', slotId:'p-resets-sub',   cls:'outcome',  label:'Resets',    dark:false },
-  { metric:'apv',       valId:'p-apv',    slotId:'p-netplaced',    cls:'outcome',  label:'APV',       dark:true, money:true },
+  { metric:'apv',       valId:'p-apv',    slotId:'p-apv-goalsub',  cls:'outcome',  label:'APV',       dark:true, money:true },
 ];
 const GOAL_METRIC = Object.fromEntries(GOAL_TILES.map(t => [t.metric, t]));
 function goalClassOf(metric){ return (GOAL_METRIC[metric]||{}).cls || 'activity'; }
@@ -9856,40 +9862,73 @@ function getGoals(){ return (getAgentSettings().goals || []).slice(); }
 function periodWord(v){ return {day:'today',week:'this week',month:'this month',quarter:'this quarter',year:'this year'}[v] || v; }
 function goalMoney(n){ return '$' + Math.round(Number(n)||0).toLocaleString(); }
 function goalNumFromTile(el, money){ const raw = (el && el.textContent || '').replace(/[$,]/g,''); const n = parseFloat(raw); return isFinite(n) ? n : 0; }
+// A goal belongs to a SPECIFIC period instance, not the period type - so "25 apps
+// in July" stands as July's and August starts clean. Keyed by view + the period's
+// start date, so past goals never move and setting next month can't touch this one.
+function currentPeriodKey(){
+  const b = getPeriodBounds('production');
+  const d = b.start;
+  return view + ':' + d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function periodElapsedFraction(){
+  const b = getPeriodBounds('production');
+  const s = b.start.getTime(), e = b.end.getTime(), now = Date.now();
+  if (now <= s) return 0; if (now >= e) return 1;
+  return (now - s) / (e - s);
+}
+// Goal bar color carries meaning: green = hit, teal = on/ahead of pace,
+// amber = behind, red = well behind. Pace = target scaled by how far into the
+// period you are, so a bar can be "behind" even before the period ends.
+function goalStatusColor(actual, target){
+  if (target <= 0) return { fill:'#2E9E86', hit:false };
+  if (actual >= target) return { fill:'#3B6D11', hit:true };
+  const expected = target * periodElapsedFraction();
+  if (actual >= expected) return { fill:'#2E9E86', hit:false };       // on / ahead of pace
+  if (actual >= expected * 0.7) return { fill:'#C99A2E', hit:false }; // behind - amber
+  return { fill:'#C0392B', hit:false };                              // well behind - red
+}
+// Calm alternating base for the score tiles. Alerts (Needs Outcome) keep their
+// own color; goal bars carry the status colors. Run each render so freshly-shown
+// tiles get painted.
+function applyNeutralPalette(){
+  const tiles = [...document.querySelectorAll('.stat')].filter(el => !el.closest('#modal-ov') && el.id !== 'needsoutcome-tile');
+  tiles.forEach((el, i) => {
+    el.classList.remove('tile-navy','tile-lblue');
+    el.classList.add(i % 2 === 0 ? 'tile-navy' : 'tile-lblue');
+  });
+}
 
-// The goal bar lives IN the tile's existing sub-line slot - no extra row, so
-// tiles stay the same height whether or not a goal is set. Bar when set (tap to
-// edit); the slot's normal sub or a quiet "+ set a goal" when not.
+// The goal bar lives IN the tile's existing sub-line slot - no extra row. Bar when
+// set for THIS period instance (tap to edit); a quiet "+ set a goal" when not.
+// The one-activity/one-outcome idea is a suggestion now, not enforced.
 function renderGoalZones(){
   const goals = getGoals();
-  const P = view;
+  const key = currentPeriodKey();
   GOAL_TILES.forEach(m => {
     const slot = document.getElementById(m.slotId); if (!slot) return;
     const valEl = document.getElementById(m.valId);
-    const faint  = m.dark ? 'rgba(255,255,255,0.5)'  : 'rgba(29,53,87,0.5)';
-    const bright = m.dark ? '#ffffff' : '#1D3557';
-    const track  = m.dark ? 'rgba(255,255,255,0.22)' : 'rgba(29,53,87,0.14)';
+    const tile = slot.closest('.stat');
+    const dark = tile ? tile.classList.contains('tile-navy') : m.dark;
+    const faint  = dark ? 'rgba(255,255,255,0.5)'  : 'rgba(29,53,87,0.5)';
+    const bright = dark ? '#ffffff' : '#1D3557';
+    const track  = dark ? 'rgba(255,255,255,0.22)' : 'rgba(29,53,87,0.14)';
     const wrap = s => '<div style="min-height:15px;">'+s+'</div>';
-    const existing = goals.find(g => g.metric===m.metric && g.period===P);
-    const sibling  = goals.find(g => g.period===P && goalClassOf(g.metric)===m.cls && g.metric!==m.metric);
     const empty = () => { const t=(slot.textContent||'').trim(); return !t || t==='-'; };
+    const existing = goals.find(g => g.metric===m.metric && g.periodKey===key);
     if (existing) {
       const target = Number(existing.target) || 0;
       const actual = goalNumFromTile(valEl, m.money);
       const fillPct = target > 0 ? Math.min(100, (actual/target)*100) : 0;
-      const hit = target > 0 && actual >= target;
-      const fill = hit ? '#3B6D11' : (m.dark ? '#7FE0C8' : '#138181');
+      const st = goalStatusColor(actual, target);
       const aStr = m.money ? goalMoney(actual) : Math.round(actual).toLocaleString();
       const tStr = m.money ? goalMoney(target) : Math.round(target).toLocaleString();
       slot.style.cursor = 'pointer';
       slot.onclick = () => openGoalSetter(m.metric);
       slot.innerHTML = wrap(
         '<div style="display:flex;justify-content:space-between;font-size:9px;color:'+bright+';font-weight:700;line-height:1.1;">' +
-          '<span>'+aStr+(hit?' \u2713':'')+'</span><span style="color:'+faint+';font-weight:500;">'+tStr+'</span></div>' +
+          '<span>'+aStr+(st.hit?' \u2713':'')+'</span><span style="color:'+faint+';font-weight:500;">'+tStr+'</span></div>' +
         '<div style="height:4px;border-radius:3px;background:'+track+';overflow:hidden;margin-top:2px;">' +
-          '<div style="height:100%;width:'+fillPct+'%;background:'+fill+';border-radius:3px;transition:width .4s ease;"></div></div>');
-    } else if (sibling) {
-      if (empty()) { slot.style.cursor='default'; slot.onclick=null; slot.innerHTML = wrap('<span style="font-size:9px;color:'+faint+';opacity:.8;">'+m.cls+' goal set</span>'); }
+          '<div style="height:100%;width:'+fillPct+'%;background:'+st.fill+';border-radius:3px;transition:width .4s ease;"></div></div>');
     } else {
       slot.style.cursor = 'pointer';
       slot.onclick = () => openGoalSetter(m.metric);
@@ -9901,7 +9940,7 @@ function renderGoalZones(){
 function openGoalSetter(metric){
   const m = GOAL_METRIC[metric]; if (!m) return;
   const P = view;
-  const existing = getGoals().find(g => g.metric===metric && g.period===P);
+  const existing = getGoals().find(g => g.metric===metric && g.periodKey===currentPeriodKey());
   const cur = existing ? existing.target : '';
   const money = !!m.money;
   showModal(
@@ -9921,8 +9960,9 @@ async function commitGoal(metric){
   const target = el ? parseInt(el.value, 10) : 0;
   if (!target || target < 1) { if (el) { el.style.borderColor = '#A32D2D'; el.focus(); } return; }
   const s = getAgentSettings();
-  const goals = (s.goals || []).filter(g => !(g.metric===metric && g.period===view));
-  goals.push({ metric, period: view, target });
+  const key = currentPeriodKey();
+  const goals = (s.goals || []).filter(g => !(g.metric===metric && g.periodKey===key));
+  goals.push({ metric, period: view, periodKey: key, target });
   s.goals = goals;
   await saveAgentSettings(s);
   closeModal();
@@ -9931,7 +9971,8 @@ async function commitGoal(metric){
 
 async function removeGoal(metric){
   const s = getAgentSettings();
-  s.goals = (s.goals || []).filter(g => !(g.metric===metric && g.period===view));
+  const key = currentPeriodKey();
+  s.goals = (s.goals || []).filter(g => !(g.metric===metric && g.periodKey===key));
   await saveAgentSettings(s);
   closeModal();
   renderScore();
