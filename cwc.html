@@ -148,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h118</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h119</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -1840,6 +1840,7 @@ function renderScore() {
   if (ppuTile) ppuTile.title = 'PPU close rate ' + ppuCloseRate + ' (' + ppuSales + ' sold of ' + totalPPUs + ') vs ' + nonPPUCloseRate + ' without PPU';
   // PPU/TAI funnels now render inside their cards (drill-down), not on the board.
   document.getElementById('p-resets').textContent = totalResets;
+  renderGoalZones();   // paint per-period goal zones on their tiles
   document.getElementById('p-closed').textContent = appsWritten;
   document.getElementById('p-close-rate').textContent = totalSales > 0 ? (appsWritten/totalSales).toFixed(1) + ' per sale' : '- per sale';
   // Lead-to-App CR: submitted apps on THIS board in period over leads assigned.
@@ -9818,6 +9819,96 @@ async function saveAgentSettings(settings) {
     }
   } catch(e) { /* localStorage backup covers it */ }
 }
+
+// GOALS (h119) ----------------------------------------------------------------
+// Up to two goals per period: one ACTIVITY (dials/appts set/sits) + one OUTCOME
+// (sales/apps/resets). No overall cap - each horizon carries its own pair, and
+// the period switch keeps the view focused. Stored in agent settings; the goal
+// lives at the bottom of its own tile.
+const GOAL_TILES = [
+  { metric:'dials',     valId:'s-dials',  cls:'activity', label:'Dials',     dark:true  },
+  { metric:'appts_set', valId:'s-appts',  cls:'activity', label:'Appts set', dark:false },
+  { metric:'sits',      valId:'p-showed', cls:'activity', label:'Sits',      dark:true  },
+  { metric:'sales',     valId:'p-sales',  cls:'outcome',  label:'Sales',     dark:true  },
+  { metric:'apps',      valId:'p-closed', cls:'outcome',  label:'Apps',      dark:false },
+  { metric:'resets',    valId:'p-resets', cls:'outcome',  label:'Resets',    dark:false },
+];
+const GOAL_METRIC = Object.fromEntries(GOAL_TILES.map(t => [t.metric, t]));
+function goalClassOf(metric){ return (GOAL_METRIC[metric]||{}).cls || 'activity'; }
+function getGoals(){ return (getAgentSettings().goals || []).slice(); }
+function periodWord(v){ return {day:'today',week:'this week',month:'this month',quarter:'this quarter',year:'this year'}[v] || v; }
+
+function renderGoalZones(){
+  const goals = getGoals();
+  const P = view;
+  GOAL_TILES.forEach(m => {
+    const valEl = document.getElementById(m.valId);
+    if (!valEl) return;
+    const tile = valEl.closest('.stat');
+    if (!tile) return;
+    let gz = tile.querySelector('.goal-zone');
+    if (!gz) { gz = document.createElement('div'); gz.className = 'goal-zone'; tile.appendChild(gz); }
+    const faint  = m.dark ? 'rgba(255,255,255,0.45)' : 'rgba(29,53,87,0.42)';
+    const bright = m.dark ? '#ffffff' : '#1D3557';
+    const border = m.dark ? 'rgba(255,255,255,0.18)' : 'rgba(29,53,87,0.12)';
+    const base = 'margin-top:6px;padding-top:5px;border-top:1px solid '+border+';font-size:10px;text-align:center;line-height:1.3;';
+    const existing = goals.find(g => g.metric===m.metric && g.period===P);
+    const sibling  = goals.find(g => g.period===P && goalClassOf(g.metric)===m.cls && g.metric!==m.metric);
+    if (existing) {
+      gz.style.cursor = 'pointer';
+      gz.onclick = () => openGoalSetter(m.metric);
+      gz.innerHTML = '<div style="'+base+'color:'+bright+';font-weight:700;">Goal '+existing.target+'</div>';
+    } else if (sibling) {
+      gz.style.cursor = 'default';
+      gz.onclick = null;
+      const sibLabel = (GOAL_METRIC[sibling.metric]||{}).label || sibling.metric;
+      gz.innerHTML = '<div style="'+base+'color:'+faint+';opacity:0.75;">'+m.cls+' goal: '+sibLabel+'</div>';
+    } else {
+      gz.style.cursor = 'pointer';
+      gz.onclick = () => openGoalSetter(m.metric);
+      gz.innerHTML = '<div style="'+base+'color:'+faint+';">+ set a goal</div>';
+    }
+  });
+}
+
+function openGoalSetter(metric){
+  const m = GOAL_METRIC[metric]; if (!m) return;
+  const P = view;
+  const existing = getGoals().find(g => g.metric===metric && g.period===P);
+  const cur = existing ? existing.target : '';
+  showModal(
+    '<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">'+m.label+' goal</div>' +
+    '<div class="modal-sub">Target for '+periodWord(P)+'</div>' +
+    '<input id="goal-input" type="number" min="1" inputmode="numeric" value="'+cur+'" placeholder="e.g. 500" ' +
+      'style="width:100%;box-sizing:border-box;font-size:22px;font-weight:700;text-align:center;padding:12px;margin:12px 0;border:2px solid #138181;border-radius:10px;color:#1D3557;">' +
+    '<button class="save-btn" onclick="commitGoal(\''+metric+'\')">'+(existing?'Update goal':'Set goal')+'</button>' +
+    (existing ? '<button class="save-btn" style="background:#fff;color:#A32D2D;border:1px solid #F0C4C4;margin-top:8px;" onclick="removeGoal(\''+metric+'\')">Remove goal</button>' : '')
+  );
+  setTimeout(() => { const el = document.getElementById('goal-input'); if (el) el.focus(); }, 60);
+}
+
+async function commitGoal(metric){
+  const el = document.getElementById('goal-input');
+  const target = el ? parseInt(el.value, 10) : 0;
+  if (!target || target < 1) { if (el) { el.style.borderColor = '#A32D2D'; el.focus(); } return; }
+  const s = getAgentSettings();
+  const goals = (s.goals || []).filter(g => !(g.metric===metric && g.period===view));
+  goals.push({ metric, period: view, target });
+  s.goals = goals;
+  await saveAgentSettings(s);
+  closeModal();
+  renderScore();
+}
+
+async function removeGoal(metric){
+  const s = getAgentSettings();
+  s.goals = (s.goals || []).filter(g => !(g.metric===metric && g.period===view));
+  await saveAgentSettings(s);
+  closeModal();
+  renderScore();
+}
+// -------------------------------------------------------------------------------
 
 async function loadAgentSettings() {
   try {
