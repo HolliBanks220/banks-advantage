@@ -148,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h114</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h115</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -206,10 +206,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
       <div class="stat stat-red">
         <div class="stat-lbl lbl-red">Not interested</div>
-        <div class="hint-lt">Tap to edit</div>
-        <div class="stat-val val-red" id="s-dead" onclick="startEdit('dead','red')">0</div>
+        <div class="stat-val val-red" id="s-dead">0</div>
         <div class="stat-btns">
-          <button class="tap-btn tap-red" onclick="addStat('dead',1)">+1</button>
         </div>
       </div>
     </div>
@@ -218,16 +216,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-lbl" style="color:#138181;">Texts sent</div>
         <div class="stat-val" id="s-texts" style="color:#138181;">0</div>
         <div class="stat-btns">
-          <button class="tap-btn" style="background:#138181;color:#fff;" onclick="addStat('texts',1)">+1</button>
         </div>
       </div>
       <div class="stat stat-amber">
         <div class="stat-lbl lbl-amber">Callbacks</div>
-        <div class="hint-lt">Tap to edit</div>
-        <div class="stat-val val-amber" id="s-callbacks" onclick="startEdit('callbacks','amber')">0</div>
+        <div class="hint-lt">Tap to work</div>
+        <div class="stat-val val-amber" id="s-callbacks" style="cursor:pointer;" onclick="openCallbackWorklist()">0</div>
         <div class="stat-btns">
-          <button class="tap-btn tap-amber" onclick="addStat('callbacks',1)">+1</button>
-          <button class="tap-btn tap-amber" onclick="drillDown('callbacks')" style="font-size:10px;">who?</button>
         </div>
       </div>
       <div class="stat stat-green">
@@ -1508,8 +1503,10 @@ function renderScore() {
     const t = new Date(r.ts);
     return t >= aStart && t <= aEnd;
   }).length;
-  const callbacks=sumStat('callbacks',aStart,aEnd);
-  const texts=sumStat('texts',aStart,aEnd);
+  // Callbacks = leads you're actively working via callback (one per lead, live -
+  // not period-bound). Texts = your logged 'Text sent' activity in the period.
+  const callbacks = activeCallbackLeads().length;
+  const texts = clients.reduce((n,c)=> n + (c.call_log||[]).filter(cl=> cl.outcome==='Text sent' && new Date(cl.ts)>=aStart && new Date(cl.ts)<=aEnd).length, 0);
   try { renderProduction(); } catch(e) { console.error('renderProduction:', e); }
   const resolved = appts + dead;
   ['dials','convos','appts','callbacks','dead'].forEach((k,i) => {
@@ -4080,6 +4077,52 @@ function callbackHasClockTime(cl) {
 function getScheduledCallback(c) {
   // Returns the most recent scheduled, clock-timed callback entry, or null
   return [...(c.call_log||[])].reverse().find(cl => cl.outcome === 'Callback' && callbackHasClockTime(cl)) || null;
+}
+
+// The callback you're currently working on this lead - most recent 'Callback'
+// entry (dated or not).
+function latestCallback(c) {
+  return [...(c.call_log||[])].reverse().find(cl => cl.outcome === 'Callback') || null;
+}
+
+// Leads you're actively working via callback: has a callback logged and hasn't
+// resolved or graduated to an appointment. One entry per lead. Powers both the
+// Callbacks number and the worklist - so they always agree.
+function activeCallbackLeads() {
+  const EXCL = ['Closed','Dead','No sale','No show','Appointment set'];
+  return clients.filter(c => !EXCL.includes(c.status) && (c.call_log||[]).some(cl => cl.outcome === 'Callback'));
+}
+
+// Tap the Callbacks card: the working list, soonest-first (overdue at the top),
+// so you can actually work them. Only who's live - no closed/dead/no-sale noise.
+function openCallbackWorklist() {
+  const now = Date.now();
+  const rows = activeCallbackLeads().map(c => {
+    const cb = latestCallback(c);
+    const dt = (cb && cb.callback_dt) ? new Date(cb.callback_dt) : null;
+    return {c, cb, dt};
+  }).sort((a,b) => (a.dt ? a.dt.getTime() : Infinity) - (b.dt ? b.dt.getTime() : Infinity));
+  if (!rows.length) {
+    showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+      '<div class="modal-title">Callbacks to work</div>' +
+      '<div style="font-size:13px;color:#a0b8cc;padding:1rem 0;">Nothing to work right now.</div>');
+    return;
+  }
+  const body = rows.map(r => {
+    const overdue = r.dt && r.dt.getTime() < now;
+    const when = r.dt
+      ? '<span style="font-size:11px;font-weight:600;color:' + (overdue ? '#A32D2D' : '#138181') + ';">' + (overdue ? 'Overdue \u00b7 ' : '') + r.dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + r.dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + '</span>'
+      : '<span style="font-size:11px;color:#8fa8c0;">No time set</span>';
+    const note = (r.cb && (r.cb.callback_note || r.cb.note)) ? '<div style="font-size:10px;color:#8fa8c0;font-style:italic;">' + esc(r.cb.callback_note || r.cb.note) + '</div>' : '';
+    return '<div class="client-card" onclick="closeModal();setTimeout(()=>openClient(\'' + r.c.id + '\'),100)">' +
+      '<div class="client-name">' + esc(r.c.name || 'Unknown') + '</div>' +
+      '<div>' + when + '</div>' + note +
+    '</div>';
+  }).join('');
+  showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">Callbacks to work</div>' +
+    '<div class="modal-sub">' + rows.length + ' lead' + (rows.length===1?'':'s') + ' \u00b7 soonest first</div>' +
+    '<div style="max-height:70vh;overflow-y:auto;margin-top:8px;">' + body + '</div>');
 }
 
 // Count of fresh, never-called, in-window leads still waiting. Drives the
