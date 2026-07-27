@@ -148,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h111</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h112</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -276,26 +276,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-sub" style="color:#5f7a99;" id="p-upcoming-sub">-</div>
       </div>
     </div>
-    <!-- Row 2 - mid-sit: still moving or lost -->
-    <div class="stat-row">
-      <div class="stat stat-navy-lt" id="p-ppu-tile">
-        <div class="stat-lbl lbl-navy">PPU</div>
-        <div class="stat-val val-navy" id="p-ppu" style="cursor:pointer;" onclick="drillDown('ppu')">0</div>
-        <div class="stat-sub sub-navy" id="p-ppu-sub">-</div>
-      </div>
-      <div class="stat stat-navy-lt" id="p-tai-tile">
-        <div class="stat-lbl lbl-navy">TAI</div>
-        <div class="stat-val val-navy" id="p-tai" style="cursor:pointer;" onclick="drillDown('tai')">0</div>
-        <div class="stat-sub sub-navy" id="p-tai-sub">-</div>
-      </div>
-      <div class="stat" style="background:#F4F1FA;">
-        <div class="stat-lbl" style="color:#3C3489;">Dropped</div>
-        <div class="stat-val" style="color:#3C3489;" id="p-dropped">0</div>
-        <div class="stat-sub" style="color:#3C3489;" id="p-dropped-sub">-</div>
-      </div>
-    </div>
-    <!-- Row 3 - decided -->
-    <div id="ppu-funnel-panel" style="display:none;background:#fff;border:1px solid #dde7f0;border-radius:12px;padding:10px 14px;margin-bottom:6px;"></div>
     <div class="stat-row">
       <div class="stat stat-teal">
         <div class="stat-lbl lbl-white">Sales</div>
@@ -315,23 +295,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
     </div>
     <div id="production-panel" style="background:#fff;border-radius:12px;padding:12px 16px;margin-bottom:6px;box-shadow:0 1px 3px rgba(29,53,87,0.08);"></div>
-    <!-- APV summary row - compact -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
-      <div class="stat stat-teal">
-        <div class="stat-lbl lbl-white">Submitted APV</div>
-        <div class="stat-val val-white" id="p-apv" style="font-size:20px;">$0</div>
-        <div class="stat-sub sub-white" id="p-apps">0 apps</div>
-        <div class="stat-sub sub-white" id="p-netplaced">- net placed</div>
+    <!-- Mid-process: TAI / PPU / Dropped (Dropped is PPU-only) -->
+    <div class="stat-row">
+      <div class="stat stat-navy-lt" id="p-tai-tile">
+        <div class="stat-lbl lbl-navy">TAI</div>
+        <div class="stat-val val-navy" id="p-tai" style="cursor:pointer;" onclick="drillDown('tai')">0</div>
+        <div class="stat-sub sub-navy" id="p-tai-sub">-</div>
       </div>
-      <div class="stat stat-navy-lt">
-        <div class="stat-lbl lbl-navy">APV / Sale</div>
-        <div class="stat-val val-navy" id="p-apv-hh" style="font-size:20px;">$0</div>
-        <div class="stat-sub sub-navy" id="p-apv-ppu" style="font-size:9px;">- PPU vs non-PPU</div>
+      <div class="stat stat-navy-lt" id="p-ppu-tile">
+        <div class="stat-lbl lbl-navy">PPU</div>
+        <div class="stat-val val-navy" id="p-ppu" style="cursor:pointer;" onclick="drillDown('ppu')">0</div>
+        <div class="stat-sub sub-navy" id="p-ppu-sub">-</div>
+      </div>
+      <div class="stat" style="background:#F4F1FA;">
+        <div class="stat-lbl" style="color:#3C3489;">Dropped</div>
+        <div class="stat-val" style="color:#3C3489;" id="p-dropped">0</div>
+        <div class="stat-sub" style="color:#3C3489;" id="p-dropped-sub">-</div>
       </div>
     </div>
-    <!-- Bonus progress bar -->
-    <!-- bonus tracker removed -->
-
     <!-- Row 4 - asks & pipeline building -->
     <div class="stat-row" style="grid-template-columns:repeat(4,minmax(0,1fr));">
       <div class="stat stat-teal">
@@ -354,6 +335,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-lbl lbl-purple">Resets</div>
         <div class="stat-val val-purple" id="p-resets" style="cursor:pointer;" onclick="drillDown('resets')">0</div>
         <div class="stat-sub" style="color:#3C3489;" id="p-resets-sub">-</div>
+      </div>
+    </div>
+    <!-- APV summary row - compact -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+      <div class="stat stat-teal">
+        <div class="stat-lbl lbl-white">Submitted APV</div>
+        <div class="stat-val val-white" id="p-apv" style="font-size:20px;">$0</div>
+        <div class="stat-sub sub-white" id="p-apps">0 apps</div>
+        <div class="stat-sub sub-white" id="p-netplaced">- net placed</div>
+      </div>
+      <div class="stat stat-navy-lt">
+        <div class="stat-lbl lbl-navy">APV / Sale</div>
+        <div class="stat-val val-navy" id="p-apv-hh" style="font-size:20px;">$0</div>
+        <div class="stat-sub sub-navy" id="p-apv-ppu" style="font-size:9px;">- PPU vs non-PPU</div>
       </div>
     </div>
   <!-- MIA vs CIA comparison panel -->
@@ -1841,34 +1836,7 @@ function renderScore() {
   { const e=document.getElementById('p-tai-sub'); if (e) e.textContent = totalShowed>0 ? pct(contTAI,totalShowed)+' of sits' : '-'; }
   const ppuTile = document.getElementById('p-ppu-tile');
   if (ppuTile) ppuTile.title = 'PPU close rate ' + ppuCloseRate + ' (' + ppuSales + ' sold of ' + totalPPUs + ') vs ' + nonPPUCloseRate + ' without PPU';
-  // PPU funnel panel: booked -> showed -> closed, with leaks. Single source.
-  const _pf = computePPUFunnel(pStart, pEnd, _pb);
-  const pfEl = document.getElementById('ppu-funnel-panel');
-  if (pfEl) {
-    if (!_pf.booked) { pfEl.style.display = 'none'; }
-    else {
-      pfEl.style.display = 'block';
-      const showPct = (_pf.showed + _pf.noShow) > 0 ? pct(_pf.showed, _pf.showed + _pf.noShow) : '-';
-      const closePct = _pf.closed > 0 ? pct(_pf.sale, _pf.closed) : '-';
-      const stage = (lbl, val, sub) => '<div style="flex:1;min-width:0;text-align:center;">' +
-        '<div style="font-size:10px;color:#5f7a99;text-transform:uppercase;letter-spacing:0.04em;">' + lbl + '</div>' +
-        '<div style="font-size:20px;font-weight:700;color:#1D3557;">' + val + '</div>' +
-        '<div style="font-size:10px;color:#8fa8c0;">' + (sub||'&nbsp;') + '</div></div>';
-      const arrow = '<div style="align-self:center;color:#c3d2e0;font-size:14px;">\u2192</div>';
-      pfEl.innerHTML =
-        '<div style="font-size:11px;font-weight:700;color:#138181;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">PPU funnel</div>' +
-        '<div style="display:flex;gap:6px;align-items:stretch;">' +
-          stage('Booked', _pf.booked, 'needed PPU') + arrow +
-          stage('Showed', _pf.showed, showPct + ' show') + arrow +
-          stage('Closed', _pf.closed, closePct + ' close') +
-          '<div style="align-self:center;color:#c3d2e0;font-size:14px;">\u00b7</div>' +
-          stage('Sale', _pf.sale) + stage('No sale', _pf.nosale) +
-        '</div>' +
-        '<div style="font-size:10px;color:#8fa8c0;margin-top:6px;">' +
-          _pf.inMotionTotal + ' in motion \u00b7 ' + _pf.noShow + ' no-show \u00b7 ' + _pf.dropped + ' dropped' +
-        '</div>';
-    }
-  }
+  // PPU/TAI funnels now render inside their cards (drill-down), not on the board.
   document.getElementById('p-resets').textContent = totalResets;
   document.getElementById('p-closed').textContent = appsWritten;
   document.getElementById('p-close-rate').textContent = totalSales > 0 ? (appsWritten/totalSales).toFixed(1) + ' per sale' : '- per sale';
@@ -2564,10 +2532,13 @@ function drillDown(type) {
           '<span style="font-size:11px;font-weight:700;color:' + col + ';white-space:nowrap;">' + lbl + '</span>' +
         '</div></div>';
     }).join('');
+    const _fun = _isPPU ? computePPUFunnel(start, end, _ddBoard) : computeTAIFunnel(start, end, _ddBoard);
+    const funnelHtml = renderFunnelHTML(_fun, _kind);
     showModal('<button class="close-x" onclick="closeModal()">x</button>' +
       '<div class="modal-title">' + _kind + ' - ' + label + '</div>' +
       '<div class="modal-sub">' + rows.length + ' ' + _kind + (rows.length===1?'':'s') + ' \u00b7 one per continuation booked</div>' +
-      '<div style="max-height:70vh;overflow-y:auto;margin-top:8px;">' + body + '</div>');
+      '<div style="margin-top:10px;">' + funnelHtml + '</div>' +
+      '<div style="max-height:70vh;overflow-y:auto;">' + body + '</div>');
     return;
   } else if (type === 'callbacks') {
     title = 'Callbacks - ' + label;
@@ -6492,6 +6463,67 @@ function computePPUFunnel(pStart, pEnd, board) {
   f.closed = f.sale + f.nosale;
   f.inMotionTotal = f.inMotion + f.upcoming + f.needs;
   return f;
+}
+
+// TAI funnel: same shape as PPU, matched to think-about-it follow-ups. One step
+// shorter in spirit (no Dropped - Dropped is a PPU-only concept). Recovered
+// no-shows resolve forward exactly as PPU via resolveFollowup.
+// NOTE (pass 3, not yet built): her model treats a TAI ghost as a soft No Sale,
+// not a no-show. Until the resolve UI exists, an unrecovered TAI no-show still
+// shows here as a no-show.
+function computeTAIFunnel(pStart, pEnd, board) {
+  const f = {booked:0, showed:0, sale:0, nosale:0, inMotion:0, noShow:0, upcoming:0, needs:0, dropped:0};
+  const nowMs = Date.now();
+  clients.forEach(c => (c.cases||[]).filter(cs => boardOf(cs) === board).forEach(cs => {
+    const tps = (cs.touchpoints||[]).slice().sort((a,b)=> new Date(a.datetime)-new Date(b.datetime));
+    tps.forEach((tp,i) => {
+      if (tp.outcome !== 'cont' || !tp.datetime) return;
+      const d = new Date(tp.datetime); if (d < pStart || d > pEnd) return;
+      const nxt = tps[i+1];
+      const ty = (nxt && nxt.type) || tp.next_type || '';
+      if (!/think/i.test(ty)) return;
+      f.booked++;
+      const r = resolveFollowup(tps, i, nowMs);
+      if (r === 'sale') { f.showed++; f.sale++; }
+      else if (r === 'nosale' || r === 'dropped') { f.showed++; f.nosale++; }  // TAI never "dropped"
+      else if (r === 'cont') { f.showed++; f.inMotion++; }
+      else if (r === 'noshow') { f.noShow++; }
+      else if (r === 'upcoming') { f.upcoming++; }
+      else { f.needs++; }
+    });
+  }));
+  f.closed = f.sale + f.nosale;
+  f.inMotionTotal = f.inMotion + f.upcoming + f.needs;
+  return f;
+}
+
+// Funnel card header: Booked -> Showed -> Closed, then a breakdown line where
+// every one of the N booked lands in exactly one visible bucket, so nothing has
+// to be inferred by subtraction. Returns '' when there's nothing booked.
+function renderFunnelHTML(f, kind) {
+  if (!f || !f.booked) return '';
+  const showPct = (f.showed + f.noShow) > 0 ? pct(f.showed, f.showed + f.noShow) : '-';
+  const closePct = f.closed > 0 ? pct(f.sale, f.closed) : '-';
+  const stage = (lbl, val, sub) => '<div style="flex:1;min-width:0;text-align:center;">' +
+    '<div style="font-size:10px;color:#5f7a99;text-transform:uppercase;letter-spacing:0.04em;">' + lbl + '</div>' +
+    '<div style="font-size:22px;font-weight:700;color:#1D3557;">' + val + '</div>' +
+    '<div style="font-size:10px;color:#8fa8c0;">' + (sub||'&nbsp;') + '</div></div>';
+  const arrow = '<div style="align-self:center;color:#c3d2e0;font-size:14px;">\u2192</div>';
+  const chip = (val, lbl, col) => val > 0 ? '<span style="font-size:11px;color:' + col + ';font-weight:600;white-space:nowrap;">' + val + ' ' + lbl + '</span>' : '';
+  // Mutually-exclusive partition that sums to booked: sale + no sale + in motion + no-show (+ dropped for PPU)
+  const parts = [chip(f.sale,'sale','#3B6D11'), chip(f.nosale,'no sale','#A32D2D'), chip(f.inMotionTotal,'in motion','#1D3557'), chip(f.noShow,'no-show','#BA7517')];
+  if (kind === 'PPU') parts.push(chip(f.dropped,'dropped','#3C3489'));
+  const chips = parts.filter(Boolean).join('<span style="color:#c3d2e0;"> \u00b7 </span>');
+  return '<div style="background:#fff;border:1px solid #dde7f0;border-radius:12px;padding:12px 14px;margin-bottom:10px;">' +
+    '<div style="font-size:11px;font-weight:700;color:#138181;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">' + kind + ' funnel</div>' +
+    '<div style="display:flex;gap:6px;align-items:stretch;">' +
+      stage('Booked', f.booked, 'needed ' + kind) + arrow +
+      stage('Showed', f.showed, showPct + ' show') + arrow +
+      stage('Closed', f.closed, closePct + ' close') +
+    '</div>' +
+    '<div style="margin-top:10px;padding-top:8px;border-top:1px solid #eef3f8;font-size:9px;color:#a0b8cc;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px;">All ' + f.booked + ' accounted for</div>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:2px;align-items:center;">' + chips + '</div>' +
+  '</div>';
 }
 
 // SINGLE SOURCE OF TRUTH for initial appointments. One entry per case whose
