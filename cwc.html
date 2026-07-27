@@ -148,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h103</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h104</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -1591,7 +1591,30 @@ function renderScore() {
   // the appointment never happened. Counting them made 37 appointments out of
   // 34, and put resolved leads (Gwendolyn) back in this week's list.
   const APPT_ARTIFACT = ['closed','superseded'];
-  const countableTPs = allTPs.filter(t => !t.continues_appt && !APPT_ARTIFACT.includes(t.outcome));
+  // Case-aware rebuild (was a flat allTPs filter). Same board + period + the old
+  // continues_appt / artifact exclusions, PLUS: a PENDING touchpoint is dropped
+  // when it's a ghost duplicate or sits on an already-decided/closed case - a
+  // resolved lead's leftover appt is not "needs an outcome". Resolved outcomes
+  // (sale/nosale/etc.) on those cases still count. dueTPs / needsOutcome /
+  // upcomingAppts / periodAppts all derive from this, so the bucket math stays
+  // balanced automatically.
+  const _decidedCase = cs => {
+    if (['Closed','Closed Won','Closed Lost','Reset'].includes(cs.status)) return true;
+    if (cs.verdict) return true;
+    return (cs.touchpoints||[]).some(t => t && (t.outcome==='sale'||t.outcome==='nosale'||t.outcome==='dropped'));
+  };
+  const countableTPs = [];
+  clients.forEach(c => (c.cases||[]).filter(cs => boardOf(cs) === _pb).forEach(cs => {
+    const decided = _decidedCase(cs);
+    (cs.touchpoints||[]).forEach(tp => {
+      if (!tp || !tp.datetime) return;
+      const d = new Date(tp.datetime); if (d < pStart || d > pEnd) return;
+      if (tp.continues_appt || APPT_ARTIFACT.includes(tp.outcome)) return;
+      const pend = (!tp.outcome || tp.outcome === 'pending');
+      if (pend && (isGhostPending(cs.touchpoints, tp) || decided)) return;
+      countableTPs.push(tp);
+    });
+  }));
   const _isPend = t => !t.outcome || t.outcome === 'pending';
   const _nowMs = Date.now();
   // Appts = appointments that CAME DUE. Ones still ahead of you live in Upcoming,
@@ -7195,14 +7218,25 @@ async function quickLog(id, outcome, statKey) {
     if (!['Dead','Closed','No sale','Appointment set'].includes(c.status)) newStatus='Working';
   }
 
-  // Not interested: close all open cases and clear appointment
+  // Not interested: close the worked case(s), but a real scheduled appointment
+  // elsewhere is a commitment, not collateral. Any open case with a live future
+  // (non-ghost) appt stays Open, and if one survives the lead stays on the appt
+  // track so that appointment remains visible instead of vanishing.
   if (outcome==='Not interested') {
-    const closedCases = (c.cases||[]).map(cs => cs.status==='Open'?{...cs,status:'Closed Lost'}:cs);
+    const nowT = Date.now();
+    const liveAppt = cs => (cs.touchpoints||[]).some(tp => tp && (!tp.outcome || tp.outcome==='pending') && tp.datetime && new Date(tp.datetime).getTime() >= nowT && !isGhostPending(cs.touchpoints, tp));
+    const closedCases = (c.cases||[]).map(cs => (cs.status==='Open' && !liveAppt(cs)) ? {...cs,status:'Closed Lost'} : cs);
+    const survives = closedCases.some(cs => cs.status==='Open' && liveAppt(cs));
     callLog[callLog.length-1].cases_closed = true;
     // h65: quietly note how many appts this lead had booked that never sat, so a
     // future "booked but never sat" rate is derivable. No new bucket/button.
     callLog[callLog.length-1].phantom_appts = (c.call_log||[]).filter(cl => cl.outcome === 'Appt set').length;
-    updatePayloadExtra = {cases:closedCases, appt_datetime:null, appt_notes:null};
+    if (survives) {
+      newStatus = 'Appointment set';                       // keep the surviving appt visible + on-track
+      updatePayloadExtra = {cases:closedCases};
+    } else {
+      updatePayloadExtra = {cases:closedCases, appt_datetime:null, appt_notes:null};
+    }
   }
 
   c.call_log = callLog; c.status = newStatus;
