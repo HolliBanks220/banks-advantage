@@ -148,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h108</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h109</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -295,6 +295,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
     </div>
     <!-- Row 3 - decided -->
+    <div id="ppu-funnel-panel" style="display:none;background:#fff;border:1px solid #dde7f0;border-radius:12px;padding:10px 14px;margin-bottom:6px;"></div>
     <div class="stat-row">
       <div class="stat stat-teal">
         <div class="stat-lbl lbl-white">Sales</div>
@@ -1840,6 +1841,34 @@ function renderScore() {
   { const e=document.getElementById('p-tai-sub'); if (e) e.textContent = totalShowed>0 ? pct(contTAI,totalShowed)+' of sits' : '-'; }
   const ppuTile = document.getElementById('p-ppu-tile');
   if (ppuTile) ppuTile.title = 'PPU close rate ' + ppuCloseRate + ' (' + ppuSales + ' sold of ' + totalPPUs + ') vs ' + nonPPUCloseRate + ' without PPU';
+  // PPU funnel panel: booked -> showed -> closed, with leaks. Single source.
+  const _pf = computePPUFunnel(pStart, pEnd, _pb);
+  const pfEl = document.getElementById('ppu-funnel-panel');
+  if (pfEl) {
+    if (!_pf.booked) { pfEl.style.display = 'none'; }
+    else {
+      pfEl.style.display = 'block';
+      const showPct = (_pf.showed + _pf.noShow) > 0 ? pct(_pf.showed, _pf.showed + _pf.noShow) : '-';
+      const closePct = _pf.closed > 0 ? pct(_pf.sale, _pf.closed) : '-';
+      const stage = (lbl, val, sub) => '<div style="flex:1;min-width:0;text-align:center;">' +
+        '<div style="font-size:10px;color:#5f7a99;text-transform:uppercase;letter-spacing:0.04em;">' + lbl + '</div>' +
+        '<div style="font-size:20px;font-weight:700;color:#1D3557;">' + val + '</div>' +
+        '<div style="font-size:10px;color:#8fa8c0;">' + (sub||'&nbsp;') + '</div></div>';
+      const arrow = '<div style="align-self:center;color:#c3d2e0;font-size:14px;">\u2192</div>';
+      pfEl.innerHTML =
+        '<div style="font-size:11px;font-weight:700;color:#138181;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">PPU funnel</div>' +
+        '<div style="display:flex;gap:6px;align-items:stretch;">' +
+          stage('Booked', _pf.booked, 'needed PPU') + arrow +
+          stage('Showed', _pf.showed, showPct + ' show') + arrow +
+          stage('Closed', _pf.closed, closePct + ' close') +
+          '<div style="align-self:center;color:#c3d2e0;font-size:14px;">\u00b7</div>' +
+          stage('Sale', _pf.sale) + stage('No sale', _pf.nosale) +
+        '</div>' +
+        '<div style="font-size:10px;color:#8fa8c0;margin-top:6px;">' +
+          _pf.inMotionTotal + ' in motion \u00b7 ' + _pf.noShow + ' no-show \u00b7 ' + _pf.dropped + ' dropped' +
+        '</div>';
+    }
+  }
   document.getElementById('p-resets').textContent = totalResets;
   document.getElementById('p-closed').textContent = appsWritten;
   document.getElementById('p-close-rate').textContent = totalSales > 0 ? (appsWritten/totalSales).toFixed(1) + ' per sale' : '- per sale';
@@ -6354,6 +6383,38 @@ const RESET_TYPE_MAP = {
 //   advanced_market = reset kept by her (retirement income) - her second board
 //   sme_handoff     = reset handed to an outside SME (DFL/IBC/IUL) - off her boards, bonus-only
 function boardOf(cs) { return (cs && cs.board) || 'mp_life'; }
+
+// PPU FUNNEL - single source. A PPU instance = a 'cont' touchpoint (in period)
+// whose NEXT appointment is PPU-typed (the carrier-info call). Its fate drives
+// the funnel: booked -> showed for the PPU call -> closed (sale/no-sale). Still
+// moving = shown-but-not-closed or upcoming; no-show / needs = leaks; dropped =
+// explicitly marked lost (before/after the call). Nothing auto-resolves.
+function computePPUFunnel(pStart, pEnd, board) {
+  const f = {booked:0, showed:0, sale:0, nosale:0, inMotion:0, noShow:0, upcoming:0, needs:0, dropped:0};
+  const nowMs = Date.now();
+  clients.forEach(c => (c.cases||[]).filter(cs => boardOf(cs) === board).forEach(cs => {
+    const tps = (cs.touchpoints||[]).slice().sort((a,b)=> new Date(a.datetime)-new Date(b.datetime));
+    tps.forEach((tp,i) => {
+      if (tp.outcome !== 'cont' || !tp.datetime) return;
+      const d = new Date(tp.datetime); if (d < pStart || d > pEnd) return;
+      const nxt = tps[i+1];
+      const ty = (nxt && nxt.type) || tp.next_type || '';
+      if (!/ppu|policy\s*pickup/i.test(ty)) return;
+      f.booked++;
+      if (!nxt || !nxt.datetime) { f.needs++; return; }       // booked but no date -> nag
+      const o = nxt.outcome;
+      if (o === 'sale') { f.showed++; f.sale++; }
+      else if (o === 'nosale') { f.showed++; f.nosale++; }
+      else if (o === 'cont') { f.showed++; f.inMotion++; }    // showed, continued to put-it-together
+      else if (o === 'dropped') { f.dropped++; }
+      else if (o === 'noshow') { f.noShow++; }
+      else { (new Date(nxt.datetime).getTime() >= nowMs) ? f.upcoming++ : f.needs++; }
+    });
+  }));
+  f.closed = f.sale + f.nosale;
+  f.inMotionTotal = f.inMotion + f.upcoming + f.needs;
+  return f;
+}
 
 // SINGLE SOURCE OF TRUTH for initial appointments. One entry per case whose
 // initial appointment falls in the period, tagged with its fate. Every tile and
