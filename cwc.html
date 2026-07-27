@@ -148,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h115</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h117</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -190,8 +190,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="stat-row">
       <div class="stat stat-navy">
         <div class="stat-lbl lbl-white">Dials</div>
-        <div class="hint">Tap to edit</div>
-        <div class="stat-val val-white" id="s-dials" onclick="startEdit('dials','dark')">0</div>
+        <div class="stat-val val-white" id="s-dials">0</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.6);margin-top:-4px;margin-bottom:2px;" id="s-dials-per-hr"></div>
         <div class="stat-btns">
           
@@ -199,7 +198,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
       <div class="stat stat-navy-lt">
         <div class="stat-lbl lbl-navy">Appts set</div>
-        <div class="hint-lt">From logged outcomes</div>
         <div class="stat-val val-navy" id="s-appts">0</div>
         <div class="stat-btns">
         </div>
@@ -1799,27 +1797,27 @@ function renderScore() {
   const upEl = document.getElementById('p-upcoming');
   if (upEl) upEl.textContent = initUpcoming;
   const upSub = document.getElementById('p-upcoming-sub');
-  if (upSub) upSub.textContent = initUpcoming ? 'still to come' : '-';
+  if (upSub) upSub.textContent = '';   // "still to come" dropped - it's a given
   // Initial-only show ratio: of initials that came due, did they show? Sits is
   // the numerator; PPU/TAI shows live in their own funnels, not here.
   const recEl = document.getElementById('p-first-rate');
-  if (recEl) recEl.textContent = heldInitials>0 ? pct(totalShowed, heldInitials) + ' sit ratio' : '- sit ratio';
+  if (recEl) recEl.textContent = '';   // ratio moved to the No Shows card as "show ratio"
   document.getElementById('p-showed').textContent = totalShowed;
   // Continuations decided nothing yet, so they're excluded here AND from the
   // close-rate denominator on the Sales card. This is that denominator, shown.
   const decidedSits = totalSales + totalNoSales;   // saw options and answered
-  document.getElementById('p-sit-rate').textContent = decidedSits > 0 ? decidedSits + ' decided' : '- decided';
+  document.getElementById('p-sit-rate').textContent = '';   // "N decided" dropped - Sales/No Sales cover it
   document.getElementById('p-noshow').textContent = noShowCases;
   const nsSub = document.getElementById('p-cancel');
-  if (nsSub) nsSub.textContent = heldInitials>0 ? pct(noShowCases, heldInitials) + ' no-show rate' : '-';
+  if (nsSub) nsSub.textContent = heldInitials>0 ? pct(totalShowed, heldInitials) + ' show ratio' : '- show ratio';
   window._coach = {nsFirstLost, nsFirstRecovered, nsInProcess, avgLeadDays, pStart, pEnd};
   document.getElementById('p-sales').textContent = totalSales;
   const withDropped = decidedSits + totalDropped;
-  document.getElementById('p-sales-sub').textContent = decidedSits > 0
-    ? pct(totalSales, decidedSits) + ' sit\u2192sale' + (totalDropped ? ' \u00b7 ' + pct(totalSales, withDropped) + ' w/ dropped' : '')
-    : '- sit\u2192sale';
+  document.getElementById('p-sales-sub').textContent = '';   // close ratio moved to the No Sales card
   document.getElementById('p-nosales').textContent = totalNoSales;
-  document.getElementById('p-nosales-sub').textContent = pct(totalNoSales,totalShowed)+' of sits';
+  document.getElementById('p-nosales-sub').textContent = decidedSits > 0
+    ? pct(totalSales, decidedSits) + ' close ratio' + (totalDropped ? ' \u00b7 ' + pct(totalSales, withDropped) + ' w/ dropped' : '')
+    : '- close ratio';
   const drEl = document.getElementById('p-dropped');
   if (drEl) drEl.textContent = totalDropped;
   const drSub = document.getElementById('p-dropped-sub');
