@@ -144,6 +144,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tile-navy .stat-lbl,.tile-navy .stat-val,.tile-navy .stat-sub{color:#ffffff !important;}
 .tile-lblue{background:#EAF1F8 !important;border:1px solid #D3E0EE !important;}
 .tile-lblue .stat-lbl,.tile-lblue .stat-val,.tile-lblue .stat-sub{color:#1D3557 !important;}
+/* Goal glow: a tile with a goal takes the status color - red behind, yellow
+   getting there, green done. Each period, turn them all green. */
+.tile-goal-red{background:#C0392B !important;border:1px solid #A93226 !important;}
+.tile-goal-red .stat-lbl,.tile-goal-red .stat-val,.tile-goal-red .stat-sub{color:#ffffff !important;}
+.tile-goal-yellow{background:#E9B949 !important;border:1px solid #D4A72F !important;}
+.tile-goal-yellow .stat-lbl,.tile-goal-yellow .stat-val,.tile-goal-yellow .stat-sub{color:#1D3557 !important;}
+.tile-goal-green{background:#3E7D32 !important;border:1px solid #336528 !important;}
+.tile-goal-green .stat-lbl,.tile-goal-green .stat-val,.tile-goal-green .stat-sub{color:#ffffff !important;}
 </style>
 </head>
 <body>
@@ -154,7 +162,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h123</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h124</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -242,6 +250,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="stat" style="background:#EBF3FF;border:1px solid #B3D1F7;">
         <div class="stat-lbl" style="color:#1D3557;">Dial time</div>
         <div class="stat-val" id="s-time-dial" style="color:#1D3557;font-size:18px;cursor:pointer;" onclick="editTimerTime('dial')" title="Tap to correct">0:00</div>
+        <div class="stat-sub" id="s-dialtime-perhr" style="color:#1D3557;font-size:10px;"></div>
       </div>
       <div class="stat" style="background:#F0FBF7;border:1px solid #9FE1CB;">
         <div class="stat-lbl" style="color:#138181;">Appt time</div>
@@ -1537,7 +1546,7 @@ function renderScore() {
   const dialEl = document.getElementById('s-time-dial');
   const apptEl = document.getElementById('s-time-appt');
   const adminEl = document.getElementById('s-time-admin');
-  const dialsPerHrEl = document.getElementById('s-dials-per-hr');
+  const dialsPerHrEl = document.getElementById('s-dialtime-perhr');   // dials/hr lives on the Dial Time tile now
 
   if (dialEl) dialEl.textContent = fmtHrMin(timeDialSecs);
   if (apptEl) apptEl.textContent = fmtHrMin(timeApptSecs);
@@ -9876,16 +9885,15 @@ function periodElapsedFraction(){
   if (now <= s) return 0; if (now >= e) return 1;
   return (now - s) / (e - s);
 }
-// Goal bar color carries meaning: green = hit, teal = on/ahead of pace,
-// amber = behind, red = well behind. Pace = target scaled by how far into the
-// period you are, so a bar can be "behind" even before the period ends.
+// Goal status by pace: GREEN = hit the target; RED = under half of where you
+// should be by now (not started / barely / needs serious work); YELLOW = the
+// broad, doable middle. Nothing's expected at the very start, so no day-one red.
 function goalStatusColor(actual, target){
-  if (target <= 0) return { fill:'#2E9E86', hit:false };
-  if (actual >= target) return { fill:'#3B6D11', hit:true };
+  if (target <= 0) return { state:'yellow', hit:false };
+  if (actual >= target) return { state:'green', hit:true };
   const expected = target * periodElapsedFraction();
-  if (actual >= expected) return { fill:'#2E9E86', hit:false };       // on / ahead of pace
-  if (actual >= expected * 0.7) return { fill:'#C99A2E', hit:false }; // behind - amber
-  return { fill:'#C0392B', hit:false };                              // well behind - red
+  if (expected > 0 && actual < 0.5 * expected) return { state:'red', hit:false };
+  return { state:'yellow', hit:false };
 }
 // Calm alternating base for the score tiles. Alerts (Needs Outcome) keep their
 // own color; goal bars carry the status colors. Run each render so freshly-shown
@@ -9893,7 +9901,7 @@ function goalStatusColor(actual, target){
 function applyNeutralPalette(){
   const tiles = [...document.querySelectorAll('.stat')].filter(el => !el.closest('#modal-ov') && el.id !== 'needsoutcome-tile');
   tiles.forEach((el, i) => {
-    el.classList.remove('tile-navy','tile-lblue');
+    el.classList.remove('tile-navy','tile-lblue','tile-goal-red','tile-goal-yellow','tile-goal-green');
     el.classList.add(i % 2 === 0 ? 'tile-navy' : 'tile-lblue');
   });
 }
@@ -9920,15 +9928,21 @@ function renderGoalZones(){
       const actual = goalNumFromTile(valEl, m.money);
       const fillPct = target > 0 ? Math.min(100, (actual/target)*100) : 0;
       const st = goalStatusColor(actual, target);
+      if (tile) { tile.classList.remove('tile-navy','tile-lblue'); tile.classList.add('tile-goal-'+st.state); }
+      const onLight = st.state === 'yellow';   // yellow tile is light; red/green are dark
+      const txt   = onLight ? '#1D3557' : '#ffffff';
+      const soft  = onLight ? 'rgba(29,53,87,0.55)' : 'rgba(255,255,255,0.7)';
+      const barFill = onLight ? '#1D3557' : 'rgba(255,255,255,0.92)';
+      const barTrack = onLight ? 'rgba(29,53,87,0.22)' : 'rgba(255,255,255,0.28)';
       const aStr = m.money ? goalMoney(actual) : Math.round(actual).toLocaleString();
       const tStr = m.money ? goalMoney(target) : Math.round(target).toLocaleString();
       slot.style.cursor = 'pointer';
       slot.onclick = () => openGoalSetter(m.metric);
       slot.innerHTML = wrap(
-        '<div style="display:flex;justify-content:space-between;font-size:9px;color:'+bright+';font-weight:700;line-height:1.1;">' +
-          '<span>'+aStr+(st.hit?' \u2713':'')+'</span><span style="color:'+faint+';font-weight:500;">'+tStr+'</span></div>' +
-        '<div style="height:4px;border-radius:3px;background:'+track+';overflow:hidden;margin-top:2px;">' +
-          '<div style="height:100%;width:'+fillPct+'%;background:'+st.fill+';border-radius:3px;transition:width .4s ease;"></div></div>');
+        '<div style="display:flex;justify-content:space-between;font-size:9px;color:'+txt+';font-weight:700;line-height:1.1;">' +
+          '<span>'+aStr+(st.hit?' \u2713':'')+'</span><span style="color:'+soft+';font-weight:500;">'+tStr+'</span></div>' +
+        '<div style="height:4px;border-radius:3px;background:'+barTrack+';overflow:hidden;margin-top:2px;">' +
+          '<div style="height:100%;width:'+fillPct+'%;background:'+barFill+';border-radius:3px;transition:width .4s ease;"></div></div>');
     } else {
       slot.style.cursor = 'pointer';
       slot.onclick = () => openGoalSetter(m.metric);
