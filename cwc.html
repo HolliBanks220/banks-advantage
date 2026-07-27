@@ -148,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h107</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h108</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -253,11 +253,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <button id="pbt-mp_life" onclick="setProdBoard('mp_life')" style="flex:1;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;background:#1D3557;color:#fff;">Life / MP</button>
       <button id="pbt-advanced_market" onclick="setProdBoard('advanced_market')" style="flex:1;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;background:#e8eef5;color:#5f7a99;">Advanced Market</button>
     </div>
-    <div class="stat-row">
+    <!-- Row 1 - did they show? -->
+    <div class="stat-row" style="grid-template-columns:repeat(4,minmax(0,1fr));">
       <div class="stat stat-navy">
         <div class="stat-lbl lbl-white">Appts</div>
         <div class="stat-val val-white" id="p-first" style="cursor:pointer;" onclick="drillDown('appts')">0</div>
         <div class="stat-sub sub-white" id="p-first-rate">- sit ratio</div>
+      </div>
+      <div class="stat stat-teal">
+        <div class="stat-lbl lbl-white">Sits</div>
+        <div class="stat-val val-white" id="p-showed" style="cursor:pointer;" onclick="drillDown('showed')">0</div>
+        <div class="stat-sub sub-white" id="p-sit-rate">- decided</div>
       </div>
       <div class="stat stat-amber">
         <div class="stat-lbl lbl-amber">No Shows</div>
@@ -270,6 +276,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-sub" style="color:#5f7a99;" id="p-upcoming-sub">-</div>
       </div>
     </div>
+    <!-- Row 2 - mid-sit: still moving or lost -->
     <div class="stat-row">
       <div class="stat stat-navy-lt" id="p-ppu-tile">
         <div class="stat-lbl lbl-navy">PPU</div>
@@ -281,18 +288,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-val val-navy" id="p-tai" style="cursor:pointer;" onclick="drillDown('cont')">0</div>
         <div class="stat-sub sub-navy" id="p-tai-sub">-</div>
       </div>
-      <div class="stat stat-purple">
-        <div class="stat-lbl lbl-purple">Resets</div>
-        <div class="stat-val val-purple" id="p-resets" style="cursor:pointer;" onclick="drillDown('resets')">0</div>
-        <div class="stat-sub" style="color:#3C3489;" id="p-resets-sub">-</div>
+      <div class="stat" style="background:#F4F1FA;">
+        <div class="stat-lbl" style="color:#3C3489;">Dropped</div>
+        <div class="stat-val" style="color:#3C3489;" id="p-dropped">0</div>
+        <div class="stat-sub" style="color:#3C3489;" id="p-dropped-sub">-</div>
       </div>
     </div>
-    <div class="stat-row" style="grid-template-columns:repeat(4,minmax(0,1fr));">
-      <div class="stat stat-teal">
-        <div class="stat-lbl lbl-white">Sits</div>
-        <div class="stat-val val-white" id="p-showed" style="cursor:pointer;" onclick="drillDown('showed')">0</div>
-        <div class="stat-sub sub-white" id="p-sit-rate">- decided</div>
-      </div>
+    <!-- Row 3 - decided -->
+    <div class="stat-row">
       <div class="stat stat-teal">
         <div class="stat-lbl lbl-white">Sales</div>
         <div class="stat-val val-white" id="p-sales" style="cursor:pointer;" onclick="drillDown('sales')">0</div>
@@ -303,34 +306,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="stat-val val-red" id="p-nosales" style="cursor:pointer;" onclick="drillDown('nosales')">0</div>
         <div class="stat-sub" style="color:#791F1F;" id="p-nosales-sub">-</div>
       </div>
-      <div class="stat" style="background:#F4F1FA;">
-        <div class="stat-lbl" style="color:#3C3489;">Dropped</div>
-        <div class="stat-val" style="color:#3C3489;" id="p-dropped">0</div>
-        <div class="stat-sub" style="color:#3C3489;" id="p-dropped-sub">-</div>
-      </div>
-    </div>
-    <div class="stat-row" style="grid-template-columns:repeat(4,minmax(0,1fr));">
       <div class="stat stat-green">
         <div class="stat-lbl lbl-green">Apps submitted</div>
         <div class="stat-val val-green" id="p-closed">0</div>
         <div class="stat-sub sub-green" id="p-close-rate">- per sale</div>
         <div class="stat-sub sub-green" id="p-lead2app">- lead&#8594;app</div>
-      </div>
-      <div class="stat stat-teal">
-        <div class="stat-lbl lbl-white">Ref asks</div>
-        <div class="stat-val val-white" id="p-refask" style="cursor:pointer;" onclick="openReferralList()">0</div>
-        <div class="stat-sub sub-white" id="p-refask-sub">- of sits</div>
-        <div class="stat-sub sub-white" id="p-refs2s">- ref sit&#8594;sale</div>
-      </div>
-      <div class="stat stat-navy">
-        <div class="stat-lbl lbl-white">Recruit asks</div>
-        <div class="stat-val val-white" id="p-recask" style="cursor:pointer;" onclick="openRecruitProspects()">0</div>
-        <div class="stat-sub sub-white" id="p-recask-sub">- of sits</div>
-      </div>
-      <div class="stat stat-gold">
-        <div class="stat-lbl">Plans sent</div>
-        <div class="stat-val" id="p-stp" style="cursor:pointer;" onclick="openRecruitProspects()">0</div>
-        <div class="stat-sub" id="p-stp-sub">- prospects</div>
       </div>
     </div>
     <div id="production-panel" style="background:#fff;border-radius:12px;padding:12px 16px;margin-bottom:6px;box-shadow:0 1px 3px rgba(29,53,87,0.08);"></div>
@@ -351,6 +331,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <!-- Bonus progress bar -->
     <!-- bonus tracker removed -->
 
+    <!-- Row 4 - asks & pipeline building -->
+    <div class="stat-row" style="grid-template-columns:repeat(4,minmax(0,1fr));">
+      <div class="stat stat-teal">
+        <div class="stat-lbl lbl-white">Ref asks</div>
+        <div class="stat-val val-white" id="p-refask" style="cursor:pointer;" onclick="openReferralList()">0</div>
+        <div class="stat-sub sub-white" id="p-refask-sub">- of sits</div>
+        <div class="stat-sub sub-white" id="p-refs2s">- ref sit&#8594;sale</div>
+      </div>
+      <div class="stat stat-navy">
+        <div class="stat-lbl lbl-white">Recruit asks</div>
+        <div class="stat-val val-white" id="p-recask" style="cursor:pointer;" onclick="openRecruitProspects()">0</div>
+        <div class="stat-sub sub-white" id="p-recask-sub">- of sits</div>
+      </div>
+      <div class="stat stat-gold">
+        <div class="stat-lbl">Plans sent</div>
+        <div class="stat-val" id="p-stp" style="cursor:pointer;" onclick="openRecruitProspects()">0</div>
+        <div class="stat-sub" id="p-stp-sub">- prospects</div>
+      </div>
+      <div class="stat stat-purple">
+        <div class="stat-lbl lbl-purple">Resets</div>
+        <div class="stat-val val-purple" id="p-resets" style="cursor:pointer;" onclick="drillDown('resets')">0</div>
+        <div class="stat-sub" style="color:#3C3489;" id="p-resets-sub">-</div>
+      </div>
+    </div>
   <!-- MIA vs CIA comparison panel -->
   <div id="source-comparison" style="margin-top:4px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 6px;">
@@ -1654,29 +1658,18 @@ function renderScore() {
   const allCasesRaw = clients.flatMap(c => (c.cases||[]));
   const allCases = allCasesRaw.filter(cs => boardOf(cs) === _pb);
   const satCases = allCases.filter(cs => inP(caseSatDate(cs)));
-  const totalShowed = satCases.length;                    // SITS - one per case
+  // SINGLE SOURCE: every appt/sit/no-show/upcoming count comes from one list.
+  const initialSet = computeInitialSet(pStart, pEnd, _pb);
+  const totalShowed = initialSet.filter(x=>x.fate==='sit').length;      // SITS - one per case
+  const noShowCases = initialSet.filter(x=>x.fate==='noshow').length;
+  const initUpcoming = initialSet.filter(x=>x.fate==='upcoming').length;
+  const initNeeds = initialSet.filter(x=>x.fate==='needs').length;
+  const heldInitials = totalShowed + noShowCases;
+  const initialAppts = initialSet.length;                               // Appts tile == card
   const decidedCases = allCases.filter(cs => inP(caseVerdictDate(cs)));
   const totalSales = decidedCases.filter(cs => caseVerdict(cs)==='sale').length;
   const totalNoSales = decidedCases.filter(cs => caseVerdict(cs)==='nosale').length;
   const totalDropped = decidedCases.filter(cs => caseVerdict(cs)==='dropped').length;
-
-  // PASS 2 - initial-only. Appts / show ratio / no-shows count ONE initial
-  // appointment per case, so appts == leads. PPU/TAI follow-ups live in their
-  // own tiles + funnels, never here. Sits (totalShowed) is the show numerator;
-  // a case is a no-show only if it no-showed and never sat (a recovered no-show
-  // is a sit). heldInitials = initials that resolved either way.
-  const noShowCases = allCases.filter(cs => {
-    if (caseAttendedTPs(cs).length) return false;               // sat (incl. recovered)
-    return (cs.touchpoints||[]).some(t => t && t.outcome==='noshow' && t.datetime && inP(new Date(t.datetime)));
-  }).length;
-  const heldInitials = totalShowed + noShowCases;
-  const pendingInitials = allCases.filter(cs => {
-    if (caseAttendedTPs(cs).length) return false;
-    const tps = cs.touchpoints||[];
-    if (tps.some(t => t && t.outcome==='noshow')) return false;
-    return tps.some(t => t && (!t.outcome||t.outcome==='pending') && t.datetime && inP(new Date(t.datetime)) && !isGhostPending(tps,t) && !t.continues_appt);
-  }).length;
-  const initialAppts = heldInitials + pendingInitials;
 
   const tpSits = attendedAppts;    // kept for downstream references
   const legacySits = 0;
@@ -1811,9 +1804,9 @@ function renderScore() {
 
   document.getElementById('p-first').textContent = initialAppts;
   const upEl = document.getElementById('p-upcoming');
-  if (upEl) upEl.textContent = upcomingAppts;
+  if (upEl) upEl.textContent = initUpcoming;
   const upSub = document.getElementById('p-upcoming-sub');
-  if (upSub) upSub.textContent = upcomingAppts ? 'still to come' : '-';
+  if (upSub) upSub.textContent = initUpcoming ? 'still to come' : '-';
   // Initial-only show ratio: of initials that came due, did they show? Sits is
   // the numerator; PPU/TAI shows live in their own funnels, not here.
   const recEl = document.getElementById('p-first-rate');
@@ -2391,23 +2384,7 @@ function drillDown(type) {
     // sit (the recovered-no-show rule), so the row shows the case's real fate.
     const LBL = {sale:'Sale', nosale:'No sale', cont:'Continued (PPU/TAI)', dropped:'Dropped', noshow:'No show', upcoming:'Upcoming', needs:'Needs an outcome'};
     const COL = {sale:'#3B6D11', nosale:'#A32D2D', cont:'#1D3557', dropped:'#3C3489', noshow:'#BA7517', upcoming:'#1D3557', needs:'#A32D2D'};
-    const nowMs = Date.now();
-    const byDate = (a,b) => new Date(a.datetime) - new Date(b.datetime);
-    const rows = [];
-    clients.forEach(c => (c.cases||[]).filter(_ddOn).forEach(cs => {
-      const tps = cs.touchpoints||[];
-      const att = tps.filter(t=>t&&['sale','nosale','cont','dropped'].includes(t.outcome)&&t.datetime).sort(byDate);
-      const nsh = tps.filter(t=>t&&t.outcome==='noshow'&&t.datetime).sort(byDate);
-      const pend = tps.filter(t=>t&&(!t.outcome||t.outcome==='pending')&&t.datetime&&!t.continues_appt&&!isGhostPending(tps,t)).sort(byDate);
-      let rep=null, fate='';
-      if (att.length) { rep=att[0]; fate=att[0].outcome; }
-      else if (nsh.length) { rep=nsh[0]; fate='noshow'; }
-      else if (pend.length) { rep=pend[0]; fate = new Date(pend[0].datetime).getTime() >= nowMs ? 'upcoming' : 'needs'; }
-      if (!rep) return;
-      const d = new Date(rep.datetime);
-      if (d < start || d > end) return;
-      rows.push({c, cs, tp:rep, d, fate});
-    }));
+    const rows = computeInitialSet(start, end, _ddBoard);
     rows.sort((a,b) => a.d - b.d);
     if (!rows.length) {
       showModal('<button class="close-x" onclick="closeModal()">x</button>' +
@@ -2416,8 +2393,9 @@ function drillDown(type) {
       return;
     }
     const body = rows.map(a => {
-      const lbl = LBL[a.fate] || a.fate;
-      const col = COL[a.fate] || '#5f7a99';
+      const key = a.fate==='sit' ? (a.tp.outcome||'sit') : a.fate;
+      const lbl = LBL[key] || key;
+      const col = COL[key] || '#5f7a99';
       const ns = (a.c.call_log||[]).filter(l => /no show/i.test(l.outcome||'')).length;
       const rebook = (a.fate!=='noshow' && ns>0)
         ? '<div style="font-size:10px;color:#BA7517;font-weight:600;">Sat after a no-show' + (ns>1 ? ' \u00b7 ' + ns + ' no-shows' : '') + '</div>' : '';
@@ -2484,36 +2462,14 @@ function drillDown(type) {
     }
     const wantPast = (type === 'needsoutcome');
     title = (wantPast ? 'Needs an outcome - ' : 'Upcoming appointments - ') + label;
-    const nowMs = Date.now();
-    const slot = (c) => {
-      let t = null;
-      (c.cases||[]).filter(_ddOn).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
-        if (!tp || !tp.datetime) return;
-        if (tp.outcome && tp.outcome !== 'pending') return;
-        const d = new Date(tp.datetime);
-        if (d < start || d > end) return;
-        const isPast = d.getTime() < nowMs;
-        if (isPast !== wantPast) return;
-        if (!t || d < t) t = d;
-      }));
-      return t;
-    };
-    leads = clients.filter(c => slot(c) !== null).sort((a,b) => slot(a) - slot(b));
+    const want = wantPast ? 'needs' : 'upcoming';
+    leads = computeInitialSet(start, end, _ddBoard).filter(x => x.fate === want).sort((a,b)=>a.d-b.d).map(x => x.c);
   } else if (type === 'showed') {
     title = 'Sits - ' + label;
-    leads = clients.filter(c =>
-      (c.sits||[]).some(s => { const d=new Date(s.datetime); return d>=start&&d<=end&&s.outcome==='showed'; }) ||
-      (c.cases||[]).filter(_ddOn).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&(tp.outcome==='sale'||tp.outcome==='nosale'||tp.outcome==='cont'); }))
-    );
+    leads = computeInitialSet(start, end, _ddBoard).filter(x => x.fate === 'sit').map(x => x.c);
   } else if (type === 'noshow') {
     title = 'No shows - ' + label;
-    // Initial-only: leads whose case no-showed in period and never sat (a
-    // recovered no-show is a sit, not a no-show).
-    leads = clients.filter(c => (c.cases||[]).filter(_ddOn).some(cs => {
-      const tps = cs.touchpoints||[];
-      if (tps.some(t => t && ['sale','nosale','cont','dropped'].includes(t.outcome))) return false;
-      return tps.some(t => { const d=new Date(t.datetime); return t && t.outcome==='noshow' && d>=start && d<=end; });
-    }));
+    leads = computeInitialSet(start, end, _ddBoard).filter(x => x.fate === 'noshow').map(x => x.c);
   } else if (type === 'sales') {
     title = 'Sales - ' + label;
     leads = clients.filter(c =>
@@ -6398,6 +6354,38 @@ const RESET_TYPE_MAP = {
 //   advanced_market = reset kept by her (retirement income) - her second board
 //   sme_handoff     = reset handed to an outside SME (DFL/IBC/IUL) - off her boards, bonus-only
 function boardOf(cs) { return (cs && cs.board) || 'mp_life'; }
+
+// SINGLE SOURCE OF TRUTH for initial appointments. One entry per case whose
+// initial appointment falls in the period, tagged with its fate. Every tile and
+// drill-down that counts appointments/sits/no-shows/upcoming derives from THIS,
+// so Appts == Sits + No-shows + Upcoming + Needs-outcome, and the card count
+// always equals the tile. Fate:
+//   sit     = they sat (any attended tp; a recovered no-show reads as a sit)
+//   noshow  = no-showed and never sat
+//   upcoming= a live pending appt still in the future
+//   needs   = a live pending appt already past due, awaiting an outcome
+// PPU/TAI follow-ups (continues_appt) and ghost pendings are never the initial.
+function computeInitialSet(pStart, pEnd, board) {
+  const nowMs = Date.now();
+  const byDate = (a,b) => new Date(a.datetime) - new Date(b.datetime);
+  const ATT = ['sale','nosale','cont','dropped'];
+  const out = [];
+  clients.forEach(c => (c.cases||[]).filter(cs => boardOf(cs) === board).forEach(cs => {
+    const tps = cs.touchpoints||[];
+    const att = tps.filter(t=>t&&ATT.includes(t.outcome)&&t.datetime).sort(byDate);
+    const nsh = tps.filter(t=>t&&t.outcome==='noshow'&&t.datetime).sort(byDate);
+    const pend = tps.filter(t=>t&&(!t.outcome||t.outcome==='pending')&&t.datetime&&!t.continues_appt&&!isGhostPending(tps,t)).sort(byDate);
+    let rep=null, fate='';
+    if (att.length) { rep=att[0]; fate='sit'; }
+    else if (nsh.length) { rep=nsh[0]; fate='noshow'; }
+    else if (pend.length) { rep=pend[0]; fate = new Date(pend[0].datetime).getTime() >= nowMs ? 'upcoming' : 'needs'; }
+    if (!rep) return;
+    const d = new Date(rep.datetime);
+    if (d < pStart || d > pEnd) return;
+    out.push({c, cs, tp:rep, fate, d});
+  }));
+  return out;
+}
 
 // What board an EXISTING (unstamped) case should get, from the evidence already
 // on it. SME markers win; then retirement / next-level products; everything else
