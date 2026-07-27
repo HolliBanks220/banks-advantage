@@ -148,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h120</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h121</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -199,6 +199,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="stat stat-navy-lt">
         <div class="stat-lbl lbl-navy">Appts set</div>
         <div class="stat-val val-navy" id="s-appts">0</div>
+        <div class="stat-sub sub-navy" id="p-appts-sub"></div>
         <div class="stat-btns">
         </div>
       </div>
@@ -283,8 +284,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="stat stat-green">
         <div class="stat-lbl lbl-green">Apps submitted</div>
         <div class="stat-val val-green" id="p-closed">0</div>
-        <div class="stat-sub sub-green" id="p-close-rate">- per sale</div>
-        <div class="stat-sub sub-green" id="p-lead2app">- lead&#8594;app</div>
+        <div class="stat-sub sub-green" id="p-close-rate"></div>
       </div>
       <div class="stat" id="needsoutcome-tile" style="background:#F4F6F8;border:1px solid transparent;cursor:pointer;" onclick="drillDown('needsoutcome')">
         <div class="stat-lbl" id="needsoutcome-lbl" style="color:#5f7a99;">Needs outcome</div>
@@ -315,13 +315,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="stat stat-teal">
         <div class="stat-lbl lbl-white">Ref asks</div>
         <div class="stat-val val-white" id="p-refask" style="cursor:pointer;" onclick="openReferralList()">0</div>
-        <div class="stat-sub sub-white" id="p-refask-sub">- of sits</div>
         <div class="stat-sub sub-white" id="p-refs2s">- ref sit&#8594;sale</div>
       </div>
       <div class="stat stat-navy">
         <div class="stat-lbl lbl-white">Recruit asks</div>
         <div class="stat-val val-white" id="p-recask" style="cursor:pointer;" onclick="openRecruitProspects()">0</div>
-        <div class="stat-sub sub-white" id="p-recask-sub">- of sits</div>
       </div>
       <div class="stat stat-gold">
         <div class="stat-lbl">Plans sent</div>
@@ -1860,7 +1858,7 @@ function renderScore() {
   }
   renderGoalZones();   // paint per-period goal zones on their tiles
   document.getElementById('p-closed').textContent = appsWritten;
-  document.getElementById('p-close-rate').textContent = totalSales > 0 ? (appsWritten/totalSales).toFixed(1) + ' per sale' : '- per sale';
+  { const e=document.getElementById('p-close-rate'); if (e) e.textContent = ''; }   // per-sale removed; slot serves the Apps goal
   // Lead-to-App CR: submitted apps on THIS board in period over leads assigned.
   const boardApps = clients.reduce((n,c)=> n + (c.cases||[]).filter(cs=>boardOf(cs)===_pb).reduce((m,cs)=> m + (cs.touchpoints||[]).reduce((k,tp)=> k + (tp.apps||[]).filter(ap=>{ const d=new Date(ap.writtenDate||tp.datetime||cs.created||0); return isSubmitted(ap) && d>=pStart && d<=pEnd; }).length,0),0),0);
   { const e=document.getElementById('p-lead2app'); if (e) e.textContent = coh.assigned > 0 ? pct(boardApps, coh.assigned) + ' lead\u2192app' : '- lead\u2192app'; }
@@ -9844,13 +9842,13 @@ async function saveAgentSettings(settings) {
 // the period switch keeps the view focused. Stored in agent settings; the goal
 // lives at the bottom of its own tile.
 const GOAL_TILES = [
-  { metric:'dials',     valId:'s-dials',  cls:'activity', label:'Dials',     dark:true  },
-  { metric:'appts_set', valId:'s-appts',  cls:'activity', label:'Appts set', dark:false },
-  { metric:'sits',      valId:'p-showed', cls:'activity', label:'Sits',      dark:true  },
-  { metric:'sales',     valId:'p-sales',  cls:'outcome',  label:'Sales',     dark:true  },
-  { metric:'apps',      valId:'p-closed', cls:'outcome',  label:'Apps',      dark:false },
-  { metric:'resets',    valId:'p-resets', cls:'outcome',  label:'Resets',    dark:false },
-  { metric:'apv',       valId:'p-apv',    cls:'outcome',  label:'APV',       dark:true, money:true },
+  { metric:'dials',     valId:'s-dials',  slotId:'s-dials-per-hr', cls:'activity', label:'Dials',     dark:true  },
+  { metric:'appts_set', valId:'s-appts',  slotId:'p-appts-sub',    cls:'activity', label:'Appts set', dark:false },
+  { metric:'sits',      valId:'p-showed', slotId:'p-sit-rate',     cls:'activity', label:'Sits',      dark:true  },
+  { metric:'sales',     valId:'p-sales',  slotId:'p-sales-sub',    cls:'outcome',  label:'Sales',     dark:true  },
+  { metric:'apps',      valId:'p-closed', slotId:'p-close-rate',   cls:'outcome',  label:'Apps',      dark:false },
+  { metric:'resets',    valId:'p-resets', slotId:'p-resets-sub',   cls:'outcome',  label:'Resets',    dark:false },
+  { metric:'apv',       valId:'p-apv',    slotId:'p-netplaced',    cls:'outcome',  label:'APV',       dark:true, money:true },
 ];
 const GOAL_METRIC = Object.fromEntries(GOAL_TILES.map(t => [t.metric, t]));
 function goalClassOf(metric){ return (GOAL_METRIC[metric]||{}).cls || 'activity'; }
@@ -9859,27 +9857,22 @@ function periodWord(v){ return {day:'today',week:'this week',month:'this month',
 function goalMoney(n){ return '$' + Math.round(Number(n)||0).toLocaleString(); }
 function goalNumFromTile(el, money){ const raw = (el && el.textContent || '').replace(/[$,]/g,''); const n = parseFloat(raw); return isFinite(n) ? n : 0; }
 
-// Every goal tile carries a FIXED-HEIGHT zone (so rows stay aligned): quiet
-// "+ set a goal" when unset, a nudge when the period's slot is taken, or a
-// progress bar filling actual->target when set. Actual is read live off the tile.
+// The goal bar lives IN the tile's existing sub-line slot - no extra row, so
+// tiles stay the same height whether or not a goal is set. Bar when set (tap to
+// edit); the slot's normal sub or a quiet "+ set a goal" when not.
 function renderGoalZones(){
   const goals = getGoals();
   const P = view;
   GOAL_TILES.forEach(m => {
+    const slot = document.getElementById(m.slotId); if (!slot) return;
     const valEl = document.getElementById(m.valId);
-    if (!valEl) return;
-    const tile = valEl.closest('.stat');
-    if (!tile) return;
-    let gz = tile.querySelector('.goal-zone');
-    if (!gz) { gz = document.createElement('div'); gz.className = 'goal-zone'; tile.appendChild(gz); }
-    const faint  = m.dark ? 'rgba(255,255,255,0.45)' : 'rgba(29,53,87,0.42)';
+    const faint  = m.dark ? 'rgba(255,255,255,0.5)'  : 'rgba(29,53,87,0.5)';
     const bright = m.dark ? '#ffffff' : '#1D3557';
-    const border = m.dark ? 'rgba(255,255,255,0.18)' : 'rgba(29,53,87,0.12)';
-    const track  = m.dark ? 'rgba(255,255,255,0.20)' : 'rgba(29,53,87,0.12)';
-    const wrap = 'margin-top:6px;padding-top:5px;border-top:1px solid '+border+';min-height:26px;box-sizing:border-box;';
-    const centered = wrap + 'display:flex;align-items:center;justify-content:center;font-size:10px;';
+    const track  = m.dark ? 'rgba(255,255,255,0.22)' : 'rgba(29,53,87,0.14)';
+    const wrap = s => '<div style="min-height:15px;">'+s+'</div>';
     const existing = goals.find(g => g.metric===m.metric && g.period===P);
     const sibling  = goals.find(g => g.period===P && goalClassOf(g.metric)===m.cls && g.metric!==m.metric);
+    const empty = () => { const t=(slot.textContent||'').trim(); return !t || t==='-'; };
     if (existing) {
       const target = Number(existing.target) || 0;
       const actual = goalNumFromTile(valEl, m.money);
@@ -9888,23 +9881,19 @@ function renderGoalZones(){
       const fill = hit ? '#3B6D11' : (m.dark ? '#7FE0C8' : '#138181');
       const aStr = m.money ? goalMoney(actual) : Math.round(actual).toLocaleString();
       const tStr = m.money ? goalMoney(target) : Math.round(target).toLocaleString();
-      gz.style.cursor = 'pointer';
-      gz.onclick = () => openGoalSetter(m.metric);
-      gz.innerHTML = '<div style="'+wrap+'">' +
-        '<div style="display:flex;justify-content:space-between;font-size:9px;color:'+bright+';font-weight:600;margin-bottom:3px;">' +
-          '<span>'+aStr+(hit?' \u2713':'')+'</span><span style="color:'+faint+';">'+tStr+'</span></div>' +
-        '<div style="height:5px;border-radius:3px;background:'+track+';overflow:hidden;">' +
-          '<div style="height:100%;width:'+fillPct+'%;background:'+fill+';border-radius:3px;transition:width .4s ease;"></div></div>' +
-        '</div>';
+      slot.style.cursor = 'pointer';
+      slot.onclick = () => openGoalSetter(m.metric);
+      slot.innerHTML = wrap(
+        '<div style="display:flex;justify-content:space-between;font-size:9px;color:'+bright+';font-weight:700;line-height:1.1;">' +
+          '<span>'+aStr+(hit?' \u2713':'')+'</span><span style="color:'+faint+';font-weight:500;">'+tStr+'</span></div>' +
+        '<div style="height:4px;border-radius:3px;background:'+track+';overflow:hidden;margin-top:2px;">' +
+          '<div style="height:100%;width:'+fillPct+'%;background:'+fill+';border-radius:3px;transition:width .4s ease;"></div></div>');
     } else if (sibling) {
-      const sibLabel = (GOAL_METRIC[sibling.metric]||{}).label || sibling.metric;
-      gz.style.cursor = 'default';
-      gz.onclick = null;
-      gz.innerHTML = '<div style="'+centered+'color:'+faint+';opacity:0.7;">'+m.cls+' goal: '+sibLabel+'</div>';
+      if (empty()) { slot.style.cursor='default'; slot.onclick=null; slot.innerHTML = wrap('<span style="font-size:9px;color:'+faint+';opacity:.8;">'+m.cls+' goal set</span>'); }
     } else {
-      gz.style.cursor = 'pointer';
-      gz.onclick = () => openGoalSetter(m.metric);
-      gz.innerHTML = '<div style="'+centered+'color:'+faint+';">+ set a goal</div>';
+      slot.style.cursor = 'pointer';
+      slot.onclick = () => openGoalSetter(m.metric);
+      if (empty()) slot.innerHTML = wrap('<span style="font-size:9px;color:'+faint+';">+ set a goal</span>');
     }
   });
 }
