@@ -148,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h106</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h107</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -257,25 +257,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="stat stat-navy">
         <div class="stat-lbl lbl-white">Appts</div>
         <div class="stat-val val-white" id="p-first" style="cursor:pointer;" onclick="drillDown('appts')">0</div>
-        <div class="stat-sub sub-white" id="p-first-rate">- show rate</div>
-      </div>
-      <div class="stat stat-teal">
-        <div class="stat-lbl lbl-white">Attended</div>
-        <div class="stat-val val-white" id="p-attended" style="cursor:pointer;" onclick="drillDown('attended')">0</div>
-        <div class="stat-sub sub-white" id="p-attended-sub">-</div>
+        <div class="stat-sub sub-white" id="p-first-rate">- sit ratio</div>
       </div>
       <div class="stat stat-amber">
         <div class="stat-lbl lbl-amber">No Shows</div>
         <div class="stat-val val-amber" id="p-noshow" style="cursor:pointer;" onclick="drillDown('noshow')">0</div>
         <div class="stat-sub" style="color:#854F0B;" id="p-cancel">-</div>
       </div>
-    </div>
-    <div class="stat-row" style="grid-template-columns:repeat(4,minmax(0,1fr));">
       <div class="stat" style="background:#EBF3FF;">
         <div class="stat-lbl" style="color:#1D3557;">Upcoming</div>
         <div class="stat-val" style="color:#1D3557;cursor:pointer;" id="p-upcoming" onclick="drillDown('upcoming')">0</div>
         <div class="stat-sub" style="color:#5f7a99;" id="p-upcoming-sub">-</div>
       </div>
+    </div>
+    <div class="stat-row">
       <div class="stat stat-navy-lt" id="p-ppu-tile">
         <div class="stat-lbl lbl-navy">PPU</div>
         <div class="stat-val val-navy" id="p-ppu" style="cursor:pointer;" onclick="drillDown('cont')">0</div>
@@ -1665,6 +1660,24 @@ function renderScore() {
   const totalNoSales = decidedCases.filter(cs => caseVerdict(cs)==='nosale').length;
   const totalDropped = decidedCases.filter(cs => caseVerdict(cs)==='dropped').length;
 
+  // PASS 2 - initial-only. Appts / show ratio / no-shows count ONE initial
+  // appointment per case, so appts == leads. PPU/TAI follow-ups live in their
+  // own tiles + funnels, never here. Sits (totalShowed) is the show numerator;
+  // a case is a no-show only if it no-showed and never sat (a recovered no-show
+  // is a sit). heldInitials = initials that resolved either way.
+  const noShowCases = allCases.filter(cs => {
+    if (caseAttendedTPs(cs).length) return false;               // sat (incl. recovered)
+    return (cs.touchpoints||[]).some(t => t && t.outcome==='noshow' && t.datetime && inP(new Date(t.datetime)));
+  }).length;
+  const heldInitials = totalShowed + noShowCases;
+  const pendingInitials = allCases.filter(cs => {
+    if (caseAttendedTPs(cs).length) return false;
+    const tps = cs.touchpoints||[];
+    if (tps.some(t => t && t.outcome==='noshow')) return false;
+    return tps.some(t => t && (!t.outcome||t.outcome==='pending') && t.datetime && inP(new Date(t.datetime)) && !isGhostPending(tps,t) && !t.continues_appt);
+  }).length;
+  const initialAppts = heldInitials + pendingInitials;
+
   const tpSits = attendedAppts;    // kept for downstream references
   const legacySits = 0;
   const legacyNoSales = 0;
@@ -1796,48 +1809,23 @@ function renderScore() {
   const appsWritten = countSubmittedApps(pStart, pEnd);
   const apvPerSale = totalSales>0 ? totalAPV/totalSales : 0;
 
-  document.getElementById('p-first').textContent = periodAppts;
+  document.getElementById('p-first').textContent = initialAppts;
   const upEl = document.getElementById('p-upcoming');
   if (upEl) upEl.textContent = upcomingAppts;
   const upSub = document.getElementById('p-upcoming-sub');
   if (upSub) upSub.textContent = upcomingAppts ? 'still to come' : '-';
-  // Show rate answers one question: when an appointment came due, did they turn
-  // up? So the denominator is only appointments that resolved to showed-or-not.
-  // Upcoming, rescheduled, cancelled and still-unlogged ones are none of the
-  // above - counting them as failures to show made 2 of 3 look like no-shows.
-  const heldAppts = attendedAppts + totalNoShows;   // appointments that resolved to showed-or-not
-  const atEl = document.getElementById('p-attended');
-  if (atEl) atEl.textContent = attendedAppts;
-  const atSub = document.getElementById('p-attended-sub');
-  // Say what it's made of, so the show ratio is visibly these two numbers.
-  if (atSub) {
-    const parts = [];
-    if (totalCont) parts.push(totalCont + ' cont');
-    atSub.textContent = parts.length ? parts.join(' \u00b7 ') + ' incl.' : 'appointments you sat';
-  }
+  // Initial-only show ratio: of initials that came due, did they show? Sits is
+  // the numerator; PPU/TAI shows live in their own funnels, not here.
   const recEl = document.getElementById('p-first-rate');
-  if (recEl) {
-    recEl.textContent = unbucketed === 0
-      ? pct(attendedAppts, heldAppts) + ' sit ratio'
-      : pct(attendedAppts, heldAppts) + ' sit ratio \u00b7 \u26a0 ' + unbucketed + ' unaccounted';
-  }
+  if (recEl) recEl.textContent = heldInitials>0 ? pct(totalShowed, heldInitials) + ' sit ratio' : '- sit ratio';
   document.getElementById('p-showed').textContent = totalShowed;
   // Continuations decided nothing yet, so they're excluded here AND from the
   // close-rate denominator on the Sales card. This is that denominator, shown.
   const decidedSits = totalSales + totalNoSales;   // saw options and answered
   document.getElementById('p-sit-rate').textContent = decidedSits > 0 ? decidedSits + ' decided' : '- decided';
-  document.getElementById('p-noshow').textContent = totalNoShows;
+  document.getElementById('p-noshow').textContent = noShowCases;
   const nsSub = document.getElementById('p-cancel');
-  if (nsSub) {
-    if (totalNoShows) {
-      const parts = [];
-      if (nsFirstLost || nsFirstRecovered) parts.push((nsFirstLost + nsFirstRecovered) + ' first');
-      if (nsInProcess) parts.push(nsInProcess + ' in-process');
-      nsSub.innerHTML = '<span onclick="event.stopPropagation();openCoaching()" style="text-decoration:underline;cursor:pointer;">' + parts.join(' \u00b7 ') + '</span>';
-    } else {
-      nsSub.textContent = heldAppts>0 ? pct(totalNoShows,heldAppts)+' no-show rate' : '-';
-    }
-  }
+  if (nsSub) nsSub.textContent = heldInitials>0 ? pct(noShowCases, heldInitials) + ' no-show rate' : '-';
   window._coach = {nsFirstLost, nsFirstRecovered, nsInProcess, avgLeadDays, pStart, pEnd};
   document.getElementById('p-sales').textContent = totalSales;
   const withDropped = decidedSits + totalDropped;
@@ -2397,42 +2385,42 @@ function drillDown(type) {
   let title = '';
 
   if (type === 'appts') {
-    // ONE ROW PER APPOINTMENT, not per lead. 37 appointments across 25 leads was
-    // impossible to reconcile when the list showed leads and rendered each one's
-    // NEXT appointment date - a lead who sat on the 18th and rebooked for Aug 3
-    // appeared to be an August appointment sitting in July.
-    const ARTIFACT = ['closed','superseded'];
-    const LBL = {sale:'Sale', nosale:'No sale', cont:'Continuation', dropped:'Dropped',
-      noshow:'No show', cancelled:'Cancelled', rescheduled:'Rescheduled'};
-    const COL = {sale:'#3B6D11', nosale:'#A32D2D', cont:'#1D3557', dropped:'#3C3489',
-      noshow:'#BA7517', cancelled:'#8fa8c0', rescheduled:'#8fa8c0'};
-    const appts = [];
+    // ONE ROW PER LEAD - the initial appointment. Matches the Appts tile
+    // (appts == leads). PPU/TAI follow-ups are not appointments here; they live
+    // in their own tiles + funnels. A lead who no-showed then sat reads as a
+    // sit (the recovered-no-show rule), so the row shows the case's real fate.
+    const LBL = {sale:'Sale', nosale:'No sale', cont:'Continued (PPU/TAI)', dropped:'Dropped', noshow:'No show', upcoming:'Upcoming', needs:'Needs an outcome'};
+    const COL = {sale:'#3B6D11', nosale:'#A32D2D', cont:'#1D3557', dropped:'#3C3489', noshow:'#BA7517', upcoming:'#1D3557', needs:'#A32D2D'};
     const nowMs = Date.now();
-    clients.forEach(c => (c.cases||[]).filter(_ddOn).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
-      if (!tp || !tp.datetime || tp.continues_appt) return;
-      if (ARTIFACT.includes(tp.outcome)) return;
-      const d = new Date(tp.datetime);
+    const byDate = (a,b) => new Date(a.datetime) - new Date(b.datetime);
+    const rows = [];
+    clients.forEach(c => (c.cases||[]).filter(_ddOn).forEach(cs => {
+      const tps = cs.touchpoints||[];
+      const att = tps.filter(t=>t&&['sale','nosale','cont','dropped'].includes(t.outcome)&&t.datetime).sort(byDate);
+      const nsh = tps.filter(t=>t&&t.outcome==='noshow'&&t.datetime).sort(byDate);
+      const pend = tps.filter(t=>t&&(!t.outcome||t.outcome==='pending')&&t.datetime&&!t.continues_appt&&!isGhostPending(tps,t)).sort(byDate);
+      let rep=null, fate='';
+      if (att.length) { rep=att[0]; fate=att[0].outcome; }
+      else if (nsh.length) { rep=nsh[0]; fate='noshow'; }
+      else if (pend.length) { rep=pend[0]; fate = new Date(pend[0].datetime).getTime() >= nowMs ? 'upcoming' : 'needs'; }
+      if (!rep) return;
+      const d = new Date(rep.datetime);
       if (d < start || d > end) return;
-      const pending = !tp.outcome || tp.outcome === 'pending';
-      if (pending && d.getTime() >= nowMs) return;      // upcoming has its own tile
-      appts.push({c, cs, tp, d, pending});
-    })));
-    appts.sort((a,b) => a.d - b.d);
-    if (!appts.length) {
+      rows.push({c, cs, tp:rep, d, fate});
+    }));
+    rows.sort((a,b) => a.d - b.d);
+    if (!rows.length) {
       showModal('<button class="close-x" onclick="closeModal()">x</button>' +
         '<div class="modal-title">Appointments - ' + label + '</div>' +
         '<div style="font-size:13px;color:#a0b8cc;padding:1rem 0;">None for this period.</div>');
       return;
     }
-    const body = appts.map(a => {
-      const key = a.pending ? '' : (a.tp.outcome||'');
-      const lbl = a.pending ? 'Needs an outcome' : (LBL[key] || key);
-      const col = a.pending ? '#A32D2D' : (COL[key] || '#5f7a99');
-      // Say when this appointment is a rebook after a no-show - that changes how
-      // you'd treat it, and it's why one lead can hold two appointments in a week.
+    const body = rows.map(a => {
+      const lbl = LBL[a.fate] || a.fate;
+      const col = COL[a.fate] || '#5f7a99';
       const ns = (a.c.call_log||[]).filter(l => /no show/i.test(l.outcome||'')).length;
-      const rebook = a.tp.revived_from
-        ? '<div style="font-size:10px;color:#BA7517;font-weight:600;">Rebooked after a no-show' + (ns>1 ? ' \u00b7 ' + ns + ' so far' : '') + '</div>' : '';
+      const rebook = (a.fate!=='noshow' && ns>0)
+        ? '<div style="font-size:10px;color:#BA7517;font-weight:600;">Sat after a no-show' + (ns>1 ? ' \u00b7 ' + ns + ' no-shows' : '') + '</div>' : '';
       return '<div class="client-card" onclick="closeModal();setTimeout(()=>openClient(\'' + a.c.id + '\'),100)">' +
         '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">' +
           '<div><div class="client-name">' + esc(a.c.name||'Unknown') + '</div>' +
@@ -2444,7 +2432,7 @@ function drillDown(type) {
     }).join('');
     showModal('<button class="close-x" onclick="closeModal()">x</button>' +
       '<div class="modal-title">Appointments - ' + label + '</div>' +
-      '<div class="modal-sub">' + appts.length + ' appointment' + (appts.length===1?'':'s') + ' \u00b7 ' + new Set(appts.map(a=>a.c.id)).size + ' leads</div>' +
+      '<div class="modal-sub">' + rows.length + ' lead' + (rows.length===1?'':'s') + ' \u00b7 one initial appt each</div>' +
       '<div style="max-height:70vh;overflow-y:auto;margin-top:8px;">' + body + '</div>');
     return;
   }
@@ -2519,10 +2507,13 @@ function drillDown(type) {
     );
   } else if (type === 'noshow') {
     title = 'No shows - ' + label;
-    leads = clients.filter(c =>
-      (c.cases||[]).filter(_ddOn).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&tp.outcome==='noshow'; })) ||
-      (c.call_log||[]).some(cl => { const t=new Date(cl.ts); return cl.outcome==='No show'&&t>=start&&t<=end; })
-    );
+    // Initial-only: leads whose case no-showed in period and never sat (a
+    // recovered no-show is a sit, not a no-show).
+    leads = clients.filter(c => (c.cases||[]).filter(_ddOn).some(cs => {
+      const tps = cs.touchpoints||[];
+      if (tps.some(t => t && ['sale','nosale','cont','dropped'].includes(t.outcome))) return false;
+      return tps.some(t => { const d=new Date(t.datetime); return t && t.outcome==='noshow' && d>=start && d<=end; });
+    }));
   } else if (type === 'sales') {
     title = 'Sales - ' + label;
     leads = clients.filter(c =>
