@@ -148,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h105</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h106</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -2388,6 +2388,11 @@ function showTab(t, btn) {
 
 function drillDown(type) {
   const {start, end, label} = getPeriodBounds('production');
+  // Every drill-down list is scoped to the board you're viewing, so the list
+  // always matches the tile that opened it (this is what makes 101 vs 112 and
+  // 35 vs 38 reconcile, and keeps retirement steps off the Life lists).
+  const _ddBoard = window._prodBoard || 'mp_life';
+  const _ddOn = cs => boardOf(cs) === _ddBoard;
   let leads = [];
   let title = '';
 
@@ -2403,7 +2408,7 @@ function drillDown(type) {
       noshow:'#BA7517', cancelled:'#8fa8c0', rescheduled:'#8fa8c0'};
     const appts = [];
     const nowMs = Date.now();
-    clients.forEach(c => (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+    clients.forEach(c => (c.cases||[]).filter(_ddOn).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
       if (!tp || !tp.datetime || tp.continues_appt) return;
       if (ARTIFACT.includes(tp.outcome)) return;
       const d = new Date(tp.datetime);
@@ -2450,7 +2455,7 @@ function drillDown(type) {
     // pending) — appt_datetime is mutable and gets cleared by follow-ups/outcomes.
     const apptTime = (c) => {
       let t = null;
-      (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+      (c.cases||[]).filter(_ddOn).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
         if (!tp || !tp.datetime) return;
         const d = new Date(tp.datetime);
         if (d >= start && d <= end && (!t || d < t)) t = d;
@@ -2466,7 +2471,7 @@ function drillDown(type) {
       // continuations included. Listed per appointment, like the Appts drill.
       const A = ['sale','nosale','cont','dropped'];
       const rows = [];
-      clients.forEach(c => (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+      clients.forEach(c => (c.cases||[]).filter(_ddOn).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
         if (!tp || !tp.datetime || tp.continues_appt) return;
         if (!A.includes(tp.outcome)) return;
         const d = new Date(tp.datetime);
@@ -2494,7 +2499,7 @@ function drillDown(type) {
     const nowMs = Date.now();
     const slot = (c) => {
       let t = null;
-      (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+      (c.cases||[]).filter(_ddOn).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
         if (!tp || !tp.datetime) return;
         if (tp.outcome && tp.outcome !== 'pending') return;
         const d = new Date(tp.datetime);
@@ -2510,34 +2515,34 @@ function drillDown(type) {
     title = 'Sits - ' + label;
     leads = clients.filter(c =>
       (c.sits||[]).some(s => { const d=new Date(s.datetime); return d>=start&&d<=end&&s.outcome==='showed'; }) ||
-      (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&(tp.outcome==='sale'||tp.outcome==='nosale'||tp.outcome==='cont'); }))
+      (c.cases||[]).filter(_ddOn).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&(tp.outcome==='sale'||tp.outcome==='nosale'||tp.outcome==='cont'); }))
     );
   } else if (type === 'noshow') {
     title = 'No shows - ' + label;
     leads = clients.filter(c =>
-      (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&tp.outcome==='noshow'; })) ||
+      (c.cases||[]).filter(_ddOn).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&tp.outcome==='noshow'; })) ||
       (c.call_log||[]).some(cl => { const t=new Date(cl.ts); return cl.outcome==='No show'&&t>=start&&t<=end; })
     );
   } else if (type === 'sales') {
     title = 'Sales - ' + label;
     leads = clients.filter(c =>
-      (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&tp.outcome==='sale'; }))
+      (c.cases||[]).filter(_ddOn).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&tp.outcome==='sale'; }))
     );
   } else if (type === 'nosales') {
     title = 'No sales - ' + label;
     leads = clients.filter(c =>
-      (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&tp.outcome==='nosale'; })) ||
+      (c.cases||[]).filter(_ddOn).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&tp.outcome==='nosale'; })) ||
       (c.sits||[]).some(s => { const d=new Date(s.datetime); return d>=start&&d<=end&&s.outcome==='showed'&&(s.apps||[]).length===0; })
     );
   } else if (type === 'cont') {
     title = 'Continuations - ' + label;
     leads = clients.filter(c =>
-      (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&tp.outcome==='cont'; }))
+      (c.cases||[]).filter(_ddOn).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&tp.outcome==='cont'; }))
     );
   } else if (type === 'ppu') {
     title = 'PPUs - ' + label;
     leads = clients.filter(c =>
-      (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&tp.type==='PPU / Policy Pickup'&&(tp.outcome==='sale'||tp.outcome==='nosale'); }))
+      (c.cases||[]).filter(_ddOn).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&tp.type==='PPU / Policy Pickup'&&(tp.outcome==='sale'||tp.outcome==='nosale'); }))
     );
   } else if (type === 'callbacks') {
     title = 'Callbacks - ' + label;
@@ -2554,10 +2559,10 @@ function drillDown(type) {
   } else if (type === 'resets') {
     title = 'Resets - ' + label;
     leads = clients.filter(c => {
-      const hasResetTp = (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => {
+      const hasResetTp = (c.cases||[]).filter(_ddOn).some(cs => (cs.touchpoints||[]).some(tp => {
         const d = new Date(tp.datetime); return d>=start&&d<=end&&(tp.resetSelf||tp.resetSME);
       }));
-      const hasResetCase = (c.cases||[]).some(cs => {
+      const hasResetCase = (c.cases||[]).filter(_ddOn).some(cs => {
         const n = cs.notes||'';
         if (!n.includes('Reset from') && !n.startsWith('Reset -')) return false;
         const d = new Date(cs.created||0);
