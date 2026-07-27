@@ -138,27 +138,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 @media(max-width:719px){.appt-sidebar{display:none!important;}.appt-banner{display:block;}#task-mobile-btn{display:block!important;}}
 .task-item{display:flex;align-items:flex-start;gap:6px;padding:6px 0;border-bottom:1px solid #f0f4f8;}
 .task-item:last-child{border-bottom:none;}
-/* Neutral base: even two-tone, both mid navy-slate and close in value so it's
-   calm structure - not a harsh dark/light checkerboard. Goal glow + alerts carry
-   the only real color. */
-.tile-a{background:#233F5E !important;border:1px solid #1B334E !important;}
-.tile-a .stat-lbl,.tile-a .stat-val,.tile-a .stat-sub{color:#ffffff !important;}
-.tile-b{background:#365679 !important;border:1px solid #2C486688 !important;}
-.tile-b .stat-lbl,.tile-b .stat-val,.tile-b .stat-sub{color:#ffffff !important;}
-.tile-slate{background:#E6EBF1 !important;border:1px solid #D2DBE6 !important;}
-.tile-slate .stat-lbl,.tile-slate .stat-val,.tile-slate .stat-sub{color:#1D3557 !important;}
-.tile-navy{background:#1D3557 !important;border:1px solid #1D3557 !important;}
-.tile-navy .stat-lbl,.tile-navy .stat-val,.tile-navy .stat-sub{color:#ffffff !important;}
-.tile-lblue{background:#EAF1F8 !important;border:1px solid #D3E0EE !important;}
-.tile-lblue .stat-lbl,.tile-lblue .stat-val,.tile-lblue .stat-sub{color:#1D3557 !important;}
-/* Goal glow: a tile with a goal takes the status color - red behind, yellow
-   getting there, green done. Each period, turn them all green. */
-.tile-goal-red{background:#C0392B !important;border:1px solid #A93226 !important;}
-.tile-goal-red .stat-lbl,.tile-goal-red .stat-val,.tile-goal-red .stat-sub{color:#ffffff !important;}
-.tile-goal-yellow{background:#E9B949 !important;border:1px solid #D4A72F !important;}
-.tile-goal-yellow .stat-lbl,.tile-goal-yellow .stat-val,.tile-goal-yellow .stat-sub{color:#1D3557 !important;}
-.tile-goal-green{background:#3E7D32 !important;border:1px solid #336528 !important;}
-.tile-goal-green .stat-lbl,.tile-goal-green .stat-val,.tile-goal-green .stat-sub{color:#ffffff !important;}
+/* THEME (h130): the board is driven by CSS variables so the theme picker can
+   retune it live. One base field + scoreboard goal colors. */
+:root{
+  --tile-base:#1C2733; --tile-text:#ffffff;
+  --goal-red:#D0342C;  --goal-red-text:#ffffff;
+  --goal-amber:#F28C28; --goal-amber-text:#1D2733;
+  --goal-green:#2FA84F; --goal-green-text:#ffffff;
+}
+.tile-base{background:var(--tile-base) !important;border:1px solid rgba(255,255,255,0.07) !important;}
+.tile-base .stat-lbl,.tile-base .stat-val,.tile-base .stat-sub{color:var(--tile-text) !important;}
+.tile-goal-red{background:var(--goal-red) !important;border:1px solid var(--goal-red) !important;}
+.tile-goal-red .stat-lbl,.tile-goal-red .stat-val,.tile-goal-red .stat-sub{color:var(--goal-red-text) !important;}
+.tile-goal-yellow{background:var(--goal-amber) !important;border:1px solid var(--goal-amber) !important;}
+.tile-goal-yellow .stat-lbl,.tile-goal-yellow .stat-val,.tile-goal-yellow .stat-sub{color:var(--goal-amber-text) !important;}
+.tile-goal-green{background:var(--goal-green) !important;border:1px solid var(--goal-green) !important;}
+.tile-goal-green .stat-lbl,.tile-goal-green .stat-val,.tile-goal-green .stat-sub{color:var(--goal-green-text) !important;}
 </style>
 </head>
 <body>
@@ -169,8 +164,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h129</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h130</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
+        <button onclick="openThemeSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;margin-left:4px;">Theme</button>
       </div>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
@@ -1878,7 +1874,8 @@ function renderScore() {
       noEl.style.color = '#5f7a99'; if (noLbl) noLbl.style.color = '#5f7a99';
     }
   }
-  applyNeutralPalette();   // calm slate base; alerts + goal glow carry color
+  applyTheme();            // push the agent's theme colors into CSS vars
+  applyNeutralPalette();   // theme-driven base field; alerts + goal glow carry color
   renderGoalZones({ dials: dials, appts_set: appts, sits: totalShowed, sales: totalSales, apps: appsWritten, resets: totalResets, apv: totalAPV });
   document.getElementById('p-closed').textContent = appsWritten;
   { const e=document.getElementById('p-close-rate'); if (e) e.textContent = ''; }   // per-sale removed; slot serves the Apps goal
@@ -9955,11 +9952,68 @@ function goalStatusColor(actual, target){
 }
 // One calm slate base for the score tiles. Alerts (Needs Outcome) keep their own
 // color; goal tiles get the glow. Run each render so freshly-shown tiles paint.
+// THEME ENGINE (h130): the board's colors are yours to tune. Presets give a fast
+// start; the color pickers retune live. Stored per agent.
+const THEME_PRESETS = {
+  scoreboard: { base:'#1C2733', red:'#D0342C', amber:'#F28C28', green:'#2FA84F' },
+  ink:        { base:'#23262C', red:'#E5484D', amber:'#FF8A3D', green:'#3DB06A' },
+  midnight:   { base:'#141E2E', red:'#E23B3B', amber:'#F2A03D', green:'#35B15A' },
+  navy:       { base:'#1D3557', red:'#C0392B', amber:'#E9B949', green:'#3E7D32' },
+  slate:      { base:'#E6EBF1', red:'#C0392B', amber:'#E9B949', green:'#3E7D32' },
+};
+const DEFAULT_THEME = Object.assign({ preset:'scoreboard' }, THEME_PRESETS.scoreboard);
+function getTheme(){ const t = getAgentSettings().theme; return (t && t.base) ? t : DEFAULT_THEME; }
+function _lum(hex){
+  const h = (hex||'').replace('#',''); if (h.length < 6) return 0.3;
+  const c = i => parseInt(h.slice(i,i+2),16)/255;
+  const f = v => v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4);
+  return 0.2126*f(c(0)) + 0.7152*f(c(2)) + 0.0722*f(c(4));
+}
+function textOn(hex){ return _lum(hex) > 0.45 ? '#1D2733' : '#ffffff'; }
+function applyTheme(){
+  const t = getTheme(); const r = document.documentElement.style;
+  r.setProperty('--tile-base', t.base);    r.setProperty('--tile-text', textOn(t.base));
+  r.setProperty('--goal-red', t.red);      r.setProperty('--goal-red-text', textOn(t.red));
+  r.setProperty('--goal-amber', t.amber);  r.setProperty('--goal-amber-text', textOn(t.amber));
+  r.setProperty('--goal-green', t.green);  r.setProperty('--goal-green-text', textOn(t.green));
+}
+async function setThemePreset(name){
+  const p = THEME_PRESETS[name]; if (!p) return;
+  const s = getAgentSettings(); s.theme = Object.assign({ preset:name }, p);
+  await saveAgentSettings(s); applyTheme(); renderScore(); openThemeSettings();
+}
+async function setThemeColor(key, val){
+  const s = getAgentSettings();
+  s.theme = Object.assign({}, getTheme(), { preset:'custom', [key]: val });
+  await saveAgentSettings(s); applyTheme(); renderScore();
+}
+function openThemeSettings(){
+  const t = getTheme();
+  const sw = (label,key,val) => '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid #eef2f7;">' +
+    '<span style="font-size:13px;color:#1D3557;">'+label+'</span>' +
+    '<input type="color" value="'+val+'" oninput="setThemeColor(\''+key+'\',this.value)" style="width:46px;height:30px;border:none;background:none;cursor:pointer;padding:0;"></div>';
+  const preset = (name,label) => '<button onclick="setThemePreset(\''+name+'\')" style="font-size:12px;font-weight:600;border:1px solid '+(t.preset===name?'#138181':'#dde7f0')+';background:'+(t.preset===name?'#E1F5EE':'#fff')+';color:#1D3557;border-radius:8px;padding:6px 11px;cursor:pointer;">'+label+'</button>';
+  showModal(
+    '<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">Board theme</div>' +
+    '<div class="modal-sub">Pick a preset or tune the colors - the board updates live.</div>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:6px;margin:12px 0;">' +
+      preset('scoreboard','Scoreboard') + preset('ink','Ink') + preset('midnight','Midnight') + preset('navy','Navy') + preset('slate','Slate') +
+    '</div>' +
+    sw('Base field','base',t.base) +
+    sw('Behind','red',t.red) +
+    sw('Getting there','amber',t.amber) +
+    sw('Done','green',t.green)
+  );
+}
+
+// One theme-driven base field for the score tiles. Alerts (Needs Outcome) keep
+// their own color; goal tiles get the glow.
 function applyNeutralPalette(){
   const tiles = [...document.querySelectorAll('.stat')].filter(el => !el.closest('#modal-ov') && el.id !== 'needsoutcome-tile');
-  tiles.forEach((el, i) => {
+  tiles.forEach(el => {
     el.classList.remove('tile-navy','tile-lblue','tile-slate','tile-a','tile-b','tile-goal-red','tile-goal-yellow','tile-goal-green');
-    el.classList.add(i % 2 === 0 ? 'tile-a' : 'tile-b');
+    el.classList.add('tile-base');
   });
 }
 
@@ -9973,7 +10027,7 @@ function renderGoalZones(vals){
     const slot = document.getElementById(m.slotId); if (!slot) return;
     const valEl = document.getElementById(m.valId);
     const tile = slot.closest('.stat');
-    const dark = tile ? !tile.classList.contains('tile-slate') : true;
+    const dark = _lum(getTheme().base) <= 0.45;
     const faint  = dark ? 'rgba(255,255,255,0.5)'  : 'rgba(29,53,87,0.5)';
     const bright = dark ? '#ffffff' : '#1D3557';
     const track  = dark ? 'rgba(255,255,255,0.22)' : 'rgba(29,53,87,0.14)';
@@ -9986,7 +10040,9 @@ function renderGoalZones(vals){
       const fillPct = target > 0 ? Math.min(100, (actual/target)*100) : 0;
       const st = goalStatusColor(actual, target);
       if (tile) { tile.classList.remove('tile-navy','tile-lblue','tile-slate','tile-a','tile-b'); tile.classList.add('tile-goal-'+st.state); }
-      const onLight = st.state === 'yellow';   // yellow tile is light; red/green are dark
+      const _th = getTheme();
+      const gc = st.state === 'green' ? _th.green : (st.state === 'red' ? _th.red : _th.amber);
+      const onLight = _lum(gc) > 0.45;   // is the goal color light? (amber usually is)
       const txt   = onLight ? '#1D3557' : '#ffffff';
       const soft  = onLight ? 'rgba(29,53,87,0.55)' : 'rgba(255,255,255,0.7)';
       const barFill = onLight ? '#1D3557' : 'rgba(255,255,255,0.92)';
