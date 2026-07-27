@@ -148,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h110</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h111</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -2535,14 +2535,8 @@ function drillDown(type) {
         const nxt = tps[i+1];
         const ty = (nxt && nxt.type) || tp.next_type || '';
         if (!_matchTy(ty)) return;
-        let fate;
-        if (!nxt || !nxt.datetime) fate = 'needs';
-        else if (nxt.outcome === 'sale') fate = 'sale';
-        else if (nxt.outcome === 'nosale') fate = 'nosale';
-        else if (nxt.outcome === 'cont') fate = 'motion';
-        else if (nxt.outcome === 'dropped') fate = 'dropped';
-        else if (nxt.outcome === 'noshow') fate = 'noshow';
-        else fate = (new Date(nxt.datetime).getTime() >= nowMs2) ? 'upcoming' : 'needs';
+        const r = resolveFollowup(tps, i, nowMs2);   // reads past a recovered no-show
+        const fate = r === 'cont' ? 'motion' : r;    // 'cont' shows as In motion
         rows.push({c, cs, contDt:d, nxt, fate});
       });
     }));
@@ -6444,6 +6438,35 @@ function boardOf(cs) { return (cs && cs.board) || 'mp_life'; }
 // the funnel: booked -> showed for the PPU call -> closed (sale/no-sale). Still
 // moving = shown-but-not-closed or upcoming; no-show / needs = leaks; dropped =
 // explicitly marked lost (before/after the call). Nothing auto-resolves.
+// Resolve the FATE of a follow-up appointment booked at touchpoint contIdx,
+// walking PAST any recovered no-show. A no-show is transient: if a later
+// touchpoint on the same case carries a real outcome (sale/nosale/cont/dropped),
+// the appointment ultimately produced that - so we read the outcome, not the
+// no-show. A no-show only stands as a no-show if nothing real came after it.
+// Returns one of: sale | nosale | cont | dropped | upcoming | needs | noshow.
+//   - first real outcome after the cont wins (skips intervening no-shows)
+//   - else a live future pending -> upcoming; a past-due pending -> needs
+//   - else a no-show with nothing after it -> noshow (a true no-show)
+//   - else booked but no follow-up logged at all -> needs (nag)
+function resolveFollowup(tps, contIdx, nowMs) {
+  let sawNoShow = false, livePending = false, pastPending = false, sawAny = false;
+  for (let j = contIdx + 1; j < tps.length; j++) {
+    const t = tps[j]; if (!t) continue;
+    sawAny = true;
+    const o = t.outcome;
+    if (o === 'sale' || o === 'nosale' || o === 'cont' || o === 'dropped') return o;
+    if (o === 'noshow') { sawNoShow = true; continue; }
+    // pending / no outcome yet
+    if (!t.datetime) continue;
+    const ms = new Date(t.datetime).getTime();
+    if (ms >= nowMs) livePending = true; else pastPending = true;
+  }
+  if (livePending) return 'upcoming';   // recovered into a live upcoming appt
+  if (pastPending) return 'needs';       // rebooked but now past due, owes an outcome
+  if (sawNoShow) return 'noshow';        // no-showed and nothing came after -> true no-show
+  return 'needs';                        // booked, no follow-up at all
+}
+
 function computePPUFunnel(pStart, pEnd, board) {
   const f = {booked:0, showed:0, sale:0, nosale:0, inMotion:0, noShow:0, upcoming:0, needs:0, dropped:0};
   const nowMs = Date.now();
@@ -6456,14 +6479,14 @@ function computePPUFunnel(pStart, pEnd, board) {
       const ty = (nxt && nxt.type) || tp.next_type || '';
       if (!/ppu|policy\s*pickup/i.test(ty)) return;
       f.booked++;
-      if (!nxt || !nxt.datetime) { f.needs++; return; }       // booked but no date -> nag
-      const o = nxt.outcome;
-      if (o === 'sale') { f.showed++; f.sale++; }
-      else if (o === 'nosale') { f.showed++; f.nosale++; }
-      else if (o === 'cont') { f.showed++; f.inMotion++; }    // showed, continued to put-it-together
-      else if (o === 'dropped') { f.dropped++; }
-      else if (o === 'noshow') { f.noShow++; }
-      else { (new Date(nxt.datetime).getTime() >= nowMs) ? f.upcoming++ : f.needs++; }
+      const r = resolveFollowup(tps, i, nowMs);   // reads past a recovered no-show
+      if (r === 'sale') { f.showed++; f.sale++; }
+      else if (r === 'nosale') { f.showed++; f.nosale++; }
+      else if (r === 'cont') { f.showed++; f.inMotion++; }   // showed, continued to put-it-together
+      else if (r === 'dropped') { f.dropped++; }
+      else if (r === 'noshow') { f.noShow++; }
+      else if (r === 'upcoming') { f.upcoming++; }
+      else { f.needs++; }
     });
   }));
   f.closed = f.sale + f.nosale;
