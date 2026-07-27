@@ -148,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h112</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h114</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -1830,10 +1830,17 @@ function renderScore() {
   // Continuations split into their own tiles. On the Life board a continuation
   // is only ever PPU or TAI; advance-market continuations live on the AM board
   // now that the classifier is board-scoped, so they never surface here.
+  // Sub-line = how many of the booked PPU/TAI reached a conclusion ("I'm done
+  // with this": sale, no sale, or - PPU only - dropped). Unresolved (in motion
+  // or ghosting) falls out by subtraction, so this reads as a worklist signal.
+  const _pfPPU = computePPUFunnel(pStart, pEnd, _pb);
+  const _pfTAI = computeTAIFunnel(pStart, pEnd, _pb);
+  const _resPPU = _pfPPU.sale + _pfPPU.nosale + _pfPPU.dropped;
+  const _resTAI = _pfTAI.sale + _pfTAI.nosale;
   { const e=document.getElementById('p-ppu'); if (e) e.textContent = contPPU; }
-  { const e=document.getElementById('p-ppu-sub'); if (e) e.textContent = totalShowed>0 ? pct(contPPU,totalShowed)+' of sits' : '-'; }
+  { const e=document.getElementById('p-ppu-sub'); if (e) e.textContent = contPPU>0 ? _resPPU+' resolved' : '-'; }
   { const e=document.getElementById('p-tai'); if (e) e.textContent = contTAI; }
-  { const e=document.getElementById('p-tai-sub'); if (e) e.textContent = totalShowed>0 ? pct(contTAI,totalShowed)+' of sits' : '-'; }
+  { const e=document.getElementById('p-tai-sub'); if (e) e.textContent = contTAI>0 ? _resTAI+' resolved' : '-'; }
   const ppuTile = document.getElementById('p-ppu-tile');
   if (ppuTile) ppuTile.title = 'PPU close rate ' + ppuCloseRate + ' (' + ppuSales + ' sold of ' + totalPPUs + ') vs ' + nonPPUCloseRate + ' without PPU';
   // PPU/TAI funnels now render inside their cards (drill-down), not on the board.
@@ -2364,6 +2371,45 @@ function showTab(t, btn) {
   timerUpdateStatusLabel();
 }
 
+// PPU ghost: ask WHERE we lost them (before vs after the carrier call), because
+// the whole point of Dropped is seeing which half of the PPU bleeds. Both are
+// pre-sale - a Dropped PPU is never a No Sale.
+function ghostDrop(id, ci) {
+  showModal('<button class="close-x" onclick="drillDown(\'ppu\')">x</button>' +
+    '<div class="modal-title">Where did you lose them?</div>' +
+    '<div class="modal-sub">Dropped PPU \u00b7 tag the stage</div>' +
+    '<button class="save-btn" style="background:#3C3489;margin-bottom:8px;" onclick="resolveGhost(\'' + id + '\',' + ci + ',\'dropped\',\'before\',\'ppu\')">Before the carrier call</button>' +
+    '<button class="save-btn" style="background:#534AB7;" onclick="resolveGhost(\'' + id + '\',' + ci + ',\'dropped\',\'after\',\'ppu\')">After the carrier call</button>');
+}
+
+// Manually give up on a stalled PPU (dropped) or TAI (no sale). Appends a
+// terminal touchpoint dated now (floating: it resolves in the period you decide),
+// marked continues_appt so it never distorts the initial-appt counts, and ghost
+// so it's traceable. Nothing auto-resolves - this only ever fires from a tap.
+async function resolveGhost(id, ci, outcome, stage, type) {
+  const c = clients.find(x => x.id === id); if (!c) return;
+  const cs = (c.cases || [])[ci]; if (!cs) return;
+  const nowIso = new Date().toISOString();
+  const tp = {
+    type: type === 'ppu' ? 'PPU / Policy Pickup' : 'Think about it',
+    datetime: nowIso, outcome, apps: [], created: nowIso,
+    continues_appt: true, ghost: true,
+    notes: outcome === 'dropped'
+      ? ('Dropped - ' + (stage === 'after' ? 'after' : 'before') + ' carrier call')
+      : 'Gave up - silent no sale'
+  };
+  if (outcome === 'dropped') tp.dropped_stage = (stage === 'after' ? 'after_call' : 'before_call');
+  const cases = JSON.parse(JSON.stringify(c.cases));
+  cases[ci].touchpoints = [...(cases[ci].touchpoints || []), tp];
+  cases[ci].status = 'Closed Lost';
+  showSync('Saving...');
+  await sb.from('clients').update({ cases }).eq('id', id);
+  Object.assign(c, { cases });
+  hideSync();
+  renderScore();
+  drillDown(type);   // refresh the card list in place
+}
+
 function drillDown(type) {
   const {start, end, label} = getPeriodBounds('production');
   // Every drill-down list is scoped to the board you're viewing, so the list
@@ -2505,7 +2551,8 @@ function drillDown(type) {
         if (!_matchTy(ty)) return;
         const r = resolveFollowup(tps, i, nowMs2);   // reads past a recovered no-show
         const fate = r === 'cont' ? 'motion' : r;    // 'cont' shows as In motion
-        rows.push({c, cs, contDt:d, nxt, fate});
+        const ci = (c.cases||[]).indexOf(cs);
+        rows.push({c, cs, ci, contDt:d, nxt, fate});
       });
     }));
     rows.sort((a,b) => a.contDt - b.contDt);
@@ -2524,12 +2571,25 @@ function drillDown(type) {
         ? '<div style="font-size:11px;color:#138181;font-weight:500;">' + apptDt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + apptDt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + '</div>'
         : '<div style="font-size:11px;color:#A32D2D;font-weight:600;">No date set</div>';
       const bookedLine = '<div style="font-size:10px;color:#8fa8c0;">Booked ' + a.contDt.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + '</div>';
+      // Stalled = needs an outcome or ghosted (no-show, never recovered). Only
+      // these can be "given up" - live/upcoming rows have no resolve button so
+      // you can't kill something still in play by accident.
+      const stalled = (a.fate === 'needs' || a.fate === 'noshow');
+      let resolveBtn = '';
+      if (stalled) {
+        resolveBtn = _isPPU
+          ? '<button onclick="event.stopPropagation();ghostDrop(\'' + a.c.id + '\',' + a.ci + ')" style="font-size:10px;background:#F4F1FA;border:1px solid #C4AAFF;border-radius:5px;padding:3px 9px;color:#3C3489;font-weight:600;cursor:pointer;white-space:nowrap;">Drop</button>'
+          : '<button onclick="event.stopPropagation();resolveGhost(\'' + a.c.id + '\',' + a.ci + ',\'nosale\',null,\'tai\')" style="font-size:10px;background:#FFF5F5;border:1px solid #F5A0A0;border-radius:5px;padding:3px 9px;color:#A32D2D;font-weight:600;cursor:pointer;white-space:nowrap;">Mark No Sale</button>';
+      }
       return '<div class="client-card" onclick="closeModal();setTimeout(()=>openClient(\'' + a.c.id + '\'),100)">' +
         '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">' +
           '<div><div class="client-name">' + esc(a.c.name||'Unknown') + '</div>' +
           '<div class="client-meta">' + esc(a.cs.type||'') + ' \u00b7 ' + _kind + '</div>' +
           dateLine + bookedLine + '</div>' +
-          '<span style="font-size:11px;font-weight:700;color:' + col + ';white-space:nowrap;">' + lbl + '</span>' +
+          '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">' +
+            '<span style="font-size:11px;font-weight:700;color:' + col + ';white-space:nowrap;">' + lbl + '</span>' +
+            resolveBtn +
+          '</div>' +
         '</div></div>';
     }).join('');
     const _fun = _isPPU ? computePPUFunnel(start, end, _ddBoard) : computeTAIFunnel(start, end, _ddBoard);
@@ -6439,7 +6499,7 @@ function resolveFollowup(tps, contIdx, nowMs) {
 }
 
 function computePPUFunnel(pStart, pEnd, board) {
-  const f = {booked:0, showed:0, sale:0, nosale:0, inMotion:0, noShow:0, upcoming:0, needs:0, dropped:0};
+  const f = {booked:0, showed:0, sale:0, nosale:0, inMotion:0, noShow:0, upcoming:0, needs:0, dropped:0, droppedBefore:0, droppedAfter:0};
   const nowMs = Date.now();
   clients.forEach(c => (c.cases||[]).filter(cs => boardOf(cs) === board).forEach(cs => {
     const tps = (cs.touchpoints||[]).slice().sort((a,b)=> new Date(a.datetime)-new Date(b.datetime));
@@ -6454,7 +6514,11 @@ function computePPUFunnel(pStart, pEnd, board) {
       if (r === 'sale') { f.showed++; f.sale++; }
       else if (r === 'nosale') { f.showed++; f.nosale++; }
       else if (r === 'cont') { f.showed++; f.inMotion++; }   // showed, continued to put-it-together
-      else if (r === 'dropped') { f.dropped++; }
+      else if (r === 'dropped') {
+        f.dropped++;
+        const dtp = tps.slice(i+1).find(t => t.outcome === 'dropped');
+        if (dtp && dtp.dropped_stage === 'after_call') f.droppedAfter++; else f.droppedBefore++;
+      }
       else if (r === 'noshow') { f.noShow++; }
       else if (r === 'upcoming') { f.upcoming++; }
       else { f.needs++; }
@@ -6512,7 +6576,10 @@ function renderFunnelHTML(f, kind) {
   const chip = (val, lbl, col) => val > 0 ? '<span style="font-size:11px;color:' + col + ';font-weight:600;white-space:nowrap;">' + val + ' ' + lbl + '</span>' : '';
   // Mutually-exclusive partition that sums to booked: sale + no sale + in motion + no-show (+ dropped for PPU)
   const parts = [chip(f.sale,'sale','#3B6D11'), chip(f.nosale,'no sale','#A32D2D'), chip(f.inMotionTotal,'in motion','#1D3557'), chip(f.noShow,'no-show','#BA7517')];
-  if (kind === 'PPU') parts.push(chip(f.dropped,'dropped','#3C3489'));
+  if (kind === 'PPU' && f.dropped > 0) {
+    const det = (f.droppedBefore||0) + ' before \u00b7 ' + (f.droppedAfter||0) + ' after';
+    parts.push('<span style="font-size:11px;color:#3C3489;font-weight:600;white-space:nowrap;">' + f.dropped + ' dropped <span style="color:#8f86c9;font-weight:500;">(' + det + ')</span></span>');
+  }
   const chips = parts.filter(Boolean).join('<span style="color:#c3d2e0;"> \u00b7 </span>');
   return '<div style="background:#fff;border:1px solid #dde7f0;border-radius:12px;padding:12px 14px;margin-bottom:10px;">' +
     '<div style="font-size:11px;font-weight:700;color:#138181;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">' + kind + ' funnel</div>' +
