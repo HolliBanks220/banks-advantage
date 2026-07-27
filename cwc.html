@@ -148,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h109</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h110</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -280,12 +280,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="stat-row">
       <div class="stat stat-navy-lt" id="p-ppu-tile">
         <div class="stat-lbl lbl-navy">PPU</div>
-        <div class="stat-val val-navy" id="p-ppu" style="cursor:pointer;" onclick="drillDown('cont')">0</div>
+        <div class="stat-val val-navy" id="p-ppu" style="cursor:pointer;" onclick="drillDown('ppu')">0</div>
         <div class="stat-sub sub-navy" id="p-ppu-sub">-</div>
       </div>
       <div class="stat stat-navy-lt" id="p-tai-tile">
         <div class="stat-lbl lbl-navy">TAI</div>
-        <div class="stat-val val-navy" id="p-tai" style="cursor:pointer;" onclick="drillDown('cont')">0</div>
+        <div class="stat-val val-navy" id="p-tai" style="cursor:pointer;" onclick="drillDown('tai')">0</div>
         <div class="stat-sub sub-navy" id="p-tai-sub">-</div>
       </div>
       <div class="stat" style="background:#F4F1FA;">
@@ -2515,11 +2515,66 @@ function drillDown(type) {
     leads = clients.filter(c =>
       (c.cases||[]).filter(_ddOn).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&tp.outcome==='cont'; }))
     );
-  } else if (type === 'ppu') {
-    title = 'PPUs - ' + label;
-    leads = clients.filter(c =>
-      (c.cases||[]).filter(_ddOn).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&tp.type==='PPU / Policy Pickup'&&(tp.outcome==='sale'||tp.outcome==='nosale'); }))
-    );
+  } else if (type === 'ppu' || type === 'tai') {
+    // ONE ROW PER CONTINUATION EVENT that booked a PPU (resp. TAI) this period -
+    // the EXACT set the tile + funnel count (cont touchpoint in period whose next
+    // touchpoint is PPU-typed / think-typed). Card count == tile count by
+    // construction. Each row carries the follow-up's current fate, so the card
+    // doubles as a mini worklist.
+    const _isPPU = type === 'ppu';
+    const _matchTy = ty => _isPPU ? /ppu|policy\s*pickup/i.test(ty) : /think/i.test(ty);
+    const nowMs2 = Date.now();
+    const LBL = {sale:'Showed \u00b7 Sale', nosale:'Showed \u00b7 No sale', motion:'In motion', dropped:'Dropped', noshow:'No show', upcoming:'Upcoming', needs:'Needs an outcome'};
+    const COL = {sale:'#3B6D11', nosale:'#A32D2D', motion:'#1D3557', dropped:'#3C3489', noshow:'#BA7517', upcoming:'#1D3557', needs:'#A32D2D'};
+    const rows = [];
+    clients.forEach(c => (c.cases||[]).filter(_ddOn).forEach(cs => {
+      const tps = (cs.touchpoints||[]).slice().sort((a,b)=> new Date(a.datetime)-new Date(b.datetime));
+      tps.forEach((tp,i) => {
+        if (tp.outcome !== 'cont' || !tp.datetime) return;
+        const d = new Date(tp.datetime); if (d < start || d > end) return;
+        const nxt = tps[i+1];
+        const ty = (nxt && nxt.type) || tp.next_type || '';
+        if (!_matchTy(ty)) return;
+        let fate;
+        if (!nxt || !nxt.datetime) fate = 'needs';
+        else if (nxt.outcome === 'sale') fate = 'sale';
+        else if (nxt.outcome === 'nosale') fate = 'nosale';
+        else if (nxt.outcome === 'cont') fate = 'motion';
+        else if (nxt.outcome === 'dropped') fate = 'dropped';
+        else if (nxt.outcome === 'noshow') fate = 'noshow';
+        else fate = (new Date(nxt.datetime).getTime() >= nowMs2) ? 'upcoming' : 'needs';
+        rows.push({c, cs, contDt:d, nxt, fate});
+      });
+    }));
+    rows.sort((a,b) => a.contDt - b.contDt);
+    const _kind = _isPPU ? 'PPU' : 'TAI';
+    if (!rows.length) {
+      showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+        '<div class="modal-title">' + _kind + ' - ' + label + '</div>' +
+        '<div style="font-size:13px;color:#a0b8cc;padding:1rem 0;">None for this period.</div>');
+      return;
+    }
+    const body = rows.map(a => {
+      const lbl = LBL[a.fate] || a.fate;
+      const col = COL[a.fate] || '#5f7a99';
+      const apptDt = (a.nxt && a.nxt.datetime) ? new Date(a.nxt.datetime) : null;
+      const dateLine = apptDt
+        ? '<div style="font-size:11px;color:#138181;font-weight:500;">' + apptDt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + apptDt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + '</div>'
+        : '<div style="font-size:11px;color:#A32D2D;font-weight:600;">No date set</div>';
+      const bookedLine = '<div style="font-size:10px;color:#8fa8c0;">Booked ' + a.contDt.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + '</div>';
+      return '<div class="client-card" onclick="closeModal();setTimeout(()=>openClient(\'' + a.c.id + '\'),100)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">' +
+          '<div><div class="client-name">' + esc(a.c.name||'Unknown') + '</div>' +
+          '<div class="client-meta">' + esc(a.cs.type||'') + ' \u00b7 ' + _kind + '</div>' +
+          dateLine + bookedLine + '</div>' +
+          '<span style="font-size:11px;font-weight:700;color:' + col + ';white-space:nowrap;">' + lbl + '</span>' +
+        '</div></div>';
+    }).join('');
+    showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+      '<div class="modal-title">' + _kind + ' - ' + label + '</div>' +
+      '<div class="modal-sub">' + rows.length + ' ' + _kind + (rows.length===1?'':'s') + ' \u00b7 one per continuation booked</div>' +
+      '<div style="max-height:70vh;overflow-y:auto;margin-top:8px;">' + body + '</div>');
+    return;
   } else if (type === 'callbacks') {
     title = 'Callbacks - ' + label;
     leads = clients.filter(c =>
