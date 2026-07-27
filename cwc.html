@@ -148,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h117</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h118</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
       </div>
     </div>
@@ -652,10 +652,10 @@ window._lastInteraction = Date.now();
         const cardOpen = !!document.querySelector('#modal-ov .modal') && window._openClientId;
         if (cardOpen) {
           const c = clients.find(x => x.id === window._openClientId);
-          timerStart(c && hasApptContext(c) ? 'appt' : (inLeads ? 'dial' : 'admin'));
-          timerUpdateStatusLabel();
-        } else if (inLeads && window._dialArmed) {
-          timerStart('dial');
+          if (c && hasApptContext(c)) timerStart('appt');
+          else if (c && inLeads && dialEligible(c)) timerStart('dial');
+          else if (!inLeads) timerStart('admin');
+          // on Leads tab + not dial-eligible: leave the clock stopped
           timerUpdateStatusLabel();
         }
       }
@@ -4294,6 +4294,17 @@ function hasApptContext(c) {
     tp && tp.outcome === 'pending' && tp.datetime && !isGhostPending(cs.touchpoints, tp)
   ));
 }
+// A lead you'd actually be COLD-DIALING: no live appointment (that's appt time),
+// not resolved (Closed/Dead/No sale - done), and not a scheduled callback (that's
+// a follow-up, not a cold dial). A no-show IS dial-eligible - you're re-dialing it.
+// Drives whether the dial clock runs while its card is open.
+function dialEligible(c) {
+  if (!c) return false;
+  if (hasApptContext(c)) return false;
+  if (['Closed','Dead','No sale'].includes(c.status)) return false;
+  if (getScheduledCallback(c)) return false;
+  return true;
+}
 function isApptImminent(c) {
   if (c.status !== 'Appointment set') return false;
   const now = new Date();
@@ -5412,12 +5423,10 @@ function closeModal() {
   commitPendingDial(); // don't lose an armed dial when closing without an outcome
   const m=document.getElementById('modal-ov'); if(m) m.remove();
   window._openClientId = null;
-  const act = window._timer && window._timer.activity;
-  if (act === 'appt' || act === 'admin') {
-    const inLeads = document.getElementById('tab-clients') && document.getElementById('tab-clients').style.display !== 'none';
-    if (inLeads) timerStart('dial'); else timerStop();
-    timerUpdateStatusLabel();
-  }
+  // No card open = no clock. Save/Next re-opens the next lead and restarts the
+  // right clock seamlessly; a plain close just stops (no tab-session accrual).
+  timerStop();
+  timerUpdateStatusLabel();
 }
 
 //  OPEN CLIENT 
@@ -5428,18 +5437,19 @@ function openClient(id, keepDialCount) {
   const c = clients.find(x => x.id === id);
   if (!c) return;
   if (!keepDialCount) { window._dialCount = 1; window._dialCountSet = false; }
-  // h98: appt mode for ANY client with a live (non-ghost) pending appointment —
-  // upcoming or current — so prep time counts as appt time. Guarded by
-  // isGhostPending (inside hasApptContext) so a stale/superseded appt can't
-  // hijack the clock; opening a no-appt lead below still self-heals to dial.
+  // Appt time for any live-appointment lead (prep or running it) until an outcome
+  // is logged. Dial time ONLY while a genuinely dial-eligible card is open. A
+  // callback/resolved lead stops the clock - you're not cold-dialing it. Off the
+  // Leads tab, that's admin time.
+  const inLeadsTab = document.getElementById('tab-clients').style.display !== 'none';
   if (hasApptContext(c)) {
     timerStart('appt');
+  } else if (!inLeadsTab) {
+    timerStart('admin');
+  } else if (dialEligible(c)) {
+    timerStart('dial');
   } else {
-    // On the Leads tab, dial is the default everything returns to — opening any
-    // regular lead self-heals a stuck appt/admin clock.
-    const inLeadsTab = document.getElementById('tab-clients').style.display !== 'none';
-    if (inLeadsTab) window._dialArmed = true; // idle-resume stays in dial until tab exit
-    timerStart(inLeadsTab ? 'dial' : 'admin');
+    timerStop();   // on Leads tab but not dial-eligible (callback/resolved) -> no clock
   }
   const sits = c.sits || [];
   const callLog = c.call_log || [];
