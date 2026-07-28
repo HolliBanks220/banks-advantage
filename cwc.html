@@ -275,7 +275,7 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h139</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h140</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
         <button onclick="openThemeSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;margin-left:4px;">Theme</button>
       </div>
@@ -5735,7 +5735,7 @@ function openClient(id, keepDialCount) {
     <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:5px;">
       <div style="width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0;background:${cl.outcome==='Appt set'?'#138181':cl.outcome==='No show'?'#E24B4A':cl.outcome==='Not interested'?'#E24B4A':cl.outcome==='Cancelled'?'#E24B4A':cl.outcome==='Pushed off'?'#8fa8c0':cl.outcome==='Callback'?'#BA7517':'#1D3557'};"></div>
       <div style="flex:1;">
-        <div style="font-size:12px;color:#1a2e44;font-weight:500;">${cl.outcome}${cl.dials>1?' <span style="font-size:10px;color:#5f7a99;">('+cl.dials+'x dialed)</span>':''}</div>
+        <div style="font-size:12px;color:#1a2e44;font-weight:500;">${Number(cl.dials)>0?`<span style="font-size:11px;font-weight:700;color:#0E6363;">${cl.dials}x</span> `:''}${cl.outcome}</div>
         ${apptOf(cl)?`<div style="font-size:11px;font-weight:600;color:#138181;">${new Date(apptOf(cl)).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(apptOf(cl)).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>`:''}
         ${apptNotesOf(cl)?`<div style="font-size:10px;color:#5f7a99;font-style:italic;">${esc(apptNotesOf(cl))}</div>`:''}
         ${detail?`<div style="font-size:11px;color:#1D3557;">${esc(detail)}</div>`:''}
@@ -5877,7 +5877,7 @@ function openClient(id, keepDialCount) {
     ${[1,2,3].map(n=>`<button class="dial-cnt-btn${(window._dialCount||1)===n?' on':''}" id="dcb-${n}" onclick="setDialCount(${n})">${n}x</button>`).join('')}
   </div>
   <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;">
-    <button class="call-btn cb-navy" onclick="quickLog('${id}','No answer','dials')">No answer</button>${isReadyForText(c)?`<button class="call-btn" style="background:#1D3557;color:#fff;border:2px solid #138181;" onclick="quickLogAndText('${id}')">No answer + 📱</button>`:''}
+    <button class="call-btn cb-navy" onclick="quickLog('${id}','No answer','dials')">No answer</button>${isReadyForText(c)?`<button class="call-btn" style="background:#1D3557;color:#fff;border:2px solid #138181;" onclick="quickLogAndText('${id}')">No answer + 📱</button>`:''}<button class="call-btn" style="background:none;border:1px solid #9FE1CB;color:#0E6363;" onclick="openTextModal('${id}')" title="Text without logging a dial">&#128241; Text only</button>
     <button class="call-btn cb-green" onclick="openApptSet('${id}')">Appt set</button>
     ${hasSold(c)
       ? `<button class="call-btn" style="background:#534AB7;color:#fff;" onclick="openFollowUpPicker('${id}')">Follow-up</button>`
