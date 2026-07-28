@@ -141,11 +141,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 /* THEME (h130): the board is driven by CSS variables so the theme picker can
    retune it live. One base field + scoreboard goal colors. */
 :root{
-  --tile-base:#15191F; --tile-base2:#242B35; --tile-text:#E7ECF3;
-  --goal-red:#E5484D;  --goal-red-text:#ffffff;
-  --goal-amber:#F2C94C; --goal-amber-text:#1D2733;
-  --goal-green:#35B15A; --goal-green-text:#ffffff;
-  --dk-bg:#0E1116; --dk-card:#1A1F27; --dk-ink:#E7ECF3; --dk-dim:#9BA8B8; --dk-line:rgba(255,255,255,0.09); --teal:#1BA39C;
+  --tile-base:#1E222A; --tile-base2:#282E38; --tile-text:#D9DEE6;
+  --goal-red:#D9534F;  --goal-red-text:#ffffff;
+  --goal-amber:#EBC44C; --goal-amber-text:#20242B;
+  --goal-green:#4CA362; --goal-green-text:#ffffff;
+  --dk-bg:#191C22; --dk-card:#232830; --dk-ink:#D7DCE3; --dk-dim:#8B95A3; --dk-line:rgba(255,255,255,0.09); --teal:#1BA39C;
 }
 .tile-base{background:var(--tile-base) !important;border:1px solid rgba(255,255,255,0.06) !important;}
 .tile-base2{background:var(--tile-base2) !important;border:1px solid rgba(255,255,255,0.05) !important;}
@@ -180,6 +180,17 @@ body{background:var(--dk-bg) !important;color:var(--dk-ink) !important;}
 /* broad catch for the many inline light surfaces + navy text */
 [style*="background:#fff"],[style*="background: #fff"],[style*="background:#ffffff"],[style*="background:#f7fafd"],[style*="background:#F7FAFD"],[style*="background:#F4F6F8"],[style*="background:#F4F1FA"]{background:var(--dk-card) !important;}
 [style*="color:#1D3557"],[style*="color:#1d3557"],[style*="color:#1a2e44"]{color:var(--dk-ink) !important;}
+/* ---- h132 POLISH ---- */
+/* navy + pale-blue surfaces that the first sweep missed */
+[style*="background:#1D3557"],[style*="background:#1d3557"],[style*="background:#e8eef5"],[style*="background:#E6F1FB"],[style*="background:#EBF3FF"],[style*="background:#EAF1FB"],[style*="background:#f5f8fb"],[style*="background:#EBF0F6"],[style*="background:#f0f4f8"],[style*="background:#f8fafc"],[style*="background:#e2eaf2"],[style*="background:#c0cdd8"]{background:var(--dk-card) !important;}
+/* form fields: dark so light text is visible */
+input,select,textarea{background:#20242C !important;color:var(--dk-ink) !important;border-color:rgba(255,255,255,0.16) !important;}
+input::placeholder,textarea::placeholder{color:#7E8896 !important;}
+select option{background:#20242C;color:var(--dk-ink);}
+/* even sidebar - Upcoming fills the column like Tasks */
+.right-sidebar-col .appt-sidebar{width:100% !important;}
+/* Lead Comparison stops fighting - MIA/CIA go dark like everything else */
+#lead-compare > div{background:var(--dk-card) !important;border:1px solid var(--dk-line) !important;}
 </style>
 </head>
 <body>
@@ -190,7 +201,7 @@ body{background:var(--dk-bg) !important;color:var(--dk-ink) !important;}
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h131</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h133</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
         <button onclick="openThemeSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;margin-left:4px;">Theme</button>
       </div>
@@ -395,7 +406,7 @@ body{background:var(--dk-bg) !important;color:var(--dk-ink) !important;}
       <div class="section-lbl" style="margin:0;">Lead source comparison</div>
       <div style="font-size:9px;color:#a0b8cc;" id="source-period-label"></div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+    <div id="lead-compare" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
       <div style="background:#1D3557;border-radius:10px;padding:10px 12px;">
         <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;">MIA</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">Leads assigned</div>
@@ -1500,9 +1511,9 @@ function updateProdBoardToggle() {
   const life = document.getElementById('pbt-mp_life');
   const am = document.getElementById('pbt-advanced_market');
   if (life) { const on = pb === 'mp_life';
-    life.style.background = on ? '#1D3557' : '#e8eef5'; life.style.color = on ? '#fff' : '#5f7a99'; }
+    life.style.background = on ? 'var(--teal)' : '#2A2F38'; life.style.color = on ? '#fff' : '#9BA8B8'; }
   if (am) { const on = pb === 'advanced_market';
-    am.style.background = on ? '#138181' : '#e8eef5'; am.style.color = on ? '#fff' : '#5f7a99'; }
+    am.style.background = on ? 'var(--teal)' : '#2A2F38'; am.style.color = on ? '#fff' : '#9BA8B8'; }
 }
 
 function renderScore() {
@@ -1866,7 +1877,7 @@ function renderScore() {
   const drEl = document.getElementById('p-dropped');
   if (drEl) drEl.textContent = totalDropped;
   const drSub = document.getElementById('p-dropped-sub');
-  if (drSub) drSub.textContent = totalShowed>0 ? pct(totalDropped,totalShowed)+' of sits' : '-';
+  if (drSub) drSub.textContent = '';   // "% of sits" removed - noise on Dropped
   // Continuations split into their own tiles. On the Life board a continuation
   // is only ever PPU or TAI; advance-market continuations live on the AM board
   // now that the classifier is board-scoped, so they never surface here.
@@ -9981,7 +9992,7 @@ function goalStatusColor(actual, target){
 // THEME ENGINE (h130): the board's colors are yours to tune. Presets give a fast
 // start; the color pickers retune live. Stored per agent.
 const THEME_PRESETS = {
-  midnight:   { base:'#15191F', red:'#E5484D', amber:'#F2C94C', green:'#35B15A' },
+  midnight:   { base:'#1E222A', red:'#D9534F', amber:'#EBC44C', green:'#4CA362' },
   ink:        { base:'#23262C', red:'#E5484D', amber:'#F6D34E', green:'#3DB06A' },
   scoreboard: { base:'#1C2733', red:'#D0342C', amber:'#F28C28', green:'#2FA84F' },
   navy:       { base:'#1D3557', red:'#C0392B', amber:'#F2C94C', green:'#3E7D32' },
@@ -10007,7 +10018,7 @@ function _shift(hex, amt){
 }
 function applyTheme(){
   const t = getTheme(); const r = document.documentElement.style;
-  r.setProperty('--tile-base', t.base);    r.setProperty('--tile-base2', _shift(t.base, 0.05));  r.setProperty('--tile-text', textOn(t.base));
+  r.setProperty('--tile-base', t.base);    r.setProperty('--tile-base2', _shift(t.base, 0.05));  r.setProperty('--tile-text', _lum(t.base) > 0.45 ? '#1D2733' : '#D9DEE6');
   r.setProperty('--goal-red', t.red);      r.setProperty('--goal-red-text', textOn(t.red));
   r.setProperty('--goal-amber', t.amber);  r.setProperty('--goal-amber-text', textOn(t.amber));
   r.setProperty('--goal-green', t.green);  r.setProperty('--goal-green-text', textOn(t.green));
