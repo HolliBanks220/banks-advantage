@@ -265,22 +265,72 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
 
 /* -- 3. Hard floor: cards and their text never go dark, whatever the theme picker does. */
 .client-card,.sit-card,.appt-sidebar,.modal{background:var(--dk-card) !important;color:var(--dk-ink) !important;}
+
+/* ================= h141 BOARD CLEANUP - keep this block last ================= */
+
+/* HEADER: give the right side room, stop the date wrapping, park the build tag. */
+.hdr{display:flex !important;align-items:flex-start !important;justify-content:space-between !important;gap:20px !important;padding:12px 16px !important;}
+.hdr-left{min-width:0;flex:1;}
+.hdr-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hdr-sub{white-space:nowrap !important;}          /* "Tue, Jul 28" on ONE line */
+.hdr-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;padding-right:2px;}
+.hdr-right .nav-row{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;}
+.build-tag{font-size:8px;color:rgba(255,255,255,0.35);letter-spacing:0.5px;font-family:monospace;}
+.gear-btn{font-size:13px;line-height:1;background:rgba(255,255,255,0.15);border:none;border-radius:8px;
+  padding:4px 8px;color:rgba(255,255,255,0.85);cursor:pointer;}
+.gear-btn:hover{background:rgba(255,255,255,0.28);}
+
+/* TABS: the one you're on is a filled teal pill, not a hairline underline. */
+.tab-bar{gap:4px !important;padding:4px !important;border-bottom:none !important;}
+.tab{border-radius:8px !important;padding:7px 14px !important;border-bottom:none !important;font-weight:600 !important;}
+.tab.on{background:var(--teal) !important;color:#fff !important;border-bottom:none !important;}
+.tab:not(.on):hover{background:rgba(0,0,0,0.05) !important;}
+
+/* BEHIND PACE: an alert should read as one. White on solid red. */
+#pace-banner,.pace-banner{background:#C0392B !important;border:1px solid #C0392B !important;color:#fff !important;font-weight:600 !important;}
+#pace-banner *,.pace-banner *{color:#fff !important;}
+#pace-banner a,.pace-banner a,#pace-banner u,.pace-banner u{color:#fff !important;text-decoration:underline !important;}
+
+/* TILES
+   Fill means ONE thing: goal status (red behind / amber close / green hit).
+   Nothing else on a tile is allowed to be a fill, or the board stops being
+   glanceable. The three teal tiles were legacy .stat-navy markup a sweep
+   repainted - nobody chose them. */
+.stat.stat-navy,.stat.stat-navy-lt,.stat.stat-teal,.stat.stat-purple,
+.stat.stat-gold,.stat.stat-amber,.stat.stat-green,.stat.stat-red{
+  background:var(--tile-base) !important;border-color:rgba(0,0,0,0.08) !important;
+}
+.stat.stat-navy .stat-lbl,.stat.stat-navy .stat-val,.stat.stat-navy .stat-sub,
+.stat.stat-teal .stat-lbl,.stat.stat-teal .stat-val,.stat.stat-teal .stat-sub,
+.stat.stat-navy-lt .stat-lbl,.stat.stat-navy-lt .stat-val,.stat.stat-navy-lt .stat-sub{
+  color:#1D2733 !important;
+}
+/* the alternating pair, with a real gap between them so it reads as depth */
+.stat.tile-base{background:var(--tile-base) !important;}
+.stat.tile-base2{background:var(--tile-base2) !important;}
+
+/* GOAL-SETTABLE: a thin teal left edge. Findable when you scan for it,
+   invisible when you're reading numbers. Never a fill. */
+.stat.goal-able{border-left:3px solid var(--teal) !important;}
+/* once a goal is actually set the status fill takes over and owns the tile */
+.stat.tile-goal-red,.stat.tile-goal-yellow,.stat.tile-goal-green{border-left-color:transparent !important;}
 </style>
 </head>
 <body>
 <div class="page-layout">
 <div class="page-outer"><div class="wrap app-main" id="app">
   <div class="hdr">
-    <div>
-      <div class="hdr-title">Banks Advantage - CWC</div>
+    <div class="hdr-left">
+      <div class="hdr-title" id="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h140</div>
-        <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
-        <button onclick="openThemeSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;margin-left:4px;">Theme</button>
-      </div>
+        </div>
     </div>
-    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+    <div class="hdr-right">
+      <div class="nav-row" style="justify-content:flex-end;">
+        <span class="build-tag" id="build-tag" title="build">b715h141</span>
+        <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
+      </div>
       <div class="nav-row">
         <button class="pill on" onclick="setView('day',this)">Day</button>
         <button class="pill" onclick="setView('week',this)">Week</button>
@@ -4944,7 +4994,7 @@ function renderAlerts() {
     const color = overdue > 0 ? '#A32D2D' : behindNow > 0 ? '#854F0B' : '#1D3557';
     const bg = overdue > 0 ? '#FFF5F5' : behindNow > 0 ? '#FFF6E8' : '#EBF3FF';
     const border = overdue > 0 ? '#F5A0A0' : behindNow > 0 ? '#F0C888' : '#B3D1F7';
-    html = '<div onclick="setFilterAlert(\'active\')" style="background:' + bg + ';border:1px solid ' + border + ';border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:600;color:' + color + ';">' + parts.join(' &middot; ') + '</div>';
+    html = '<div class="pace-banner' + (alert ? ' pace-alert' : '') + '" onclick="setFilterAlert(\'active\')" style="background:' + bg + ';border:1px solid ' + border + ';border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:600;color:' + color + ';">' + parts.join(' &middot; ') + '</div>';
   }
 
   el.innerHTML = html;
@@ -10410,10 +10460,15 @@ function migrateThemeH135(){
     saveAgentSettings(s);
   } catch(e) { /* never block a render on this */ }
 }
+function applyBoardName(){
+  const el = document.getElementById('hdr-title');
+  if (el) el.textContent = getAgentSettings().agencyName || 'Banks Advantage - CWC';
+}
 function applyTheme(){
   migrateThemeH135();
+  applyBoardName();
   const t = getTheme(); const r = document.documentElement.style;
-  r.setProperty('--tile-base', t.base);    r.setProperty('--tile-base2', _shift(t.base, 0.05));  r.setProperty('--tile-text', _lum(t.base) > 0.45 ? '#1D2733' : '#D9DEE6');
+  r.setProperty('--tile-base', t.base);    r.setProperty('--tile-base2', _shift(t.base, 0.10));   // h141: 0.05 was too subtle to see  r.setProperty('--tile-text', _lum(t.base) > 0.45 ? '#1D2733' : '#D9DEE6');
   // --dk-card / --dk-ink are deliberately NOT theme-driven (h135). The app chrome
   // (lead cards, sidebar, modals) is a fixed light-gray/near-black baseline; the
   // theme picker retints the SCORE TILES and goal colors only. This is what makes
@@ -10457,8 +10512,14 @@ function openThemeSettings(){
 function applyNeutralPalette(){
   const tiles = [...document.querySelectorAll('.stat')].filter(el => !el.closest('#modal-ov') && el.id !== 'needsoutcome-tile');
   tiles.forEach((el, i) => {
-    el.classList.remove('tile-navy','tile-lblue','tile-slate','tile-a','tile-b','tile-base','tile-base2','tile-goal-red','tile-goal-yellow','tile-goal-green');
+    el.classList.remove('tile-navy','tile-lblue','tile-slate','tile-a','tile-b','tile-base','tile-base2','tile-goal-red','tile-goal-yellow','tile-goal-green','goal-able');
     el.classList.add(i % 2 === 0 ? 'tile-base' : 'tile-base2');
+    // h141: a thin teal left edge marks "you can set a goal here". Never a fill -
+    // fill is reserved for goal STATUS so the board stays glanceable.
+    try {
+      if (GOAL_TILES.some(g => { const sl = document.getElementById(g.slotId); return sl && sl.closest('.stat') === el; }))
+        el.classList.add('goal-able');
+    } catch(e) {}
   });
 }
 
@@ -10868,8 +10929,23 @@ function openSettings() {
     '<div class="modal-title">⚙️ Settings</div>' +
 
     '<div style="background:#f0f4f8;border-radius:10px;padding:12px;margin-bottom:12px;">' +
+      '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Board theme</div>' +
+      '<div style="font-size:11px;color:#5f7a99;margin-bottom:8px;">Presets still need a proper pass - these are the old ones.</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:6px;">' +
+        ['light','slate','midnight','scoreboard','navy'].map(function(nm){
+          var t = getTheme();
+          return '<button onclick="setThemePreset(\'' + nm + '\')" style="font-size:12px;font-weight:600;border:1px solid ' +
+            (t.preset===nm?'#138181':'#dde7f0') + ';background:' + (t.preset===nm?'#E1F5EE':'#fff') +
+            ';color:#1D3557;border-radius:8px;padding:6px 11px;cursor:pointer;">' + nm.charAt(0).toUpperCase()+nm.slice(1) + '</button>';
+        }).join('') +
+      '</div>' +
+    '</div>' +
+
+    '<div style="background:#f0f4f8;border-radius:10px;padding:12px;margin-bottom:12px;">' +
       '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Profile</div>' +
       '<div class="field"><label>Name</label><input type="text" id="s-name" value="' + (settings.agentName||'Holli Banks') + '" style="font-size:14px;"></div>' +
+      '<div class="field"><label>Board name <span style="font-weight:400;color:#8A94A2;">(shown in the header)</span></label>' +
+        '<input type="text" id="s-agency" value="' + escAttr(settings.agencyName || 'Banks Advantage - CWC') + '" style="font-size:14px;"></div>' +
       '<div class="field"><label>Contract level</label>' +
         '<select id="s-level" style="font-size:16px;width:100%;border:1px solid #d0dcea;border-radius:8px;padding:8px;">' +
           levels.map(l => '<option value="' + l + '"' + (l===level?' selected':'') + '>' + l + '%' + (BONUS_THRESHOLDS[l] ? ' — Bonus qualifier: $' + BONUS_THRESHOLDS[l].toLocaleString() : ' — Below bonus level') + '</option>').join('') +
@@ -10959,6 +11035,8 @@ function openSettings() {
 function saveProfileSettings() {
   const settings = getAgentSettings();
   settings.agentName = document.getElementById('s-name').value.trim();
+  { const _ag = document.getElementById('s-agency');
+    if (_ag) settings.agencyName = _ag.value.trim() || 'Banks Advantage - CWC'; }
   settings.contractLevel = parseInt(document.getElementById('s-level').value);
   const dm = document.getElementById('s-appt-mins');
   if (dm) settings.defaultApptMins = parseInt(dm.value) || 40;
