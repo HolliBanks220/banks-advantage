@@ -275,7 +275,7 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h136</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h137</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
         <button onclick="openThemeSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;margin-left:4px;">Theme</button>
       </div>
@@ -1165,6 +1165,16 @@ function showStatWarning(key) {
 // yet committed. Outcome buttons commit it; navigating away used to drop it.
 // This commits any armed-but-uncommitted dial exactly once. Clearing the flag
 // FIRST (before any await) guarantees no double-count.
+// h137: ONE ATTEMPT = ONE LOG LINE, carrying the dials it took.
+// Whoever writes that line SPENDS the armed dial count and must disarm it, or
+// commitPendingDial fires again afterwards and invents a second "No answer" -
+// a second attempt the lead never earned, which costs it a rung on the queue.
+// Call this the moment a writer has captured dialCount into a local.
+function disarmDial() {
+  window._dialCount = 1;
+  window._dialCountSet = false;
+}
+
 async function commitPendingDial() {
   if (!window._dialCountSet) return;
   const dialCount = window._dialCount || 1;
@@ -5349,7 +5359,8 @@ async function cancelAppt(id) {
   // (If they're rebooking, that's a reschedule - it just moves the appointment.)
   const afterOptions = confirm(c.name + ' cancelled.\n\nHad you already shown them options?\n\nOK = yes \u2014 logs a No sale.\nCancel = no \u2014 logs a Dropped.');
   const ts = new Date().toISOString();
-  c.call_log = [...(c.call_log||[]), {ts, outcome:'Cancelled', dials:window._dialCount||1}];
+  const _cancelDials = window._dialCount || 1; disarmDial();   // h137: spent here
+  c.call_log = [...(c.call_log||[]), {ts, outcome:'Cancelled', dials:_cancelDials}];
   const verdict = afterOptions ? 'nosale' : 'dropped';
   const now = Date.now();
   (c.cases||[]).forEach(cs => {
@@ -5611,20 +5622,44 @@ function renderClients(q='') {
 }
 
 //  MODAL 
-function showModal(html) {
-  closeModal();
+// Sugar so every picker opened from a lead card declares where to go back to.
+function showSubModal(returnTo, html) {
+  return showModal(html, {transition:true, returnTo:returnTo});
+}
+function showModal(html, opts) {
+  closeModal(opts);
   const ov = document.createElement('div'); ov.className='modal-overlay'; ov.id='modal-ov';
   ov.innerHTML = '<div class="modal">' + html + '</div>';
   document.body.appendChild(ov);
 }
-function closeModal() {
-  commitPendingDial(); // don't lose an armed dial when closing without an outcome
+// h137: opening a picker FROM a lead card (Callback, Appt set, Text, ...) is a
+// TRANSITION, not an exit. It used to route through the full closeModal, which
+// committed the armed dial as a "No answer" before the picker had even rendered -
+// so booking an appointment wrote a phantom attempt first. A transition keeps the
+// lead open, keeps the dial armed for whatever outcome you end up picking, and
+// leaves the clock running. Pass {transition:true, returnTo:id}.
+function closeModal(opts) {
+  const transition = !!(opts && opts.transition);
+  if (!transition) commitPendingDial(); // leaving without an outcome = No answer, the default
   const m=document.getElementById('modal-ov'); if(m) m.remove();
+  if (transition) {
+    window._subModalReturn = (opts && opts.returnTo) || window._openClientId || null;
+    return;                                    // lead stays open, clock keeps running
+  }
+  window._subModalReturn = null;
   window._openClientId = null;
   // No card open = no clock. Save/Next re-opens the next lead and restarts the
   // right clock seamlessly; a plain close just stops (no tab-session accrual).
   timerStop();
   timerUpdateStatusLabel();
+}
+// X on a picker goes BACK to the lead card, not out to the full list. The dial
+// count you armed survives the round trip (keepDialCount).
+function closeToLead() {
+  const id = window._subModalReturn;
+  window._subModalReturn = null;
+  if (id && clients.find(x => x.id === id)) { openClient(id, true); return; }
+  closeModal();
 }
 
 //  OPEN CLIENT 
@@ -5827,9 +5862,7 @@ function openClient(id, keepDialCount) {
   })():''}
   <div class="dial-row">
     <span class="dial-lbl">Dials:</span>
-    <button class="dial-cnt-btn on" id="dcb-1" onclick="setDialCount(1)">1x</button>
-    <button class="dial-cnt-btn" id="dcb-2" onclick="setDialCount(2)">2x</button>
-    <button class="dial-cnt-btn" id="dcb-3" onclick="setDialCount(3)">3x</button>
+    ${[1,2,3].map(n=>`<button class="dial-cnt-btn${(window._dialCount||1)===n?' on':''}" id="dcb-${n}" onclick="setDialCount(${n})">${n}x</button>`).join('')}
   </div>
   <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;">
     <button class="call-btn cb-navy" onclick="quickLog('${id}','No answer','dials')">No answer</button>${isReadyForText(c)?`<button class="call-btn" style="background:#1D3557;color:#fff;border:2px solid #138181;" onclick="quickLogAndText('${id}')">No answer + 📱</button>`:''}
@@ -5894,7 +5927,7 @@ function openSitOutcome(id) {
       const subLine = sub ? '<div style="font-size:10px;opacity:.85;font-weight:400;margin-top:2px;">'+(pend?'appt ':'last ')+sub+'</div>' : '';
       return '<button onclick="closeModal();showSitOutcomeModal(\''+id+'\','+realIdx+')" style="flex:1;background:'+color+';color:#fff;border:none;border-radius:8px;padding:10px;font-size:12px;font-weight:500;cursor:pointer;">'+cs.type+subLine+'</button>';
     }).join('');
-    showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+    showSubModal(id, '<button class="close-x" onclick="closeToLead()">x</button>' +
       '<div class="modal-title">Which case?</div>' +
       '<div class="modal-sub">' + c.name + '</div>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;">' + caseButtons + '</div>');
@@ -5922,7 +5955,7 @@ function showSitOutcomeModal(id, ci) {
   window._people = {ref:[], rec:[]};
 
   const _id = id, _ci = ci;
-  showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+  showSubModal(id, '<button class="close-x" onclick="closeToLead()">x</button>' +
     '<div class="modal-title">Log outcome</div>' +
     '<div class="modal-sub">' + c.name + ' — ' + caseLabel + '</div>' +
     '<div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:5px 10px;margin-bottom:12px;">' + apptStr + '</div>' +
@@ -6371,7 +6404,7 @@ function openMoveAppt(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const current = new Date(apptOf(c));
   const dtVal = new Date(current.getTime() - current.getTimezoneOffset()*60000).toISOString().slice(0,16);
-  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  showSubModal(id, `<button class="close-x" onclick="closeToLead()">x</button>
   <div class="modal-title">Edit or delete time</div>
   <div class="modal-sub">${c.name}</div>
   <div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:6px 10px;margin-bottom:10px;">Fixing the time — no stats logged, no reschedule tracked.</div>
@@ -6426,7 +6459,7 @@ function openFollowUpPicker(id) {
   else { d = new Date(); d.setDate(d.getDate()+1); d.setHours(10,0,0,0); }
   const existingNote = existing ? existing.note : '';
   const dt = toLocalDT(d);
-  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  showSubModal(id, `<button class="close-x" onclick="closeToLead()">x</button>
   <div class="modal-title">${existing ? 'Edit follow-up' : 'Schedule follow-up'}</div>
   <div class="modal-sub">${c.name}</div>
   <div style="font-size:11px;color:#5f7a99;background:#F3EEFF;border-radius:6px;padding:6px 10px;margin-bottom:10px;">Post-appointment follow-up — not a new appointment. No sit logged.</div>
@@ -6579,6 +6612,7 @@ async function confirmReschedule(id) {
   const [hours,minutes] = dtVal.split('T')[1].split(':').map(Number);
   const apptDatetime = new Date(year, month-1, day, hours, minutes).toISOString();
   const dialCount = window._dialCount || 1;
+  disarmDial();   // h137: these dials are spent by THIS entry
   // Log to call_log for report tracking only — does NOT affect sits/sales/convos
   const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(), outcome:'Rescheduled', reason, dials:dialCount, appt_datetime:apptDatetime, appt_notes:apptNotes}];
   // A reschedule MOVES the appointment. It is the same appointment at a new
@@ -6946,6 +6980,7 @@ async function confirmResetTo(id) {
   const notes = document.getElementById('reset-to-notes').value.trim();
   const apptDatetime = new Date(dtVal).toISOString();
   const dialCount = window._dialCount || 1;
+  disarmDial();   // h137: these dials are spent by THIS entry
 
   const fromType = ((c.cases||[]).find(cs=>cs.status==='Open')||{type:'previous'}).type;
   const cases = (c.cases||[]).map(cs => {
@@ -7025,7 +7060,7 @@ function openApptSet(id) {
   if (!hasPriorAppointment(c)) { openApptPicker(id); return; }
   const ci = (c.cases||[]).findIndex(cs => cs.status === 'Open');
   const contArg = ci > -1 ? ci : 'null';
-  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  showSubModal(id, `<button class="close-x" onclick="closeToLead()">x</button>
   <div class="modal-title">Already has an appointment</div>
   <div class="modal-sub">${c.name} — what is this?</div>
   <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px;">
@@ -7111,6 +7146,7 @@ async function confirmAppt(id) {
   }
 
   const dialCount = window._dialCount || 1;
+  disarmDial();   // h137: these dials are spent by THIS entry
   // HARD RULE: follow-ups NEVER log an 'Appt set'. Moving a follow-up through
   // this picker records a follow-up reschedule, not a new appointment win —
   // the dial ledger's appts-set number derives from 'Appt set' entries only.
@@ -7241,7 +7277,7 @@ function openCallbackPicker(id) {
   // callbacks impossible to book.
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
   const tomorrowStr = tomorrow.toISOString().slice(0,10);
-  showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+  showSubModal(id, '<button class="close-x" onclick="closeToLead()">x</button>' +
     '<div class="modal-title">Schedule callback</div>' +
     '<div class="modal-sub">' + c.name + '</div>' +
     '<div class="field"><label>Date</label><input type="date" id="cb-date" value="' + tomorrowStr + '" style="font-size:16px;"></div>' +
@@ -7254,6 +7290,7 @@ function openCallbackPicker(id) {
 async function confirmCallback(id, hasDate) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const dialCount = window._dialCount || 1;
+  disarmDial();   // h137: these dials are spent by THIS entry
 
   let callbackDt = null;
   let callbackNote = '';
@@ -7541,7 +7578,7 @@ function openTextModal(id, focusTplId) {
   const sent = TEXT_TEMPLATES.filter(t => sentIds.includes(t.id));
   const overrides = getAgentSettings().textTemplateOverrides || {};
 
-  let html = '<button class="close-x" onclick="closeModal()">x</button>' +
+  let html = '<button class="close-x" onclick="closeToLead()">x</button>' +
     '<div class="modal-title">Text templates</div>' +
     '<div class="modal-sub">' + c.name + '</div>';
 
@@ -7580,7 +7617,7 @@ function openTextModal(id, focusTplId) {
     }).join('');
   }
 
-  showModal(html);
+  showSubModal(id, html);
   if (focusTplId) setTimeout(() => expandTemplate(id, focusTplId), 50);
 }
 
@@ -7658,6 +7695,7 @@ async function quickLogAndText(id) {
 async function quickLog(id, outcome, statKey) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const dialCount = window._dialCount || 1;
+  disarmDial();   // h137: these dials are spent by THIS entry
   let updatePayloadExtra = {};
 
   // Capture next lead BEFORE any status changes
