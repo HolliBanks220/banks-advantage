@@ -275,7 +275,7 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h137</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h139</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
         <button onclick="openThemeSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;margin-left:4px;">Theme</button>
       </div>
@@ -2432,7 +2432,7 @@ function timerIsApptWindow(c) {
 function openTimeSummary() {
   const sessions = timerGetTodaySessions();
   const totals = timerGetTotals();
-  if (!sessions.length) { showModal('<button class="close-x" onclick="closeModal()">x</button><div class="modal-title">Time today</div><div style="font-size:13px;color:#a0b8cc;padding:12px 0;">No sessions recorded yet today.</div>'); return; }
+  if (!sessions.length) { showModal('<button class="close-x" onclick="closeToLead()">x</button><div class="modal-title">Time today</div><div style="font-size:13px;color:#a0b8cc;padding:12px 0;">No sessions recorded yet today.</div>'); return; }
 
   const sessionRows = sessions.slice().reverse().map((s,i) => {
     const start = new Date(s.start).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
@@ -2452,7 +2452,7 @@ function openTimeSummary() {
     '</div>';
   }).join('');
 
-  showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+  showModal('<button class="close-x" onclick="closeToLead()">x</button>' +
     '<div class="modal-title">Time today</div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">' +
       '<div style="background:#f0f4f8;border-radius:8px;padding:8px;text-align:center;">' +
@@ -2612,7 +2612,7 @@ function drillDown(type) {
     const rows = computeInitialSet(start, end, _ddBoard);
     rows.sort((a,b) => a.d - b.d);
     if (!rows.length) {
-      showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+      showModal('<button class="close-x" onclick="closeToLead()">x</button>' +
         '<div class="modal-title">Appointments - ' + label + '</div>' +
         '<div style="font-size:13px;color:#a0b8cc;padding:1rem 0;">None for this period.</div>');
       return;
@@ -2633,7 +2633,7 @@ function drillDown(type) {
           '<span style="font-size:11px;font-weight:700;color:' + col + ';white-space:nowrap;">' + lbl + '</span>' +
         '</div></div>';
     }).join('');
-    showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+    showModal('<button class="close-x" onclick="closeToLead()">x</button>' +
       '<div class="modal-title">Appointments - ' + label + '</div>' +
       '<div class="modal-sub">' + rows.length + ' lead' + (rows.length===1?'':'s') + ' \u00b7 one initial appt each</div>' +
       '<div style="max-height:70vh;overflow-y:auto;margin-top:8px;">' + body + '</div>');
@@ -2659,7 +2659,7 @@ function drillDown(type) {
   } else if (type === 'needsoutcome') {
     const rows = needsOutcomeList();
     if (!rows.length) {
-      showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+      showModal('<button class="close-x" onclick="closeToLead()">x</button>' +
         '<div class="modal-title">Needs an outcome - ' + label + '</div>' +
         '<div style="font-size:13px;color:#a0b8cc;padding:1rem 0;">Nothing owed right now.</div>');
       return;
@@ -2672,7 +2672,7 @@ function drillDown(type) {
         '<div style="font-size:11px;color:#A32D2D;font-weight:600;">Past due \u00b7 ' + when + '</div>' +
       '</div>';
     }).join('');
-    showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+    showModal('<button class="close-x" onclick="closeToLead()">x</button>' +
       '<div class="modal-title">Needs an outcome - ' + label + '</div>' +
       '<div class="modal-sub">' + rows.length + ' past-due appointment' + (rows.length===1?'':'s') + ' owed an outcome</div>' +
       '<div style="max-height:70vh;overflow-y:auto;margin-top:8px;">' + body + '</div>');
@@ -2700,7 +2700,7 @@ function drillDown(type) {
           '<div style="font-size:11px;color:#138181;font-weight:500;">' + r.d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + '</div></div>' +
           '<span style="font-size:11px;font-weight:700;color:#3B6D11;white-space:nowrap;">' + (LBL[r.tp.outcome]||r.tp.outcome) + '</span>' +
         '</div></div>').join('');
-      showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+      showModal('<button class="close-x" onclick="closeToLead()">x</button>' +
         '<div class="modal-title">Attended - ' + label + '</div>' +
         '<div class="modal-sub">' + rows.length + ' appointment' + (rows.length===1?'':'s') + ' you sat \u00b7 ' + new Set(rows.map(r=>r.c.id)).size + ' leads</div>' +
         '<div style="max-height:70vh;overflow-y:auto;margin-top:8px;">' + (body || '<div style="padding:1rem;color:#a0b8cc;font-size:13px;">None for this period.</div>') + '</div>');
@@ -2761,7 +2761,7 @@ function drillDown(type) {
     rows.sort((a,b) => a.contDt - b.contDt);
     const _kind = _isPPU ? 'PPU' : 'TAI';
     if (!rows.length) {
-      showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+      showModal('<button class="close-x" onclick="closeToLead()">x</button>' +
         '<div class="modal-title">' + _kind + ' - ' + label + '</div>' +
         '<div style="font-size:13px;color:#a0b8cc;padding:1rem 0;">None for this period.</div>');
       return;
@@ -2797,7 +2797,7 @@ function drillDown(type) {
     }).join('');
     const _fun = _isPPU ? computePPUFunnel(start, end, _ddBoard) : computeTAIFunnel(start, end, _ddBoard);
     const funnelHtml = renderFunnelHTML(_fun, _kind);
-    showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+    showModal('<button class="close-x" onclick="closeToLead()">x</button>' +
       '<div class="modal-title">' + _kind + ' - ' + label + '</div>' +
       '<div class="modal-sub">' + rows.length + ' ' + _kind + (rows.length===1?'':'s') + ' \u00b7 one per continuation booked</div>' +
       '<div style="margin-top:10px;">' + funnelHtml + '</div>' +
@@ -2832,7 +2832,7 @@ function drillDown(type) {
   }
 
   if (!leads.length) {
-    showModal(`<button class="close-x" onclick="closeModal()">x</button>
+    showModal(`<button class="close-x" onclick="closeToLead()">x</button>
     <div class="modal-title">${title}</div>
     <div style="font-size:13px;color:#a0b8cc;padding:1rem 0;">None for this period.</div>`);
     return;
@@ -2853,7 +2853,7 @@ function drillDown(type) {
     </div>`;
   }).join('');
 
-  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  showModal(`<button class="close-x" onclick="closeToLead()">x</button>
     <div class="modal-title">${title}</div>
     <div style="font-size:12px;color:#5f7a99;margin-bottom:12px;">${leads.length} lead${leads.length!==1?'s':''}</div>
     ${rows}`);
@@ -3803,7 +3803,7 @@ function openCoaching() {
       '<div style="font-size:11px;margin-top:2px;">' + steps + '</div></div>';
   }).join('');
 
-  showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+  showModal('<button class="close-x" onclick="closeToLead()">x</button>' +
     '<div class="modal-title">What to work on</div>' +
     '<div class="modal-sub">' + label + '</div>' +
     '<div style="margin:10px 0;">' +
@@ -4309,7 +4309,7 @@ function openCallbackWorklist() {
     return {c, cb, dt};
   }).sort((a,b) => (a.dt ? a.dt.getTime() : Infinity) - (b.dt ? b.dt.getTime() : Infinity));
   if (!rows.length) {
-    showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+    showModal('<button class="close-x" onclick="closeToLead()">x</button>' +
       '<div class="modal-title">Callbacks to work</div>' +
       '<div style="font-size:13px;color:#a0b8cc;padding:1rem 0;">Nothing to work right now.</div>');
     return;
@@ -4325,7 +4325,7 @@ function openCallbackWorklist() {
       '<div>' + when + '</div>' + note +
     '</div>';
   }).join('');
-  showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+  showModal('<button class="close-x" onclick="closeToLead()">x</button>' +
     '<div class="modal-title">Callbacks to work</div>' +
     '<div class="modal-sub">' + rows.length + ' lead' + (rows.length===1?'':'s') + ' \u00b7 soonest first</div>' +
     '<div style="max-height:70vh;overflow-y:auto;margin-top:8px;">' + body + '</div>');
@@ -5627,6 +5627,14 @@ function showSubModal(returnTo, html) {
   return showModal(html, {transition:true, returnTo:returnTo});
 }
 function showModal(html, opts) {
+  // h138: enumerating "which functions are pickers" was fragile - openApptPicker and
+  // the reschedule/reset/continuation pickers were all missed, and every miss is a
+  // phantom No answer. The RULE instead: if a lead card is open, opening any modal is
+  // a TRANSITION away from that card, never an exit. Real exits come from the X or a
+  // save path, which call closeModal() directly and still commit.
+  if (opts === undefined && window._openClientId) {
+    opts = { transition: true, returnTo: window._openClientId };
+  }
   closeModal(opts);
   const ov = document.createElement('div'); ov.className='modal-overlay'; ov.id='modal-ov';
   ov.innerHTML = '<div class="modal">' + html + '</div>';
@@ -5716,7 +5724,10 @@ function openClient(id, keepDialCount) {
     if (note) bits.push(note);
     return bits.join(' \u00b7 ');
   };
-  const callHistory = callLog.slice().reverse().slice(0,6).map((cl, ri) => {
+  const _showAllLog = !!(window._logShowAll && window._logShowAll[id]);
+  const _logRows = callLog.slice().reverse();
+  const _shownLog = _showAllLog ? _logRows : _logRows.slice(0,6);
+  const callHistory = _shownLog.map((cl, ri) => {
     const realIdx = callLog.length - 1 - ri;
     const detail = logDetail(cl);
     const tpRef = findTpForLog(c, cl);   // sit outcome -> its touchpoint, else null
@@ -5730,6 +5741,7 @@ function openClient(id, keepDialCount) {
         ${detail?`<div style="font-size:11px;color:#1D3557;">${esc(detail)}</div>`:''}
         <div style="display:flex;gap:6px;align-items:center;">
           <div style="font-size:10px;color:#a0b8cc;">${new Date(cl.ts).toLocaleDateString('en-US',{month:'short',day:'numeric'})} ${new Date(cl.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
+          <span onclick="openLogEntryEditor('${id}',${realIdx})" style="font-size:10px;color:#0E6363;text-decoration:underline;cursor:pointer;">Edit</span>
           <span onclick="editLogNote('${id}',${realIdx})" style="font-size:10px;color:#8fa8c0;text-decoration:underline;cursor:pointer;">${(cl.note||cl.callback_note||cl.followup_note)?'edit note':'+ note'}</span>
           ${tpRef?`<span onclick="openEditTouchpoint('${id}',${tpRef.ci},${tpRef.ti})" style="font-size:10px;color:#138181;text-decoration:underline;cursor:pointer;">Edit / fix</span>`:''}
         </div>
@@ -5767,7 +5779,7 @@ function openClient(id, keepDialCount) {
     </div>`;
   }).join('');
 
-  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  showModal(`<button class="close-x" onclick="closeToLead()">x</button>
   ${replacementBar(c)}
   ${isResting(c) ? `<div style="background:#f0f4f8;border-radius:8px;padding:9px 11px;margin-bottom:8px;font-size:11px;color:#5f7a99;">Resting - returns to your queue on ${restReturnsOn(c).toLocaleDateString('en-US',{month:'short',day:'numeric'})}. Someone dodging you last week is still dodging you; three weeks later they've forgotten they were avoiding you.</div>` : ''}
   <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:2px;">
@@ -5875,7 +5887,7 @@ function openClient(id, keepDialCount) {
   <button onclick="openTextModal('${id}')" style="font-size:10px;background:none;border:1px solid #9FE1CB;border-radius:6px;padding:3px 10px;color:#138181;cursor:pointer;margin-bottom:8px;">📱 Text templates</button>
   <button class="save-btn" onclick="updateClient('${id}')" style="margin-bottom:12px;">Save & next</button>
   <div class="section-lbl">Call log</div>
-  <div style="padding-left:4px;margin-bottom:12px;">${callHistory||'<div style="font-size:12px;color:#a0b8cc;">No calls yet.</div>'}</div>
+  <div style="padding-left:4px;margin-bottom:12px;">${callHistory||'<div style="font-size:12px;color:#a0b8cc;">No calls yet.</div>'}${_logRows.length>6?`<div onclick="toggleLogShowAll('${id}')" style="font-size:10px;color:#0E6363;text-decoration:underline;cursor:pointer;margin-top:4px;">${_showAllLog?'Show fewer':'Show all '+_logRows.length+' entries'}</div>`:''}${deletedLogHtml(c,id)}</div>
   <div class="section-lbl">Notes</div>
   <div class="field"><label>Property address</label><input type="text" id="cn-address" value="${escAttr(c.address)}" placeholder="123 Main St, City, ST 00000" onchange="autoSaveField('${id}','address',this.value)"></div>
   <div class="field"><label>Age</label><input type="number" id="cn-age" value="${c.age||''}" placeholder="Age" min="18" max="99" onchange="autoSaveField('${id}','age',this.value?parseInt(this.value):null)" style="width:90px;"></div>
@@ -5925,7 +5937,7 @@ function openSitOutcome(id) {
       const ref = pend || (cs.touchpoints||[]).slice().reverse().find(tp=>tp&&tp.datetime);
       const sub = ref && ref.datetime ? new Date(ref.datetime).toLocaleDateString('en-US',{month:'short',day:'numeric'})+' '+new Date(ref.datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : '';
       const subLine = sub ? '<div style="font-size:10px;opacity:.85;font-weight:400;margin-top:2px;">'+(pend?'appt ':'last ')+sub+'</div>' : '';
-      return '<button onclick="closeModal();showSitOutcomeModal(\''+id+'\','+realIdx+')" style="flex:1;background:'+color+';color:#fff;border:none;border-radius:8px;padding:10px;font-size:12px;font-weight:500;cursor:pointer;">'+cs.type+subLine+'</button>';
+      return '<button onclick="showSitOutcomeModal(\''+id+'\','+realIdx+')" style="flex:1;background:'+color+';color:#fff;border:none;border-radius:8px;padding:10px;font-size:12px;font-weight:500;cursor:pointer;">'+cs.type+subLine+'</button>';
     }).join('');
     showSubModal(id, '<button class="close-x" onclick="closeToLead()">x</button>' +
       '<div class="modal-title">Which case?</div>' +
@@ -5974,7 +5986,7 @@ function showSitOutcomeModal(id, ci) {
       '<button onclick="confirmSitOutcome(\''+_id+'\','+_ci+',\'noshow\')" style="background:#BA7517;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">✗ No Show - alive</button>' +
       '<button onclick="confirmSitOutcome(\''+_id+'\','+_ci+',\'noshow_dead\')" style="background:#7A4A0F;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">✗ No Show - dead</button>' +
     '</div>' +
-    '<button onclick="closeModal();openResetToPicker(\''+_id+'\')" style="width:100%;background:none;border:1px solid #BA7517;border-radius:8px;padding:10px;font-size:12px;color:#BA7517;cursor:pointer;font-weight:500;">↺ Reset to new product</button>');
+    '<button onclick="openResetToPicker(\''+_id+'\')" style="width:100%;background:none;border:1px solid #BA7517;border-radius:8px;padding:10px;font-size:12px;color:#BA7517;cursor:pointer;font-weight:500;">↺ Reset to new product</button>');
 }
 
 function showContModal(id, ci) {
@@ -5990,7 +6002,7 @@ function showContModal(id, ci) {
     ? ['Step 2','Step 3','PPU / Policy Pickup','Rewrite - declined app','Think about it']
     : ['PPU / Policy Pickup','Rewrite - declined app','Think about it'];
   const reasonOpts = '<option value="" selected disabled>\u2014 pick one \u2014</option>' + reasons.map(r => '<option value="' + r + '">' + r + '</option>').join('');
-  showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+  showModal('<button class="close-x" onclick="closeToLead()">x</button>' +
     '<div class="modal-title">Continuation</div>' +
     '<div class="modal-sub">' + c.name + '</div>' +
     buildWeekGrid(id, 'cont-wg-'+id) +
@@ -6238,7 +6250,7 @@ function showResetOnly(id, outcomeLabel) {
     '<div class="modal-sub">' + c.name + '</div>' +
     '<div style="font-size:13px;color:#1D3557;margin-bottom:16px;">Would you like to reset to a new product?</div>' +
     '<div style="display:flex;gap:8px;">' +
-      '<button onclick="closeModal();openResetToPicker(\''+id+'\')" style="flex:1;background:#BA7517;color:#fff;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:500;cursor:pointer;">↺ Yes — reset now</button>' +
+      '<button onclick="openResetToPicker(\''+id+'\')" style="flex:1;background:#BA7517;color:#fff;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:500;cursor:pointer;">↺ Yes — reset now</button>' +
       '<button onclick="closeModal();openClient(\''+id+'\');renderScore();renderSidebar();" style="flex:1;background:#5f7a99;color:#fff;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:500;cursor:pointer;">No — done</button>' +
     '</div>');
 }
@@ -6302,7 +6314,6 @@ async function saveASR(referrerId) {
   }
 
 
-  closeModal();
   showResetOnly(referrerId, 'Outcome logged');
   renderClients();
   alert(`✓ ${name} added as a new ASR lead!`);
@@ -6525,7 +6536,7 @@ async function confirmFollowUp(id) {
 function doneFollowUp(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   // Policy delivery usually takes a few rounds — offer to chain the next one
-  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  showModal(`<button class="close-x" onclick="closeToLead()">x</button>
   <div class="modal-title">Follow-up done</div>
   <div class="modal-sub">${c.name}</div>
   <div style="font-size:12px;color:#5f7a99;margin-bottom:12px;">Is there another follow-up needed, or is this client all set?</div>
@@ -6583,7 +6594,7 @@ function openReschedulePicker(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const d = new Date(); d.setDate(d.getDate()+1); d.setHours(10,0,0,0);
   const dt = toLocalDT(d);
-  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  showModal(`<button class="close-x" onclick="closeToLead()">x</button>
   <div class="modal-title">Reschedule appointment</div>
   <div class="modal-sub">${c.name}</div>
   <div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:6px 10px;margin-bottom:10px;">Use this when they no-showed or called to reschedule. Tracked for reports.</div>
@@ -6713,7 +6724,7 @@ function openResetToPicker(id) {
     ? `<div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:6px 10px;margin-bottom:10px;">Current open: ${openCases.map(cs=>cs.type).join(', ')}</div>`
     : '';
 
-  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  showModal(`<button class="close-x" onclick="closeToLead()">x</button>
   <div class="modal-title">↺ Reset to new product</div>
   <div class="modal-sub">${c.name}</div>
   ${currentCaseHtml}
@@ -7064,10 +7075,10 @@ function openApptSet(id) {
   <div class="modal-title">Already has an appointment</div>
   <div class="modal-sub">${c.name} — what is this?</div>
   <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px;">
-    <button class="save-btn" style="background:#BA7517;" onclick="closeModal();openResetToPicker('${id}')">↺ Reset — new product<div style="font-size:11px;opacity:.85;font-weight:400;">Re-engaging to a different product. Tracks reset → type.</div></button>
-    <button class="save-btn" style="background:#534AB7;" onclick="closeModal();openReschedulePicker('${id}')">Reschedule<div style="font-size:11px;opacity:.85;font-weight:400;">Same appointment, new time. Pick a reason.</div></button>
-    <button class="save-btn" style="background:#138181;" onclick="closeModal();showContModal('${id}',${contArg})">Continuation<div style="font-size:11px;opacity:.85;font-weight:400;">They sat — next meeting on the same case.</div></button>
-    <button class="save-btn" style="background:#1D3557;" onclick="closeModal();openFollowUpPicker('${id}')">Follow-up<div style="font-size:11px;opacity:.85;font-weight:400;">Post-appointment: policy pickup, ASRs, reset check.</div></button>
+    <button class="save-btn" style="background:#BA7517;" onclick="openResetToPicker('${id}')">↺ Reset — new product<div style="font-size:11px;opacity:.85;font-weight:400;">Re-engaging to a different product. Tracks reset → type.</div></button>
+    <button class="save-btn" style="background:#534AB7;" onclick="openReschedulePicker('${id}')">Reschedule<div style="font-size:11px;opacity:.85;font-weight:400;">Same appointment, new time. Pick a reason.</div></button>
+    <button class="save-btn" style="background:#138181;" onclick="showContModal('${id}',${contArg})">Continuation<div style="font-size:11px;opacity:.85;font-weight:400;">They sat — next meeting on the same case.</div></button>
+    <button class="save-btn" style="background:#1D3557;" onclick="openFollowUpPicker('${id}')">Follow-up<div style="font-size:11px;opacity:.85;font-weight:400;">Post-appointment: policy pickup, ASRs, reset check.</div></button>
   </div>`);
 }
 
@@ -7081,7 +7092,7 @@ function openApptPicker(id) {
     {value:'Retirement Solutions', label:'Retirement Solutions'},
     {value:'IBC/DFL', label:'IBC / DFL'}
   ].map(o=>`<option value="${o.value}">${o.label}</option>`).join('');
-  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  showModal(`<button class="close-x" onclick="closeToLead()">x</button>
   <div class="modal-title">Set appointment</div>
   <div class="modal-sub">${c.name}</div>
   ${buildWeekGrid(id)}
@@ -7226,15 +7237,267 @@ async function editLogNote(id, idx) {
 }
 
 //  DELETE CALL LOG ENTRY 
-async function deleteCallLogEntry(id, idx) {
-  const c = clients.find(x=>x.id===id); if (!c) return;
-  if (!confirm('Delete this call log entry?')) return;
-  const newLog = [...(c.call_log||[])];
-  newLog.splice(idx, 1);
+// ============================================================================
+// h139 - LOG ENTRY EDITOR
+// Anything that logs can be corrected or removed, at any point, from the record
+// it lives on.
+//
+// Why this is safe to build: nearly every number on the board is DERIVED from
+// the client record at render time - appts set, resolutions, dead, texts,
+// callbacks, sits, sales all walk call_log / cases / sits live. Fix the log and
+// the board fixes itself. Only two things don't self-correct, and they are the
+// entire job here:
+//   1. dials / convos / callbacks / dead / texts live in the separate `stats`
+//      ledger, keyed by day. Editing a log line doesn't touch them.
+//   2. the Google Calendar event, which has to be deleted with the appointment.
+//
+// Deletes are TOMBSTONES, never erasures - the entry moves to `deleted_log` and
+// can be put back. A wrong delete costs a click, not a record.
+// ============================================================================
+
+// What each outcome wrote to the stats ledger when it was logged. The dial count
+// is read off the entry itself (it has always been stored there), so that part is
+// a receipt, not a guess. The rest mirrors the writers in quickLog / confirmAppt /
+// confirmCallback / sendText exactly - if you change what an outcome writes, change
+// this too. LOG_STAT_SELFTEST below fails the boot test if the two drift apart.
+function logStatsOf(entry) {
+  if (!entry) return {};
+  const d = Number(entry.dials) || 0;
+  const o = entry.outcome;
+  if (o === 'Text sent')      return { texts: 1 };
+  if (o === 'Appt set')       return { dials: d, convos: 1 };
+  if (o === 'Rescheduled')    return { dials: d, convos: 1 };
+  if (o === 'Callback')       return { dials: d, convos: 1, callbacks: 1 };
+  if (o === 'Not interested') return { dials: d, convos: 1, dead: 1 };
+  if (o === 'No answer')      return { dials: d };
+  if (o === 'Cancelled')      return { dials: d };
+  return d ? { dials: d } : {};
+}
+
+const LOG_STAT_LABELS = {
+  dials: 'Dials', convos: 'Conversations', callbacks: 'Callbacks',
+  dead: 'Not interested', texts: 'Texts',
+};
+
+// Reverse (or apply) a stat bundle. The stats ledger is append-only and sumStat
+// just adds values, so a correction is a NEGATIVE row - nothing is ever edited or
+// destroyed, and the row is stamped with the ORIGINAL entry's date so the
+// correction lands in the period the mistake was made, not today.
+async function applyStatDelta(bundle, sign, atISO) {
+  const when = atISO || new Date().toISOString();
+  for (const key of Object.keys(bundle || {})) {
+    const n = Number(bundle[key]) || 0;
+    if (!n) continue;
+    const row = { stat_key: key, value: sign * n, recorded_at: when };
+    try {
+      const { data, error } = await sb.from('stats').insert([row]).select();
+      if (error) { console.error('applyStatDelta failed', row, error); showStatWarning(key); continue; }
+      if (data) stats.push(data[0]);
+    } catch (e) { console.error('applyStatDelta threw', e); }
+  }
+}
+
+function _statLine(bundle, sign) {
+  const parts = Object.keys(bundle || {})
+    .filter(k => Number(bundle[k]))
+    .map(k => (sign < 0 ? '-' : '+') + Math.abs(Number(bundle[k])) + ' ' + (LOG_STAT_LABELS[k] || k));
+  return parts.length ? parts.join(' \u00b7 ') : 'nothing on the board';
+}
+
+// Does this entry own the lead's current appointment? Then removing it has to
+// take the pending touchpoint and the calendar event with it, or you keep driving
+// to an appointment that no longer exists.
+function _entryOwnsAppt(c, entry) {
+  const ea = apptOf(entry);
+  if (!ea) return false;
+  const ca = apptOf(c);
+  if (!ca) return false;
+  return Math.abs(new Date(ea).getTime() - new Date(ca).getTime()) < 60000;
+}
+
+const LOG_OUTCOME_CHOICES = ['No answer','Appt set','Callback','Not interested','Text sent','Rescheduled','Cancelled','Conversation'];
+
+function openLogEntryEditor(id, idx) {
+  const c = clients.find(x => x.id === id); if (!c) return;
+  const e = (c.call_log || [])[idx]; if (!e) return;
+  const cur = logStatsOf(e);
+  const dtLocal = toLocalDT(new Date(e.ts));
+  const note = e.note || e.callback_note || e.followup_note || '';
+  const ownsAppt = _entryOwnsAppt(c, e);
+
+  showModal(
+    '<button class="close-x" onclick="closeToLead()">x</button>' +
+    '<div class="modal-title">Edit log entry</div>' +
+    '<div class="modal-sub">' + esc(c.name) + '</div>' +
+
+    '<div class="field"><label>What happened</label><select id="le-outcome">' +
+      LOG_OUTCOME_CHOICES.map(o => '<option' + (o === e.outcome ? ' selected' : '') + '>' + o + '</option>').join('') +
+      ((LOG_OUTCOME_CHOICES.indexOf(e.outcome) < 0) ? '<option selected>' + esc(e.outcome) + '</option>' : '') +
+    '</select></div>' +
+
+    '<div class="field"><label>Dials on this attempt</label>' +
+      '<input type="number" id="le-dials" min="0" max="9" value="' + (Number(e.dials) || 0) + '" style="font-size:16px;"></div>' +
+
+    '<div class="field"><label>When</label>' +
+      '<input type="datetime-local" id="le-ts" value="' + dtLocal + '" style="font-size:16px;"></div>' +
+
+    '<div class="field"><label>Note</label>' +
+      '<input type="text" id="le-note" value="' + escAttr(note) + '" placeholder="what happened / what next"></div>' +
+
+    '<div style="font-size:11px;color:#5E6A78;background:#DEE4EC;border-radius:6px;padding:8px 10px;margin:4px 0 12px;">' +
+      'As logged, this entry counts <b>' + esc(_statLine(cur, 1)) + '</b>. Saving recalculates the difference; ' +
+      'the correction is stamped with the entry\u2019s own date so it lands in the right period.' +
+    '</div>' +
+
+    '<button class="save-btn" onclick="saveLogEntryEdit(\'' + id + '\',' + idx + ')">Save correction</button>' +
+
+    '<div style="border-top:1px solid rgba(0,0,0,0.10);margin-top:14px;padding-top:12px;">' +
+      '<div style="font-size:11px;color:#5E6A78;margin-bottom:6px;">Logged by mistake? Removing it reverses ' +
+        '<b>' + esc(_statLine(cur, -1)) + '</b>' +
+        (ownsAppt ? ' and deletes the appointment plus its calendar event' : '') +
+        '. It is kept so you can put it back.</div>' +
+      '<button class="save-btn" style="background:#C0392B;" onclick="confirmDeleteLogEntry(\'' + id + '\',' + idx + ')">Remove this entry</button>' +
+    '</div>'
+  );
+}
+
+async function saveLogEntryEdit(id, idx) {
+  const c = clients.find(x => x.id === id); if (!c) return;
+  const log = [...(c.call_log || [])];
+  const e = log[idx]; if (!e) return;
+
+  const outcome = (document.getElementById('le-outcome') || {}).value || e.outcome;
+  const dials = Math.max(0, parseInt((document.getElementById('le-dials') || {}).value, 10) || 0);
+  const tsVal = (document.getElementById('le-ts') || {}).value;
+  const note = ((document.getElementById('le-note') || {}).value || '').trim();
+  const ts = tsVal ? new Date(tsVal).toISOString() : e.ts;
+
+  const before = logStatsOf(e);
+  const updated = { ...e, outcome, dials, ts, note };
+  const after = logStatsOf(updated);
+
+  log[idx] = updated;
   showSync('Saving...');
-  await sb.from('clients').update({call_log: newLog}).eq('id', id);
-  c.call_log = newLog;
-  hideSync(); openClient(id); renderScore();
+  try { await sb.from('clients').update({ call_log: log }).eq('id', id); }
+  catch (err) { console.error('saveLogEntryEdit', err); }
+  c.call_log = log;
+
+  // reverse what it used to count, then apply what it counts now - both stamped
+  // with the dates they belong to
+  await applyStatDelta(before, -1, e.ts);
+  await applyStatDelta(after, +1, ts);
+
+  hideSync();
+  openClient(id, true);
+  renderScore(); renderSidebar();
+}
+
+async function confirmDeleteLogEntry(id, idx) {
+  const c = clients.find(x => x.id === id); if (!c) return;
+  const e = (c.call_log || [])[idx]; if (!e) return;
+  const bundle = logStatsOf(e);
+  const ownsAppt = _entryOwnsAppt(c, e);
+
+  const summary =
+    'Remove this entry from ' + c.name + '?\n\n' +
+    '  ' + e.outcome + (e.dials ? '  (' + e.dials + ' dial' + (e.dials > 1 ? 's' : '') + ')' : '') + '\n' +
+    '  ' + new Date(e.ts).toLocaleString() + '\n\n' +
+    'Your board changes by: ' + _statLine(bundle, -1) + '\n' +
+    (ownsAppt ? 'The appointment and its calendar event are also removed.\n' : '') +
+    '\nThe entry is kept under "Removed entries" so you can put it back.';
+  if (!confirm(summary)) return;
+
+  const log = [...(c.call_log || [])];
+  const [removed] = log.splice(idx, 1);
+
+  const tomb = [...(c.deleted_log || [])];
+  tomb.push({ entry: removed, deleted_at: new Date().toISOString(), stats: bundle, owned_appt: !!ownsAppt });
+
+  const patch = { call_log: log, deleted_log: tomb };
+
+  if (ownsAppt) {
+    if (c.gcal_event_id) { try { await pushApptToCalendar(c, 'delete'); } catch (err) {} }
+    const now = Date.now();
+    const cases = (c.cases || []).map(cs => ({
+      ...cs,
+      touchpoints: (cs.touchpoints || []).filter(tp =>
+        !(tp && tp.outcome === 'pending' && tp.datetime && Math.abs(new Date(tp.datetime).getTime() - new Date(apptOf(c)).getTime()) < 60000)
+      ),
+    })).filter(cs => (cs.touchpoints || []).length > 0 || (cs.apps || []).length > 0);
+    patch.cases = cases;
+    patch.appt_datetime = null;
+    patch.appt_notes = '';
+    // status falls back to the truth of what is left on the record
+    const stillPending = cases.some(cs => (cs.touchpoints || []).some(tp => tp && tp.outcome === 'pending'));
+    patch.status = stillPending ? 'Appointment set' : (log.length ? 'Working' : 'New');
+  }
+
+  showSync('Removing...');
+  try { await sb.from('clients').update(patch).eq('id', id); }
+  catch (err) { console.error('confirmDeleteLogEntry', err); }
+  Object.assign(c, patch);
+
+  await applyStatDelta(bundle, -1, e.ts);
+
+  hideSync();
+  openClient(id, true);
+  renderScore(); renderSidebar();
+}
+
+async function restoreLogEntry(id, ti) {
+  const c = clients.find(x => x.id === id); if (!c) return;
+  const tomb = [...(c.deleted_log || [])];
+  const rec = tomb[ti]; if (!rec) return;
+  if (!confirm('Put this "' + rec.entry.outcome + '" back on ' + c.name + '?\n\n' +
+               'Your board changes by: ' + _statLine(rec.stats, 1) + '\n\n' +
+               (rec.owned_appt ? 'Note: the appointment itself and its calendar event are NOT restored - rebook it if you need it.' : ''))) return;
+
+  tomb.splice(ti, 1);
+  const log = [...(c.call_log || []), rec.entry].sort((a, b) => new Date(a.ts) - new Date(b.ts));
+
+  showSync('Restoring...');
+  try { await sb.from('clients').update({ call_log: log, deleted_log: tomb }).eq('id', id); }
+  catch (err) { console.error('restoreLogEntry', err); }
+  c.call_log = log; c.deleted_log = tomb;
+
+  await applyStatDelta(rec.stats, +1, rec.entry.ts);
+
+  hideSync();
+  openClient(id, true);
+  renderScore(); renderSidebar();
+}
+
+// Removed entries, shown under the call log so a mistake is always visible and
+// always reversible.
+function deletedLogHtml(c, id) {
+  const tomb = c.deleted_log || [];
+  if (!tomb.length) return '';
+  return '<div style="margin-top:8px;border-top:1px dashed rgba(0,0,0,0.15);padding-top:8px;">' +
+    '<div style="font-size:10px;color:#8B97A6;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Removed entries (' + tomb.length + ')</div>' +
+    tomb.map((rec, ti) =>
+      '<div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;opacity:0.75;">' +
+        '<div style="flex:1;font-size:11px;color:#5E6A78;text-decoration:line-through;">' +
+          esc(rec.entry.outcome) + (rec.entry.dials ? ' (' + rec.entry.dials + 'x)' : '') +
+          ' \u00b7 ' + new Date(rec.entry.ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
+        '</div>' +
+        '<button onclick="restoreLogEntry(\'' + id + '\',' + ti + ')" style="font-size:10px;background:none;border:1px solid #9FE1CB;border-radius:6px;padding:2px 9px;color:#0E6363;cursor:pointer;">Put back</button>' +
+      '</div>'
+    ).join('') +
+  '</div>';
+}
+
+// The call log used to show only the last 6 entries, which meant anything older
+// could not be corrected at all.
+window._logShowAll = {};
+function toggleLogShowAll(id) {
+  window._logShowAll[id] = !window._logShowAll[id];
+  openClient(id, true);
+}
+
+// Superseded by confirmDeleteLogEntry (kept as a thin shim so any old call site
+// still routes through the previewed, stat-reversing, restorable path).
+async function deleteCallLogEntry(id, idx) {
+  return confirmDeleteLogEntry(id, idx);
 }
 
 //  AUTO SAVE 
@@ -7827,7 +8090,7 @@ let _importRows = [];
 // One way in. Typing a lead and importing a sheet of them are the same job,
 // so they belong behind one button rather than two competing for the corner.
 function openAddLeads() {
-  showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+  showModal('<button class="close-x" onclick="closeToLead()">x</button>' +
     '<div class="modal-title">Add leads</div>' +
     '<div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">' +
       '<button onclick="closeModal();openAddClient()" style="text-align:left;background:#fff;border:1px solid #d0dcea;border-radius:10px;padding:12px 14px;cursor:pointer;">' +
@@ -7840,7 +8103,7 @@ function openAddLeads() {
 }
 
 function openLeadImport() {
-  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  showModal(`<button class="close-x" onclick="closeToLead()">x</button>
     <div class="modal-title">Import leads from PDF</div>
     <div class="modal-sub">Drop an SFG lead PDF. It reads the leads, guesses CIA vs MIA, and lets you review before saving.</div>
     <div id="li-drop" style="border:2px dashed #9FE1CB;border-radius:10px;padding:26px;text-align:center;color:#138181;cursor:pointer;margin-bottom:12px;">
@@ -8271,7 +8534,7 @@ async function updateClient(id) {
 
 //  ADD CLIENT 
 function openAddClient() {
-  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  showModal(`<button class="close-x" onclick="closeToLead()">x</button>
   <div class="modal-title">Add lead</div>
   <div class="field"><label>Full name</label><input type="text" id="cl-name" placeholder="John & Mary Jones"></div>
   <div class="field"><label>Phone</label><input type="tel" id="cl-phone" placeholder="603-555-0100"></div>
@@ -8364,7 +8627,7 @@ function openReviveTp(id, ci, ti) {
   const tp = ((c.cases||[])[ci]||{}).touchpoints[ti];
   if (!tp) return;
   const d = new Date(); d.setDate(d.getDate()+1); d.setHours(10,0,0,0);
-  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  showModal(`<button class="close-x" onclick="closeToLead()">x</button>
   <div class="modal-title">Revive appointment</div>
   <div class="modal-sub">${c.name} - ${tp.type||'appointment'}</div>
   <div style="font-size:11px;color:#5f7a99;background:#F3EEFF;border-radius:6px;padding:6px 10px;margin-bottom:10px;">Same appointment, new time. The no-show stays in history; no new appointment is logged to your dial stats.</div>
@@ -8471,7 +8734,7 @@ function renderCasesHtml(c) {
 
 function openNewCase(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
-  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  showModal(`<button class="close-x" onclick="closeToLead()">x</button>
   <div class="modal-title">New case - ${c.name}</div>
   <div class="field"><label>Case type</label><select id="nc-type">${CASE_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></div>
   <div class="field"><label>Notes (optional)</label><input type="text" id="nc-notes" placeholder="e.g. Referred by spouse, existing MP client..."></div>
@@ -8499,7 +8762,7 @@ async function saveNewCaseWithTouchpoint(id) {
 function openEditCase(id, ci) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const cs = c.cases[ci];
-  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  showModal(`<button class="close-x" onclick="closeToLead()">x</button>
   <div class="modal-title">Edit case - ${c.name}</div>
   <div class="field"><label>Case type</label><select id="ec-type">${CASE_TYPES.map(t=>`<option${cs.type===t?' selected':''}>${t}</option>`).join('')}</select></div>
   <div class="field"><label>Status</label><select id="ec-status">${CASE_STATUSES.map(s=>`<option${cs.status===s?' selected':''}>${s}</option>`).join('')}</select></div>
@@ -8543,7 +8806,7 @@ function openAddTouchpoint(id, ci) {
   const tpTypes = getTpTypes(cs.type);
   window._tpOutcome = 'pending';
   window._tpAddons = {income:false, resetself:false, resetsme:false};
-  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  showModal(`<button class="close-x" onclick="closeToLead()">x</button>
   <div class="modal-title">Add touchpoint</div>
   <div class="modal-sub">${c.name} - ${cs.type}</div>
   <div class="field"><label>Type</label><select id="tp-type">${tpTypes.map(t=>`<option>${t}</option>`).join('')}</select></div>
@@ -8714,7 +8977,7 @@ function openEditTouchpoint(id, ci, ti) {
   const outcomeColor = tp.outcome==='sale'?'#3B6D11':tp.outcome==='nosale'?'#A32D2D':tp.outcome==='noshow'?'#BA7517':'#8fa8c0';
   const outcomeLabel = tp.outcome==='sale'?'Sale':tp.outcome==='nosale'?'No Sale':tp.outcome==='noshow'?'No Show':'Pending';
   const tpTypes = getTpTypes(c.cases[ci].type);
-  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  showModal(`<button class="close-x" onclick="closeToLead()">x</button>
   <div class="modal-title">${tp.type||'Touchpoint'} - ${c.name}</div>
   <div class="modal-sub">${c.cases[ci].type} - <span style="color:${outcomeColor};font-weight:600;">${outcomeLabel}</span></div>
   <div class="field"><label>Type</label><select id="etp-type">${tpTypes.map(t=>`<option${tp.type===t?' selected':''}>${t}</option>`).join('')}</select></div>
@@ -8870,7 +9133,7 @@ function reviewUnloggedSits() {
       '<div style="text-align:right;white-space:nowrap;color:#5f7a99;">' + STRANDED_LABEL[r.kind] +
         '<div style="font-size:10px;color:#a0b8cc;">' + new Date(r.when).toLocaleDateString('en-US',{month:'short',day:'numeric'}) + '</div></div>' +
     '</div>').join('');
-  showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+  showModal('<button class="close-x" onclick="closeToLead()">x</button>' +
     '<div class="modal-title">Resolve stranded appointments</div>' +
     '<div class="modal-sub">' + rows.length + ' appointment(s) never got an outcome because the lead or case resolved elsewhere.</div>' +
     '<div style="background:#f7fafd;border-radius:8px;padding:8px 10px;margin:8px 0;">' + summary + '</div>' +
@@ -9278,7 +9541,7 @@ function openAddSit(id, suggestedReason) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const now = new Date(); now.setMinutes(0,0,0); now.setHours(now.getHours()+1);
   const reasonOptions = SIT_REASONS.map(r=>`<option value="${r.value}"${r.value===suggestedReason?' selected':''}>${r.label}</option>`).join('');
-  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  showModal(`<button class="close-x" onclick="closeToLead()">x</button>
   <div class="modal-title">Log sit - ${c.name}</div>
   <div class="field"><label>Date & time</label><input type="datetime-local" id="sit-dt" value="${toLocalDT(now)}"></div>
   <div class="field"><label>Reason</label><select id="sit-reason">${reasonOptions}</select></div>
@@ -9317,7 +9580,7 @@ function openEditSit(id, si) {
   const s = c.sits[si];
   const reasonOptions = SIT_REASONS.map(r=>`<option value="${r.value}"${r.value===s.reason?' selected':''}>${r.label}</option>`).join('');
   const sitDt = new Date(s.datetime).toISOString().slice(0,16);
-  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  showModal(`<button class="close-x" onclick="closeToLead()">x</button>
   <div class="modal-title">Edit sit ${si+1} - ${c.name}</div>
   <div class="field"><label>Date & time</label><input type="datetime-local" id="er-datetime" value="${sitDt}" style="font-size:15px;"></div>
   <div class="field"><label>Reason</label><select id="er-reason">${reasonOptions}</select></div>
@@ -9355,7 +9618,7 @@ async function setSitOutcome(id, si, val) {
 
 function openResetPrompt(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
-  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  showModal(`<button class="close-x" onclick="closeToLead()">x</button>
   <div class="modal-title">Sit logged v</div>
   <div class="modal-sub">${c.name}</div>
   <div style="margin-bottom:16px;font-size:13px;color:#1D3557;">Schedule a reset appointment?</div>
@@ -9368,7 +9631,7 @@ function openResetPrompt(id) {
 function openResetPicker(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const d = new Date(); d.setDate(d.getDate()+7); d.setHours(10,0,0,0);
-  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  showModal(`<button class="close-x" onclick="closeToLead()">x</button>
   <div class="modal-title">Schedule reset</div>
   <div class="modal-sub">${c.name}</div>
   ${buildWeekGrid(id)}
@@ -9420,7 +9683,7 @@ async function saveEditSit(id, si) {
 function openAddApp(id, si) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const carriers = Object.keys(CARRIERS);
-  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  showModal(`<button class="close-x" onclick="closeToLead()">x</button>
   <div class="modal-title">Log application</div>
   <div class="modal-sub">${c.name} - Sit ${si+1}</div>
   <div class="field"><label>Carrier</label><select id="ap-carrier" onchange="updateProducts()">${carriers.map(c=>`<option>${c}</option>`).join('')}</select></div>
@@ -9519,7 +9782,7 @@ function renderTasks() {
 }
 
 function openTaskModal() {
-  showModal(`<button class="close-x" onclick="closeModal()">x</button>
+  showModal(`<button class="close-x" onclick="closeToLead()">x</button>
   <div class="modal-title">Tasks</div>
   <div id="modal-task-list" style="margin-bottom:12px;">${renderTaskListHtml()}</div>
   <div style="display:flex;gap:6px;">
@@ -9714,7 +9977,7 @@ async function startSitFlow(id, ci, outcome) {
   const badge = outcome === 'sale'
     ? '<span style="background:#3B6D11;color:#fff;border-radius:6px;padding:2px 10px;font-size:12px;font-weight:600;vertical-align:middle;">✓ Sale</span>'
     : '<span style="background:#A32D2D;color:#fff;border-radius:6px;padding:2px 10px;font-size:12px;font-weight:600;vertical-align:middle;">✗ No Sale</span>';
-  showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+  showModal('<button class="close-x" onclick="closeToLead()">x</button>' +
     '<div class="modal-title">Log outcome &nbsp;' + badge + '</div>' +
     '<div class="modal-sub">' + c.name + '</div>' +
     '<div style="display:flex;gap:4px;margin:10px 0 16px 0;">' +
@@ -9852,7 +10115,7 @@ function filterRecruits(q) {
 function openRecruitProspects() {
   const rows = _recruitRows();
   const sent = rows.filter(r=>r.pp.stp_sent).length;
-  showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+  showModal('<button class="close-x" onclick="closeToLead()">x</button>' +
     '<div class="modal-title">Recruits</div>' +
     '<div class="modal-sub">' + sent + ' of ' + rows.length + ' sent the plan</div>' +
     '<input type="text" id="recruit-search" placeholder="Search recruits — name, phone, relationship..." oninput="filterRecruits(this.value)" style="width:100%;padding:9px 10px;border:1px solid #d0dcea;border-radius:8px;font-size:13px;margin:8px 0 12px;box-sizing:border-box;">' +
@@ -9930,7 +10193,7 @@ function filterReferrals(q) {
 function openReferralList() {
   const rows = _referralRows();
   const owed = rows.filter(r => r.source === 'ASR' && !r.paid).length;
-  showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+  showModal('<button class="close-x" onclick="closeToLead()">x</button>' +
     '<div class="modal-title">Referrals</div>' +
     '<div class="modal-sub">' + rows.length + ' captured' + (owed ? ' \u00B7 ' + owed + ' payout' + (owed>1?'s':'') + ' owed' : '') + '</div>' +
     '<input type="text" id="referral-search" placeholder="Search referrals — name, phone, who referred..." oninput="filterReferrals(this.value)" style="width:100%;padding:9px 10px;border:1px solid #d0dcea;border-radius:8px;font-size:13px;margin:8px 0 12px;box-sizing:border-box;">' +
@@ -10176,7 +10439,7 @@ function openThemeSettings(){
     '<input type="color" value="'+val+'" oninput="setThemeColor(\''+key+'\',this.value)" style="width:46px;height:30px;border:none;background:none;cursor:pointer;padding:0;"></div>';
   const preset = (name,label) => '<button onclick="setThemePreset(\''+name+'\')" style="font-size:12px;font-weight:600;border:1px solid '+(t.preset===name?'#138181':'#dde7f0')+';background:'+(t.preset===name?'#E1F5EE':'#fff')+';color:#1D3557;border-radius:8px;padding:6px 11px;cursor:pointer;">'+label+'</button>';
   showModal(
-    '<button class="close-x" onclick="closeModal()">x</button>' +
+    '<button class="close-x" onclick="closeToLead()">x</button>' +
     '<div class="modal-title">Board theme</div>' +
     '<div class="modal-sub">Pick a preset or tune the colors - the board updates live.</div>' +
     '<div style="display:flex;flex-wrap:wrap;gap:6px;margin:12px 0;">' +
@@ -10257,7 +10520,7 @@ function openGoalSetter(metric){
   const cur = existing ? existing.target : '';
   const money = !!m.money;
   showModal(
-    '<button class="close-x" onclick="closeModal()">x</button>' +
+    '<button class="close-x" onclick="closeToLead()">x</button>' +
     '<div class="modal-title">'+m.label+' goal</div>' +
     '<div class="modal-sub">Target for '+periodWord(P)+(money?' (in $)':'')+'</div>' +
     '<input id="goal-input" type="number" min="1" inputmode="numeric" value="'+cur+'" placeholder="'+(money?'e.g. 60000':'e.g. 500')+'" ' +
@@ -10530,7 +10793,7 @@ function openCompSettings() {
   const level = settings.contractLevel || 105;
   const levels = [80, 85, 90, 95, 100, 105, 110, 115, 120, 125, 130];
   
-  showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+  showModal('<button class="close-x" onclick="closeToLead()">x</button>' +
     '<div class="modal-title">Comp settings</div>' +
     '<div class="field"><label>Your contract level</label>' +
     '<select id="comp-contract-level" style="font-size:16px;width:100%;border:1px solid #d0dcea;border-radius:8px;padding:8px;">' +
@@ -10601,7 +10864,7 @@ function openSettings() {
   const enabledCount = carrierList.filter(c => enabledCarriers[c] && enabledCarriers[c]._enabled).length;
 
   showModal(
-    '<button class="close-x" onclick="closeModal()">x</button>' +
+    '<button class="close-x" onclick="closeToLead()">x</button>' +
     '<div class="modal-title">⚙️ Settings</div>' +
 
     '<div style="background:#f0f4f8;border-radius:10px;padding:12px;margin-bottom:12px;">' +
@@ -10747,7 +11010,7 @@ function openCarrierManager() {
   const enabledCarriers = settings.enabledCarriers || {};
   const carrierList = getCarrierList();
 
-  let html = '<button class="close-x" onclick="closeModal()">x</button>' +
+  let html = '<button class="close-x" onclick="closeToLead()">x</button>' +
     '<div class="modal-title">Carriers & products</div>' +
     '<div style="font-size:11px;color:#8fa8c0;margin-bottom:12px;">Toggle carriers on to show them in app entry. Tap a carrier name to manage its products.</div>';
 
@@ -11043,7 +11306,7 @@ function capSectionHtml(s, tp){
     h += '<div id="cap-reset-detail" style="display:'+(asked?'block':'none')+';">'
       + '<input type="text" id="cap-reset-to" value="'+escAttr(tp.reset_to||'')+'" oninput="capResetField()" placeholder="Reset to whom / what? (e.g. Holli for retirement)" style="width:100%;font-size:12px;padding:7px;border:1px solid #e2eaf2;border-radius:6px;margin-bottom:6px;">'
       + '<textarea id="cap-reset-notes" oninput="capResetField()" placeholder="Notes" style="width:100%;font-size:12px;padding:7px;border:1px solid #e2eaf2;border-radius:6px;min-height:44px;">'+esc(tp.reset_notes||'')+'</textarea>'
-      + '<button onclick="closeModal();openResetToPicker(\''+window._cap.id+'\')" style="background:none;border:1px solid #BA7517;color:#BA7517;border-radius:6px;padding:6px 10px;font-size:11px;cursor:pointer;margin-top:6px;">\u21ba Book the reset appointment</button>'
+      + '<button onclick="openResetToPicker(\''+window._cap.id+'\')" style="background:none;border:1px solid #BA7517;color:#BA7517;border-radius:6px;padding:6px 10px;font-size:11px;cursor:pointer;margin-top:6px;">\u21ba Book the reset appointment</button>'
       + '</div>';
   }
   h += '</div>';
