@@ -328,7 +328,7 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row" style="justify-content:flex-end;">
-        <span class="build-tag" id="build-tag" title="build">b715h141</span>
+        <span class="build-tag" id="build-tag" title="build">b715h142</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
       </div>
       <div class="nav-row">
@@ -832,9 +832,9 @@ window._lastInteraction = Date.now();
         const cardOpen = !!document.querySelector('#modal-ov .modal') && window._openClientId;
         if (cardOpen) {
           const c = clients.find(x => x.id === window._openClientId);
-          if (c && hasApptContext(c)) timerStart('appt');
-          else if (c && inLeads && dialEligible(c)) timerStart('dial');
-          else if (!inLeads) timerStart('admin');
+          if (c && hasApptContext(c)) timerStart('appt', {passive:true});
+          else if (c && inLeads && dialEligible(c)) timerStart('dial', {passive:true});
+          else if (!inLeads) timerStart('admin', {passive:true});
           // on Leads tab + not dial-eligible: leave the clock stopped
           timerUpdateStatusLabel();
         }
@@ -844,6 +844,15 @@ window._lastInteraction = Date.now();
 );
 // ===== TIMER IDLE + BANNER ENGINE (redesigned) =====
 // Per-activity idle thresholds (minutes) before the "still there?" banner shows.
+// h142. These used to be ONE number, so the banner interval doubled as the credit
+// cap: dialing stopped earning 4 minutes after your last click. You dial from your
+// phone and talk for 20 minutes without touching the screen - that is the job, not
+// idleness. The nudge stays short; the credit cap is generous. A genuine walk-away
+// is still caught by the idle watcher, which stops the clock outright, and by the
+// periodic flush, which means an abandoned tab can never bank more than one window.
+function timerCreditCapMin(activity) {
+  return activity === 'dial' ? 20 : 45;
+}
 function timerIdleThreshold(activity) {
   return activity === 'dial' ? 4 : 30; // dial 4 min; appt & admin 30 min
 }
@@ -2400,17 +2409,47 @@ function timerGetTotals() {
   return totals;
 }
 
-function timerStart(activity) {
+// h142. The appt clock used to LATCH: once it started it refused to hand back to
+// dial or admin, so opening one appointment lead meant every dial after it banked
+// as appt time. And because a session only writes when it ENDS, that latched clock
+// ran all day unbanked - which is why Appt Time read 0:00 while Dial Time quietly
+// stopped growing. One bug, both symptoms.
+//
+// The open card decides the clock now. The latch survives only for the PASSIVE
+// paths (tab flips, window focus) via {passive:true}, so glancing at another tab
+// mid-appointment still doesn't cut the appointment short.
+function timerStart(activity, opts) {
   if (window._timer.activity === activity) return; // already running this
-  // Appt owns the clock: while an appointment is running, flipping to the Leads
-  // tab or admin won't switch clocks and cut the appointment short. It ends only
-  // on the sit outcome, a manual stop, or the idle grace expiring.
-  if (window._timer.activity === 'appt' && (activity === 'dial' || activity === 'admin')) return;
-  timerStop(); // stop current if any
+  if (opts && opts.passive &&
+      window._timer.activity === 'appt' && (activity === 'dial' || activity === 'admin')) return;
+  timerStop(); // banks the current session before switching
   window._timer.activity = activity;
   window._timer.startTime = Date.now();
   timerUpdateStatusLabel();
 }
+
+// A running clock contributes NOTHING to the board until it stops. Bank the
+// elapsed time every few minutes so the tiles reflect work in progress, and so a
+// crashed tab or a closed laptop can never cost more than one interval.
+const TIMER_FLUSH_MS = 3 * 60 * 1000;
+function timerFlush() {
+  const t = window._timer;
+  if (!t || !t.activity || !t.startTime) return;
+  const now = Date.now();
+  const cap = window._lastInteraction + timerIdleThreshold(t.activity) * 60000;
+  const endMs = Math.min(now, cap);
+  const seconds = Math.floor((endMs - t.startTime) / 1000);
+  if (seconds < 30) return;                       // not worth a row yet
+  const session = { activity: t.activity, start: new Date(t.startTime).toISOString(),
+                    end: new Date(endMs).toISOString(), seconds };
+  const sessions = timerGetTodaySessions();
+  sessions.push(session);
+  timerSaveSessions(sessions);
+  timerSaveToSupabase(session);
+  t.startTime = endMs;                            // continue from where we banked
+  timerUpdateStatusLabel();
+}
+setInterval(timerFlush, TIMER_FLUSH_MS);
 
 function timerStop(opts) {
   const t = window._timer;
@@ -2419,9 +2458,13 @@ function timerStop(opts) {
   // idle threshold). This is what stops a closed laptop / walk-away from banking
   // dead time (the 142-hour bug). opts.full = an appt outcome was logged, so the
   // whole session counts (you were in it until you logged the result).
+  // The cap exists to stop a walked-away laptop banking dead hours (the 142-hour
+  // bug). But a phone call looks exactly like a walked-away laptop, so it was
+  // charging you for talking to people - the job. A click anywhere is now proof you
+  // were present up to that click; only time AFTER your last click is capped.
   let endMs = Date.now();
   if (!(opts && opts.full)) {
-    const cap = window._lastInteraction + timerIdleThreshold(t.activity) * 60000;
+    const cap = window._lastInteraction + timerCreditCapMin(t.activity) * 60000;
     if (endMs > cap) endMs = cap;
   }
   if (endMs < t.startTime) endMs = t.startTime;
