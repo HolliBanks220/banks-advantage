@@ -1,4 +1,3 @@
-
 <!-- CWC Tracker v2.2 - 20260628 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -281,13 +280,16 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
 .hdr-sub{white-space:nowrap !important;}
 .hdr-right{display:flex;flex-direction:column;align-items:stretch;gap:6px;}
 .hdr-right .nav-row:first-child{display:flex;align-items:center;gap:8px;justify-content:flex-end;}
-.hdr-right .nav-row:first-child .build-tag{margin-right:auto;}   /* tag parks far left */
+/* h145: gear leads on the left, version parks over on the right. The version tag
+   is a dev artifact - it moves into Settings once the layout settles. */
+.hdr-right .nav-row:first-child .gear-btn{order:-1;margin-right:auto;}
+.hdr-right .nav-row:first-child .build-tag{order:99;margin-left:8px;}
 /* period pills stretch across the full width */
 .hdr-right .nav-row:last-child{display:flex;gap:6px;width:100%;}
 .hdr-right .nav-row:last-child .pill{flex:1;text-align:center;}
 .build-tag{font-size:8px;color:rgba(255,255,255,0.35);letter-spacing:0.5px;font-family:monospace;}
-.gear-btn{font-size:13px;line-height:1;background:rgba(255,255,255,0.15);border:none;border-radius:8px;
-  padding:4px 8px;color:rgba(255,255,255,0.85);cursor:pointer;}
+.gear-btn{font-size:16px;line-height:1;background:rgba(255,255,255,0.15);border:none;border-radius:8px;
+  padding:6px 11px;color:rgba(255,255,255,0.9);cursor:pointer;}
 .gear-btn:hover{background:rgba(255,255,255,0.28);}
 
 /* TABS: the one you're on is a filled teal pill, not a hairline underline. */
@@ -326,6 +328,29 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
    itself once a goal is set. No extra chrome on the board. */
 .stat.goal-able .stat-sub{color:var(--teal) !important;font-weight:700 !important;}
 .stat.tile-goal-red .stat-sub,.stat.tile-goal-yellow .stat-sub,.stat.tile-goal-green .stat-sub{font-weight:600 !important;}
+
+/* ---- h146: RESTORE THE GOAL GLOW (regression from h141) ----
+   The h141 neutraliser above targets the legacy .stat-navy/.stat-teal/etc classes,
+   which the goal tiles ALSO carry. Both rules are !important, the neutraliser is
+   later, so it was repainting every goal tile back to base and killing red/amber/
+   green. Re-assert the goal fills here, last, with .stat specificity. */
+.stat.tile-goal-red{background:var(--goal-red) !important;border-color:var(--goal-red) !important;}
+.stat.tile-goal-yellow{background:var(--goal-amber) !important;border-color:var(--goal-amber) !important;}
+.stat.tile-goal-green{background:var(--goal-green) !important;border-color:var(--goal-green) !important;}
+.stat.tile-goal-red .stat-lbl,.stat.tile-goal-red .stat-val,.stat.tile-goal-red .stat-sub{color:var(--goal-red-text) !important;}
+.stat.tile-goal-yellow .stat-lbl,.stat.tile-goal-yellow .stat-val,.stat.tile-goal-yellow .stat-sub{color:var(--goal-amber-text) !important;}
+.stat.tile-goal-green .stat-lbl,.stat.tile-goal-green .stat-val,.stat.tile-goal-green .stat-sub{color:var(--goal-green-text) !important;}
+.stat.tile-alert{background:var(--goal-red) !important;border-color:var(--goal-red) !important;}
+.stat.tile-alert .stat-lbl,.stat.tile-alert .stat-val,.stat.tile-alert .stat-sub{color:var(--goal-red-text) !important;}
+
+/* ---- h146: GOAL-SETTABLE marker, take three ----
+   A left edge was too quiet; teal sub-text got buried by the inline styles the goal
+   renderer writes. An inset ring outlines all four sides, owes nothing to the text,
+   and cannot be overwritten by inline styles. It steps aside the moment a goal is
+   set, because from then on the status fill is the signal. */
+.stat.goal-able{box-shadow:inset 0 0 0 2px var(--teal) !important;}
+.stat.goal-able.tile-goal-red,.stat.goal-able.tile-goal-yellow,
+.stat.goal-able.tile-goal-green,.stat.goal-able.tile-alert{box-shadow:none !important;}
 </style>
 </head>
 <body>
@@ -340,7 +365,7 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h144</span>
+        <span class="build-tag" id="build-tag" title="build">b715h146</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
         <div class="period-label" id="period-label">This week</div>
@@ -557,9 +582,9 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
         <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="mia-close-ratio">-</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">Avg APV / sale</div>
         <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="mia-avg-apv">-</div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.5);">$ per lead</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Net $ per lead</div>
         <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="mia-per-lead">-</div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.5);">$ per lead w/ referrals</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Net $ per lead w/ referrals</div>
         <div style="font-size:15px;font-weight:600;color:#9FE1CB;margin-bottom:4px;" id="mia-per-lead-ref">-</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">Never resolved</div>
         <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:6px;" id="mia-never">-</div>
@@ -586,9 +611,9 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
         <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="cia-close-ratio">-</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">Avg APV / sale</div>
         <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="cia-avg-apv">-</div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.5);">$ per lead</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Net $ per lead</div>
         <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="cia-per-lead">-</div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.5);">$ per lead w/ referrals</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);">Net $ per lead w/ referrals</div>
         <div style="font-size:15px;font-weight:600;color:#9FE1CB;margin-bottom:4px;" id="cia-per-lead-ref">-</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">Never resolved</div>
         <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:6px;" id="cia-never">-</div>
@@ -2239,6 +2264,46 @@ function renderSourceComparison(pStart, pEnd, label) {
     // Referral-inclusive APV: what this lead source is TRULY worth, following the
     // referral web out from each lead (a lead who refers two buyers is worth far
     // more than the policy they bought). Walks the whole chain, not just one hop.
+    // h145: "$ per lead" was APV per lead - premium volume, not money you keep. Net
+    // commission = placed premium x contract level x the carrier's advance, minus
+    // any chargeback. Rules mirror getNetPlacedForMonth exactly:
+    //   - only Placed/Issued/Paid earn (Declined reached the carrier but never paid)
+    //   - Lapse/Cancel claws back chargeback_amount, or the full premium if blank
+    //   - as-earned carriers advance nothing, so they contribute 0 up front
+    function commissionOf(cl) {
+      if (!cl) return 0;
+      const lvl = (getAgentSettings().contractLevel || 105) / 100;
+      const rate = (ap) => {
+        const comp = COMP_DATA[ap.carrier];
+        const adv = comp ? (comp.as_earned ? 0 : (comp.advance_pct || 75)) / 100 : 0.75;
+        return lvl * adv;
+      };
+      const net = (ap) => {
+        const st = ap.status || '';
+        if (['Lapse','Cancel'].includes(st)) {
+          const back = (ap.chargeback_amount !== undefined && ap.chargeback_amount !== null && ap.chargeback_amount !== '')
+            ? Number(ap.chargeback_amount) : (ap.premium || 0);
+          return (((ap.premium || 0) - back) * rate(ap));
+        }
+        if (!['Placed','Issued','Paid'].includes(st)) return 0;
+        return (ap.premium || 0) * rate(ap);
+      };
+      const tp = (cl.cases||[]).flatMap(cs => (cs.touchpoints||[]).filter(t => t.outcome === 'sale'))
+        .reduce((a,t) => a + (t.apps||[]).reduce((b,ap)=>b+net(ap),0), 0);
+      const st = (cl.sits||[]).filter(s => s.outcome === 'showed')
+        .reduce((a,s) => a + (s.apps||[]).reduce((b,ap)=>b+net(ap),0), 0);
+      return tp + st;
+    }
+    function referralCommission(cl, seen) {
+      seen = seen || new Set();
+      if (!cl || seen.has(cl.id)) return 0;
+      seen.add(cl.id);
+      return (cl.referrals||[]).reduce((acc, r) => {
+        const kid = clients.find(x => x.id === r.id);
+        if (!kid) return acc;
+        return acc + commissionOf(kid) + referralCommission(kid, seen);
+      }, 0);
+    }
     function apvOf(cl) {
       if (!cl) return 0;
       const tp = (cl.cases||[]).flatMap(cs => (cs.touchpoints||[]).filter(t => t.outcome === 'sale'))
@@ -2258,6 +2323,8 @@ function renderSourceComparison(pStart, pEnd, label) {
       }, 0);
     }
     const refAPV = sourceClients.reduce((acc, c) => acc + referralAPV(c), 0);
+    const totalComm = sourceClients.reduce((acc, c) => acc + commissionOf(c), 0);
+    const refComm   = sourceClients.reduce((acc, c) => acc + referralCommission(c), 0);
 
     // MILESTONE METRICS. Averages are over leads that REACHED each milestone, so
     // nothing drifts when you import a fresh stack, and fast rejections can't
@@ -2289,7 +2356,7 @@ function renderSourceComparison(pStart, pEnd, label) {
       })
     };
 
-    return { assigned, contacted, apptsSet, shows, sales, totalAPV, refAPV, apptsResolved, decided, touchesToDecision, m };
+    return { assigned, contacted, apptsSet, shows, sales, totalAPV, refAPV, totalComm, refComm, apptsResolved, decided, touchesToDecision, m };
   }
 
   function fmtPct(n, d) { return d > 0 ? Math.round((n/d)*100) + "%" : "-"; }
@@ -2305,8 +2372,8 @@ function renderSourceComparison(pStart, pEnd, label) {
   document.getElementById("mia-outcome-ratio").textContent = fmtPct(mia.decided, mia.shows);
   document.getElementById("mia-close-ratio").textContent = fmtPct(mia.sales, mia.decided);
   document.getElementById("mia-avg-apv").textContent = fmtAvg(mia.totalAPV, mia.sales);
-  document.getElementById("mia-per-lead").textContent = fmtAvg(mia.totalAPV, mia.assigned);
-  document.getElementById("mia-per-lead-ref").textContent = fmtAvg(mia.totalAPV + mia.refAPV, mia.assigned);
+  document.getElementById("mia-per-lead").textContent = fmtAvg(mia.totalComm, mia.assigned);
+  document.getElementById("mia-per-lead-ref").textContent = fmtAvg(mia.totalComm + mia.refComm, mia.assigned);
   const setEl = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
   {
     const _m = mia.m;
@@ -2324,8 +2391,8 @@ function renderSourceComparison(pStart, pEnd, label) {
   document.getElementById("cia-outcome-ratio").textContent = fmtPct(cia.decided, cia.shows);
   document.getElementById("cia-close-ratio").textContent = fmtPct(cia.sales, cia.decided);
   document.getElementById("cia-avg-apv").textContent = fmtAvg(cia.totalAPV, cia.sales);
-  document.getElementById("cia-per-lead").textContent = fmtAvg(cia.totalAPV, cia.assigned);
-  document.getElementById("cia-per-lead-ref").textContent = fmtAvg(cia.totalAPV + cia.refAPV, cia.assigned);
+  document.getElementById("cia-per-lead").textContent = fmtAvg(cia.totalComm, cia.assigned);
+  document.getElementById("cia-per-lead-ref").textContent = fmtAvg(cia.totalComm + cia.refComm, cia.assigned);
   {
     const _m = cia.m;
     const _f = (rate, a, d) => (rate !== null ? Math.round(rate) + '%  ' : '') + a.toFixed(1) + ' att  ' + d.toFixed(1) + 'd';
