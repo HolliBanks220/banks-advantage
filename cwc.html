@@ -251,6 +251,18 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
 .appt-sidebar-item.passed{opacity:1 !important;}
 .appt-sidebar-divider{color:#8B97A6 !important;}
 
+/* -- 4. TOGGLE STATES (h135b). The h134 block gave .dial-cnt-btn / .flag-btn an
+      !important background, which silently beat their own .on state rules (those
+      carry no !important, and !important wins regardless of specificity). Result:
+      clicking 1x/2x/3x DID set the count but the button never changed - it read as
+      unresponsive. Same for two flag states. Restated here with !important. */
+.dial-cnt-btn.on{background:var(--teal) !important;color:#fff !important;border-color:var(--teal) !important;}
+.flag-btn.on-teal{background:#138181 !important;color:#fff !important;border-color:#138181 !important;}
+.flag-btn.on-purple{background:#534AB7 !important;color:#fff !important;border-color:#534AB7 !important;}
+/* make the selected dial count unmistakable at a glance mid-session */
+.dial-cnt-btn{transition:none !important;}
+.dial-cnt-btn.on{box-shadow:0 0 0 2px rgba(19,129,129,0.28) !important;}
+
 /* -- 3. Hard floor: cards and their text never go dark, whatever the theme picker does. */
 .client-card,.sit-card,.appt-sidebar,.modal{background:var(--dk-card) !important;color:var(--dk-ink) !important;}
 </style>
@@ -263,7 +275,7 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h135</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h136</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
         <button onclick="openThemeSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;margin-left:4px;">Theme</button>
       </div>
