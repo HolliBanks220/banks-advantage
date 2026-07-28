@@ -346,10 +346,12 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
 /* ---- h148: sidebar stripe = case type, red fill = due ---- */
 .appt-sidebar-item.ap-phone{border-left-color:#138181 !important;}      /* MP / General Life - phone */
 .appt-sidebar-item.ap-phone .ap-time{color:#0E6363 !important;}
-.appt-sidebar-item.ap-advanced{border-left-color:#2F6DB5 !important;}   /* Retirement / DFL / IBC - Zoom */
-.appt-sidebar-item.ap-advanced .ap-time{color:#24578F !important;}
-.appt-sidebar-item.ap-reminder{border-left-color:#6C5CE0 !important;}   /* callbacks + follow-ups */
-.appt-sidebar-item.ap-reminder .ap-time{color:#4A3FA8 !important;}
+/* h149: blue sat too close to teal. Advanced market takes the purple; reminders
+   move to gold, which is the furthest hue from both. */
+.appt-sidebar-item.ap-advanced{border-left-color:#6C5CE0 !important;}   /* Retirement / DFL / IBC / resets - Zoom */
+.appt-sidebar-item.ap-advanced .ap-time{color:#4A3FA8 !important;}
+.appt-sidebar-item.ap-reminder{border-left-color:#D9922B !important;}   /* callbacks + follow-ups */
+.appt-sidebar-item.ap-reminder .ap-time{color:#8A5A11 !important;}
 /* DUE: the one urgency signal. Arms 5 minutes out, stays until an outcome lands. */
 .appt-sidebar-item.ap-due{background:#C0392B !important;border-color:#C0392B !important;border-left-color:#8E2A1F !important;}
 .appt-sidebar-item.ap-due .ap-name,
@@ -369,7 +371,7 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h148</span>
+        <span class="build-tag" id="build-tag" title="build">b715h149</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
         <div class="period-label" id="period-label">This week</div>
