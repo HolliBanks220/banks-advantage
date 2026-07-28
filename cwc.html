@@ -386,7 +386,7 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h151</span>
+        <span class="build-tag" id="build-tag" title="build">b715h154</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
         <div class="period-label" id="period-label">This week</div>
@@ -440,6 +440,7 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
       <div class="stat stat-red">
         <div class="stat-lbl lbl-red">Not interested</div>
         <div class="stat-val val-red" id="s-dead">0</div>
+        <div class="stat-sub sub-red" id="s-setratio"></div>
         <div class="stat-btns">
         </div>
       </div>
@@ -1756,6 +1757,14 @@ function renderScore() {
     const t = new Date(r.ts);
     return t >= aStart && t <= aEnd;
   }).length;
+  // h152: SET RATIO - of the leads that DECIDED, how many went your way.
+  // appts set / (appts set + not interested). 6 and 6 reads 50%.
+  (function(){
+    const el = document.getElementById('s-setratio');
+    if (!el) return;
+    const decided = appts + dead;        // both are already counts, not arrays
+    el.textContent = decided > 0 ? Math.round((appts / decided) * 100) + '% set ratio' : '';
+  })();
   // Callbacks = leads you're actively working via callback (one per lead, live -
   // not period-bound). Texts = your logged 'Text sent' activity in the period.
   const callbacks = activeCallbackLeads().length;
@@ -2293,21 +2302,36 @@ function renderSourceComparison(pStart, pEnd, label) {
     //   - as-earned carriers advance nothing, so they contribute 0 up front
     function commissionOf(cl) {
       if (!cl) return 0;
+      // h153. FULL first-year commission - annual premium x contract level. No advance
+      // percentage and no as-earned discount: this answers "what is a lead from this
+      // source really worth", not "what hit my account this week".
+      //
+      // Two corrections to h145, which was wrong on both counts:
+      //   - it gated on a status name that does not exist here (APP_STATUSES is
+      //     Written/Submitted/Approved/Issued/Paid/Free Look/Declined/Lapse/Cancel),
+      //     so it silently counted only Issued and Paid
+      //   - it applied the advance rate, which understates the real value
+      //
+      // Submitted and Approved count in FULL - issue and pay can lag by weeks and
+      // that lag should not drag the number down. Lapse and Cancel stay counted at
+      // premium minus the chargeback, because money kept is still money made.
+      // Written has not reached the carrier; Free Look and Declined never paid.
+      //
+      // NOTE: this is the PLACED-side ledger. Submitted APV is a historical fact and
+      // never decreases - nothing here reaches back and un-submits an application.
       const lvl = (getAgentSettings().contractLevel || 105) / 100;
-      const rate = (ap) => {
-        const comp = COMP_DATA[ap.carrier];
-        const adv = comp ? (comp.as_earned ? 0 : (comp.advance_pct || 75)) / 100 : 0.75;
-        return lvl * adv;
-      };
+      const EARNING = ['Submitted','Approved','Issued','Paid'];
+      const NETTED  = ['Lapse','Cancel'];
       const net = (ap) => {
         const st = ap.status || '';
-        if (['Lapse','Cancel'].includes(st)) {
-          const back = (ap.chargeback_amount !== undefined && ap.chargeback_amount !== null && ap.chargeback_amount !== '')
-            ? Number(ap.chargeback_amount) : (ap.premium || 0);
-          return (((ap.premium || 0) - back) * rate(ap));
+        const prem = Number(ap.premium) || 0;
+        if (NETTED.includes(st)) {
+          const raw = ap.chargeback_amount;
+          const back = (raw !== undefined && raw !== null && raw !== '') ? Number(raw) : prem;
+          return Math.max(0, prem - back) * lvl;
         }
-        if (!['Placed','Issued','Paid'].includes(st)) return 0;
-        return (ap.premium || 0) * rate(ap);
+        if (!EARNING.includes(st)) return 0;      // Written / Free Look / Declined
+        return prem * lvl;
       };
       const tp = (cl.cases||[]).flatMap(cs => (cs.touchpoints||[]).filter(t => t.outcome === 'sale'))
         .reduce((a,t) => a + (t.apps||[]).reduce((b,ap)=>b+net(ap),0), 0);
@@ -3348,13 +3372,29 @@ async function setAppStatus(clientId, ci, ti, ai, newStatus) {
   const c = clients.find(x=>x.id===clientId); if (!c) return;
   const ap = (((c.cases||[])[ci]||{}).touchpoints||[])[ti];
   if (!ap || !ap.apps || !ap.apps[ai]) return;
+  const _prevStatus = ap.apps[ai].status;
   ap.apps[ai].status = newStatus;
-  // Lapse/Cancel: default the date to today and the chargeback to the premium,
-  // both editable in the app editor. The loss then lands in this month.
+  // h153: ASK, don't assume. A lapse rarely claws back the whole premium - some of
+  // it was earned and kept - and silently defaulting to the full amount was making
+  // losses look worse than they were. The prompt is prefilled with the premium and
+  // stays editable in the app editor afterwards.
   if ((newStatus==='Lapse'||newStatus==='Cancel')) {
     if (!ap.apps[ai].lapse_date) ap.apps[ai].lapse_date = new Date().toISOString();
-    if (ap.apps[ai].chargeback_amount === undefined || ap.apps[ai].chargeback_amount === null || ap.apps[ai].chargeback_amount === '') ap.apps[ai].chargeback_amount = ap.apps[ai].premium || 0;
+    const prem = Number(ap.apps[ai].premium) || 0;
+    const cur = ap.apps[ai].chargeback_amount;
+    if (cur === undefined || cur === null || cur === '') {
+      const answer = prompt(
+        'How much is being charged back on this ' + newStatus.toLowerCase() + '?\n\n' +
+        'Annual premium: $' + prem.toFixed(2) + '\n' +
+        'Enter the amount clawed back. Anything you kept still counts as money made.\n' +
+        'Leave as-is for the full premium.',
+        prem.toFixed(2));
+      if (answer === null) { ap.apps[ai].status = _prevStatus; renderScore(); return; }
+      const n = parseFloat(String(answer).replace(/[^0-9.\-]/g, ''));
+      ap.apps[ai].chargeback_amount = isNaN(n) ? prem : Math.max(0, Math.min(n, prem));
+    }
   }
+
   // If marking Placed or Paid, stamp writtenDate from the touchpoint datetime (the sale date)
   if ((newStatus==='Issued'||newStatus==='Paid') && !ap.apps[ai].writtenDate) {
     ap.apps[ai].writtenDate = ap.datetime || ap.apps[ai].created || new Date().toISOString();
@@ -6085,14 +6125,18 @@ function openClient(id, keepDialCount) {
     ${[1,2,3].map(n=>`<button class="dial-cnt-btn${(window._dialCount||1)===n?' on':''}" id="dcb-${n}" onclick="setDialCount(${n})">${n}x</button>`).join('')}
   </div>
   <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;">
-    <button class="call-btn cb-navy" onclick="quickLog('${id}','No answer','dials')">No answer</button>${isReadyForText(c)?`<button class="call-btn" style="background:#1D3557;color:#fff;border:2px solid #138181;" onclick="quickLogAndText('${id}')">No answer + 📱</button>`:''}<button class="call-btn" style="background:none;border:1px solid #9FE1CB;color:#0E6363;" onclick="openTextModal('${id}')" title="Text without logging a dial">&#128241; Text only</button>
+    <button class="call-btn cb-navy" onclick="quickLog('${id}','No answer','dials')">No answer</button>
     <button class="call-btn cb-green" onclick="openApptSet('${id}')">Appt set</button>
     ${hasSold(c)
       ? `<button class="call-btn" style="background:#534AB7;color:#fff;" onclick="openFollowUpPicker('${id}')">Follow-up</button>`
       : `<button class="call-btn cb-amber" onclick="openCallbackPicker('${id}')">Callback</button>`}
     <button class="call-btn cb-red" onclick="quickLog('${id}','Not interested','dead')">Not interested</button>
   </div>
-  <button onclick="openTextModal('${id}')" style="font-size:10px;background:none;border:1px solid #9FE1CB;border-radius:6px;padding:3px 10px;color:#138181;cursor:pointer;margin-bottom:8px;">📱 Text templates</button>
+  <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">
+    ${isReadyForText(c)?`<button class="call-btn" style="background:#1D3557;color:#fff;border:2px solid #138181;" onclick="quickLogAndText('${id}')">No answer + &#128241;</button>`:''}
+    <button onclick="openTextModal('${id}')" style="font-size:10px;background:none;border:1px solid #9FE1CB;border-radius:6px;padding:3px 10px;color:#138181;cursor:pointer;">&#128241; Text templates</button>
+    <button onclick="openTextModal('${id}')" title="Text without logging a dial" style="font-size:10px;background:none;border:1px solid #9FE1CB;border-radius:6px;padding:3px 10px;color:#0E6363;cursor:pointer;">&#128241; Text only</button>
+  </div>
   <button class="save-btn" onclick="updateClient('${id}')" style="margin-bottom:12px;">Save & next</button>
   <div class="section-lbl">Call log</div>
   <div style="padding-left:4px;margin-bottom:12px;">${callHistory||'<div style="font-size:12px;color:#a0b8cc;">No calls yet.</div>'}${_logRows.length>6?`<div onclick="toggleLogShowAll('${id}')" style="font-size:10px;color:#0E6363;text-decoration:underline;cursor:pointer;margin-top:4px;">${_showAllLog?'Show fewer':'Show all '+_logRows.length+' entries'}</div>`:''}${deletedLogHtml(c,id)}</div>
@@ -7120,6 +7164,18 @@ function computeInitialSet(pStart, pEnd, board) {
     else if (nsh.length) { rep=nsh[0]; fate='noshow'; }
     else if (pend.length) { rep=pend[0]; fate = new Date(pend[0].datetime).getTime() >= nowMs ? 'upcoming' : 'needs'; }
     if (!rep) return;
+    // h154: MOST RECENT DECISION WINS - the same rule lastResolution already applies
+    // to the dialing tiles. If the lead's latest word is Not Interested and they never
+    // sat, that booking was never a real appointment and must not count as one. It
+    // stays in the call log untouched; it just leaves the appointments bucket.
+    //
+    // A no-show still counts: they were booked, they didn't turn up. That is real
+    // history. Same if they sat and went cold afterwards - the appointment happened.
+    // This only removes bookings that produced nothing before the lead said no.
+    if (fate === 'upcoming' || fate === 'needs') {
+      const _r = lastResolution(c);
+      if (_r && _r.kind === 'dead') return;
+    }
     const d = new Date(rep.datetime);
     if (d < pStart || d > pEnd) return;
     out.push({c, cs, tp:rep, fate, d});
