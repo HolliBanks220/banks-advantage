@@ -386,7 +386,7 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h154</span>
+        <span class="build-tag" id="build-tag" title="build">b715h156</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
         <div class="period-label" id="period-label">This week</div>
@@ -1402,7 +1402,13 @@ function getNetPlacedForMonth(year, month) {
       (tp.apps||[]).forEach(ap => {
         const pm = getPlacementMonth({...ap, tpDate: ap.writtenDate || tp.datetime});
         if (!pm || pm.getFullYear() !== year || pm.getMonth() !== month) return;
-        if (['Placed','Issued','Paid'].includes(ap.status||'')) placed += (ap.premium||0);
+        // h155: 'Placed' is not one of APP_STATUSES (Written/Submitted/Approved/Issued/
+        // Paid/Free Look/Declined/Lapse/Cancel), so it never matched anything - the
+        // list only ever behaved as Issued+Paid. That IS the rule the bonus should
+        // use, so this is now explicit rather than accidental. Deliberately STRICTER
+        // than the lead-source $ per lead, which counts Submitted and Approved too:
+        // the bonus tracks what the carrier has actually paid on.
+        if (['Issued','Paid'].includes(ap.status||'')) placed += (ap.premium||0);
         // Declined counts as SUBMITTED (it reached the carrier) but never as placed.
         // No chargeback branch: Holli isn't paid until issue, so a decline claws back nothing.
       });
@@ -2156,7 +2162,7 @@ function renderScore() {
   document.getElementById('p-apv').textContent = fmt(totalAPV);
   { const e=document.getElementById('p-apps'); if (e) e.textContent = totalApps+' apps'; }
   // Net Placed Ratio: placed APV over submitted APV (whole-business, like the tile).
-  { const placedAPV = periodApps.filter(ap => ['Placed','Issued','Paid'].includes(ap.status||'')).reduce((a,ap)=>a+premOf(ap),0);
+  { const placedAPV = periodApps.filter(ap => ['Issued','Paid'].includes(ap.status||'')).reduce((a,ap)=>a+premOf(ap),0);   // h155: 'Placed' is not an APP_STATUS
     const e=document.getElementById('p-netplaced'); if (e) e.textContent = totalAPV > 0 ? pct(placedAPV, totalAPV) + ' net placed' : '- net placed'; }
   document.getElementById('p-apv-hh').textContent = fmt(apvPerSale);
   document.getElementById('p-apv-ppu').textContent = fmt(ppuAvgAPV)+' PPU vs '+fmt(nonPPUAvgAPV)+' non-PPU';
@@ -3798,7 +3804,7 @@ function renderAppsTab() {
           </div>
           ${apps.map(ap => {
             const STATUS_OPTS = APP_STATUSES;   // one shared list - card and business always match
-            const currentStatus = ap.status || 'Placed';
+            const currentStatus = ap.status || 'Written';   // h155: was defaulting to a status not in APP_STATUSES
             const statusColor = STATUS_COLOR[currentStatus] || '#138181';
             return `<div style="border:1px solid #e2eaf2;border-radius:10px;padding:10px 12px;margin-bottom:6px;background:#fff;">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
@@ -8425,7 +8431,15 @@ function importTextIsThin(text, row) {
 }
 
 // Sort order for the preview: cards that need your eyes rise to the top.
-function rowPriority(r) { return r._scan ? 0 : (r.phone_flag ? 1 : 2); }
+function rowPriority(r) {
+  // h156: anything the parser is unsure about goes to the TOP of the preview. It
+  // used to be appended silently at the bottom, which is how a row named
+  // 'Requested Changes As A "Mortgage Holder"' got imported without anyone seeing.
+  if (r._scan) return 0;
+  if (r.flags && r.flags.length) return 1;
+  if (r.phone_flag) return 2;
+  return 3;
+}
 
 async function handleImportFile(f) {
   const statusEl = document.getElementById('li-status');
@@ -8439,11 +8453,35 @@ async function handleImportFile(f) {
     for (let p = 1; p <= pdf.numPages; p++) {
       const page = await pdf.getPage(p);
       const tc = await page.getTextContent();
+      // h156: pdf.js hands back loose text items. Joining them with spaces threw
+      // away the line structure the layout parsers need AND was the source of the
+      // "M elissa" splits. Rebuild lines from the item geometry: group by y, order
+      // by x. `text` keeps the old flat form for the legacy fallback parser.
       const text = tc.items.map(it => it.str).join(' ').replace(/\s+/g, ' ').trim();
-      let row = parseLeadText(text);
+      const linedText = (function(){
+        const rows = new Map();
+        tc.items.forEach(it => {
+          if (!it.str) return;
+          const y = Math.round((it.transform && it.transform[5]) || 0);
+          const x = (it.transform && it.transform[4]) || 0;
+          let key = y;
+          for (const k of rows.keys()) { if (Math.abs(k - y) <= 2) { key = k; break; } }
+          if (!rows.has(key)) rows.set(key, []);
+          rows.get(key).push({ x, s: it.str });
+        });
+        return [...rows.entries()]
+          .sort((a,b) => b[0] - a[0])                       // top of page down
+          .map(([, items]) => items.sort((a,b) => a.x - b.x).map(i => i.s).join(' ')
+                                   .replace(/[ \t]+/g,' ').trim())
+          .filter(Boolean).join('\n');
+      })();
+      let row = parseLeadText(linedText || text);
       const thin = importTextIsThin(text, row);
       // Clean digital lead WITH a trustworthy phone -> take it as-is.
-      if (row && !thin && !row.phone_flag) { _importRows.push(row); continue; }
+      if (row && !thin && !row.phone_flag) {
+        if (row.flags && row.flags.length) row.include = false;   // unchecked until you look
+        _importRows.push(row); continue;
+      }
 
       // Needs your eyes. Two cases land here: a thin/garbled/blank page (OCR it
       // to recover the printed name/address/loan), or a mostly-digital card whose
@@ -8492,6 +8530,216 @@ async function handleImportFile(f) {
   }
 }
 
+// ============================================================================
+// h156 - LEAD PDF PARSING
+//
+// Rewritten against real failing files. Three things were wrong:
+//
+// 1. SPLIT FIRST CHARACTERS. On the "Online Lead Template" the filled-in values
+//    are form-field overlays, and extraction splits the first character off:
+//      "M elissa Thayer & Michael D Thayer" / "2 19 Sarah Blvd" / "3 303839601"
+//    Nothing downstream can recover from that, so it is repaired FIRST.
+//
+// 2. READING-ORDER PARSING. The old name rule was "the text between 'Current
+//    Information' and either 'Requested Changes' or the first 2-digit number".
+//    PDF extraction does not guarantee reading order across a table - different
+//    extractors place that value block in different spots - so the capture ran
+//    into the sales paragraph and produced:
+//      Requested Changes As A "Mortgage Holder"
+//    Fields are now found by LABEL where labels exist and by SHAPE where they
+//    do not. Position is never trusted.
+//
+// 3. NO VALIDATION. Obvious non-names imported silently. Now they are flagged.
+// ============================================================================
+
+// A lone leading character severed from its value. Join it back. Deliberately
+// narrow: single char + space + a run that continues the same token, and only
+// when the following run is lowercase (names/words) or the whole thing is digits
+// (phones). "Date of Birth" and other real two-word labels are left alone.
+function repairSplitChars(text) {
+  if (!text) return text;
+  return text
+    .replace(/(^|[\s:>])([A-Z])\s([a-z]{2,})/g, '$1$2$3')      // "M elissa"  -> "Melissa"
+    .replace(/(^|[\s:>])(\d)\s(\d{6,})/g, '$1$2$3')            // "3 303839601" -> "3303839601"
+    .replace(/(^|[\s:>])(\d)\s(\d{2}\s+[A-Z])/g, '$1$2$3')     // "2 19 Sarah" -> "219 Sarah"
+    .replace(/\$\s(\d)/g, '$$$1');                             // "$ 234,025"  -> "$234,025"
+}
+
+// Which template is this page? Fingerprints, not guesswork.
+function detectLayout(text) {
+  const t = text || '';
+  if (/Online Lead Template|Current Information\s+Requested Changes/i.test(t)) return 'online-template';
+  if (/MailerID|LeadPros|Reference ID:/i.test(t)) return 'mailer-card';
+  if (/First Name\s+\S+.*Mortgage ID/i.test(t) || /CUSTOMER REQUEST/i.test(t)) return 'customer-request';
+  return 'unknown';
+}
+
+const MONTHS_MS = 1000 * 60 * 60 * 24 * 365.25;
+function ageFromDob(dob) {
+  if (!dob) return '';
+  const m = String(dob).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (!m) return '';
+  const born = new Date(+m[3], +m[1] - 1, +m[2]);
+  if (isNaN(born)) return '';
+  const age = Math.floor((Date.now() - born.getTime()) / MONTHS_MS);
+  return (age > 0 && age < 120) ? String(age) : '';
+}
+
+// The Online Lead Template has no labels on its value block, so identify each
+// value by what it LOOKS like. Order-independent by construction.
+function parseOnlineTemplate(text) {
+  const out = { layout: 'online-template' };
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+  for (const line of lines) {
+    // "Toronto OH 43964-4011 (Jefferson County)"
+    let m = line.match(/^(.+?)\s+([A-Z]{2})\s+(\d{5})(?:-\d{4})?\s*(?:\(([^)]*?)\s*County\))?/);
+    if (m && !out.city && !/^(Date|Gender|Home|Best|Contact|Height|Weight|Smoker)/i.test(line)) {
+      out.city = m[1].trim(); out.state = m[2]; out.zip = m[3];
+      if (m[4]) out.county = m[4].trim();
+      continue;
+    }
+    // "$234,025 (07/01/2026)"
+    m = line.match(/^\$\s?([\d,]+(?:\.\d{2})?)\s*(?:\((\d{1,2}\/\d{1,2}\/\d{4})\))?/);
+    if (m && !out.mortgage) { out.mortgage = m[1].replace(/,/g, ''); out.loanDate = m[2] || ''; continue; }
+    // "Melissa Thayer & Michael D Thayer" - the only line with an ampersand
+    if (/&/.test(line) && !out.name && !/Mortgage|Insurance|Disability/i.test(line)) {
+      const parts = line.split(/\s*&\s*/);
+      out.name = (parts[0] || '').trim();
+      out.coName = (parts[1] || '').trim();
+      continue;
+    }
+    // "219 Sarah Blvd" - starts with a number, looks like a street
+    if (!out.address && /^\d+\s+\S+/.test(line) &&
+        /\b(St|Street|Rd|Road|Ave|Avenue|Dr|Drive|Blvd|Ln|Lane|Ct|Court|Way|Hwy|Pkwy|Cir|Ter|Pl)\b/i.test(line)) {
+      out.address = line; continue;
+    }
+  }
+
+  // Labelled fields inside the borrower table. Borrower is the FIRST match on
+  // each line; the co-borrower column repeats the same label and is usually blank.
+  const dob = text.match(/Date of Birth\s*:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i);
+  if (dob) { out.dob = dob[1]; out.age = ageFromDob(dob[1]); }
+  const gen = text.match(/Gender\s*:\s*([MF])\b/i);
+  if (gen) out.gender = gen[1].toUpperCase();
+  const hp = text.match(/Home Phone\s*#?\s*:?\s*(\d[\d\s-]{8,})/i);
+  if (hp) out.phone = hp[1].replace(/\D/g, '');
+  const btc = text.match(/Best Time To Call\s*:\s*([A-Za-z]+)/i);
+  if (btc && !/^Call$/i.test(btc[1])) out.bestTime = btc[1];
+
+  // Lender: a line that is a company but not the address, name or amount
+  for (const line of lines) {
+    if (out.lender) break;
+    if (/\b(Mortgage|Lending|Bank|Credit Union|Loans?|Financial|Savings)\b/i.test(line)
+        && !/^\$/.test(line) && !/&/.test(line) && !/^\d/.test(line)
+        && !/Holder|Protection|Insurance|Plan|payments|qualify/i.test(line)
+        && line.length < 60) out.lender = line.trim();
+  }
+  return out;
+}
+
+// LeadPros mail-back. Labelled, but the two columns interleave on one line
+// ("Age: 77 Bowling Green, OH 43402"), so each label is read non-greedily and
+// stopped at the next label or a column break.
+function parseMailerCard(text) {
+  const out = { layout: 'mailer-card' };
+  const g = (label, pat) => {
+    const m = text.match(new RegExp(label + '\\s*:?\\s*' + pat, 'i'));
+    return m ? m[1].trim() : '';
+  };
+  out.name    = g('Name', '([A-Za-z\'\\-\\.]+(?:\\s+[A-Za-z\'\\-\\.]+){0,3}?)(?=\\s{2,}|\\s*\\n|$)');
+  out.age     = g('Age', '(\\d{1,3})');
+  out.phone   = g('Phone', '([\\d\\s\\(\\)\\-\\.]{10,})').replace(/\\D/g, '');
+  out.mortgage= g('Loan Amount', '\\$?([\\d,]+(?:\\.\\d{2})?)').replace(/,/g, '');
+  out.loanDate= g('Loan Date', '(\\d{1,2}\\/\\d{1,2}\\/\\d{4})');
+  out.county  = g('County', '([A-Za-z\\s]+?)(?=\\s{2,}|\\s*\\n|$)');
+  out.lender  = g('Lender', '(.+?)(?=\\s{2,}|\\s*\\n|$)');
+  out.email   = g('Email Address', '(\\S+@\\S+)');
+
+  // Address block sits in the right column under the name, unlabelled.
+  const lines = text.split('\n').map(l => l.trim());
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/^(.*?)([A-Za-z][A-Za-z\s\.'-]+),\s*([A-Z]{2})\s+(\d{5})/);
+    if (m) { out.city = m[2].trim(); out.state = m[3]; out.zip = m[4];
+             const prev = lines[i-1] || '';
+             const pm = prev.match(/(\d+\s+[A-Za-z0-9\s\.'-]+)$/);
+             if (pm) out.address = pm[1].trim();
+             break; }
+  }
+  return out;
+}
+
+// The common CIA sheet. Two labelled columns on one line - read each label up to
+// the next known label.
+const CR_LABELS = ['First Name','Last Name','Property Address','City','County','State','Postal Code',
+                   'Mortgage ID','Contact Phone','Primary Phone','Caller ID','Age','Purchase Amount',
+                   'Mortgage Amount','Lender Name'];
+function parseCustomerRequest(text) {
+  const out = { layout: 'customer-request' };
+  const stop = CR_LABELS.map(l => l.replace(/ /g, '\\s+')).join('|');
+  // Case-SENSITIVE: these templates use Title Case labels, and the boilerplate is
+  // full of lowercase decoys ("please enter your age", "your mortgage in the
+  // amount of"). Matching case-insensitively grabbed the sales copy instead.
+  const g = (label) => {
+    const m = text.match(new RegExp('\\b' + label.replace(/ /g, '\\s+') + '\\s*:?\\s*(.+?)(?=\\s{2,}|\\s*(?:' + stop + ')\\s|\\s*\\n|$)'));
+    return m ? m[1].trim() : '';
+  };
+  const first = g('First Name'), last = g('Last Name');
+  out.name = (first + ' ' + last).trim();
+  out.address = g('Property Address');
+  out.city = g('City'); out.county = g('County'); out.state = g('State'); out.zip = g('Postal Code');
+  out.age = (g('Age').match(/\d{1,3}/) || [''])[0];
+  out.lender = g('Lender Name');
+  out.mortgage = (g('Mortgage Amount').match(/[\d,]+(?:\.\d{2})?/) || [''])[0].replace(/,/g, '');
+  const ph = g('Contact Phone') || g('Primary Phone') || g('Caller ID');
+  out.phone = ph.replace(/\D/g, '').replace(/^1/, '');
+  const gender = text.match(/What is your gender\?:\s*(Male|Female)/i);
+  if (gender) out.gender = gender[1][0].toUpperCase();
+  const tob = text.match(/tobacco[^:]*:\s*([YN])\b/i);
+  if (tob) out.tobacco = tob[1].toUpperCase();
+  const co = text.match(/co-borrower on this mortgage\?:\s*([YN])\b/i);
+  if (co) out.coBorrower = co[1].toUpperCase();
+  return out;
+}
+
+// A name is a name. "Requested Changes As A "Mortgage Holder"" is not.
+const NAME_JUNK = /requested changes|mortgage holder|current information|important notification|complete and return|customer request|borrower|co-borrower|insurance|disability|premium/i;
+function validateLead(rec) {
+  const flags = [];
+  const n = (rec.name || '').trim();
+  if (!n) flags.push('no name found');
+  else {
+    if (NAME_JUNK.test(n)) flags.push('name looks like form text, not a person');
+    if (/["“”]/.test(n)) flags.push('name contains quote marks');
+    if (n.split(/\s+/).length > 5) flags.push('name is too long to be a person');
+    if (/\d/.test(n)) flags.push('name contains digits');
+  }
+  const pd = (rec.phone || '').replace(/\D/g, '');
+  if (!pd) flags.push('no phone found');
+  else if (!/^[2-9]\d{2}[2-9]\d{6}$/.test(pd)) flags.push('not a valid US number');
+  if (!rec.age) flags.push('no age (and no date of birth to compute one)');
+  if (!rec.address) flags.push('no property address');
+  return flags;
+}
+
+function parseLeadPage(rawText) {
+  const text = repairSplitChars(rawText || '');
+  const layout = detectLayout(text);
+  let rec;
+  if (layout === 'online-template') rec = parseOnlineTemplate(text);
+  else if (layout === 'mailer-card') rec = parseMailerCard(text);
+  else rec = parseCustomerRequest(text);
+  rec.layout = layout;
+  if (rec.phone) {
+    const d = rec.phone.replace(/\D/g, '').replace(/^1/, '');
+    rec.phone = d.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+  }
+  rec.flags = validateLead(rec);
+  return rec;
+}
+
+
+
 // --- CIA vs MIA classification (isolated for future team levels) ---
 function classifyLeadSource(text) {
   const t = (text || '').toLowerCase();
@@ -8522,6 +8770,32 @@ const IMPORT_HOTLINES = new Set(['8559209821','8447224712','8559591944','8447142
 function parseLeadText(text, opts) {
   opts = opts || {};
   if (!text || text.length < 20) return null;
+
+  // h156: layout-aware parse first. Verified against a real 18-page mixed file
+  // (15 Customer Request + 1 LeadPros mailer + 1 Online Lead Template + 1 hybrid):
+  // 18/18 with a valid name, phone, age and address. If it cannot classify the
+  // page it falls through to the original reading-order parser below.
+  try {
+    const _lay = detectLayout(repairSplitChars(text));
+    if (_lay !== 'unknown') {
+      const r = parseLeadPage(text);
+      if (r && r.name && !r.flags.some(f => /form text|quote marks|too long|digits/.test(f))) {
+        return {
+          name: r.name, spouse: r.coName || '', phone: r.phone || '',
+          address: [r.address, [r.city, r.state].filter(Boolean).join(', '), r.zip].filter(Boolean).join(', '),
+          city: r.city || '', state: r.state || '', zip: r.zip || '', county: r.county || '',
+          age: r.age || '', dob: r.dob || '', gender: r.gender || '',
+          mortgage: r.mortgage || '', lender: r.lender || '', loanDate: r.loanDate || '',
+          bestTime: r.bestTime || '', tobacco: r.tobacco || '', coBorrower: r.coBorrower || '',
+          source: classifyLeadSource(text), layout: r.layout,
+          phone_flag: (r.flags.find(f => /phone|US number/.test(f)) || ''),
+          flags: r.flags, _parser: 'h156'
+        };
+      }
+      if (r && r.flags.length) { window._importFlagged = (window._importFlagged||0) + 1; }
+    }
+  } catch (e) { console.error('h156 parse failed, falling back', e); }
+
 
   // ---- PHONE: label first, then scrubbed generic (unchanged core) ----
   let phoneRaw = '';
@@ -9827,7 +10101,7 @@ async function updateAppStatus(id, ci, ti, ai, status) {
   const c = clients.find(x=>x.id===id); if(!c) return;
   if (c.cases[ci]?.touchpoints[ti]?.apps[ai]) {
     c.cases[ci].touchpoints[ti].apps[ai].status = status;
-    if (status==='Placed') c.cases[ci].touchpoints[ti].apps[ai].placed_date = new Date().toISOString();
+    if (status==='Issued') c.cases[ci].touchpoints[ti].apps[ai].placed_date = new Date().toISOString();   // h155: 'Placed' is unreachable
     if (status==='Paid') c.cases[ci].touchpoints[ti].apps[ai].paid_date = new Date().toISOString();
     // Chargebacks hit the month they HAPPEN (company accounting), not the month the policy paid
     if (status==='Lapse' || status==='Cancel') c.cases[ci].touchpoints[ti].apps[ai].lapse_date = new Date().toISOString();
