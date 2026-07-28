@@ -141,11 +141,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 /* THEME (h130): the board is driven by CSS variables so the theme picker can
    retune it live. One base field + scoreboard goal colors. */
 :root{
-  --tile-base:#1E222A; --tile-base2:#282E38; --tile-text:#D9DEE6;
-  --goal-red:#D9534F;  --goal-red-text:#ffffff;
-  --goal-amber:#EBC44C; --goal-amber-text:#20242B;
-  --goal-green:#4CA362; --goal-green-text:#ffffff;
-  --dk-bg:#191C22; --dk-card:#232830; --dk-ink:#D7DCE3; --dk-dim:#8B95A3; --dk-line:rgba(255,255,255,0.09); --teal:#1BA39C;
+  --tile-base:#E9EDF2; --tile-base2:#DEE4EC; --tile-text:#1D2733;
+  --goal-red:#C64A46;  --goal-red-text:#ffffff;
+  --goal-amber:#E7B93E; --goal-amber-text:#20242B;
+  --goal-green:#4C9A5E; --goal-green-text:#ffffff;
+  --dk-bg:#1A1D23; --dk-card:#E9EDF2; --dk-ink:#1D2733; --dk-dim:#5E6A78; --dk-line:rgba(0,0,0,0.10); --teal:#138181;
 }
 .tile-base{background:var(--tile-base) !important;border:1px solid rgba(255,255,255,0.06) !important;}
 .tile-base2{background:var(--tile-base2) !important;border:1px solid rgba(255,255,255,0.05) !important;}
@@ -159,30 +159,43 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tile-goal-yellow .stat-lbl,.tile-goal-yellow .stat-val,.tile-goal-yellow .stat-sub{color:var(--goal-amber-text) !important;}
 .tile-goal-green{background:var(--goal-green) !important;border:1px solid var(--goal-green) !important;}
 .tile-goal-green .stat-lbl,.tile-goal-green .stat-val,.tile-goal-green .stat-sub{color:var(--goal-green-text) !important;}
-/* ---- APP-WIDE DARK (h131) ---- */
-body{background:var(--dk-bg) !important;color:var(--dk-ink) !important;}
-.hdr{background:var(--dk-card) !important;}
+/* ---- APP-WIDE (h134): light cards on a dark field ---- */
+body{background:var(--dk-bg) !important;color:#C3CDDA !important;}
+.hdr{background:#232830 !important;}
 .tab-bar{background:var(--dk-card) !important;border-bottom-color:var(--dk-line) !important;}
 .tab{color:var(--dk-dim) !important;}
 .tab.on{color:var(--dk-ink) !important;border-bottom-color:var(--teal) !important;}
 .pill{border-color:rgba(255,255,255,0.22) !important;color:rgba(255,255,255,0.72) !important;}
 .pill.on{background:var(--teal) !important;border-color:var(--teal) !important;color:#fff !important;}
-.section-lbl{color:var(--dk-dim) !important;}
+.section-lbl{color:#A9B6C6 !important;}
+.appt-banner{background:var(--teal) !important;color:#fff !important;}
 .client-card,.sit-card{background:var(--dk-card) !important;border-color:var(--dk-line) !important;color:var(--dk-ink) !important;}
-.client-card:active{background:#232A34 !important;}
+.client-card:active{background:#DCE3EC !important;}
 .client-name{color:var(--dk-ink) !important;} .client-meta{color:var(--dk-dim) !important;}
 .modal{background:var(--dk-card) !important;color:var(--dk-ink) !important;}
 .modal-title{color:var(--dk-ink) !important;} .modal-sub{color:var(--dk-dim) !important;}
 .save-btn{background:var(--teal) !important;}
-.flag-btn,.filter-btn,.dial-cnt-btn{background:#232A34 !important;border-color:var(--dk-line) !important;color:#C6D2E0 !important;}
+.flag-btn,.filter-btn,.dial-cnt-btn{background:#F3F6FA !important;border-color:var(--dk-line) !important;color:#33465C !important;}
 .appt-sidebar{background:var(--dk-card) !important;border-color:var(--dk-line) !important;}
-.task-item{border-bottom-color:rgba(255,255,255,0.07) !important;}
+.appt-sidebar-title{color:var(--dk-ink) !important;} .appt-sidebar-divider{color:#7E8A99 !important;}
+.appt-sidebar-item.passed{opacity:0.7 !important;}
+.task-item{border-bottom-color:var(--dk-line) !important;}
+input,select,textarea{background:#FFFFFF !important;color:#1D2733 !important;border-color:rgba(0,0,0,0.18) !important;}
+input::placeholder,textarea::placeholder{color:#8A94A2 !important;}
+select option{background:#FFFFFF;color:#1D2733;}
+.right-sidebar-col .appt-sidebar{width:100% !important;}
+#lead-compare > div{background:var(--dk-card) !important;border:1px solid var(--dk-line) !important;color:var(--dk-ink) !important;}
+#lead-compare > div div{color:var(--dk-ink) !important;}
 /* broad catch for the many inline light surfaces + navy text */
 [style*="background:#fff"],[style*="background: #fff"],[style*="background:#ffffff"],[style*="background:#f7fafd"],[style*="background:#F7FAFD"],[style*="background:#F4F6F8"],[style*="background:#F4F1FA"]{background:var(--dk-card) !important;}
 [style*="color:#1D3557"],[style*="color:#1d3557"],[style*="color:#1a2e44"]{color:var(--dk-ink) !important;}
 /* ---- h132 POLISH ---- */
 /* navy + pale-blue surfaces that the first sweep missed */
-[style*="background:#1D3557"],[style*="background:#1d3557"],[style*="background:#e8eef5"],[style*="background:#E6F1FB"],[style*="background:#EBF3FF"],[style*="background:#EAF1FB"],[style*="background:#f5f8fb"],[style*="background:#EBF0F6"],[style*="background:#f0f4f8"],[style*="background:#f8fafc"],[style*="background:#e2eaf2"],[style*="background:#c0cdd8"]{background:var(--dk-card) !important;}
+/* navy was the primary action color -> becomes teal accent (white text stays readable) */
+[style*="background:#1D3557"],[style*="background:#1d3557"]{background:var(--teal) !important;}
+.cb-navy,.fresh-tag,.case-hdr-mp,.tap-lt-navy,.flag-btn.on-navy,.filter-btn.on,.sync-bar,.stat-navy{background:var(--teal) !important;border-color:var(--teal) !important;}
+/* genuine light panels the sweep missed -> light card */
+[style*="background:#e8eef5"],[style*="background:#E6F1FB"],[style*="background:#EBF3FF"],[style*="background:#EAF1FB"],[style*="background:#f5f8fb"],[style*="background:#EBF0F6"],[style*="background:#f0f4f8"],[style*="background:#f8fafc"],[style*="background:#e2eaf2"],[style*="background:#c0cdd8"]{background:var(--dk-card) !important;}
 /* form fields: dark so light text is visible */
 input,select,textarea{background:#20242C !important;color:var(--dk-ink) !important;border-color:rgba(255,255,255,0.16) !important;}
 input::placeholder,textarea::placeholder{color:#7E8896 !important;}
@@ -201,7 +214,7 @@ select option{background:#20242C;color:var(--dk-ink);}
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h133</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h134</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
         <button onclick="openThemeSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;margin-left:4px;">Theme</button>
       </div>
@@ -527,7 +540,7 @@ select option{background:#20242C;color:var(--dk-ink);}
     </div>
   </div>
   <div class="appt-sidebar" id="appt-sidebar" style="display:block!important;">
-    <div class="appt-sidebar-title">Today & upcoming</div>
+    <div class="appt-sidebar-title">Schedule</div>
     <div id="sidebar-appts"><div style="font-size:11px;color:#a0b8cc;">No appointments</div></div>
   </div>
 </div>
@@ -9971,6 +9984,11 @@ function currentPeriodKey(){
   const d = b.start;
   return view + ':' + d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
+// Production goals (sits/sales/apps/resets/apv) belong to ONE board - Life and
+// Advanced Market are independent. Dialing goals (dials/appts set) are global.
+const PROD_GOAL_METRICS = ['sits','sales','apps','resets','apv'];
+function goalBoardOf(metric){ return PROD_GOAL_METRICS.includes(metric) ? (window._prodBoard || 'mp_life') : '*'; }
+function goalMatches(g, metric){ return g.metric === metric && g.periodKey === currentPeriodKey() && (g.board || '*') === goalBoardOf(metric); }
 function periodElapsedFraction(){
   const b = getPeriodBounds('production');
   const s = b.start.getTime(), e = b.end.getTime(), now = Date.now();
@@ -9992,13 +10010,13 @@ function goalStatusColor(actual, target){
 // THEME ENGINE (h130): the board's colors are yours to tune. Presets give a fast
 // start; the color pickers retune live. Stored per agent.
 const THEME_PRESETS = {
+  light:      { base:'#E9EDF2', red:'#C64A46', amber:'#E7B93E', green:'#4C9A5E' },
+  slate:      { base:'#DCE3EC', red:'#C64A46', amber:'#E7B93E', green:'#4C9A5E' },
   midnight:   { base:'#1E222A', red:'#D9534F', amber:'#EBC44C', green:'#4CA362' },
-  ink:        { base:'#23262C', red:'#E5484D', amber:'#F6D34E', green:'#3DB06A' },
   scoreboard: { base:'#1C2733', red:'#D0342C', amber:'#F28C28', green:'#2FA84F' },
   navy:       { base:'#1D3557', red:'#C0392B', amber:'#F2C94C', green:'#3E7D32' },
-  slate:      { base:'#E6EBF1', red:'#C0392B', amber:'#F2C94C', green:'#3E7D32' },
 };
-const DEFAULT_THEME = Object.assign({ preset:'midnight' }, THEME_PRESETS.midnight);
+const DEFAULT_THEME = Object.assign({ preset:'light' }, THEME_PRESETS.light);
 function getTheme(){ const t = getAgentSettings().theme; return (t && t.base) ? t : DEFAULT_THEME; }
 function _lum(hex){
   const h = (hex||'').replace('#',''); if (h.length < 6) return 0.3;
@@ -10019,6 +10037,7 @@ function _shift(hex, amt){
 function applyTheme(){
   const t = getTheme(); const r = document.documentElement.style;
   r.setProperty('--tile-base', t.base);    r.setProperty('--tile-base2', _shift(t.base, 0.05));  r.setProperty('--tile-text', _lum(t.base) > 0.45 ? '#1D2733' : '#D9DEE6');
+  r.setProperty('--dk-card', t.base);      r.setProperty('--dk-ink', _lum(t.base) > 0.45 ? '#1D2733' : '#D9DEE6');
   r.setProperty('--goal-red', t.red);      r.setProperty('--goal-red-text', textOn(t.red));
   r.setProperty('--goal-amber', t.amber);  r.setProperty('--goal-amber-text', textOn(t.amber));
   r.setProperty('--goal-green', t.green);  r.setProperty('--goal-green-text', textOn(t.green));
@@ -10044,7 +10063,7 @@ function openThemeSettings(){
     '<div class="modal-title">Board theme</div>' +
     '<div class="modal-sub">Pick a preset or tune the colors - the board updates live.</div>' +
     '<div style="display:flex;flex-wrap:wrap;gap:6px;margin:12px 0;">' +
-      preset('midnight','Midnight') + preset('ink','Ink') + preset('scoreboard','Scoreboard') + preset('navy','Navy') + preset('slate','Slate') +
+      preset('light','Light') + preset('slate','Slate') + preset('midnight','Midnight') + preset('scoreboard','Scoreboard') + preset('navy','Navy') +
     '</div>' +
     sw('Base field','base',t.base) +
     sw('Behind','red',t.red) +
@@ -10079,7 +10098,7 @@ function renderGoalZones(vals){
     const track  = dark ? 'rgba(255,255,255,0.22)' : 'rgba(29,53,87,0.14)';
     const wrap = s => '<div style="min-height:15px;">'+s+'</div>';
     const empty = () => { const t=(slot.textContent||'').trim(); return !t || t==='-'; };
-    const existing = goals.find(g => g.metric===m.metric && g.periodKey===key);
+    const existing = goals.find(g => goalMatches(g, m.metric));
     if (existing) {
       const target = Number(existing.target) || 0;
       const actual = (vals && vals[m.metric] != null) ? Number(vals[m.metric]) : goalNumFromTile(valEl, m.money);
@@ -10117,7 +10136,7 @@ function renderGoalZones(vals){
 function openGoalSetter(metric){
   const m = GOAL_METRIC[metric]; if (!m) return;
   const P = view;
-  const existing = getGoals().find(g => g.metric===metric && g.periodKey===currentPeriodKey());
+  const existing = getGoals().find(g => goalMatches(g, metric));
   const cur = existing ? existing.target : '';
   const money = !!m.money;
   showModal(
@@ -10138,8 +10157,9 @@ async function commitGoal(metric){
   if (!target || target < 1) { if (el) { el.style.borderColor = '#A32D2D'; el.focus(); } return; }
   const s = getAgentSettings();
   const key = currentPeriodKey();
-  const goals = (s.goals || []).filter(g => !(g.metric===metric && g.periodKey===key));
-  goals.push({ metric, period: view, periodKey: key, target });
+  const board = goalBoardOf(metric);
+  const goals = (s.goals || []).filter(g => !(g.metric===metric && g.periodKey===key && (g.board||'*')===board));
+  goals.push({ metric, period: view, periodKey: key, board, target });
   s.goals = goals;
   await saveAgentSettings(s);
   closeModal();
@@ -10149,7 +10169,8 @@ async function commitGoal(metric){
 async function removeGoal(metric){
   const s = getAgentSettings();
   const key = currentPeriodKey();
-  s.goals = (s.goals || []).filter(g => !(g.metric===metric && g.periodKey===key));
+  const board = goalBoardOf(metric);
+  s.goals = (s.goals || []).filter(g => !(g.metric===metric && g.periodKey===key && (g.board||'*')===board));
   await saveAgentSettings(s);
   closeModal();
   renderScore();
