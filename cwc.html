@@ -204,6 +204,55 @@ select option{background:#20242C;color:var(--dk-ink);}
 .right-sidebar-col .appt-sidebar{width:100% !important;}
 /* Lead Comparison stops fighting - MIA/CIA go dark like everything else */
 #lead-compare > div{background:var(--dk-card) !important;border:1px solid var(--dk-line) !important;}
+
+/* ================= h135 LEGIBILITY BASELINE - MUST STAY LAST ================= */
+/* This block is authoritative. Earlier blocks (h132/h134) contradict each other -
+   whichever came last used to win by accident. Anything added later goes BELOW this
+   comment or it will silently lose. */
+
+/* -- 1. Form fields. h132 forced inputs to #20242C with var(--dk-ink) text; now that
+      --dk-ink is a fixed near-black, that was black-on-black. White field, dark text. */
+input,select,textarea{background:#FFFFFF !important;color:#1D2733 !important;border:1px solid rgba(0,0,0,0.18) !important;}
+input::placeholder,textarea::placeholder{color:#8A94A2 !important;}
+select option{background:#FFFFFF !important;color:#1D2733 !important;}
+
+/* -- 2. Schedule / Upcoming sidebar items: light-gray card, near-black text,
+      status carried by a left-border accent instead of tinting the whole tile. */
+.appt-sidebar-item.ap-item{
+  background:#E9EDF2 !important;
+  border:1px solid rgba(0,0,0,0.10) !important;
+  border-left:4px solid #9AA6B4 !important;
+  border-radius:8px !important;
+  padding:8px 10px !important;
+  margin-bottom:5px !important;
+  opacity:1 !important;              /* overdue must be MORE visible, never dimmed */
+}
+.appt-sidebar-item.ap-item:hover{background:#DEE4EC !important;}
+.appt-sidebar-item.ap-item .ap-name{
+  font-size:12.5px;font-weight:600;color:#1D2733 !important;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.appt-sidebar-item.ap-item .ap-time{font-size:11px;font-weight:600;margin-top:1px;color:#3A4757 !important;}
+.appt-sidebar-item.ap-item .ap-meta{
+  font-size:10px;color:#5E6A78 !important;margin-top:1px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+/* status accents */
+.appt-sidebar-item.ap-overdue{border-left-color:#C0392B !important;background:#EFE6E5 !important;}
+.appt-sidebar-item.ap-overdue .ap-time{color:#9B2C22 !important;}
+.appt-sidebar-item.ap-today{border-left-color:#138181 !important;}
+.appt-sidebar-item.ap-today .ap-time{color:#0E6363 !important;}
+.appt-sidebar-item.ap-later{border-left-color:#9AA6B4 !important;}
+.appt-sidebar-item.ap-callback{border-left-color:#D9922B !important;}
+.appt-sidebar-item.ap-callback .ap-time{color:#8A5A11 !important;}
+.appt-sidebar-item.ap-followup{border-left-color:#6C5CE0 !important;}
+.appt-sidebar-item.ap-followup .ap-time{color:#4A3FA8 !important;}
+/* kill the old dimming rules outright */
+.appt-sidebar-item.passed{opacity:1 !important;}
+.appt-sidebar-divider{color:#8B97A6 !important;}
+
+/* -- 3. Hard floor: cards and their text never go dark, whatever the theme picker does. */
+.client-card,.sit-card,.appt-sidebar,.modal{background:var(--dk-card) !important;color:var(--dk-ink) !important;}
 </style>
 </head>
 <body>
@@ -214,7 +263,7 @@ select option{background:#20242C;color:var(--dk-ink);}
       <div class="hdr-title">Banks Advantage - CWC</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h134</div>
+        <div style="font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:0.5px;">b715h135</div>
         <button onclick="openSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;">⚙️ Settings</button>
         <button onclick="openThemeSettings()" style="font-size:9px;background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:2px 8px;color:rgba(255,255,255,0.8);cursor:pointer;margin-left:4px;">Theme</button>
       </div>
@@ -2936,15 +2985,15 @@ function renderSidebar() {
     const isToday = dt.toDateString() === todayStr;
     const dateStr = isToday ? '' : dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' - ';
     const timeStr = dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-    const timeColor = passed ? '#A32D2D' : isToday ? '#138181' : '#5f7a99';
-    const bg = passed ? '#FFF5F5' : isToday ? '#F0FBF7' : '#F8FAFB';
-    const border = passed ? '#F7C1C1' : isToday ? '#9FE1CB' : '#e2eaf2';
-    const typeLabel = a.caseType ? `<div style="font-size:9px;color:#8fa8c0;margin-top:1px;">${a.caseType}${a.tpType?' - '+a.tpType:''}</div>` : '';
-    return `<div class="appt-sidebar-item${passed?' passed':''}" style="background:${bg};border:1px solid ${border};" onclick="openClient('${a.clientId}')">
-      <div style="font-size:12px;font-weight:500;color:#1D3557;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.clientName}</div>
-      <div style="font-size:11px;color:${timeColor};font-weight:500;margin-top:1px;">${dateStr}${timeStr}${passed?' - past':''}</div>
+    // h135: one light-gray card, near-black text. Status = LEFT BORDER accent only.
+    // No pastel tinting, no inline #1D3557 (the global sweep would flip it light).
+    const accent = passed ? 'ap-overdue' : isToday ? 'ap-today' : 'ap-later';
+    const typeLabel = a.caseType ? `<div class="ap-meta">${a.caseType}${a.tpType?' - '+a.tpType:''}</div>` : '';
+    return `<div class="appt-sidebar-item ap-item ${accent}" onclick="openClient('${a.clientId}')">
+      <div class="ap-name">${a.clientName}</div>
+      <div class="ap-time">${dateStr}${timeStr}${passed?' - past due':''}</div>
       ${typeLabel}
-      ${a.notes?`<div style="font-size:10px;color:#8fa8c0;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.notes}</div>`:''}
+      ${a.notes?`<div class="ap-meta">${a.notes}</div>`:''}
     </div>`;
   }
 
@@ -2953,10 +3002,10 @@ function renderSidebar() {
     const isToday = dt.toDateString() === todayStr;
     const dateStr = isToday ? '' : dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' - ';
     const timeStr = dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-    return `<div class="appt-sidebar-item" style="background:#FFFBF0;border:1px solid #FAC775;" onclick="openClient('${a.clientId}')">
-      <div style="font-size:12px;font-weight:500;color:#1D3557;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.clientName}</div>
-      <div style="font-size:11px;color:#BA7517;font-weight:500;margin-top:1px;">📞 ${dateStr}${timeStr}</div>
-      <div style="font-size:10px;color:#8fa8c0;margin-top:1px;">Scheduled callback</div>
+    return `<div class="appt-sidebar-item ap-item ap-callback" onclick="openClient('${a.clientId}')">
+      <div class="ap-name">${a.clientName}</div>
+      <div class="ap-time">📞 ${dateStr}${timeStr}</div>
+      <div class="ap-meta">Scheduled callback</div>
     </div>`;
   }
 
@@ -2965,10 +3014,10 @@ function renderSidebar() {
     const isToday = dt.toDateString() === todayStr;
     const dateStr = isToday ? '' : dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' - ';
     const timeStr = dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-    return `<div class="appt-sidebar-item" style="background:#F3EEFF;border:1px solid #C4AAFF;" onclick="openClient('${a.clientId}')">
-      <div style="font-size:12px;font-weight:500;color:#1D3557;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.clientName}</div>
-      <div style="font-size:11px;color:#534AB7;font-weight:500;margin-top:1px;">📋 ${dateStr}${timeStr}</div>
-      <div style="font-size:10px;color:#8fa8c0;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.note||'Follow-up'}</div>
+    return `<div class="appt-sidebar-item ap-item ap-followup" onclick="openClient('${a.clientId}')">
+      <div class="ap-name">${a.clientName}</div>
+      <div class="ap-time">📋 ${dateStr}${timeStr}</div>
+      <div class="ap-meta">${a.note||'Follow-up'}</div>
     </div>`;
   }
 
@@ -10034,10 +10083,28 @@ function _shift(hex, amt){
   const r = cl(parseInt(h.slice(0,2),16)), g = cl(parseInt(h.slice(2,4),16)), b = cl(parseInt(h.slice(4,6),16));
   return '#' + [r,g,b].map(x => x.toString(16).padStart(2,'0')).join('');
 }
+// h135: a stale DARK theme saved on the account was overriding the light default,
+// which made --dk-card dark + --dk-ink light while half the interior kept its own
+// hardcoded pastel backgrounds = light text on light tiles. Clear a dark saved
+// theme ONCE so Light actually takes. A deliberate pick after this migration sticks.
+function migrateThemeH135(){
+  try {
+    const s = getAgentSettings();
+    if (s._themeMigH135) return;
+    const t = s.theme;
+    if (t && t.base && _lum(t.base) <= 0.45) { delete s.theme; }
+    s._themeMigH135 = true;
+    saveAgentSettings(s);
+  } catch(e) { /* never block a render on this */ }
+}
 function applyTheme(){
+  migrateThemeH135();
   const t = getTheme(); const r = document.documentElement.style;
   r.setProperty('--tile-base', t.base);    r.setProperty('--tile-base2', _shift(t.base, 0.05));  r.setProperty('--tile-text', _lum(t.base) > 0.45 ? '#1D2733' : '#D9DEE6');
-  r.setProperty('--dk-card', t.base);      r.setProperty('--dk-ink', _lum(t.base) > 0.45 ? '#1D2733' : '#D9DEE6');
+  // --dk-card / --dk-ink are deliberately NOT theme-driven (h135). The app chrome
+  // (lead cards, sidebar, modals) is a fixed light-gray/near-black baseline; the
+  // theme picker retints the SCORE TILES and goal colors only. This is what makes
+  // the default experience readable without touching Theme at all.
   r.setProperty('--goal-red', t.red);      r.setProperty('--goal-red-text', textOn(t.red));
   r.setProperty('--goal-amber', t.amber);  r.setProperty('--goal-amber-text', textOn(t.amber));
   r.setProperty('--goal-green', t.green);  r.setProperty('--goal-green-text', textOn(t.green));
