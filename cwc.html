@@ -365,8 +365,13 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
 .appt-sidebar-title{color:#FFFFFF !important;}
 .appt-sidebar-divider{color:#FFFFFF !important;opacity:0.75;}
 .appt-sidebar .empty,.appt-sidebar > div[style*="color:#a0b8cc"]{color:rgba(255,255,255,0.6) !important;}
-/* items keep their light card + type stripe and now pop off the dark ground */
-.appt-sidebar .appt-sidebar-item.ap-item{border-color:rgba(0,0,0,0.14) !important;}
+/* Items keep their light card + type stripe. NOTE: use the three specific sides -
+   `border-color` is shorthand for all four and silently wipes the left stripe. */
+.appt-sidebar .appt-sidebar-item.ap-item{
+  border-top-color:rgba(0,0,0,0.14) !important;
+  border-right-color:rgba(0,0,0,0.14) !important;
+  border-bottom-color:rgba(0,0,0,0.14) !important;
+}
 </style>
 </head>
 <body>
@@ -381,7 +386,7 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h150</span>
+        <span class="build-tag" id="build-tag" title="build">b715h151</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
         <div class="period-label" id="period-label">This week</div>
