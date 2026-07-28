@@ -255,7 +255,7 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
 .dial-cnt-btn.on{box-shadow:0 0 0 2px rgba(19,129,129,0.28) !important;}
 
 /* -- 3. Hard floor: cards and their text never go dark, whatever the theme picker does. */
-.client-card,.sit-card,.appt-sidebar,.modal{background:var(--dk-card) !important;color:var(--dk-ink) !important;}
+.client-card,.sit-card,.modal{background:var(--dk-card) !important;color:var(--dk-ink) !important;}
 /* h143: the lead card read blue-green. Neutral grey. */
 .modal{background:#E9EAEC !important;}
 
@@ -357,6 +357,16 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
 .appt-sidebar-item.ap-due .ap-name,
 .appt-sidebar-item.ap-due .ap-time,
 .appt-sidebar-item.ap-due .ap-meta{color:#FFFFFF !important;}
+
+/* ---- h150: the Schedule panel becomes the dark FIELD, not another light card.
+   Its items are already light-grey cards, so inverting the container is what makes
+   them read as objects sitting on a surface instead of panels inside a panel. ---- */
+.appt-sidebar{background:#1E222A !important;border:1px solid rgba(255,255,255,0.22) !important;}
+.appt-sidebar-title{color:#FFFFFF !important;}
+.appt-sidebar-divider{color:#FFFFFF !important;opacity:0.75;}
+.appt-sidebar .empty,.appt-sidebar > div[style*="color:#a0b8cc"]{color:rgba(255,255,255,0.6) !important;}
+/* items keep their light card + type stripe and now pop off the dark ground */
+.appt-sidebar .appt-sidebar-item.ap-item{border-color:rgba(0,0,0,0.14) !important;}
 </style>
 </head>
 <body>
@@ -371,7 +381,7 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h149</span>
+        <span class="build-tag" id="build-tag" title="build">b715h150</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
         <div class="period-label" id="period-label">This week</div>
