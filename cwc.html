@@ -265,6 +265,8 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
 
 /* -- 3. Hard floor: cards and their text never go dark, whatever the theme picker does. */
 .client-card,.sit-card,.appt-sidebar,.modal{background:var(--dk-card) !important;color:var(--dk-ink) !important;}
+/* h143: the lead card read blue-green. Neutral grey. */
+.modal{background:#E9EAEC !important;}
 
 /* ================= h141 BOARD CLEANUP - keep this block last ================= */
 
@@ -328,7 +330,7 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row" style="justify-content:flex-end;">
-        <span class="build-tag" id="build-tag" title="build">b715h142</span>
+        <span class="build-tag" id="build-tag" title="build">b715h143</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
       </div>
       <div class="nav-row">
@@ -5756,6 +5758,14 @@ function closeModal(opts) {
 }
 // X on a picker goes BACK to the lead card, not out to the full list. The dial
 // count you armed survives the round trip (keepDialCount).
+// h143. The lead card's own X was calling closeToLead(), which reopens the lead you
+// are standing on - an inescapable card. showModal marks every modal opened over a
+// lead as "return to that lead", and the lead card is itself opened that way, so it
+// pointed at itself. The card's X gets its own exit that clears the return target.
+function closeLeadCard() {
+  window._subModalReturn = null;
+  closeModal();
+}
 function closeToLead() {
   const id = window._subModalReturn;
   window._subModalReturn = null;
@@ -5872,7 +5882,7 @@ function openClient(id, keepDialCount) {
     </div>`;
   }).join('');
 
-  showModal(`<button class="close-x" onclick="closeToLead()">x</button>
+  showModal(`<button class="close-x" onclick="closeLeadCard()">x</button>
   ${replacementBar(c)}
   ${isResting(c) ? `<div style="background:#f0f4f8;border-radius:8px;padding:9px 11px;margin-bottom:8px;font-size:11px;color:#5f7a99;">Resting - returns to your queue on ${restReturnsOn(c).toLocaleDateString('en-US',{month:'short',day:'numeric'})}. Someone dodging you last week is still dodging you; three weeks later they've forgotten they were avoiding you.</div>` : ''}
   <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:2px;">
