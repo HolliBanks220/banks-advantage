@@ -396,17 +396,60 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
 }
 
 
-/* ---- h168: the filter chips were a hidden sideways scroller
-   (`overflow-x:auto` with `scrollbar-width:none`), so "No show" and everything
-   past it was reachable only by touch-dragging - invisible and unusable with a
-   mouse. Let them WRAP instead. Two short rows beats one row you cannot see. ---- */
+/* ---- h170: filter chips on ONE line.
+   They started as a hidden sideways scroller (h168 note: `overflow-x:auto` plus
+   `scrollbar-width:none`), so anything past "Open" was unreachable with a mouse.
+   Wrapping to two rows fixed the reachability but ate vertical space.
+   Instead: stack the COUNT under the NAME. That halves each chip's width, so all
+   of them fit across one row and stay legible. Chips share the width evenly and
+   are allowed to compress, so adding an eighth filter cannot cause overflow. ---- */
 .filter-row{
   display:flex !important;
-  flex-wrap:wrap !important;
-  overflow-x:visible !important;
-  row-gap:5px !important;
+  flex-wrap:nowrap !important;
+  overflow:visible !important;
+  gap:4px !important;
+  align-items:stretch !important;
 }
 .filter-row::-webkit-scrollbar{display:none;}
+.filter-row .filter-btn{
+  flex:1 1 0 !important;
+  min-width:0 !important;
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:1px !important;
+  padding:5px 4px !important;
+  border-radius:9px !important;
+  line-height:1.15 !important;
+  font-size:9.5px !important;
+  letter-spacing:0.01em;
+  overflow:hidden;
+}
+/* the count is wrapped at render time so it can sit on its own line */
+.filter-row .filter-btn .fc-name{
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;
+  font-weight:600;
+}
+.filter-row .filter-btn .fc-count{font-size:12px;font-weight:700;line-height:1;}
+
+/* ---- h171: the Business filter row overflowed its column. It is a flex row with
+   four buttons and a search input, and none of them could shrink - an <input> has
+   an intrinsic default width of ~20 characters that `flex:1.5` does not override,
+   so the input pushed past the right edge. Give the row wrapping and let every
+   child shrink to zero. ---- */
+#apps-search{min-width:0 !important;width:100% !important;box-sizing:border-box !important;}
+#apps-search{flex:1 1 130px !important;}
+#apps-view-submitted,#apps-view-placed,#apps-view-written,#apps-view-report,#apps-view-commissions{
+  min-width:0 !important;flex:1 1 auto !important;white-space:nowrap;
+}
+/* Same latent bug everywhere else: ten more flex inputs (task entry, referral and
+   recruit name/phone/why fields) carry the same intrinsic width. Fix the CLASS with
+   one rule rather than ten edits - a flex child that cannot shrink will eventually
+   overflow whatever contains it. */
+input[style*="flex:"],select[style*="flex:"],textarea[style*="flex:"]{
+  min-width:0 !important;box-sizing:border-box !important;
+}
 </style>
 </head>
 <body>
@@ -421,7 +464,7 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h168</span>
+        <span class="build-tag" id="build-tag" title="build">b715h171</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
         <div class="period-label" id="period-label">This week</div>
@@ -656,15 +699,17 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
       <div class="section-lbl" style="margin:0;">Lead performance</div>
       <div onclick="openReports()" style="font-size:9px;color:#138181;text-decoration:underline;cursor:pointer;">compare sources &rarr;</div>
     </div>
+    <!-- h169: only what is NOT already on the board. Appt set, show, close and APV
+         all live in Dialing Activity and Production, so they are not repeated here. -->
     <div class="stat-row" style="grid-template-columns:repeat(3,minmax(0,1fr));">
-      <div class="stat"><div class="stat-lbl">Leads</div><div class="stat-val" id="lp-leads">-</div><div class="stat-sub" id="lp-leads-sub">assigned</div></div>
-      <div class="stat"><div class="stat-lbl">Contact</div><div class="stat-val" id="lp-contact">-</div><div class="stat-sub">reached</div></div>
-      <div class="stat"><div class="stat-lbl">Appt set</div><div class="stat-val" id="lp-appt">-</div><div class="stat-sub">of contacted</div></div>
+      <div class="stat"><div class="stat-lbl">APV / lead</div><div class="stat-val" id="lp-apvlead" style="font-size:18px;">-</div><div class="stat-sub">volume per lead</div></div>
+      <div class="stat"><div class="stat-lbl">Comm / lead</div><div class="stat-val" id="lp-commlead" style="font-size:18px;">-</div><div class="stat-sub">before cost</div></div>
+      <div class="stat"><div class="stat-lbl">Profit / lead</div><div class="stat-val" id="lp-profitlead" style="font-size:18px;">-</div><div class="stat-sub" id="lp-profit-sub">after lead spend</div></div>
     </div>
     <div class="stat-row" style="grid-template-columns:repeat(3,minmax(0,1fr));">
-      <div class="stat"><div class="stat-lbl">Show</div><div class="stat-val" id="lp-show">-</div><div class="stat-sub">of appts</div></div>
-      <div class="stat"><div class="stat-lbl">Close</div><div class="stat-val" id="lp-close">-</div><div class="stat-sub">of decided</div></div>
-      <div class="stat"><div class="stat-lbl">Net $ / lead</div><div class="stat-val" id="lp-perlead" style="font-size:18px;">-</div><div class="stat-sub" id="lp-roi">-</div></div>
+      <div class="stat"><div class="stat-lbl">Avg APV / sale</div><div class="stat-val" id="lp-avgapv" style="font-size:18px;">-</div><div class="stat-sub">per sale</div></div>
+      <div class="stat"><div class="stat-lbl">Never resolved</div><div class="stat-val" id="lp-never">-</div><div class="stat-sub">of the cohort</div></div>
+      <div class="stat" style="cursor:pointer;" onclick="openLeadSpend()"><div class="stat-lbl">Lead spend</div><div class="stat-val" id="lp-spend" style="font-size:18px;">-</div><div class="stat-sub" style="color:var(--teal);font-weight:700;">tap to add a charge</div></div>
     </div>
   </div>
 
@@ -751,13 +796,13 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
     </div>
     <input class="search" placeholder="Search by name or phone..." oninput="renderClients(this.value)" id="client-search">
     <div class="filter-row">
-      <button class="filter-btn on" onclick="setFilter('active',this)">Active (<span id="chip-n-active">0</span>)</button>
-      <button class="filter-btn" onclick="setFilter('fresh',this)">Fresh (<span id="chip-n-fresh">0</span>)</button>
-      <button class="filter-btn" onclick="setFilter('warm',this)">Warm (<span id="chip-n-warm">0</span>)</button>
-      <button class="filter-btn" onclick="setFilter('cooling',this)">Cooling (<span id="chip-n-cooling">0</span>)</button>
-      <button class="filter-btn" onclick="setFilter('open',this)">Open (<span id="chip-n-open">0</span>)</button>
-      <button class="filter-btn" onclick="setFilter('noshow',this)">No show (<span id="chip-n-noshow">0</span>)</button>
-      <button class="filter-btn" onclick="setFilter('dormant',this)">Dormant (<span id="dormant-chip-n">0</span>)</button>
+      <button class="filter-btn on" onclick="setFilter('active',this)"><span class="fc-name">Active</span><span class="fc-count" id="chip-n-active">0</span></button>
+      <button class="filter-btn" onclick="setFilter('fresh',this)"><span class="fc-name">Fresh</span><span class="fc-count" id="chip-n-fresh">0</span></button>
+      <button class="filter-btn" onclick="setFilter('warm',this)"><span class="fc-name">Warm</span><span class="fc-count" id="chip-n-warm">0</span></button>
+      <button class="filter-btn" onclick="setFilter('cooling',this)"><span class="fc-name">Cooling</span><span class="fc-count" id="chip-n-cooling">0</span></button>
+      <button class="filter-btn" onclick="setFilter('open',this)"><span class="fc-name">Open</span><span class="fc-count" id="chip-n-open">0</span></button>
+      <button class="filter-btn" onclick="setFilter('noshow',this)"><span class="fc-name">No show</span><span class="fc-count" id="chip-n-noshow">0</span></button>
+      <button class="filter-btn" onclick="setFilter('dormant',this)"><span class="fc-name">Dormant</span><span class="fc-count" id="dormant-chip-n">0</span></button>
     </div>
     <div id="clients-list"><div class="loading">Loading clients...</div></div>
   </div>
@@ -768,7 +813,7 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
   <div id="tab-apps" style="display:none;">
     <div style="padding:8px 0 12px;">
       <!-- View toggle -->
-      <div style="display:flex;gap:6px;margin-bottom:10px;align-items:center;">
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center;min-width:0;">
         <button id="apps-view-submitted" onclick="setAppsView('submitted')" style="flex:1;padding:7px;font-size:12px;font-weight:600;border-radius:8px;border:none;background:#1D3557;color:#fff;cursor:pointer;">Submitted</button>
         <button id="apps-view-placed" onclick="setAppsView('placed')" style="flex:1;padding:7px;font-size:12px;font-weight:600;border-radius:8px;border:2px solid #e2eaf2;background:#fff;color:#5f7a99;cursor:pointer;">Placed</button>
         <button id="apps-view-written" onclick="setAppsView('written')" style="flex:1;padding:7px;font-size:12px;font-weight:600;border-radius:8px;border:2px solid #e2eaf2;background:#fff;color:#5f7a99;cursor:pointer;">Written</button>
@@ -2612,18 +2657,22 @@ function renderSourceComparison(pStart, pEnd, label) {
       shows: mia.shows + cia.shows, decided: mia.decided + cia.decided,
       sales: mia.sales + cia.sales, comm: mia.totalComm + cia.totalComm,
     };
-    setEl('lp-leads', A.assigned);
-    setEl('lp-leads-sub', mia.assigned + ' MIA / ' + cia.assigned + ' CIA');
-    setEl('lp-contact', fmtPct(A.contacted, A.assigned));
-    setEl('lp-appt', fmtPct(A.apptsSet, A.contacted));
-    setEl('lp-show', fmtPct(A.shows, A.apptsResolved));
-    setEl('lp-close', fmtPct(A.sales, A.decided));
-    setEl('lp-perlead', fmtAvg(A.comm, A.assigned));
-    const spend = (typeof getLeadSpend === 'function')
-      ? getLeadSpend('MIA', pStart) + getLeadSpend('CIA', pStart) : 0;
-    setEl('lp-roi', spend > 0
+    const apv = mia.totalAPV + cia.totalAPV;
+    const spend = (typeof spendInPeriod === 'function') ? spendInPeriod(pStart, pEnd) : 0;
+    setEl('lp-apvlead',  fmtAvg(apv, A.assigned));
+    setEl('lp-commlead', fmtAvg(A.comm, A.assigned));
+    // profit per lead: what you earned minus what the leads cost, per lead
+    setEl('lp-profitlead', A.assigned > 0
+      ? (A.comm - spend >= 0 ? '' : '-') + '$' + Math.abs(Math.round((A.comm - spend) / A.assigned)).toLocaleString()
+      : '-');
+    setEl('lp-profit-sub', spend > 0
       ? Math.round(((A.comm - spend) / spend) * 100) + '% ROI'
-      : 'add spend in Reports');
+      : 'no spend entered yet');
+    setEl('lp-avgapv', fmtAvg(apv, A.sales));
+    const neverN = Math.round(((mia.m ? mia.m.neverPct : 0) * mia.assigned +
+                               (cia.m ? cia.m.neverPct : 0) * cia.assigned) / (A.assigned || 1));
+    setEl('lp-never', A.assigned ? neverN + '%' : '-');
+    setEl('lp-spend', '$' + Math.round(spend).toLocaleString());
   }
 }
 //  TABS 
@@ -11345,13 +11394,147 @@ function filterReferrals(q) {
 // so there is no migration and it follows the period pills like everything else.
 // ============================================================================
 
+// ============================================================================
+// h169 - LEAD SPEND as individual dated charges.
+//
+// h166 stored one number per month, which is not how leads get bought. There are
+// several charges a week, each with its own date and source, and they need to roll
+// up by day/week/month/quarter/year like every other number on the board.
+//
+// Stored in agent settings as an array so there is no migration:
+//   lead_charges: [{ id, date:'2026-07-29', source:'MIA', amount:450, note:'' }]
+//
+// SOURCES ARE NOT HARDCODED. MIA and CIA are what Holli buys today, ASR already
+// exists for referrals, and more lead types are coming - so the list is derived
+// from the leads and charges actually present, with the known ones seeded.
+// ============================================================================
+
+const SEED_LEAD_SOURCES = ['MIA', 'CIA'];
+function knownLeadSources() {
+  const set = new Set(SEED_LEAD_SOURCES);
+  (clients || []).forEach(c => { if (c.source && c.source !== 'ASR') set.add(c.source); });
+  leadCharges().forEach(ch => { if (ch.source) set.add(ch.source); });
+  return [...set].sort();
+}
+
+function leadCharges() {
+  const a = getAgentSettings().lead_charges;
+  return Array.isArray(a) ? a : [];
+}
+function chargesInPeriod(pStart, pEnd, source) {
+  return leadCharges().filter(ch => {
+    if (source && ch.source !== source) return false;
+    const d = new Date(ch.date + 'T12:00:00');
+    return d >= pStart && d <= pEnd;
+  });
+}
+function spendInPeriod(pStart, pEnd, source) {
+  return chargesInPeriod(pStart, pEnd, source).reduce((a, ch) => a + (Number(ch.amount) || 0), 0);
+}
+
+async function addLeadCharge(dateStr, source, amount, note) {
+  const n = Number(String(amount).replace(/[^0-9.]/g, '')) || 0;
+  if (!n) { alert('Enter an amount.'); return; }
+  const s = getAgentSettings();
+  s.lead_charges = leadCharges().concat([{
+    id: 'ch_' + Date.now().toString(36),
+    date: dateStr || new Date().toISOString().slice(0, 10),
+    source: source || 'MIA',
+    amount: n,
+    note: (note || '').trim(),
+  }]);
+  await saveAgentSettings(s);
+  renderScore();
+  openLeadSpend();
+}
+async function removeLeadCharge(id) {
+  const ch = leadCharges().find(x => x.id === id);
+  if (!ch) return;
+  if (!confirm('Remove this charge?\n\n  ' + ch.date + '  ' + ch.source + '  $' +
+               Number(ch.amount).toLocaleString() + (ch.note ? '\n  ' + ch.note : ''))) return;
+  const s = getAgentSettings();
+  s.lead_charges = leadCharges().filter(x => x.id !== id);
+  await saveAgentSettings(s);
+  renderScore();
+  openLeadSpend();
+}
+
+function openLeadSpend() {
+  const st = window._lastSourceStats || {};
+  const pStart = st.pStart || new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const pEnd = st.pEnd || new Date();
+  const label = st.label || 'this period';
+  const rows = chargesInPeriod(pStart, pEnd).slice()
+    .sort((a, b) => (a.date < b.date ? 1 : -1));
+  const srcs = knownLeadSources();
+  const today = new Date().toISOString().slice(0, 10);
+  const byS = {};
+  srcs.forEach(s => byS[s] = spendInPeriod(pStart, pEnd, s));
+  const total = rows.reduce((a, ch) => a + (Number(ch.amount) || 0), 0);
+
+  showModal(
+    '<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">Lead spend</div>' +
+    '<div class="modal-sub">' + esc(label) + '</div>' +
+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 12px;">' +
+      srcs.map(s => '<div style="flex:1;min-width:78px;background:#DEE4EC;border-radius:8px;padding:7px 9px;">' +
+        '<div style="font-size:9px;font-weight:700;color:#5E6A78;letter-spacing:0.05em;">' + esc(s) + '</div>' +
+        '<div style="font-size:15px;font-weight:600;color:#1D2733;">$' + Math.round(byS[s]).toLocaleString() + '</div>' +
+      '</div>').join('') +
+      '<div style="flex:1;min-width:78px;background:#1D3557;border-radius:8px;padding:7px 9px;">' +
+        '<div style="font-size:9px;font-weight:700;color:rgba(255,255,255,0.65);letter-spacing:0.05em;">TOTAL</div>' +
+        '<div style="font-size:15px;font-weight:600;color:#fff;">$' + Math.round(total).toLocaleString() + '</div>' +
+      '</div>' +
+    '</div>' +
+
+    '<div style="font-size:10px;font-weight:700;color:#5E6A78;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Add a charge</div>' +
+    '<div style="display:flex;gap:5px;align-items:flex-end;">' +
+      '<div class="field" style="margin:0;flex:1.1;"><label style="font-size:9px;">Date</label>' +
+        '<input type="date" id="lc-date" value="' + today + '"></div>' +
+      '<div class="field" style="margin:0;flex:0.9;"><label style="font-size:9px;">Source</label>' +
+        '<select id="lc-source">' + srcs.map(s => '<option>' + esc(s) + '</option>').join('') + '</select></div>' +
+      '<div class="field" style="margin:0;flex:0.8;"><label style="font-size:9px;">Amount</label>' +
+        '<input type="number" id="lc-amount" placeholder="450" min="0" step="0.01"></div>' +
+    '</div>' +
+    '<div class="field" style="margin:6px 0 0;"><label style="font-size:9px;">Note (optional)</label>' +
+      '<input type="text" id="lc-note" placeholder="e.g. 25 fresh MP"></div>' +
+    '<button class="save-btn" style="margin-top:8px;" onclick="addLeadCharge(' +
+      'document.getElementById(\'lc-date\').value,' +
+      'document.getElementById(\'lc-source\').value,' +
+      'document.getElementById(\'lc-amount\').value,' +
+      'document.getElementById(\'lc-note\').value)">Add charge</button>' +
+
+    '<div style="font-size:10px;font-weight:700;color:#5E6A78;text-transform:uppercase;letter-spacing:0.06em;margin:16px 0 5px;">' +
+      'Charges in ' + esc(label) + ' (' + rows.length + ')</div>' +
+    (rows.length
+      ? rows.map(ch =>
+          '<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.07);">' +
+            '<div style="font-size:11px;color:#5E6A78;width:64px;flex-shrink:0;">' +
+              new Date(ch.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '</div>' +
+            '<div style="font-size:10px;font-weight:700;color:#0E6363;width:34px;flex-shrink:0;">' + esc(ch.source) + '</div>' +
+            '<div style="flex:1;font-size:11px;color:#5E6A78;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(ch.note || '') + '</div>' +
+            '<div style="font-size:12px;font-weight:600;">$' + Number(ch.amount).toLocaleString() + '</div>' +
+            '<button onclick="removeLeadCharge(\'' + ch.id + '\')" style="background:none;border:none;color:#C0392B;font-size:13px;cursor:pointer;padding:0 2px;">&times;</button>' +
+          '</div>').join('')
+      : '<div style="font-size:12px;color:#8B97A6;padding:6px 0;">No charges in this period.</div>') +
+
+    '<div style="font-size:10px;color:#8B97A6;margin-top:8px;">Charges roll up by whichever period you have selected on the board.</div>'
+  );
+}
+
 function spendKeyFor(source, pStart) {
   const d = new Date(pStart);
   return source + ':' + d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
 }
-function getLeadSpend(source, pStart) {
-  const all = getAgentSettings().lead_spend || {};
-  return Number(all[spendKeyFor(source, pStart)]) || 0;
+// h169: superseded by dated charges. Kept as a shim so Reports reads the same
+// numbers, and any old monthly figure is still counted until it is replaced.
+function getLeadSpend(source, pStart, pEnd) {
+  const st = window._lastSourceStats || {};
+  const a = pStart || st.pStart, b = pEnd || st.pEnd || new Date();
+  const fromCharges = (a ? spendInPeriod(a, b, source) : 0);
+  const legacy = Number((getAgentSettings().lead_spend || {})[spendKeyFor(source, a || new Date())]) || 0;
+  return fromCharges || legacy;
 }
 async function setLeadSpend(source, pStart, amount) {
   const s = getAgentSettings();
