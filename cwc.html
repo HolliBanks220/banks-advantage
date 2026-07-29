@@ -389,7 +389,7 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h159</span>
+        <span class="build-tag" id="build-tag" title="build">b715h160</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
         <div class="period-label" id="period-label">This week</div>
@@ -8130,13 +8130,13 @@ const TEXT_TEMPLATES = [
     id: 'post_noshow',
     label: 'No-show - right-now recovery',
     stage: ['noshow'],
-    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, it's Holli. Just tried you for our appointment - life happens! I'm free for the next hour if you can still hop on.`
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, it's Holli. Just tried you for our appointment - life happens! I'm free for the next little bit if you can still hop on.`
   },
   {
     id: 'missed_appt',
     label: 'No-show - reschedule',
     stage: ['appt', 'noshow'],
-    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, Holli here. We missed each other earlier - I held some time this week. What day works better?`
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, Holli here. We missed each other earlier. I have a few openings later this week. What days work best?`
   },
   {
     id: 'noshow_2x',
