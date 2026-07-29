@@ -389,7 +389,7 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h162</span>
+        <span class="build-tag" id="build-tag" title="build">b715h166</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
         <div class="period-label" id="period-label">This week</div>
@@ -616,7 +616,10 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
       </div>
     </div>
   <!-- MIA vs CIA comparison panel -->
-  <div id="source-comparison" style="margin-top:4px;">
+  <!-- h166: lives in Reports now (Settings > Open reports). Kept in the DOM but
+       hidden, because renderSourceComparison writes into these ids every render
+       and Reports reads the finished numbers from that. -->
+  <div id="source-comparison" style="display:none;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 6px;">
       <div class="section-lbl" style="margin:0;">Lead source comparison</div>
       <div style="font-size:9px;color:#a0b8cc;" id="source-period-label"></div>
@@ -2544,6 +2547,10 @@ function renderSourceComparison(pStart, pEnd, label) {
     setEl("cia-tores", _m.resAtt  > 0 ? _f(null, _m.resAtt, _m.resDays) : '-');
     setEl("cia-tosale", _m.saleAtt > 0 ? _f(_m.saleRate, _m.saleAtt, _m.saleDays) : '-');
   }
+  // h166: Reports reads these rather than recomputing. renderSourceComparison
+  // writes straight into fixed DOM ids, so it cannot be pointed at a second
+  // container - stashing the finished numbers is the low-risk way to reuse them.
+  window._lastSourceStats = { mia, cia, label: displayLabel, pStart, pEnd };
 }
 //  TABS 
 
@@ -8946,6 +8953,149 @@ function parseCustomerRequest(text) {
   return out;
 }
 
+// h163 - SCANNED MAILER parser.
+//
+// These pages were coming back completely empty, which was wrong. The HANDWRITING
+// is unreadable, but the name, address, lender and loan amount are PRINTED on the
+// mailer and sit in the text layer like any other page. Only phone, age, spouse
+// and best-time-to-call are handwritten.
+//
+// So a scan should arrive with two thirds of the record already filled and the
+// handwritten fields blank - not as a blank row.
+//
+// These pages are also OCR'd, badly: "$33O,OOO.OO" for $330,000.00, "Carland" for
+// Garland, "lnc" for Inc. Digits and letters get swapped both ways, so anything
+// numeric is repaired and anything uncertain is left for the person to confirm.
+
+// OCR letter/digit confusions, applied ONLY inside numeric contexts so real words
+// are never mangled.
+function ocrFixNumeric(str) {
+  if (!str) return str;
+  return String(str)
+    .replace(/[Oo]/g, '0').replace(/[lI|]/g, '1')
+    .replace(/[Ss]/g, '5').replace(/[Bb]/g, '8')
+    .replace(/[Zz]/g, '2').replace(/[Gg]/g, '6');
+}
+function ocrMoney(raw) {
+  if (!raw) return '';
+  let c = ocrFixNumeric(String(raw).replace(/[^0-9OoIlSsBbZzGg.,]/g, ''));
+  c = c.replace(/^[.,]+/, '').replace(/[.,]+$/, '');
+  // trailing ".00" cents - drop them rather than treating them as dollars
+  const cents = c.match(/^(.+)[.,](\d{2})$/);
+  const whole = cents ? cents[1] : c;
+  const n = parseInt(whole.replace(/[.,]/g, ''), 10);
+  return (isNaN(n) || n < 1000) ? '' : String(n);
+}
+
+const SCAN_FINGERPRINTS = /Complete and Return|FINAL NOTICE|ENROLLMENT PERIOD|To Borrower|Dear\s+[A-Z]|SPOUSE\/CO-BORROWER|BORROWER\b/i;
+function isScannedMailer(text) {
+  if (!text || text.length < 60) return false;
+  if (/First Name\s+\S+/.test(text)) return false;           // typed Customer Request
+  if (/MailerID|Contact_OPT-IN/i.test(text)) return false;   // typed LeadPros card
+  if (/Online Lead Template/i.test(text)) return false;
+  return SCAN_FINGERPRINTS.test(text);
+}
+
+const _ST = '(?:A[LKZR]|C[AOT]|D[EC]|FL|GA|HI|I[ADLN]|K[SY]|LA|M[ADEINOST]|N[CDEHJMVY]|O[HKR]|PA|RI|S[CD]|T[NX]|UT|V[AT]|W[AIVY])';
+
+function parseScannedMailer(rawText) {
+  const text = rawText || '';
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const out = { layout: 'scanned-mailer', _handwritten: true };
+
+  // --- name: the mailer says it several times. "Dear X," and "to X" are the
+  // cleanest because they are one per line with no address glued on. ---
+  let m = text.match(/\bDear\s+([A-Z][A-Za-z'\-\.]*(?:\s+[A-Z][A-Za-z'\-\.]*){0,3})\s*,/);
+  if (!m) m = text.match(/^\s*to\s+([A-Z][A-Za-z'\-\.]*(?:\s+[A-Z][A-Za-z'\-\.]*){0,3})\s*$/mi);
+  if (!m) m = text.match(/FINAL NOTICE:\s*([A-Z][A-Z'\-\.]*(?:\s+[A-Z][A-Z'\-\.]*){0,3}?)(?=\s+(?:AMOUNT|ORIGINATED|COUNTY|ENROLLMENT)|\s*$)/m);
+  if (m) {
+    out.name = m[1].trim().replace(/\s+/g, ' ');
+    // ALL CAPS on the final-notice layout - title case it
+    if (out.name === out.name.toUpperCase() && out.name.length > 3) {
+      out.name = out.name.toLowerCase().replace(/\b[a-z]/g, ch => ch.toUpperCase());
+    }
+  }
+
+  // --- address: street line followed by a "City, ST ZIP" line. Trailing text is
+  // common on these scans because two columns collide, so match a prefix only. ---
+  for (let i = 0; i < lines.length; i++) {
+    const cityM = lines[i].match(new RegExp('^([A-Za-z][A-Za-z\\s\\.\'-]{1,28}?),?\\s+(' + _ST + ')\\s+(\\d{5})(?:-\\d{4})?\\b'));
+    if (!cityM) continue;
+    const prev = (lines[i - 1] || '');
+    const stM = prev.match(/(?:^|\s)([0-9OoIlSs][0-9OoIlSsA-Za-z]{0,6}\s+[A-Za-z0-9][A-Za-z0-9\s\.'#-]{2,38}?)(?:\s{2,}|$)/);
+    if (!stM) continue;
+    // repair only the leading house number; the street name stays as printed
+    out.address = stM[1].trim().replace(/^([0-9OoIlSs]+)/, (x) => ocrFixNumeric(x));
+    out.city = cityM[1].trim(); out.state = cityM[2]; out.zip = cityM[3];
+    // the line above the street is usually the addressee
+    if (!out.name) {
+      const above = (lines[i - 2] || '') + '\n' + (lines[i - 1] || '');
+      const nm = above.match(/([A-Z][a-z'\-]{1,14}(?:\s+[A-Z][a-z'\-]{1,14}){1,2})\s*$/m);
+      if (nm) out.name = nm[1].trim();
+    }
+    break;
+  }
+  // the summary line some mailers print: "Name, Street, City, ST ZIP"
+  if (!out.address) {
+    const sum = text.match(new RegExp('([A-Za-z][A-Za-z\\s\'\\-\\.]+),\\s*(\\d+[^,]{2,40}),\\s*([A-Za-z\\s\\.\'-]+),?\\s*(' + _ST + ')\\s+(\\d{5})'));
+    if (sum) { out.name = out.name || sum[1].trim(); out.address = sum[2].trim();
+               out.city = sum[3].trim(); out.state = sum[4]; out.zip = sum[5]; }
+  }
+
+  // --- lender. Order matters: the offset lookup under "ORIGINATING LENDER:" runs
+  // FIRST, because a plain /Lender:/ match hits that same label and grabs the mail
+  // routing junk on the next line. Character classes use [ \t] not \s so a match
+  // can never run across lines. ---
+  const looksLikeLender = (l) =>
+    /(BANK|MORTGAGE|CREDIT UNION|LOANS?|LENDING|SAVINGS|FINANCIAL|FEDERAL)/i.test(l) &&
+    /^[A-Za-z][A-Za-z \t\.'&,-]{4,45}$/.test(l) &&
+    !/(Protection|Coverage|Insurance Distribution|returning|agree)/i.test(l);
+
+  let lender = '';
+  const li = lines.findIndex(l => /ORIGINATING LENDER/i.test(l));
+  if (li >= 0) for (let k = li + 1; k < Math.min(li + 5, lines.length); k++) {
+    if (looksLikeLender(lines[k])) { lender = lines[k]; break; }
+  }
+  if (!lender) {
+    const lm = text.match(/(?:^|[^A-Z])Lender[ \t]*:[ \t]*([A-Za-z][A-Za-z \t\.'&,-]{3,45})/);
+    if (lm && looksLikeLender(lm[1].trim())) lender = lm[1];
+  }
+  if (!lender) { const hit = lines.find(looksLikeLender); if (hit) lender = hit; }
+  if (lender) {
+    out.lender = lender.trim().replace(/[ \t]+/g, ' ')
+      .replace(/\bMORTCACE\b/i, 'Mortgage').replace(/\blnc\b/gi, 'Inc')
+      .replace(/\s+\d{3,}.*$/, '').replace(/[~*]+.*$/, '').trim();
+  }
+
+  // --- loan amount: prefer a labelled one, else the largest money on the page ---
+  let am = text.match(/(?:Loan Amount|AMOUNT|Loan Amo\s*nt)\s*:?\s*\$?\s*[.,]?\s*([0-9OoIlSsBbZzGg][0-9OoIlSsBbZzGg.,]{3,15})/i);
+  if (am) out.mortgage = ocrMoney(am[1]);
+  if (!out.mortgage) {
+    const all = [...text.matchAll(/\$\s?[.,]?\s?([0-9OoIlSsBbZzGg][0-9OoIlSsBbZzGg.,]{3,15})/g)]
+      .map(x => parseInt(ocrMoney(x[1]), 10)).filter(n => !isNaN(n) && n > 1000);
+    if (all.length) out.mortgage = String(Math.max(...all));
+  }
+
+  let cm = text.match(/COUNTY:?\s*([A-Za-z][A-Za-z\s]{2,26}?)(?:\n|$)/i);
+  if (cm && !cm[1].trim()) cm = null;
+  if (!cm) {
+    // label alone on its line, value on a nearby line
+    const idx = lines.findIndex(l => /^COUNTY:?\s*$|COUNTY:\s*$/i.test(l));
+    if (idx > 0) {
+      const cand = (lines[idx - 1] || '').trim();
+      if (/^[A-Za-z][A-Za-z\s]{2,26}$/.test(cand)) out.county = cand;
+    }
+  } else out.county = cm[1].trim().replace(/\s+/g, ' ');
+
+  // Handwritten. Deliberately left empty - a wrong phone number is worse than a
+  // blank one, and these are the fields the person will fill from the image.
+  out.phone = ''; out.age = ''; out.coName = '';
+  out.needs = ['phone', 'age'];
+  return out;
+}
+
+
+
 // A name is a name. "Requested Changes As A "Mortgage Holder"" is not.
 const NAME_JUNK = /requested changes|mortgage holder|current information|important notification|complete and return|customer request|borrower|co-borrower|insurance|disability|premium/i;
 function validateLead(rec) {
@@ -9020,6 +9170,28 @@ function parseLeadText(text, opts) {
   // 18/18 with a valid name, phone, age and address. If it cannot classify the
   // page it falls through to the original reading-order parser below.
   try {
+    // h163: a scanned mailer still has the name, address, lender and loan amount
+    // PRINTED in its text layer - only the phone, age and spouse are handwritten.
+    // These were coming through as blank rows, which meant retyping everything.
+    if (isScannedMailer(text)) {
+      const sm = parseScannedMailer(text);
+      if (sm.name || sm.address) {
+        return {
+          name: sm.name || '', phone: '', address: [sm.address, [sm.city, sm.state].filter(Boolean).join(', '), sm.zip].filter(Boolean).join(', '),
+          city: sm.city || '', state: sm.state || '', zip: sm.zip || '', county: sm.county || '',
+          age: '',
+          // h164: the field is mortgage_amount, not mortgage - the importer and the
+          // notes line both read that name. Returning `mortgage` silently dropped it.
+          mortgage_amount: sm.mortgage || '', lender: sm.lender || '',
+          notes: [sm.lender ? 'Lender: ' + sm.lender : '', sm.county ? 'County: ' + sm.county : '',
+                  sm.mortgage ? 'Mortgage: $' + Number(sm.mortgage).toLocaleString() : '']
+                 .filter(Boolean).join(' \u00b7 '),
+          source: classifyLeadSource(text), layout: 'scanned-mailer',
+          flags: ['handwritten - enter phone and age from the image'],
+          include: false, _handwritten: true, _parser: 'h163'
+        };
+      }
+    }
     const _lay = detectLayout(repairSplitChars(text));
     if (_lay !== 'unknown') {
       const r = parseLeadPage(text);
@@ -9029,7 +9201,14 @@ function parseLeadText(text, opts) {
           address: [r.address, [r.city, r.state].filter(Boolean).join(', '), r.zip].filter(Boolean).join(', '),
           city: r.city || '', state: r.state || '', zip: r.zip || '', county: r.county || '',
           age: r.age || '', dob: r.dob || '', gender: r.gender || '',
-          mortgage: r.mortgage || '', lender: r.lender || '', loanDate: r.loanDate || '',
+          mortgage_amount: r.mortgage || '', lender: r.lender || '', loanDate: r.loanDate || '',
+          notes: [r.lender ? 'Lender: ' + r.lender : '',
+                  r.county ? 'County: ' + r.county : '',
+                  r.mortgage ? 'Mortgage: $' + Number(r.mortgage).toLocaleString() : '',
+                  r.coName ? 'Co-borrower: ' + r.coName : '',
+                  r.bestTime ? 'Best time: ' + r.bestTime : '',
+                  r.dob ? 'DOB: ' + r.dob : ''].filter(Boolean).join(' \u00b7 '),
+          include: true,
           bestTime: r.bestTime || '', tobacco: r.tobacco || '', coBorrower: r.coBorrower || '',
           source: classifyLeadSource(text), layout: r.layout,
           phone_flag: (r.flags.find(f => /phone|US number/.test(f)) || ''),
@@ -9183,7 +9362,7 @@ function renderImportPreview() {
       ${isScan ? `<div style="font-size:11px;font-weight:600;color:#854F0B;margin-bottom:6px;">Scanned card \u2014 page ${r._page}. ${r._ocr ? 'OCR pre-filled the printed fields \u2014 confirm the phone against the image.' : 'Read it, type it, tick the box.'}</div>` : ''}
       ${isScan && r._scan !== 'none' ? `<img src="${r._scan}" style="width:100%;border-radius:6px;border:1px solid #e0e8f0;margin-bottom:8px;" alt="Scanned lead card page ${r._page}">` : ''}
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;">
-        <input type="checkbox" id="li-inc-${i}" ${r.include?'checked':''} onchange="_importRows[${i}].include=this.checked">
+        <input type="checkbox" id="li-inc-${i}" ${r.include?'checked':''} onchange="_importRows[${i}].include=this.checked;updateImportBtn()">
         <input value="${escAttr(r.name)}" oninput="_importRows[${i}].name=this.value;importAutoInclude(${i})" placeholder="Name" style="flex:1;font-size:13px;font-weight:600;">
         <select onchange="_importRows[${i}].source=this.value" style="font-size:12px;">
           <option value="CIA"${r.source==='CIA'?' selected':''}>CIA</option>
@@ -9204,7 +9383,10 @@ function renderImportPreview() {
         <input value="${escAttr(r.notes||'')}" oninput="_importRows[${i}].notes=this.value" placeholder="Notes (second person, DOB, lender\u2026)" style="width:100%;font-size:11px;color:#5f7a99;">
       </div>
     </div>`;
-  }).join('') + `<button class="save-btn" id="li-import-btn" onclick="confirmLeadImport()">Import ${_importRows.filter(r=>r.include).length} lead(s)</button>`;
+  }).join('') + `<div style="display:flex;gap:8px;margin:6px 0 4px;">
+    <button onclick="setAllImportRows(true)" style="flex:1;font-size:11px;background:none;border:1px solid #9FE1CB;border-radius:6px;padding:5px;color:#0E6363;cursor:pointer;">Select all</button>
+    <button onclick="setAllImportRows(false)" style="flex:1;font-size:11px;background:none;border:1px solid rgba(0,0,0,0.15);border-radius:6px;padding:5px;color:#5E6A78;cursor:pointer;">Select none</button>
+  </div><button class="save-btn" id="li-import-btn" onclick="confirmLeadImport()">Import ${_importRows.filter(r=>r.include).length} lead(s)</button>`;
 }
 
 // A scanned-card row auto-ticks itself the moment it has a name and a phone -
@@ -9218,6 +9400,17 @@ function importAutoInclude(i) {
     const cb = document.getElementById('li-inc-' + i);
     if (cb) cb.checked = true;
   }
+  updateImportBtn();
+}
+// h165: the count was stale because the checkbox set the value without refreshing
+// the button. The import itself always read `include` live, so nothing was ever
+// lost - but a button reading 6 while 13 are ticked is unusable.
+function setAllImportRows(on) {
+  _importRows.forEach((r, i) => {
+    r.include = !!on;
+    const box = document.getElementById('li-inc-' + i);
+    if (box) box.checked = !!on;
+  });
   updateImportBtn();
 }
 function updateImportBtn() {
@@ -11066,6 +11259,142 @@ function filterReferrals(q) {
   if (el) el.innerHTML = renderReferralRows(q);
 }
 
+// ============================================================================
+// h166 - REPORTS
+//
+// Lead Source Comparison moves off the main board and lands here, with three
+// things it never had: a COMBINED view across sources, referral-only close ratio
+// and APV, and lead spend so cost per lead and ROI are real numbers rather than
+// something worked out on paper.
+//
+// Lead spend lives in agent settings keyed by source and period ("MIA:2026-07"),
+// so there is no migration and it follows the period pills like everything else.
+// ============================================================================
+
+function spendKeyFor(source, pStart) {
+  const d = new Date(pStart);
+  return source + ':' + d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+function getLeadSpend(source, pStart) {
+  const all = getAgentSettings().lead_spend || {};
+  return Number(all[spendKeyFor(source, pStart)]) || 0;
+}
+async function setLeadSpend(source, pStart, amount) {
+  const s = getAgentSettings();
+  s.lead_spend = Object.assign({}, s.lead_spend || {});
+  const n = Number(String(amount).replace(/[^0-9.]/g, '')) || 0;
+  if (n > 0) s.lead_spend[spendKeyFor(source, pStart)] = n;
+  else delete s.lead_spend[spendKeyFor(source, pStart)];
+  await saveAgentSettings(s);
+  openReports();
+}
+
+// Referred leads are their own cohort: no acquisition cost, and worth knowing
+// separately because they behave nothing like a paid lead.
+function referralOnlyStats(pStart, pEnd) {
+  const referred = clients.filter(c => c.referred_by);
+  const inWin = (c) => { const d = new Date(c.assigned_date || c.created_at); return d >= pStart && d <= pEnd; };
+  const cohort = referred.filter(inWin);
+  let sales = 0, decided = 0, apv = 0, comm = 0;
+  cohort.forEach(c => {
+    const tps = (c.cases || []).flatMap(cs => (cs.touchpoints || []));
+    const verdicts = tps.filter(tp => ['sale', 'nosale', 'dropped'].includes(tp.outcome));
+    if (verdicts.length) decided++;
+    if (verdicts.some(tp => tp.outcome === 'sale')) sales++;
+    tps.filter(tp => tp.outcome === 'sale').forEach(tp => (tp.apps || []).forEach(ap => {
+      apv += premOf(ap);
+      if (['Submitted', 'Approved', 'Issued', 'Paid'].includes(ap.status || '')) {
+        const lvl = (getAgentSettings().contractLevel || 105) / 100;
+        comm += (Number(ap.premium) || 0) * lvl;
+      }
+    }));
+  });
+  return { count: cohort.length, sales, decided, apv, comm };
+}
+
+function _rptMoney(n) { return '$' + Math.round(n || 0).toLocaleString(); }
+function _rptPct(n, d) { return d > 0 ? Math.round((n / d) * 100) + '%' : '-'; }
+function _rptAvg(total, n) { return n > 0 ? '$' + Math.round(total / n).toLocaleString() : '-'; }
+
+function _rptRow(label, a, b, c) {
+  return '<div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:4px;padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.06);">' +
+    '<div style="font-size:11px;color:#5E6A78;">' + label + '</div>' +
+    '<div style="font-size:12px;font-weight:600;text-align:right;">' + a + '</div>' +
+    '<div style="font-size:12px;font-weight:600;text-align:right;">' + b + '</div>' +
+    '<div style="font-size:12px;font-weight:700;text-align:right;color:#0E6363;">' + c + '</div>' +
+  '</div>';
+}
+
+function openReports() {
+  const st = window._lastSourceStats;
+  if (!st) { alert('Open the Board once so the numbers are calculated, then come back.'); return; }
+  const { mia, cia, label, pStart } = st;
+
+  // COMBINED - the whole book, not one source at a time
+  const all = {
+    assigned: mia.assigned + cia.assigned, contacted: mia.contacted + cia.contacted,
+    apptsSet: mia.apptsSet + cia.apptsSet, apptsResolved: mia.apptsResolved + cia.apptsResolved,
+    shows: mia.shows + cia.shows, decided: mia.decided + cia.decided,
+    sales: mia.sales + cia.sales, totalAPV: mia.totalAPV + cia.totalAPV,
+    totalComm: mia.totalComm + cia.totalComm, refComm: mia.refComm + cia.refComm,
+  };
+  const spendMia = getLeadSpend('MIA', pStart), spendCia = getLeadSpend('CIA', pStart);
+  const spendAll = spendMia + spendCia;
+  const roi = (comm, spend) => spend > 0 ? Math.round(((comm - spend) / spend) * 100) + '%' : '-';
+  const cpl = (spend, n) => n > 0 && spend > 0 ? '$' + (spend / n).toFixed(2) : '-';
+  const ref = referralOnlyStats(st.pStart, st.pEnd);
+
+  showModal(
+    '<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">Reports</div>' +
+    '<div class="modal-sub">' + esc(label) + '</div>' +
+
+    '<div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:4px;margin-top:10px;padding-bottom:4px;border-bottom:2px solid #138181;">' +
+      '<div></div>' +
+      '<div style="font-size:10px;font-weight:700;text-align:right;color:#5E6A78;">MIA</div>' +
+      '<div style="font-size:10px;font-weight:700;text-align:right;color:#5E6A78;">CIA</div>' +
+      '<div style="font-size:10px;font-weight:700;text-align:right;color:#0E6363;">ALL</div>' +
+    '</div>' +
+
+    _rptRow('Leads assigned', mia.assigned, cia.assigned, all.assigned) +
+    _rptRow('Contact ratio', _rptPct(mia.contacted, mia.assigned), _rptPct(cia.contacted, cia.assigned), _rptPct(all.contacted, all.assigned)) +
+    _rptRow('Appt set ratio', _rptPct(mia.apptsSet, mia.contacted), _rptPct(cia.apptsSet, cia.contacted), _rptPct(all.apptsSet, all.contacted)) +
+    _rptRow('Show ratio', _rptPct(mia.shows, mia.apptsResolved), _rptPct(cia.shows, cia.apptsResolved), _rptPct(all.shows, all.apptsResolved)) +
+    _rptRow('Close ratio', _rptPct(mia.sales, mia.decided), _rptPct(cia.sales, cia.decided), _rptPct(all.sales, all.decided)) +
+    _rptRow('Avg APV / sale', _rptAvg(mia.totalAPV, mia.sales), _rptAvg(cia.totalAPV, cia.sales), _rptAvg(all.totalAPV, all.sales)) +
+    _rptRow('Commission', _rptMoney(mia.totalComm), _rptMoney(cia.totalComm), _rptMoney(all.totalComm)) +
+
+    '<div style="font-size:10px;font-weight:700;color:#5E6A78;text-transform:uppercase;letter-spacing:0.06em;margin:16px 0 4px;">Cost &amp; return</div>' +
+    _rptRow('Lead spend', _rptMoney(spendMia), _rptMoney(spendCia), _rptMoney(spendAll)) +
+    _rptRow('Cost per lead', cpl(spendMia, mia.assigned), cpl(spendCia, cia.assigned), cpl(spendAll, all.assigned)) +
+    _rptRow('Return per lead', _rptAvg(mia.totalComm, mia.assigned), _rptAvg(cia.totalComm, cia.assigned), _rptAvg(all.totalComm, all.assigned)) +
+    _rptRow('ROI', roi(mia.totalComm, spendMia), roi(cia.totalComm, spendCia), roi(all.totalComm, spendAll)) +
+
+    '<div style="display:flex;gap:8px;margin-top:10px;">' +
+      '<div class="field" style="flex:1;margin:0;"><label style="font-size:10px;">MIA spend this month</label>' +
+        '<input type="number" id="rpt-spend-mia" value="' + (spendMia || '') + '" placeholder="0" ' +
+        'onchange="setLeadSpend(\'MIA\', new Date(' + pStart.getTime() + '), this.value)"></div>' +
+      '<div class="field" style="flex:1;margin:0;"><label style="font-size:10px;">CIA spend this month</label>' +
+        '<input type="number" id="rpt-spend-cia" value="' + (spendCia || '') + '" placeholder="0" ' +
+        'onchange="setLeadSpend(\'CIA\', new Date(' + pStart.getTime() + '), this.value)"></div>' +
+    '</div>' +
+    '<div style="font-size:10px;color:#8B97A6;margin-top:4px;">Spend is stored per month, so it follows the period you have selected.</div>' +
+
+    '<div style="font-size:10px;font-weight:700;color:#5E6A78;text-transform:uppercase;letter-spacing:0.06em;margin:18px 0 4px;">Referrals only</div>' +
+    '<div style="font-size:10px;color:#8B97A6;margin-bottom:6px;">Leads that came from a referral. No acquisition cost, so they are kept out of the numbers above.</div>' +
+    _rptRow('Referred leads', '', '', ref.count) +
+    _rptRow('Close ratio', '', '', _rptPct(ref.sales, ref.decided)) +
+    _rptRow('APV', '', '', _rptMoney(ref.apv)) +
+    _rptRow('Avg APV / sale', '', '', _rptAvg(ref.apv, ref.sales)) +
+    _rptRow('Commission', '', '', _rptMoney(ref.comm)) +
+
+    '<div style="margin-top:18px;display:flex;gap:8px;">' +
+      '<button class="save-btn" style="flex:1;" onclick="openRecruitProspects()">Recruits</button>' +
+      '<button class="save-btn" style="flex:1;background:none;border:1px solid #9FE1CB;color:#0E6363;" onclick="openReferralList()">Referral list</button>' +
+    '</div>'
+  );
+}
+
 function openReferralList() {
   const rows = _referralRows();
   const owed = rows.filter(r => r.source === 'ASR' && !r.paid).length;
@@ -11767,6 +12096,12 @@ function openSettings() {
   showModal(
     '<button class="close-x" onclick="closeToLead()">x</button>' +
     '<div class="modal-title">⚙️ Settings</div>' +
+
+    '<div style="background:#f0f4f8;border-radius:10px;padding:12px;margin-bottom:12px;">' +
+      '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Reports</div>' +
+      '<button class="save-btn" style="margin-bottom:4px;" onclick="openReports()">Open reports</button>' +
+      '<div style="font-size:11px;color:#5f7a99;">Lead performance by source and combined, referral-only numbers, spend and ROI, recruits.</div>' +
+    '</div>' +
 
     '<div style="background:#f0f4f8;border-radius:10px;padding:12px;margin-bottom:12px;">' +
       '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Board theme</div>' +
