@@ -339,7 +339,9 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
    renderer writes. An inset ring outlines all four sides, owes nothing to the text,
    and cannot be overwritten by inline styles. It steps aside the moment a goal is
    set, because from then on the status fill is the signal. */
-.stat.goal-able{box-shadow:inset 0 0 0 2px var(--teal) !important;}
+/* h159: the ring was too loud. Strip on the RIGHT edge instead - findable when
+   you scan for it, out of the way when you are reading numbers. */
+.stat.goal-able{box-shadow:inset -3px 0 0 0 var(--teal) !important;}
 .stat.goal-able.tile-goal-red,.stat.goal-able.tile-goal-yellow,
 .stat.goal-able.tile-goal-green,.stat.goal-able.tile-alert{box-shadow:none !important;}
 
@@ -387,7 +389,7 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h158</span>
+        <span class="build-tag" id="build-tag" title="build">b715h159</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
         <div class="period-label" id="period-label">This week</div>
@@ -482,8 +484,9 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
     <div class="section-lbl">Production</div>
     <div id="prod-board-toggle" style="display:flex;gap:6px;margin-bottom:8px;">
       <button id="pbt-mp_life" onclick="setProdBoard('mp_life')" style="flex:1;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;background:#1D3557;color:#fff;">Life / MP</button>
-      <button id="pbt-advanced_market" onclick="setProdBoard('advanced_market')" style="flex:1;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;background:#e8eef5;color:#5f7a99;">Advanced Market</button>
+      <button id="pbt-advanced_market" onclick="setProdBoard('advanced_market')" style="flex:1;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;background:#e8eef5;color:#5f7a99;">Retirement</button>
     </div>
+    <div id="mp-panel">
     <!-- Row 1 - did they show? -->
     <div class="stat-row" style="grid-template-columns:repeat(4,minmax(0,1fr));">
       <div class="stat stat-navy">
@@ -521,6 +524,7 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
       <div class="stat stat-green">
         <div class="stat-lbl lbl-green">Applications</div>
         <div class="stat-val val-green" id="p-closed">0</div>
+        <div class="stat-sub" id="p-apps-goalsub"></div>
         <div class="stat-sub sub-green" id="p-close-rate"></div>
       </div>
       <div class="stat" id="needsoutcome-tile" style="cursor:pointer;" onclick="drillDown('needsoutcome')">
@@ -580,6 +584,35 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
         <div class="stat-lbl lbl-navy">APV / Sale</div>
         <div class="stat-val val-navy" id="p-apv-hh" style="font-size:20px;">$0</div>
         <div class="stat-sub sub-navy" id="p-apv-ppu" style="font-size:9px;">- PPU vs non-PPU</div>
+      </div>
+    </div>
+    </div><!-- end mp-panel -->
+
+    <!-- h159: RETIREMENT board. Its own pipeline, not a relabelled Life board.
+         Steps 1-3 each split scheduled vs attended, because a retirement case
+         lives or dies on whether they come back for the next step. Amount is the
+         account being moved; APV is 5% of it by company convention and is only
+         useful for leaderboards and bonuses - commission comes off the amount. -->
+    <div id="ret-panel" style="display:none;">
+      <div class="stat-row" style="grid-template-columns:repeat(3,minmax(0,1fr));">
+        <div class="stat"><div class="stat-lbl">Step 1 scheduled</div><div class="stat-val" id="r-s1-sched" style="cursor:pointer;" onclick="drillDown('ret_s1_sched')">0</div><div class="stat-sub" id="r-s1-sched-sub"></div></div>
+        <div class="stat"><div class="stat-lbl">Step 2 scheduled</div><div class="stat-val" id="r-s2-sched" style="cursor:pointer;" onclick="drillDown('ret_s2_sched')">0</div><div class="stat-sub" id="r-s2-sched-sub"></div></div>
+        <div class="stat"><div class="stat-lbl">Step 3 scheduled</div><div class="stat-val" id="r-s3-sched" style="cursor:pointer;" onclick="drillDown('ret_s3_sched')">0</div><div class="stat-sub" id="r-s3-sched-sub"></div></div>
+      </div>
+      <div class="stat-row" style="grid-template-columns:repeat(3,minmax(0,1fr));">
+        <div class="stat"><div class="stat-lbl">Step 1 attended</div><div class="stat-val" id="r-s1-att" style="cursor:pointer;" onclick="drillDown('ret_s1_att')">0</div><div class="stat-sub" id="r-s1-att-sub">- show ratio</div></div>
+        <div class="stat"><div class="stat-lbl">Step 2 attended</div><div class="stat-val" id="r-s2-att" style="cursor:pointer;" onclick="drillDown('ret_s2_att')">0</div><div class="stat-sub" id="r-s2-att-sub">- show ratio</div></div>
+        <div class="stat"><div class="stat-lbl">Step 3 attended</div><div class="stat-val" id="r-s3-att" style="cursor:pointer;" onclick="drillDown('ret_s3_att')">0</div><div class="stat-sub" id="r-s3-att-sub">- show ratio</div></div>
+      </div>
+      <div class="stat-row" style="grid-template-columns:repeat(3,minmax(0,1fr));">
+        <div class="stat"><div class="stat-lbl">In progress</div><div class="stat-val" id="r-inprog" style="cursor:pointer;" onclick="drillDown('ret_inprog')">0</div><div class="stat-sub">more time needed</div></div>
+        <div class="stat"><div class="stat-lbl">Won</div><div class="stat-val" id="r-won" style="cursor:pointer;" onclick="drillDown('ret_won')">0</div><div class="stat-sub" id="r-won-sub"></div></div>
+        <div class="stat"><div class="stat-lbl">Lost</div><div class="stat-val" id="r-lost" style="cursor:pointer;" onclick="drillDown('ret_lost')">0</div><div class="stat-sub" id="r-lost-sub"></div></div>
+      </div>
+      <div class="stat-row" style="grid-template-columns:repeat(3,minmax(0,1fr));">
+        <div class="stat"><div class="stat-lbl">Amount</div><div class="stat-val" id="r-amount" style="font-size:20px;">$0</div><div class="stat-sub">account moving</div></div>
+        <div class="stat"><div class="stat-lbl">APV submitted</div><div class="stat-val" id="r-apv-sub" style="font-size:20px;">$0</div><div class="stat-sub">5% of amount</div></div>
+        <div class="stat"><div class="stat-lbl">APV placed</div><div class="stat-val" id="r-apv-placed" style="font-size:20px;">$0</div><div class="stat-sub">issued &amp; paid</div></div>
       </div>
     </div>
   <!-- MIA vs CIA comparison panel -->
@@ -1728,6 +1761,9 @@ function updateProdBoardToggle() {
     life.style.background = on ? 'var(--teal)' : '#2A2F38'; life.style.color = on ? '#fff' : '#9BA8B8'; }
   if (am) { const on = pb === 'advanced_market';
     am.style.background = on ? 'var(--teal)' : '#2A2F38'; am.style.color = on ? '#fff' : '#9BA8B8'; }
+  const mpP = document.getElementById('mp-panel'), retP = document.getElementById('ret-panel');
+  if (mpP)  mpP.style.display  = (pb === 'advanced_market') ? 'none' : '';
+  if (retP) retP.style.display = (pb === 'advanced_market') ? '' : 'none';
 }
 
 function renderScore() {
@@ -1843,6 +1879,47 @@ function renderScore() {
   // Which production board is showing. Life is the default; the toggle flips it
   // to advanced_market (retirement). Every scoped tile below reads this.
   const _pb = window._prodBoard || 'mp_life';
+  // ---- h159: RETIREMENT board ----
+  if (_pb === 'advanced_market') {
+    const retCases = clients.flatMap(c => (c.cases||[])
+      .filter(cs => isRetirementCase(cs))
+      .map(cs => ({ c, cs })));
+    const stepTps = (n) => retCases.flatMap(({c, cs}) => (cs.touchpoints||[])
+      .filter(tp => tp && new RegExp('Step\\s*' + n).test(tp.tpType || ''))
+      .map(tp => ({ c, cs, tp })));
+    const setTxt = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+    const inPeriod = (tp) => { const d = new Date(tp.datetime); return d >= pStart && d <= pEnd; };
+
+    let amount = 0, apvSub = 0, apvPlaced = 0;
+    [1,2,3].forEach(n => {
+      const all = stepTps(n).filter(x => inPeriod(x.tp));
+      const attended = all.filter(x => x.tp.outcome && x.tp.outcome !== 'pending' && x.tp.outcome !== 'noshow');
+      setTxt('r-s' + n + '-sched', all.length);
+      setTxt('r-s' + n + '-att', attended.length);
+      const rate = all.length ? Math.round((attended.length / all.length) * 100) + '% attended' : '- attended';
+      setTxt('r-s' + n + '-att-sub', rate);
+    });
+
+    const decided = retCases.filter(({cs}) => ['Closed Won','Closed Lost'].includes(cs.status));
+    setTxt('r-won',  decided.filter(({cs}) => cs.status === 'Closed Won').length);
+    setTxt('r-lost', decided.filter(({cs}) => cs.status === 'Closed Lost').length);
+    setTxt('r-inprog', retCases.filter(({cs}) => cs.status === 'Open').length);
+
+    retCases.forEach(({c, cs}) => (cs.touchpoints||[]).forEach(tp => (tp.apps||[]).forEach(ap => {
+      const d = new Date(ap.submitted_date || tp.datetime);
+      if (!(d >= pStart && d <= pEnd)) return;
+      const st = ap.status || '';
+      if (['Submitted','Approved','Issued','Paid'].includes(st)) {
+        amount += retAmountOf(ap);
+        apvSub += retApvFromAmount(retAmountOf(ap));
+      }
+      if (['Issued','Paid'].includes(st)) apvPlaced += retApvFromAmount(retAmountOf(ap));
+    })));
+    const money = n => '$' + Math.round(n).toLocaleString();
+    setTxt('r-amount', money(amount));
+    setTxt('r-apv-sub', money(apvSub));
+    setTxt('r-apv-placed', money(apvPlaced));
+  }
   const allTPs = clients.flatMap(c => (c.cases||[]).filter(cs => boardOf(cs) === _pb).flatMap(cs => (cs.touchpoints||[]).filter(tp => {
     const d = new Date(tp.datetime); return d >= pStart && d <= pEnd;
   })));
@@ -2347,8 +2424,15 @@ function renderSourceComparison(pStart, pEnd, label) {
         if (!EARNING.includes(st)) return 0;      // Written / Free Look / Declined
         return prem * lvl;
       };
-      const tp = (cl.cases||[]).flatMap(cs => (cs.touchpoints||[]).filter(t => t.outcome === 'sale'))
-        .reduce((a,t) => a + (t.apps||[]).reduce((b,ap)=>b+net(ap),0), 0);
+      // h159: retirement earns rate x ACCOUNT AMOUNT, not premium x contract level.
+      // Routing it through the Life rule computed commission off the 5% APV -
+      // roughly a twentieth of the real figure.
+      const tp = (cl.cases||[]).flatMap(cs => (cs.touchpoints||[])
+        .filter(t => t.outcome === 'sale')
+        .map(t => ({ t, ret: isRetirementCase(cs) })))
+        .reduce((a,{t,ret}) => a + (t.apps||[]).reduce((b,ap) =>
+          b + (ret ? (['Submitted','Approved','Issued','Paid'].includes(ap.status||'') ? retCommissionOf(ap, cl.age) : 0)
+                   : net(ap)), 0), 0);
       const st = (cl.sits||[]).filter(s => s.outcome === 'showed')
         .reduce((a,s) => a + (s.apps||[]).reduce((b,ap)=>b+net(ap),0), 0);
       return tp + st;
@@ -5526,6 +5610,62 @@ function isSuperseded(ap) {
 // submissions, so both are real submitted business. This used to zero out a
 // rewritten decline, which made the board read lower than the business list for
 // the same 37 apps; one number, one definition, and Business is the definition.
+
+// ============================================================================
+// h159 - RETIREMENT MATH. Completely different shape from Life/MP.
+//   Amount     = the account being moved ($195,000)
+//   APV        = 5% of amount ($9,750). Company reporting convention only -
+//                leaderboards and bonuses. It is NOT the commissionable base.
+//   Commission = rate x AMOUNT, never x APV.
+// Life/MP is the inverse: premium IS the commissionable base. Applying the
+// Life rule to a retirement case computes commission off a number 20x too small.
+// ============================================================================
+const RETIREMENT_APV_RATE = 0.05;
+function retApvFromAmount(amount) { return (Number(amount) || 0) * RETIREMENT_APV_RATE; }
+function retAmountOf(ap) {
+  if (!ap) return 0;
+  if (ap.amount != null && ap.amount !== '') return Number(ap.amount) || 0;
+  // no amount recorded -> back it out of APV so older rows still report
+  return (Number(ap.premium) || 0) / RETIREMENT_APV_RATE;
+}
+
+// Insure Realty is not a carrier in COMP_DATA, so its ladder lives here. Half a
+// point per contract level, except 125 -> 130 which takes a full point.
+const INSURE_REALTY_LADDER = { 80:3.5, 85:4, 90:4.5, 95:5, 100:5.5, 105:6, 110:6.5, 115:7, 120:7.5, 125:8, 130:9 };
+function insureRealtyRate(level) {
+  const lv = Number(level) || 105;
+  if (INSURE_REALTY_LADDER[lv] != null) return INSURE_REALTY_LADDER[lv];
+  const keys = Object.keys(INSURE_REALTY_LADDER).map(Number).sort((a,b)=>a-b);
+  let best = keys[0];
+  keys.forEach(k => { if (k <= lv) best = k; });
+  return INSURE_REALTY_LADDER[best];
+}
+
+// Every other carrier already carries a rate table keyed by contract level and
+// banded by age - Athene, American Equity, F&G and the rest. Use it.
+function retCommissionRate(ap, clientAge) {
+  const level = String(getAgentSettings().contractLevel || 105);
+  const carrier = (ap && ap.carrier) || '';
+  if (/insure\s*realty/i.test(carrier)) return insureRealtyRate(level) / 100;
+  const comp = COMP_DATA[carrier];
+  if (comp && comp.products) {
+    const named = comp.products.filter(pr => !ap.product || pr.name === ap.product);
+    const age = Number(clientAge) || 0;
+    const inBand = named.find(pr => {
+      const m = (pr.range || '').match(/(\d+)\s*-\s*(\d+)/);
+      return m ? (age >= +m[1] && age <= +m[2]) : false;
+    }) || named[0];
+    if (inBand && inBand.rates && inBand.rates[level] != null) return Number(inBand.rates[level]) / 100;
+  }
+  return insureRealtyRate(level) / 100;   // sane default
+}
+function retCommissionOf(ap, clientAge) {
+  return retAmountOf(ap) * retCommissionRate(ap, clientAge);
+}
+function isRetirementCase(cs) {
+  return cs && (cs.type === 'Retirement' || boardOf(cs) === 'advanced_market');
+}
+
 function premOf(ap) { return ap && ap.premium || 0; }
 
 // Every app on a client, across all cases - the pool a rewrite is matched within.
@@ -9972,9 +10112,17 @@ async function saveAppsToTouchpoint(id, ci, ti) {
       const age = parseInt((document.getElementById('app-age-'+idx)||{value:''}).value)||null;
       const productName = product.split('|')[0];
       const productRange = product.split('|')[1] || null;
-      const comp = carrier && productName && apv ? calcAppComp(carrier, productName, apv, null, undefined, age, productRange) : null;
+      // h159: on an ACCOUNT app the entered figure is the amount being moved and
+      // `apv` is 5% of it. Keep the amount - it was being discarded, and comp was
+      // then computed off the APV, roughly a twentieth of the real basis.
+      const _isAccount = (window._appFreq[idx] || 'monthly') === 'account';
+      const _entered = parseFloat((document.getElementById('app-prem-'+idx)||{value:0}).value) || 0;
+      const _amount = _isAccount ? _entered : null;
+      const _compBasis = _isAccount ? _amount : apv;
+      const comp = carrier && productName && _compBasis ? calcAppComp(carrier, productName, _compBasis, null, undefined, age, productRange) : null;
       apps.push({
         carrier, product: productName, product_range: productRange, face, premium: apv, who, age,
+        amount: _amount, is_account: _isAccount,
         status:'Written', written_date: appDate, writtenDate: appDate, id: Date.now()+idx,
         // Set when this app replaces a declined one. The declined app is then
         // superseded and its premium stops counting - one sale, one premium.
@@ -10964,7 +11112,7 @@ const GOAL_TILES = [
   { metric:'appts_set', valId:'s-appts',  slotId:'p-appts-sub',    cls:'activity', label:'Appts set', dark:false },
   { metric:'sits',      valId:'p-showed', slotId:'p-sit-rate',     cls:'activity', label:'Sits',      dark:true  },
   { metric:'sales',     valId:'p-sales',  slotId:'p-sales-sub',    cls:'outcome',  label:'Sales',     dark:true  },
-  { metric:'apps',      valId:'p-closed', slotId:'p-close-rate',   cls:'outcome',  label:'Apps',      dark:false },
+  { metric:'apps',      valId:'p-closed', slotId:'p-apps-goalsub', cls:'outcome',  label:'Apps',      dark:false },
   { metric:'resets',    valId:'p-resets', slotId:'p-resets-sub',   cls:'outcome',  label:'Resets',    dark:false },
   { metric:'apv',       valId:'p-apv',    slotId:'p-apv-goalsub',  cls:'outcome',  label:'APV',       dark:true, money:true },
 ];
