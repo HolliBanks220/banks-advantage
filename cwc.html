@@ -395,6 +395,18 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
   border-bottom-color:rgba(0,0,0,0.14) !important;
 }
 
+
+/* ---- h168: the filter chips were a hidden sideways scroller
+   (`overflow-x:auto` with `scrollbar-width:none`), so "No show" and everything
+   past it was reachable only by touch-dragging - invisible and unusable with a
+   mouse. Let them WRAP instead. Two short rows beats one row you cannot see. ---- */
+.filter-row{
+  display:flex !important;
+  flex-wrap:wrap !important;
+  overflow-x:visible !important;
+  row-gap:5px !important;
+}
+.filter-row::-webkit-scrollbar{display:none;}
 </style>
 </head>
 <body>
@@ -409,7 +421,7 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h167</span>
+        <span class="build-tag" id="build-tag" title="build">b715h168</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
         <div class="period-label" id="period-label">This week</div>
