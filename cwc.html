@@ -373,19 +373,6 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
   border-bottom-color:rgba(0,0,0,0.14) !important;
 }
 
-/* ---- h157: Tasks panel matches the Schedule panel - dark field, light items ---- */
-#task-sidebar{background:#1E222A !important;border:1px solid rgba(255,255,255,0.22) !important;border-radius:12px !important;}
-#task-sidebar > div:first-child{color:#FFFFFF !important;}          /* the "Tasks" heading */
-#task-sidebar .task-item{
-  background:#E9EDF2 !important;color:#1D2733 !important;
-  border:1px solid rgba(0,0,0,0.10) !important;border-left:4px solid #9AA6B4 !important;
-  border-radius:8px !important;padding:7px 9px !important;margin-bottom:5px !important;
-}
-#task-sidebar .task-item:hover{background:#DEE4EC !important;}
-#task-sidebar .task-item *{color:#1D2733 !important;}
-#task-sidebar .task-item input[type="checkbox"]{accent-color:#138181;}
-#task-sidebar #task-list > div[style*="a0b8cc"]{color:rgba(255,255,255,0.6) !important;}
-#task-sidebar input[type="text"]{background:#FFFFFF !important;color:#1D2733 !important;border:1px solid rgba(0,0,0,0.18) !important;}
 </style>
 </head>
 <body>
@@ -400,7 +387,7 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h157</span>
+        <span class="build-tag" id="build-tag" title="build">b715h158</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
         <div class="period-label" id="period-label">This week</div>
@@ -714,7 +701,7 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
 </div><!-- end wrap -->
 <div class="right-sidebar-col" style="position:sticky;top:12px;display:flex;flex-direction:column;gap:12px;">
   <div id="task-sidebar" style="background:#fff;border-radius:12px;border:1px solid #e2eaf2;padding:14px 12px;">
-    <div style="font-size:10px;font-weight:600;color:#1D3557;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Tasks</div>
+    <div onclick="openTaskModal()" title="Open to reorder" style="font-size:10px;font-weight:600;color:#1D3557;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:5px;">Tasks <span id="task-count" style="font-weight:500;color:#8fa8c0;text-transform:none;letter-spacing:0;"></span></div>
     <div id="task-list" style="margin-bottom:8px;"><div style="font-size:11px;color:#a0b8cc;">Loading...</div></div>
     <div style="display:flex;gap:6px;">
       <input id="task-input" type="text" placeholder="Add a task..." style="flex:1;border:1px solid #d0dcea;border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit;background:#f7fafd;color:#1a2e44;" onkeydown="if(event.key==='Enter')addTask()">
@@ -1073,7 +1060,14 @@ async function loadTasksFromDB() {
     const query = sb.from('tasks').select('*').order('created_at', { ascending: true });
     const { data, error } = await Promise.race([query, timeout]);
     if (!error && data) {
-      tasks = data;
+      // h158: sort_order drives the panel. Falls back to created_at when the
+      // column is absent, so this is safe to deploy before running the migration.
+      tasks = data.slice().sort((a,b) => {
+        const ao = (a.sort_order == null) ? 1e9 : a.sort_order;
+        const bo = (b.sort_order == null) ? 1e9 : b.sort_order;
+        if (ao !== bo) return ao - bo;
+        return new Date(a.created_at) - new Date(b.created_at);
+      });
     } else if (error) {
       console.warn('Tasks load error:', error.message);
       const local = localStorage.getItem('cwc_tasks');
@@ -10377,12 +10371,20 @@ function renderTasks() {
     if (!tasks.length) {
       el.innerHTML = '<div style="font-size:11px;color:#a0b8cc;padding:2px 0;">No tasks yet.</div>';
     } else {
-      el.innerHTML = tasks.map(t => `
+      // h158: only the top few. The rest live behind the heading, and the order
+      // you drag them into up there decides which ones surface here.
+      const TASK_PANEL_MAX = 4;
+      const open = tasks.filter(t => !t.done);
+      const shown = (open.length ? open : tasks).slice(0, TASK_PANEL_MAX);
+      const hidden = tasks.length - shown.length;
+      el.innerHTML = shown.map(t => `
         <div class="task-item">
           <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask('${t.id}')" style="margin-top:2px;cursor:pointer;accent-color:#138181;flex-shrink:0;">
           <span style="flex:1;font-size:12px;color:#1D3557;${t.done?'text-decoration:line-through;color:#a0b8cc;':''}">${t.text}</span>
           <button onclick="dismissTask('${t.id}')" style="background:none;border:none;color:#d0dcea;font-size:14px;cursor:pointer;padding:0;line-height:1;flex-shrink:0;" title="Dismiss">x</button>
-        </div>`).join('');
+        </div>`).join('') + (hidden > 0
+        ? `<div onclick="openTaskModal()" style="font-size:10px;color:#138181;text-decoration:underline;cursor:pointer;padding:4px 0 0;">+${hidden} more \u2014 open to reorder</div>`
+        : '');
     }
   }
   // Update mobile badge
@@ -10391,6 +10393,8 @@ function renderTasks() {
     const open = tasks.filter(t=>!t.done).length;
     badge.textContent = tasks.length ? '(' + open + ' open)' : '';
   }
+  const cnt = document.getElementById('task-count');
+  if (cnt) { const o = tasks.filter(t=>!t.done).length; cnt.textContent = o ? '(' + o + ')' : ''; }
 }
 
 function openTaskModal() {
@@ -10403,10 +10407,30 @@ function openTaskModal() {
   </div>`);
 }
 
+// h158: drag to reorder. The order set here decides which tasks surface on the
+// panel, so the three or four that matter can be put on top and stay visible.
+let _taskDragFrom = null;
+function taskDragStart(i){ _taskDragFrom = i; }
+function taskDragOver(e){ e.preventDefault(); }
+async function taskDrop(e, to) {
+  e.preventDefault();
+  const from = _taskDragFrom; _taskDragFrom = null;
+  if (from == null || from === to) return;
+  const moved = tasks.splice(from, 1)[0];
+  tasks.splice(to, 0, moved);
+  refreshModalTaskList(); renderTasks();
+  try {
+    await Promise.all(tasks.map((t, i) =>
+      sb.from('tasks').update({ sort_order: i }).eq('id', t.id)));
+  } catch (err) { console.warn('task order not saved (is the sort_order column there?)', err); }
+}
 function renderTaskListHtml() {
   if (!tasks.length) return '<div style="font-size:13px;color:#a0b8cc;padding:8px 0;">No tasks yet.</div>';
-  return tasks.map(t => `
-    <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid #f0f4f8;">
+  return '<div style="font-size:11px;color:#8fa8c0;margin-bottom:6px;">Drag to reorder \u2014 the top 4 show on your board.</div>' +
+    tasks.map((t, i) => `
+    <div draggable="true" ondragstart="taskDragStart(${i})" ondragover="taskDragOver(event)" ondrop="taskDrop(event,${i})"
+         style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid #f0f4f8;cursor:grab;${i<4?'background:rgba(19,129,129,0.06);':''}">
+      <span style="color:#b8c6d4;font-size:13px;line-height:1.4;flex-shrink:0;">&#8942;&#8942;</span>
       <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask('${t.id}');refreshModalTaskList()" style="margin-top:2px;cursor:pointer;accent-color:#138181;">
       <span style="flex:1;font-size:13px;color:#1D3557;${t.done?'text-decoration:line-through;color:#a0b8cc;':''}">${t.text}</span>
       <button onclick="dismissTask('${t.id}');refreshModalTaskList()" style="background:none;border:none;color:#d0dcea;font-size:16px;cursor:pointer;padding:0;">x</button>
