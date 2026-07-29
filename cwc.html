@@ -9,10 +9,17 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f4f8;min-height:100vh;padding:12px;}
-.wrap{max-width:420px;margin:0 auto;padding:0 0 2rem;}
-.page-outer{display:block;max-width:1400px;margin:0 auto;padding:0 12px;}
+/* h167 LAYOUT. The gutter was a grid column with nothing in it.
+   `.page-outer` declared `grid-template-columns:1fr 300px` but only ever had ONE
+   child (the board), so that 300px was dead space - and the real sidebar sat
+   OUTSIDE that grid, as a sibling. Total width was therefore
+   board + 300px of nothing + sidebar, which overflows a narrow window and leaves
+   a hole in a wide one. `.page-layout` was also `inline-flex`, so it sized to its
+   contents instead of the window and could never fill or fit.
+   The grid now lives on `.page-layout`, where both children actually are. */
+.wrap{max-width:100%;margin:0;padding:0 0 2rem;min-width:0;}
+.page-outer{display:block;max-width:100%;margin:0;padding:0;min-width:0;}
 @media(min-width:900px){
-  .page-outer{display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start;padding:0 16px;}
   .wrap{max-width:100%;}
   .right-sidebar-col{display:block!important;}
 }
@@ -125,7 +132,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .dial-lbl{font-size:10px;color:#5f7a99;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;margin-right:2px;}
 .dial-cnt-btn{border:1px solid #d0dcea;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#5f7a99;transition:all 0.1s;}
 .dial-cnt-btn.on{background:#1D3557;color:#fff;border-color:#1D3557;}
-.page-layout{display:inline-flex;gap:8px;align-items:flex-start;padding:0 12px;min-width:0;}
+.page-layout{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(300px,340px);
+  gap:16px;align-items:start;
+  max-width:1600px;margin:0 auto;padding:0 14px;
+  box-sizing:border-box;width:100%;
+}
+.page-layout > *{min-width:0;}                 /* let children shrink, never overflow */
+.right-sidebar-col{min-width:0;}
+@media(max-width:899px){
+  .page-layout{grid-template-columns:minmax(0,1fr);}
+  .right-sidebar-col{position:static !important;}
+}
+html,body{overflow-x:hidden;}                   /* no sideways scrollbar, ever */
 .app-main{width:420px;flex-shrink:0;}
 .appt-sidebar{width:220px;flex-shrink:0;background:#fff;border-radius:12px;border:1px solid #e2eaf2;padding:14px 12px;display:none;max-height:calc(100vh - 120px);overflow-y:auto;}
 .appt-sidebar-title{font-size:10px;font-weight:600;color:#1D3557;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;}
@@ -389,7 +409,7 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h166</span>
+        <span class="build-tag" id="build-tag" title="build">b715h167</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
         <div class="period-label" id="period-label">This week</div>
@@ -616,9 +636,29 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
       </div>
     </div>
   <!-- MIA vs CIA comparison panel -->
-  <!-- h166: lives in Reports now (Settings > Open reports). Kept in the DOM but
-       hidden, because renderSourceComparison writes into these ids every render
-       and Reports reads the finished numbers from that. -->
+  <!-- h167: COMBINED lead performance stays on the board - only the MIA-vs-CIA
+       split moved to Reports. Hiding the whole block took the board's only lead
+       reporting with it, which was not the ask. -->
+  <div style="margin-top:4px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 6px;">
+      <div class="section-lbl" style="margin:0;">Lead performance</div>
+      <div onclick="openReports()" style="font-size:9px;color:#138181;text-decoration:underline;cursor:pointer;">compare sources &rarr;</div>
+    </div>
+    <div class="stat-row" style="grid-template-columns:repeat(3,minmax(0,1fr));">
+      <div class="stat"><div class="stat-lbl">Leads</div><div class="stat-val" id="lp-leads">-</div><div class="stat-sub" id="lp-leads-sub">assigned</div></div>
+      <div class="stat"><div class="stat-lbl">Contact</div><div class="stat-val" id="lp-contact">-</div><div class="stat-sub">reached</div></div>
+      <div class="stat"><div class="stat-lbl">Appt set</div><div class="stat-val" id="lp-appt">-</div><div class="stat-sub">of contacted</div></div>
+    </div>
+    <div class="stat-row" style="grid-template-columns:repeat(3,minmax(0,1fr));">
+      <div class="stat"><div class="stat-lbl">Show</div><div class="stat-val" id="lp-show">-</div><div class="stat-sub">of appts</div></div>
+      <div class="stat"><div class="stat-lbl">Close</div><div class="stat-val" id="lp-close">-</div><div class="stat-sub">of decided</div></div>
+      <div class="stat"><div class="stat-lbl">Net $ / lead</div><div class="stat-val" id="lp-perlead" style="font-size:18px;">-</div><div class="stat-sub" id="lp-roi">-</div></div>
+    </div>
+  </div>
+
+  <!-- The MIA/CIA panel stays in the DOM but hidden: renderSourceComparison
+       writes into these ids every render, and both the strip above and Reports
+       read the finished numbers from it. -->
   <div id="source-comparison" style="display:none;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 6px;">
       <div class="section-lbl" style="margin:0;">Lead source comparison</div>
@@ -2551,6 +2591,28 @@ function renderSourceComparison(pStart, pEnd, label) {
   // writes straight into fixed DOM ids, so it cannot be pointed at a second
   // container - stashing the finished numbers is the low-risk way to reuse them.
   window._lastSourceStats = { mia, cia, label: displayLabel, pStart, pEnd };
+
+  // h167: the board's combined strip - all sources together
+  {
+    const A = {
+      assigned: mia.assigned + cia.assigned, contacted: mia.contacted + cia.contacted,
+      apptsSet: mia.apptsSet + cia.apptsSet, apptsResolved: mia.apptsResolved + cia.apptsResolved,
+      shows: mia.shows + cia.shows, decided: mia.decided + cia.decided,
+      sales: mia.sales + cia.sales, comm: mia.totalComm + cia.totalComm,
+    };
+    setEl('lp-leads', A.assigned);
+    setEl('lp-leads-sub', mia.assigned + ' MIA / ' + cia.assigned + ' CIA');
+    setEl('lp-contact', fmtPct(A.contacted, A.assigned));
+    setEl('lp-appt', fmtPct(A.apptsSet, A.contacted));
+    setEl('lp-show', fmtPct(A.shows, A.apptsResolved));
+    setEl('lp-close', fmtPct(A.sales, A.decided));
+    setEl('lp-perlead', fmtAvg(A.comm, A.assigned));
+    const spend = (typeof getLeadSpend === 'function')
+      ? getLeadSpend('MIA', pStart) + getLeadSpend('CIA', pStart) : 0;
+    setEl('lp-roi', spend > 0
+      ? Math.round(((A.comm - spend) / spend) * 100) + '% ROI'
+      : 'add spend in Reports');
+  }
 }
 //  TABS 
 
