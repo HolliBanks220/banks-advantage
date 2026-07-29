@@ -389,7 +389,7 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h160</span>
+        <span class="build-tag" id="build-tag" title="build">b715h162</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
         <div class="period-label" id="period-label">This week</div>
@@ -1885,7 +1885,7 @@ function renderScore() {
       .filter(cs => isRetirementCase(cs))
       .map(cs => ({ c, cs })));
     const stepTps = (n) => retCases.flatMap(({c, cs}) => (cs.touchpoints||[])
-      .filter(tp => tp && new RegExp('Step\\s*' + n).test(tp.tpType || ''))
+      .filter(tp => tp && retStepIndexOf(tp) === n)
       .map(tp => ({ c, cs, tp })));
     const setTxt = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
     const inPeriod = (tp) => { const d = new Date(tp.datetime); return d >= pStart && d <= pEnd; };
@@ -1903,7 +1903,7 @@ function renderScore() {
     const decided = retCases.filter(({cs}) => ['Closed Won','Closed Lost'].includes(cs.status));
     setTxt('r-won',  decided.filter(({cs}) => cs.status === 'Closed Won').length);
     setTxt('r-lost', decided.filter(({cs}) => cs.status === 'Closed Lost').length);
-    setTxt('r-inprog', retCases.filter(({cs}) => cs.status === 'Open').length);
+    setTxt('r-inprog', retCases.filter(({cs}) => retIsInProgress(cs)).length);
 
     retCases.forEach(({c, cs}) => (cs.touchpoints||[]).forEach(tp => (tp.apps||[]).forEach(ap => {
       const d = new Date(ap.submitted_date || tp.datetime);
@@ -2903,6 +2903,50 @@ function needsOutcomeList(){
   return rows;
 }
 
+
+// h162: IN PROGRESS means they have ATTENDED Steps 1, 2 AND 3 and still have not
+// decided - the ones sitting on it who need more time with you. It is not "case
+// is open"; that counted every live retirement case, including people only one
+// step in, which is why the tile said 6 and the list showed nothing relevant.
+function retAttendedSteps(cs) {
+  const seen = new Set();
+  (cs.touchpoints||[]).forEach(tp => {
+    const n = retStepIndexOf(tp);
+    if (n && tp.outcome && tp.outcome !== 'pending' && tp.outcome !== 'noshow') seen.add(n);
+  });
+  return seen;
+}
+function retIsInProgress(cs) {
+  if (!cs || ['Closed Won','Closed Lost'].includes(cs.status)) return false;
+  const a = retAttendedSteps(cs);
+  return a.has(1) && a.has(2) && a.has(3);
+}
+function retDrillRows(type, start, end) {
+  const inWin = d => { const t = new Date(d); return t >= start && t <= end; };
+  const out = [];
+  clients.forEach(c => (c.cases||[]).filter(cs => isRetirementCase(cs)).forEach(cs => {
+    const step = (type.match(/ret_s(\d)_/) || [])[1];
+    if (step) {
+      const want = +step, attended = /_att$/.test(type);
+      (cs.touchpoints||[]).forEach(tp => {
+        if (retStepIndexOf(tp) !== want) return;
+        if (!inWin(tp.datetime)) return;
+        const didAttend = tp.outcome && tp.outcome !== 'pending' && tp.outcome !== 'noshow';
+        if (attended && !didAttend) return;
+        out.push({ c, cs, note: new Date(tp.datetime).toLocaleString() +
+          (didAttend ? '' : (tp.outcome === 'noshow' ? ' - no show' : ' - not yet held')) });
+      });
+      return;
+    }
+    if (type === 'ret_inprog' && retIsInProgress(cs)) {
+      out.push({ c, cs, note: 'All three steps attended - awaiting a decision' });
+    }
+    if (type === 'ret_won' && cs.status === 'Closed Won') out.push({ c, cs, note: 'Closed Won' });
+    if (type === 'ret_lost' && cs.status === 'Closed Lost') out.push({ c, cs, note: 'Closed Lost' });
+  }));
+  return out;
+}
+
 function drillDown(type) {
   const {start, end, label} = getPeriodBounds('production');
   // Every drill-down list is scoped to the board you're viewing, so the list
@@ -2912,6 +2956,33 @@ function drillDown(type) {
   const _ddOn = cs => boardOf(cs) === _ddBoard;
   let leads = [];
   let title = '';
+
+  // ---- h162: retirement drill-downs. h159 wired all twelve tiles to drillDown()
+  // with keys that had no handler, so none of them opened anything. ----
+  if (type.indexOf('ret_') === 0) {
+    const rows = retDrillRows(type, start, end);
+    const TITLES = {
+      ret_s1_sched:'Step 1 scheduled', ret_s1_att:'Step 1 attended',
+      ret_s2_sched:'Step 2 scheduled', ret_s2_att:'Step 2 attended',
+      ret_s3_sched:'Step 3 scheduled', ret_s3_att:'Step 3 attended',
+      ret_inprog:'In progress - needs more time', ret_won:'Won', ret_lost:'Lost'
+    };
+    const head = (TITLES[type] || 'Retirement') + ' - ' + label;
+    if (!rows.length) {
+      showModal('<button class="close-x" onclick="closeToLead()">x</button>' +
+        '<div class="modal-title">' + head + '</div>' +
+        '<div style="font-size:13px;color:#a0b8cc;padding:1rem 0;">None for this period.</div>');
+      return;
+    }
+    showModal('<button class="close-x" onclick="closeToLead()">x</button>' +
+      '<div class="modal-title">' + head + ' (' + rows.length + ')</div>' +
+      rows.map(r =>
+        '<div onclick="openClient(\'' + r.c.id + '\')" style="padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.08);cursor:pointer;">' +
+          '<div style="font-size:13px;font-weight:600;">' + esc(r.c.name) + '</div>' +
+          '<div style="font-size:11px;color:#5E6A78;">' + esc(r.note || '') + '</div>' +
+        '</div>').join(''));
+    return;
+  }
 
   if (type === 'appts') {
     // ONE ROW PER LEAD - the initial appointment. Matches the Appts tile
@@ -7575,7 +7646,12 @@ async function confirmAppt(id) {
   const existingCaseIdx = cases.findIndex(cs => cs.status === 'Open' && cs.type === caseType);
 
   if (existingCaseIdx > -1) {
-    const tpType = cases[existingCaseIdx].touchpoints && cases[existingCaseIdx].touchpoints.length > 0 ? 'Follow-up' : 'Initial';
+    // h161: booking hardcoded 'Initial'/'Follow-up' regardless of case type, so
+    // getTpTypes was defined and never called and every retirement appointment
+    // was stored as 'Initial' - matching none of the Step tiles. A retirement
+    // case now advances through its steps automatically.
+    const _existingTps = cases[existingCaseIdx].touchpoints || [];
+    const tpType = nextTpTypeFor(cases[existingCaseIdx].type, _existingTps);
     cases[existingCaseIdx].touchpoints = [...(cases[existingCaseIdx].touchpoints||[]), {
       type: tpType, datetime: apptDatetime, outcome: 'pending',
       notes: apptNotes, apps: [], created: new Date().toISOString()
@@ -7585,7 +7661,7 @@ async function confirmAppt(id) {
     const newCase = {
       type: caseType, status: 'Open',
       notes: selectedType !== caseType ? selectedType : '',
-      touchpoints: [{type:'Initial',datetime:apptDatetime,outcome:'pending',notes:apptNotes,apps:[],created:new Date().toISOString()}],
+      touchpoints: [{type:nextTpTypeFor(caseType,[]),datetime:apptDatetime,outcome:'pending',notes:apptNotes,apps:[],created:new Date().toISOString()}],
       created: new Date().toISOString()
     };
     cases.push(newCase);
@@ -9294,6 +9370,22 @@ const TP_TYPES_RETIREMENT = ['Step 1','Step 2','Step 3','Follow-up','Policy Revi
 function getTpTypes(caseType) {
   if (caseType === 'Retirement') return TP_TYPES_RETIREMENT;
   return TP_TYPES;
+}
+// h161: what should the NEXT appointment on this case be called? Retirement walks
+// Step 1 -> 2 -> 3 and then holds at Step 3; everything else is Initial then
+// Follow-up. 'Initial' on a retirement case is treated as Step 1 so appointments
+// booked before this fix still land on the board.
+function retStepIndexOf(tp) {
+  const t = (tp && (tp.type || tp.tpType)) || '';
+  const m = t.match(/Step\s*(\d)/i);
+  if (m) return +m[1];
+  return /^initial$/i.test(t) ? 1 : 0;
+}
+function nextTpTypeFor(caseType, existingTps) {
+  const tps = existingTps || [];
+  if (caseType !== 'Retirement') return tps.length ? 'Follow-up' : 'Initial';
+  const highest = tps.reduce((m, tp) => Math.max(m, retStepIndexOf(tp)), 0);
+  return 'Step ' + Math.min(highest + 1, 3);
 }
 
 function toggleCaseBody(el) {
