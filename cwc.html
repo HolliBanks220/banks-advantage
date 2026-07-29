@@ -372,6 +372,20 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
   border-right-color:rgba(0,0,0,0.14) !important;
   border-bottom-color:rgba(0,0,0,0.14) !important;
 }
+
+/* ---- h157: Tasks panel matches the Schedule panel - dark field, light items ---- */
+#task-sidebar{background:#1E222A !important;border:1px solid rgba(255,255,255,0.22) !important;border-radius:12px !important;}
+#task-sidebar > div:first-child{color:#FFFFFF !important;}          /* the "Tasks" heading */
+#task-sidebar .task-item{
+  background:#E9EDF2 !important;color:#1D2733 !important;
+  border:1px solid rgba(0,0,0,0.10) !important;border-left:4px solid #9AA6B4 !important;
+  border-radius:8px !important;padding:7px 9px !important;margin-bottom:5px !important;
+}
+#task-sidebar .task-item:hover{background:#DEE4EC !important;}
+#task-sidebar .task-item *{color:#1D2733 !important;}
+#task-sidebar .task-item input[type="checkbox"]{accent-color:#138181;}
+#task-sidebar #task-list > div[style*="a0b8cc"]{color:rgba(255,255,255,0.6) !important;}
+#task-sidebar input[type="text"]{background:#FFFFFF !important;color:#1D2733 !important;border:1px solid rgba(0,0,0,0.18) !important;}
 </style>
 </head>
 <body>
@@ -386,7 +400,7 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h156</span>
+        <span class="build-tag" id="build-tag" title="build">b715h157</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
         <div class="period-label" id="period-label">This week</div>
@@ -4410,8 +4424,25 @@ function getCaughtUpDaysThisWeek() {
 }
 
 // ── URGENCY SCORING ──────────────────────────────────────────────────────────
+// h157: a no-show logged at a SIT is written to the case touchpoint as
+// outcome:'noshow', not to the call log. This counted the call log only, so the
+// text-template picker never knew the lead had stood you up and offered day-one
+// "never contacted" outreach. Count both.
 function getNoShowCount(c) {
-  return (c.call_log||[]).filter(cl => cl.outcome === 'No show').length;
+  const fromLog = (c.call_log||[]).filter(cl => cl.outcome === 'No show').length;
+  const fromTps = (c.cases||[]).reduce((n, cs) =>
+    n + (cs.touchpoints||[]).filter(tp => tp && tp.outcome === 'noshow').length, 0);
+  return fromLog + fromTps;
+}
+// Most recent no-show from either place - drives the 72hr recovery window.
+function lastNoShowAt(c) {
+  const ts = [];
+  (c.call_log||[]).forEach(cl => { if (cl.outcome === 'No show' && cl.ts) ts.push(new Date(cl.ts)); });
+  (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+    if (tp && tp.outcome === 'noshow' && (tp.datetime || tp.logged_at)) ts.push(new Date(tp.logged_at || tp.datetime));
+  }));
+  const valid = ts.filter(d => !isNaN(d));
+  return valid.length ? new Date(Math.max(...valid.map(d => d.getTime()))) : null;
 }
 
 function getAttemptCount(c) {
@@ -8006,12 +8037,16 @@ const TEXT_TEMPLATES = [
 ];
 
 function getLeadTextStage(c) {
+  // h157: a lead you booked, met and lost can have ZERO qualifying call-log
+  // entries, because sits and their outcomes live on the case touchpoints. Both
+  // of these read the log only, so such a lead fell through to 'never_spoken'.
   const hasConvo = (c.call_log||[]).some(cl =>
     cl.outcome === 'Appt set' || cl.outcome === 'Callback' ||
     cl.outcome === 'Not interested' || cl.outcome === 'Rescheduled' ||
     cl.outcome === 'Conversation'
-  );
-  const isNoShow = c.status === 'No show';
+  ) || (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp =>
+    tp && ['sale','nosale','cont','dropped','noshow','showed'].includes(tp.outcome)));
+  const isNoShow = c.status === 'No show' || getNoShowCount(c) > 0;
   const hasAppt = !!apptOf(c);
   const now = new Date();
   const apptTime = hasAppt ? new Date(apptOf(c)) : null;
@@ -8022,8 +8057,7 @@ function getLeadTextStage(c) {
   // No-show stage only lives as long as the recovery window (72 hrs). After
   // that, a lead who no-showed weeks ago is just someone you've had contact
   // with — recovery language would read as bizarre.
-  const nsEntries = (c.call_log||[]).filter(cl => cl.outcome === 'No show');
-  const lastNsTs = nsEntries.length ? new Date(nsEntries[nsEntries.length-1].ts) : null;
+  const lastNsTs = lastNoShowAt(c);
   const nsRecent = lastNsTs && (new Date() - lastNsTs) / 3600000 <= 72;
   if (isNoShow && nsRecent) return nsCount >= 3 ? 'noshow_3x' : nsCount === 2 ? 'noshow_2x' : 'noshow';
   if (isNoShow && !nsRecent) return hasConvo ? 'spoken' : 'spoken'; // they engaged — appointment happened to be missed
