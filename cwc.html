@@ -505,7 +505,7 @@ html,body{overflow-x:hidden !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h181</span>
+        <span class="build-tag" id="build-tag" title="build">b715h182</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
         <div class="period-label" id="period-label">This week</div>
@@ -2535,58 +2535,10 @@ function renderSourceComparison(pStart, pEnd, label) {
     //   - only Placed/Issued/Paid earn (Declined reached the carrier but never paid)
     //   - Lapse/Cancel claws back chargeback_amount, or the full premium if blank
     //   - as-earned carriers advance nothing, so they contribute 0 up front
-    function commissionOf(cl) {
-      if (!cl) return 0;
-      // h153. FULL first-year commission - annual premium x contract level. No advance
-      // percentage and no as-earned discount: this answers "what is a lead from this
-      // source really worth", not "what hit my account this week".
-      //
-      // Two corrections to h145, which was wrong on both counts:
-      //   - it gated on a status name that does not exist here (APP_STATUSES is
-      //     Written/Submitted/Approved/Issued/Paid/Free Look/Declined/Lapse/Cancel),
-      //     so it silently counted only Issued and Paid
-      //   - it applied the advance rate, which understates the real value
-      //
-      // Submitted and Approved count in FULL - issue and pay can lag by weeks and
-      // that lag should not drag the number down. Lapse and Cancel stay counted at
-      // premium minus the chargeback, because money kept is still money made.
-      // Written has not reached the carrier; Free Look and Declined never paid.
-      //
-      // NOTE: this is the PLACED-side ledger. Submitted APV is a historical fact and
-      // never decreases - nothing here reaches back and un-submits an application.
-      const lvl = (getAgentSettings().contractLevel || 105) / 100;
-      const EARNING = ['Submitted','Approved','Issued','Paid'];
-      const NETTED  = ['Lapse','Cancel'];
-      const net = (ap) => {
-        const st = ap.status || '';
-        const prem = Number(ap.premium) || 0;
-        if (NETTED.includes(st)) {
-          const raw = ap.chargeback_amount;
-          const back = (raw !== undefined && raw !== null && raw !== '') ? Number(raw) : prem;
-          return Math.max(0, prem - back) * lvl;
-        }
-        if (!EARNING.includes(st)) return 0;      // Written / Free Look / Declined
-        return prem * lvl;
-      };
-      // h159: retirement earns rate x ACCOUNT AMOUNT, not premium x contract level.
-      // Routing it through the Life rule computed commission off the 5% APV -
-      // roughly a twentieth of the real figure.
-      const tp = (cl.cases||[]).flatMap(cs => (cs.touchpoints||[])
-        .filter(t => t.outcome === 'sale')
-        .map(t => ({ t, ret: isRetirementCase(cs) })))
-        .reduce((a,{t,ret}) => a + (t.apps||[]).reduce((b,ap) =>
-          b + (ret ? (['Submitted','Approved','Issued','Paid'].includes(ap.status||'') ? retCommissionOf(ap, cl.age) : 0)
-                   : net(ap)), 0), 0);
-      // h181: a legacy sit carries no case, so isRetirementCase can't be asked and
-      // every app here went through the Life rule - premium x contract level for a
-      // retirement app whose commission is rate x ACCOUNT AMOUNT, out by ~20x.
-      const st = (cl.sits||[]).filter(s => s.outcome === 'showed')
-        .reduce((a,s) => a + (s.apps||[]).reduce((b,ap) =>
-          b + (isRetirementApp(ap)
-                 ? (['Submitted','Approved','Issued','Paid'].includes(ap.status||'') ? retCommissionOf(ap, cl.age) : 0)
-                 : net(ap)), 0), 0);
-      return tp + st;
-    }
+    // h181: the math lives in commissionDetail() at top level so the Reports
+    // drill-down itemises exactly what this totals.
+    function commissionOf(cl) { return commissionDetail(cl).total; }
+
     function referralCommission(cl, seen) {
       seen = seen || new Set();
       if (!cl || seen.has(cl.id)) return 0;
@@ -2655,7 +2607,7 @@ function renderSourceComparison(pStart, pEnd, label) {
       })
     };
 
-    return { assigned, contacted, apptsSet, shows, sales, totalAPV, refAPV, totalComm, refComm, apptsResolved, decided, touchesToDecision, m };
+    return { assigned, contacted, apptsSet, shows, sales, totalAPV, refAPV, totalComm, refComm, apptsResolved, decided, touchesToDecision, m, cohortIds: cohort.map(c => c.id) };
   }
 
   function fmtPct(n, d) { return d > 0 ? Math.round((n/d)*100) + "%" : "-"; }
@@ -5957,6 +5909,76 @@ function retCommissionOf(ap, clientAge) {
 // only an explicit amount counts, so a Life app can never be mistaken for one.
 function isRetirementApp(ap) {
   return !!(ap && ap.amount != null && ap.amount !== '' && Number(ap.amount) > 0);
+}
+
+// THE single commission ledger. The Reports drill-down and the Lead Source
+// Comparison both run through this, so what you see itemised is exactly what
+// gets totalled - no second implementation to drift out of step.
+//
+// Rules (h153/h159/h181):
+//   Submitted/Approved/Issued/Paid earn in full - issue and pay lag by weeks and
+//     that lag should not drag the number down.
+//   Lapse/Cancel keep premium minus the chargeback; money kept is money made.
+//   Written has not reached the carrier; Free Look and Declined never paid.
+//   Retirement earns rate x ACCOUNT AMOUNT, never premium x contract level.
+function commissionDetail(cl) {
+  const rows = [];
+  if (!cl) return { total: 0, rows };
+  const lvl = (getAgentSettings().contractLevel || 105) / 100;
+  const EARNING = ['Submitted','Approved','Issued','Paid'];
+  const NETTED  = ['Lapse','Cancel'];
+
+  function value(ap, ret) {
+    const st = ap.status || '';
+    if (ret) return EARNING.includes(st) ? retCommissionOf(ap, cl.age) : 0;
+    const prem = Number(ap.premium) || 0;
+    if (NETTED.includes(st)) {
+      const raw = ap.chargeback_amount;
+      const back = (raw !== undefined && raw !== null && raw !== '') ? Number(raw) : prem;
+      return Math.max(0, prem - back) * lvl;
+    }
+    if (!EARNING.includes(st)) return 0;
+    return prem * lvl;
+  }
+
+  (cl.cases||[]).forEach((cs, ci) => (cs.touchpoints||[]).forEach((t, ti) => {
+    if (!t || t.outcome !== 'sale') return;
+    const ret = isRetirementCase(cs);
+    (t.apps||[]).forEach((ap, ai) => rows.push({
+      from: 'case', ci, ti, ai, ret, when: t.datetime,
+      carrier: ap.carrier || '', product: ap.product || '',
+      status: ap.status || '', premium: Number(ap.premium) || 0,
+      amount: ap.amount != null && ap.amount !== '' ? Number(ap.amount) : null,
+      value: value(ap, ret),
+    }));
+  }));
+  (cl.sits||[]).forEach((sit, si) => {
+    if (!sit || sit.outcome !== 'showed') return;
+    (sit.apps||[]).forEach((ap, ai) => {
+      const ret = isRetirementApp(ap);
+      rows.push({
+        from: 'sit', si, ai, ret, when: sit.datetime,
+        carrier: ap.carrier || '', product: ap.product || '',
+        status: ap.status || '', premium: Number(ap.premium) || 0,
+        amount: ap.amount != null && ap.amount !== '' ? Number(ap.amount) : null,
+        value: value(ap, ret),
+      });
+    });
+  });
+
+  // A legacy sit and a case touchpoint can hold the SAME application - nothing
+  // ever reconciled the two - and both get counted. Same carrier and premium is
+  // the signal; flagged, never silently dropped, because a genuine second policy
+  // with identical numbers does happen.
+  rows.forEach(r => {
+    if (r.from !== 'sit') return;
+    const twin = rows.find(o => o.from === 'case' && o.premium === r.premium &&
+      (o.carrier || '') === (r.carrier || '') && r.premium > 0);
+    if (twin) { r.dupe = true; twin.dupeTwin = true; }
+  });
+
+  return { total: rows.reduce((a, r) => a + r.value, 0), rows,
+           dupeTotal: rows.filter(r => r.dupe).reduce((a, r) => a + r.value, 0) };
 }
 function isRetirementCase(cs) {
   return cs && (cs.type === 'Retirement' || boardOf(cs) === 'advanced_market');
@@ -11849,6 +11871,79 @@ function _rptMoney(n) { return '$' + Math.round(n || 0).toLocaleString(); }
 function _rptPct(n, d) { return d > 0 ? Math.round((n / d) * 100) + '%' : '-'; }
 function _rptAvg(total, n) { return n > 0 ? '$' + Math.round(total / n).toLocaleString() : '-'; }
 
+// A commission cell you can open. Each column drills into its own cohort.
+function _rptRowTap(label, a, b, c, keys) {
+  const cell = (v, k, bold) => '<div onclick="openCommissionDetail(\'' + k + '\')" style="font-size:12px;font-weight:' +
+    (bold ? '700' : '600') + ';text-align:right;cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;color:' +
+    (bold ? '#0E6363' : '#138181') + ';">' + v + '</div>';
+  return '<div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:4px;padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.06);">' +
+    '<div style="font-size:11px;color:#5E6A78;">' + label + '</div>' +
+    cell(a, keys[0]) + cell(b, keys[1]) + cell(c, keys[2], true) +
+  '</div>';
+}
+
+// Every application behind a commission figure, itemised, worst first. Built from
+// the same commissionDetail() the total runs through, so the rows always add up.
+function openCommissionDetail(which) {
+  const st = window._lastSourceStats;
+  if (!st) return;
+  const stats = st[which];
+  if (!stats) return;
+  const ids = new Set(stats.cohortIds || []);
+  const money = (n) => (n < 0 ? '-' : '') + '$' + Math.abs(Math.round(n)).toLocaleString();
+
+  const people = [];
+  clients.forEach(c => {
+    if (!ids.has(c.id)) return;
+    const d = commissionDetail(c);
+    if (!d.rows.length) return;
+    people.push({ c, d });
+  });
+  people.sort((a, b) => b.d.total - a.d.total);
+
+  const dupeTotal = people.reduce((a, p) => a + (p.d.dupeTotal || 0), 0);
+  const grand = people.reduce((a, p) => a + p.d.total, 0);
+
+  let html = '<button class="close-x" onclick="openReports()">x</button>' +
+    '<div class="modal-title">Commission detail</div>' +
+    '<div class="modal-sub">' + esc(which.toUpperCase()) + ' &middot; ' + esc(st.label || '') + '</div>' +
+    '<div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#1D3557;background:#f0f4f8;border-radius:6px;padding:8px 10px;margin:8px 0;">' +
+      '<span>' + people.length + ' clients with applications</span><span>' + money(grand) + '</span></div>';
+
+  if (dupeTotal > 0) {
+    html += '<div style="font-size:11px;color:#A32D2D;background:#FFF5F5;border:1px solid #F5A0A0;border-radius:6px;padding:8px 10px;margin-bottom:10px;">' +
+      '<b>' + money(dupeTotal) + ' looks double-counted.</b> The rows marked <b>possible duplicate</b> sit on a legacy sit AND on a case, with the same carrier and premium. ' +
+      'Nothing has been removed - check a few and tell me what you find.</div>';
+  }
+  if (!people.length) html += '<div style="font-size:12px;color:#a0b8cc;">No applications in this period.</div>';
+
+  html += people.map(({ c, d }) =>
+    '<div style="border:1px solid #e2eaf2;border-radius:8px;padding:8px 10px;margin-bottom:6px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;">' +
+        '<div onclick="closeModal();openClient(\'' + c.id + '\')" style="font-size:12px;font-weight:600;color:#138181;cursor:pointer;">' + esc(c.name || '(no name)') + '</div>' +
+        '<div style="font-size:12px;font-weight:700;color:#1D3557;">' + money(d.total) + '</div>' +
+      '</div>' +
+      '<div style="font-size:10px;color:#8fa8c0;margin-bottom:4px;">' + esc(c.source || 'no source') + '</div>' +
+      d.rows.map(r =>
+        '<div style="display:flex;justify-content:space-between;gap:8px;font-size:11px;padding:3px 0;border-top:1px solid #f0f4f8;' +
+          (r.dupe ? 'background:#FFF5F5;' : '') + '">' +
+          '<div style="color:#5f7a99;">' +
+            '<span style="display:inline-block;font-size:9px;font-weight:700;text-transform:uppercase;border-radius:3px;padding:1px 4px;margin-right:5px;' +
+              (r.from === 'sit' ? 'background:#FFF1DC;color:#7A4A0F;' : 'background:#E1F5EE;color:#0E6363;') + '">' +
+              (r.from === 'sit' ? 'legacy sit' : 'case') + '</span>' +
+            esc(r.carrier || 'no carrier') + (r.product ? ' &middot; ' + esc(r.product) : '') +
+            ' &middot; ' + esc(r.status || 'no status') +
+            (r.ret ? ' &middot; retirement ' + money(r.amount || 0) : ' &middot; APV ' + money(r.premium)) +
+            (r.dupe ? ' <b style="color:#A32D2D;">possible duplicate</b>' : '') +
+          '</div>' +
+          '<div style="font-weight:600;color:' + (r.value ? '#1D3557' : '#a0b8cc') + ';white-space:nowrap;">' + money(r.value) + '</div>' +
+        '</div>').join('') +
+    '</div>').join('');
+
+  html += '<button onclick="openReports()" style="width:100%;background:#138181;color:#fff;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;margin-top:8px;">Back to Reports</button>';
+  showModal(html);
+}
+
 function _rptRow(label, a, b, c) {
   return '<div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:4px;padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.06);">' +
     '<div style="font-size:11px;color:#5E6A78;">' + label + '</div>' +
@@ -11862,6 +11957,7 @@ function openReports() {
   const st = window._lastSourceStats;
   if (!st) { alert('Open the Board once so the numbers are calculated, then come back.'); return; }
   const { mia, cia, label, pStart } = st;
+  if (!st.all) st.all = null;   // older stash; the fallback below rebuilds it
 
   // COMBINED - the whole book. h181: was mia + cia, which left referrals, ASR and
   // every other source out of the total. Computed over all leads in renderSourceComparison.
@@ -11876,6 +11972,7 @@ function openReports() {
   const spendAll = spendMia + spendCia;
   const roi = (comm, spend) => spend > 0 ? Math.round(((comm - spend) / spend) * 100) + '%' : '-';
   const cpl = (spend, n) => n > 0 && spend > 0 ? '$' + (spend / n).toFixed(2) : '-';
+  st.all = all;   // the commission drill-down reads it back from here
   const ref = referralOnlyStats(st.pStart, st.pEnd);
 
   showModal(
@@ -11896,7 +11993,9 @@ function openReports() {
     _rptRow('Show ratio', _rptPct(mia.shows, mia.apptsResolved), _rptPct(cia.shows, cia.apptsResolved), _rptPct(all.shows, all.apptsResolved)) +
     _rptRow('Close ratio', _rptPct(mia.sales, mia.decided), _rptPct(cia.sales, cia.decided), _rptPct(all.sales, all.decided)) +
     _rptRow('Avg APV / sale', _rptAvg(mia.totalAPV, mia.sales), _rptAvg(cia.totalAPV, cia.sales), _rptAvg(all.totalAPV, all.sales)) +
-    _rptRow('Commission', _rptMoney(mia.totalComm), _rptMoney(cia.totalComm), _rptMoney(all.totalComm)) +
+    _rptRowTap('Commission', _rptMoney(mia.totalComm), _rptMoney(cia.totalComm), _rptMoney(all.totalComm),
+               ['mia','cia','all']) +
+    '<div style="font-size:10px;color:#8fa8c0;margin:2px 0 0;">Tap a commission figure to see every application behind it.</div>' +
 
     '<div style="font-size:10px;font-weight:700;color:#5E6A78;text-transform:uppercase;letter-spacing:0.06em;margin:16px 0 4px;">Cost &amp; return</div>' +
     _rptRow('Lead spend', _rptMoney(spendMia), _rptMoney(spendCia), _rptMoney(spendAll)) +
