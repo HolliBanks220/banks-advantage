@@ -505,7 +505,7 @@ html,body{overflow-x:hidden !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h182</span>
+        <span class="build-tag" id="build-tag" title="build">b715h186</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
         <div class="period-label" id="period-label">This week</div>
@@ -995,6 +995,7 @@ async function init() {
   initTimer();
   showSync('Loading your data...');
   await Promise.all([loadClients(), loadStats(), loadAgentSettings()]);
+  try { await migrateLegacyLeadSpend(); } catch (e) {}   // old monthly totals -> dated charges
   loadCustomCarriers();
   // Load tasks separately so a failure can't block the rest of init
   loadTasksFromDB().then(() => renderTasks()).catch(() => renderTasks());
@@ -2238,24 +2239,9 @@ function renderScore() {
 
   const totalPPUs = ppuCases.length;
   const totalPPUSales = ppuSales;
-  const totalResets = clients.reduce((acc, c) => {
-    const tpResets = (c.cases||[]).reduce((a, cs) =>
-      a + (cs.touchpoints||[]).filter(tp => {
-        const d = new Date(tp.datetime); return d>=pStart&&d<=pEnd&&(tp.resetSelf||tp.resetSME);
-      }).length, 0);
-    // Only count reset cases initiated within the production period
-    // Check case created date OR first touchpoint datetime as fallback
-    const caseResets = (c.cases||[]).filter(cs => {
-      const n = cs.notes||'';
-      if (!n.includes('Reset from') && !n.startsWith('Reset -')) return false;
-      const createdDate = new Date(cs.created||0);
-      const firstTpDate = cs.touchpoints && cs.touchpoints[0] ? new Date(cs.touchpoints[0].datetime) : null;
-      const checkDate = createdDate > new Date(0) ? createdDate : firstTpDate;
-      if (!checkDate) return false;
-      return checkDate >= pStart && checkDate <= pEnd;
-    }).length;
-    return acc + Math.max(tpResets, caseResets);
-  }, 0);
+  // The tile and its drill-down run the SAME predicate - see resetCountFor /
+  // isResetInPeriod below. They used to be written out twice and drifted apart.
+  const totalResets = clients.reduce((acc, c) => acc + resetCountFor(c, pStart, pEnd), 0);
 
   const saleTPs = allTPs.filter(t=>t.outcome==='sale');
   const satSits = allSits.filter(s=>s.outcome==='showed');
@@ -3341,18 +3327,13 @@ function drillDown(type) {
     });
   } else if (type === 'resets') {
     title = 'Resets - ' + label;
-    leads = clients.filter(c => {
-      const hasResetTp = (c.cases||[]).filter(_ddOn).some(cs => (cs.touchpoints||[]).some(tp => {
-        const d = new Date(tp.datetime); return d>=start&&d<=end&&(tp.resetSelf||tp.resetSME);
-      }));
-      const hasResetCase = (c.cases||[]).filter(_ddOn).some(cs => {
-        const n = cs.notes||'';
-        if (!n.includes('Reset from') && !n.startsWith('Reset -')) return false;
-        const d = new Date(cs.created||0);
-        return d >= start && d <= end;
-      });
-      return hasResetTp || hasResetCase;
-    });
+    // h186: this used to disagree with the tile above it and show "none this
+    // period" against a count of 1. Two reasons, both fixed by running the tile's
+    // own predicate: (a) it filtered to the board you are viewing, but a
+    // reset-to-self CREATES an Advanced Market case, so on Life/MP the tile
+    // counted the reset and the list threw it away; (b) the tile falls back to the
+    // first touchpoint's date when a case carries no `created`, and this did not.
+    leads = clients.filter(c => isResetInPeriod(c, start, end));
   }
 
   if (!leads.length) {
@@ -5907,6 +5888,28 @@ function retCommissionOf(ap, clientAge) {
 }
 // An app with a recorded account amount is a retirement app. Deliberately strict:
 // only an explicit amount counts, so a Life app can never be mistaken for one.
+// A RESET is either a touchpoint flagged reset-to-self / reset-to-SME, or a case
+// that was created by one. Counted per lead, and deliberately NOT board-scoped:
+// a reset-to-self spawns an Advanced Market case, but the reset itself happened
+// on the Life/MP board and belongs to whatever period it happened in.
+function resetCountFor(c, pStart, pEnd) {
+  const inWin = (d) => d && !isNaN(d) && d >= pStart && d <= pEnd;
+  const tpResets = (c.cases||[]).reduce((a, cs) =>
+    a + (cs.touchpoints||[]).filter(tp => tp && inWin(new Date(tp.datetime)) && (tp.resetSelf || tp.resetSME)).length, 0);
+  const caseResets = (c.cases||[]).filter(cs => {
+    const n = cs.notes || '';
+    if (!n.includes('Reset from') && !n.startsWith('Reset -')) return false;
+    // created date, or the first touchpoint as a fallback - older reset cases
+    // were written without one, and reading only `created` lost them.
+    const created = new Date(cs.created || 0);
+    const firstTp = cs.touchpoints && cs.touchpoints[0] ? new Date(cs.touchpoints[0].datetime) : null;
+    const when = created > new Date(0) ? created : firstTp;
+    return inWin(when);
+  }).length;
+  return Math.max(tpResets, caseResets);
+}
+function isResetInPeriod(c, pStart, pEnd) { return resetCountFor(c, pStart, pEnd) > 0; }
+
 function isRetirementApp(ap) {
   return !!(ap && ap.amount != null && ap.amount !== '' && Number(ap.amount) > 0);
 }
@@ -8450,7 +8453,7 @@ const TEXT_TEMPLATES = [
       const street = (c.address||'').split(',')[0].replace(/^\d+\s+/, '').trim();
       const fn = (c.name||'').split(' ')[0];
       const mortRef = street ? `your mortgage on ${street}` : 'your mortgage';
-      return `Hi ${fn}, this is Holli getting back to you about the protection info you requested for ${mortRef}. I've got a couple of quick questions so I can get that out to you. Give me a call back when you get a chance and we'll knock it out. Thanks.`;
+      return `Hi ${fn}, this is Holli getting back to you about the protection info you requested for ${mortRef}. I've got a couple of quick questions so I can get that out to you. Give me a call back when you get a chance and we'll knock it out. Talk soon.`;
     }
   },
   {
@@ -8458,7 +8461,7 @@ const TEXT_TEMPLATES = [
     label: 'Text 2 - Missing each other',
     stage: ['never_spoken', 'spoken'],
     text: (c) => `Hi ${(c.name||'').split(' ')[0]}, Holli again. Looks like we keep missing each other - is text easier for you?`,
-    vm: (c) => `Hi ${(c.name||'').split(' ')[0]}, Holli again. Looks like we keep missing each other. Give me a call back when you get a minute, or shoot me a text if that's easier. Thanks.`
+    vm: (c) => `Hi ${(c.name||'').split(' ')[0]}, Holli again. Looks like we keep missing each other. Give me a call back when you get a minute, or shoot me a text if that's easier. Talk soon.`
   },
   {
     id: 'impacted',
@@ -8543,7 +8546,7 @@ const TEXT_TEMPLATES = [
     label: 'Final attempt (3rd no-show)',
     stage: ['noshow_3x'],
     text: (c) => `Hi ${(c.name||'').split(' ')[0]}, Holli here. I haven't been able to reach you with the information you requested. If it's no longer a priority, just reply 'close it' and I'll finalize things on my end - no hard feelings either way.`,
-    vm: (c) => `Hi ${(c.name||'').split(' ')[0]}, Holli here. I haven't been able to reach you with the information you requested. If it's no longer a priority, just let me know and I'll finalize things on my end - no hard feelings either way. Thanks.`
+    vm: (c) => `Hi ${(c.name||'').split(' ')[0]}, Holli here. I haven't been able to reach you with the information you requested. If it's no longer a priority, just let me know and I'll finalize things on my end - no hard feelings either way.`
   },
   {
     id: 'nurture_30',
@@ -8571,7 +8574,7 @@ const TEXT_TEMPLATES = [
     stage: ['client'],
     due: (c) => { const d = daysSinceIssued(c); return d !== null && d >= 20; },
     text: (c) => `Hi ${(c.name||'').split(' ')[0]}, Holli here. Your policy's been in place a few weeks now - just checking you got everything from the carrier and it all made sense. Any questions, I'm here.`,
-    vm: (c) => `Hi ${(c.name||'').split(' ')[0]}, it's Holli. Your policy's been in place a few weeks now - just wanted to make sure everything came through from the carrier and it all made sense. Give me a call if you have any questions. Thanks.`
+    vm: (c) => `Hi ${(c.name||'').split(' ')[0]}, it's Holli. Your policy's been in place a few weeks now - just wanted to make sure everything came through from the carrier and it all made sense. Give me a call if you have any questions. Talk soon.`
   },
   {
     id: 'policy_13mo',
@@ -8579,7 +8582,7 @@ const TEXT_TEMPLATES = [
     stage: ['client'],
     due: (c) => { const d = daysSinceIssued(c); return d !== null && d >= 395; },
     text: (c) => `Hi ${(c.name||'').split(' ')[0]}, it's Holli. It's been a year since we put your coverage in place - worth a quick look to make sure it still fits where things are now. Want me to pull it up?`,
-    vm: (c) => `Hi ${(c.name||'').split(' ')[0]}, it's Holli. It's been about a year since we put your coverage in place, so I wanted to see if it still fits where things are now. Give me a call when you get a chance and we'll take a quick look. Thanks.`
+    vm: (c) => `Hi ${(c.name||'').split(' ')[0]}, it's Holli. It's been about a year since we put your coverage in place, so I wanted to see if it still fits where things are now. Give me a call when you get a chance and we'll take a quick look. Talk soon.`
   }
 ];
 
@@ -8932,25 +8935,25 @@ async function quickLog(id, outcome, statKey) {
     if (!['Dead','Closed','No sale','Appointment set'].includes(c.status)) newStatus='Working';
   }
 
-  // Not interested: close the worked case(s), but a real scheduled appointment
-  // elsewhere is a commitment, not collateral. Any open case with a live future
-  // (non-ghost) appt stays Open, and if one survives the lead stays on the appt
-  // track so that appointment remains visible instead of vanishing.
+  // NOT INTERESTED IS ABSOLUTE. h186: this used to keep a case Open when it held a
+  // live future appointment - "a commitment, not collateral". But the ordinary
+  // reason a lead says they are not interested is that they are cancelling that
+  // very appointment, and it stayed on the sidebar afterwards. A lead cannot be an
+  // appointment and a Not interested at the same time; it is one or the other.
+  // Booking a new Life appointment later puts them back on the appointment track,
+  // and a reset is a different case entirely - neither undoes this verdict.
   if (outcome==='Not interested') {
-    const nowT = Date.now();
-    const liveAppt = cs => (cs.touchpoints||[]).some(tp => tp && (!tp.outcome || tp.outcome==='pending') && tp.datetime && new Date(tp.datetime).getTime() >= nowT && !isGhostPending(cs.touchpoints, tp));
-    const closedCases = (c.cases||[]).map(cs => (cs.status==='Open' && !liveAppt(cs)) ? {...cs,status:'Closed Lost'} : cs);
-    const survives = closedCases.some(cs => cs.status==='Open' && liveAppt(cs));
+    const closedCases = (c.cases||[]).map(cs => cs.status==='Open' ? {...cs,status:'Closed Lost'} : cs);
     callLog[callLog.length-1].cases_closed = true;
     // h65: quietly note how many appts this lead had booked that never sat, so a
     // future "booked but never sat" rate is derivable. No new bucket/button.
     callLog[callLog.length-1].phantom_appts = (c.call_log||[]).filter(cl => cl.outcome === 'Appt set').length;
-    if (survives) {
-      newStatus = 'Appointment set';                       // keep the surviving appt visible + on-track
-      updatePayloadExtra = {cases:closedCases};
-    } else {
-      updatePayloadExtra = {cases:closedCases, appt_datetime:null, appt_notes:null};
-    }
+    // any pending future touchpoint dies with the case, or the sidebar keeps it
+    closedCases.forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+      if (tp && (!tp.outcome || tp.outcome==='pending')) tp.outcome = 'cancelled';
+    }));
+    if (c.gcal_event_id) { try { pushApptToCalendar(c, 'delete'); } catch(e) {} }
+    updatePayloadExtra = {cases:closedCases, appt_datetime:null, appt_notes:null};
   }
 
   c.call_log = callLog; c.status = newStatus;
@@ -11708,6 +11711,33 @@ function filterReferrals(q) {
 // ============================================================================
 
 const SEED_LEAD_SOURCES = ['MIA', 'CIA'];
+
+// LEAD TYPES YOU BUY. h185: the charge dropdown used to scrape `source` off every
+// client, so it filled up with Existing client, Warm market and Referral - things
+// nobody ever writes a cheque for. Every agent buys a different set (CIA, MIA,
+// CIG, Lighthouse...), so it is theirs to keep, in Settings.
+function purchasedLeadTypes() {
+  const raw = getAgentSettings().purchased_lead_types;
+  const list = (typeof raw === 'string' ? raw.split(',') : (raw || []))
+    .map(x => String(x).trim()).filter(Boolean);
+  return list.length ? [...new Set(list)] : SEED_LEAD_SOURCES.slice();
+}
+// The dropdown: what you buy, plus any source already sitting in the ledger so
+// old charges never lose their label.
+function chargeSourceOptions() {
+  const set = new Set(purchasedLeadTypes());
+  leadCharges().forEach(ch => { if (ch.source) set.add(ch.source); });
+  return [...set];
+}
+// Spend is matched on the two-letter family, exactly like leads - money spent on
+// CIB has to land in the same column its leads do.
+function sameSourceFamily(a, b) {
+  const A = String(a || '').trim().toUpperCase(), B = String(b || '').trim().toUpperCase();
+  if (!A || !B) return A === B;
+  if (isCISource(A) && isCISource(B)) return true;
+  if (isMISource(A) && isMISource(B)) return true;
+  return A === B;
+}
 function knownLeadSources() {
   const set = new Set(SEED_LEAD_SOURCES);
   (clients || []).forEach(c => { if (c.source && c.source !== 'ASR') set.add(c.source); });
@@ -11719,9 +11749,25 @@ function leadCharges() {
   const a = getAgentSettings().lead_charges;
   return Array.isArray(a) ? a : [];
 }
+// The $30 you send a referrer once their referral sticks. Real money out, but not
+// lead acquisition - it buys nothing until someone else's client volunteers a
+// name. Kept off every spend line; ROI can opt into it.
+function referralGiftSpend(pStart, pEnd) {
+  let total = 0;
+  (clients || []).forEach(c => (c.referrals || []).forEach(r => {
+    if (!r || !r.paid) return;
+    const d = new Date(r.paidDate || r.paid_date || 0);
+    if (isNaN(d) || !d.getTime()) return;
+    if (pStart && d < pStart) return;
+    if (pEnd && d > pEnd) return;
+    total += Number(r.amount) || 30;
+  }));
+  return total;
+}
+
 function chargesInPeriod(pStart, pEnd, source) {
   return leadCharges().filter(ch => {
-    if (source && ch.source !== source) return false;
+    if (source && !sameSourceFamily(ch.source, source)) return false;
     const d = new Date(ch.date + 'T12:00:00');
     return d >= pStart && d <= pEnd;
   });
@@ -11764,7 +11810,7 @@ function openLeadSpend() {
   const label = st.label || 'this period';
   const rows = chargesInPeriod(pStart, pEnd).slice()
     .sort((a, b) => (a.date < b.date ? 1 : -1));
-  const srcs = knownLeadSources();
+  const srcs = chargeSourceOptions();
   const today = new Date().toISOString().slice(0, 10);
   const byS = {};
   srcs.forEach(s => byS[s] = spendInPeriod(pStart, pEnd, s));
@@ -11827,22 +11873,47 @@ function spendKeyFor(source, pStart) {
 }
 // h169: superseded by dated charges. Kept as a shim so Reports reads the same
 // numbers, and any old monthly figure is still counted until it is replaced.
+// h185: one system. The old per-month total sat alongside the dated ledger with a
+// silent `charges || legacy` fallback, so nobody could tell which number was
+// winning and the label had to say "this month". Legacy totals are migrated into
+// dated charges on first load - see migrateLegacyLeadSpend().
 function getLeadSpend(source, pStart, pEnd) {
   const st = window._lastSourceStats || {};
   const a = pStart || st.pStart, b = pEnd || st.pEnd || new Date();
-  const fromCharges = (a ? spendInPeriod(a, b, source) : 0);
-  const legacy = Number((getAgentSettings().lead_spend || {})[spendKeyFor(source, a || new Date())]) || 0;
-  return fromCharges || legacy;
+  return a ? spendInPeriod(a, b, source) : 0;
 }
-async function setLeadSpend(source, pStart, amount) {
+
+// Every old monthly total becomes a real charge dated to the 1st of its month, so
+// history survives and there is only one place spend lives. Runs once.
+async function migrateLegacyLeadSpend() {
   const s = getAgentSettings();
-  s.lead_spend = Object.assign({}, s.lead_spend || {});
-  const n = Number(String(amount).replace(/[^0-9.]/g, '')) || 0;
-  if (n > 0) s.lead_spend[spendKeyFor(source, pStart)] = n;
-  else delete s.lead_spend[spendKeyFor(source, pStart)];
+  const legacy = s.lead_spend || {};
+  const keys = Object.keys(legacy);
+  if (!keys.length) return 0;
+  const existing = leadCharges();
+  const added = [];
+  keys.forEach(k => {
+    const amt = Number(legacy[k]) || 0;
+    if (amt <= 0) return;
+    // keys are written by spendKeyFor as 'MIA:2026-07'
+    const m = String(k).match(/^(.+):(\d{4})-(\d{1,2})$/);
+    if (!m) return;   // unrecognised key - leave it alone rather than guess a date
+    const src = m[1], date = m[2] + '-' + String(m[3]).padStart(2, '0') + '-01';
+    if (existing.some(ch => ch.migrated_from === k)) return;
+    added.push({ id: 'ch_mig_' + Math.random().toString(36).slice(2, 8), date, source: src,
+                 amount: amt, note: 'migrated from monthly total', migrated_from: k });
+  });
+  if (!added.length) return 0;
+  s.lead_charges = existing.concat(added);
+  // only clear the keys actually converted; anything unrecognised stays put
+  const done = new Set(added.map(a => a.migrated_from));
+  const left = {};
+  keys.forEach(k => { if (!done.has(k)) left[k] = legacy[k]; });
+  if (Object.keys(left).length) s.lead_spend = left; else delete s.lead_spend;
   await saveAgentSettings(s);
-  openReports();
+  return added.length;
 }
+// h185: setLeadSpend is gone. Spend is a dated ledger only - see addLeadCharge.
 
 // Referred leads are their own cohort: no acquisition cost, and worth knowing
 // separately because they behave nothing like a paid lead.
@@ -11944,6 +12015,8 @@ function openCommissionDetail(which) {
   showModal(html);
 }
 
+function toggleRoiGifts() { window._roiWithGifts = !window._roiWithGifts; openReports(); }
+
 function _rptRow(label, a, b, c) {
   return '<div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:4px;padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.06);">' +
     '<div style="font-size:11px;color:#5E6A78;">' + label + '</div>' +
@@ -12001,20 +12074,24 @@ function openReports() {
     _rptRow('Lead spend', _rptMoney(spendMia), _rptMoney(spendCia), _rptMoney(spendAll)) +
     _rptRow('Cost per lead', cpl(spendMia, mia.assigned), cpl(spendCia, cia.assigned), cpl(spendAll, all.assigned)) +
     _rptRow('Return per lead', _rptAvg(mia.totalComm, mia.assigned), _rptAvg(cia.totalComm, cia.assigned), _rptAvg(all.totalComm, all.assigned)) +
-    _rptRow('ROI', roi(mia.totalComm, spendMia), roi(cia.totalComm, spendCia), roi(all.totalComm, spendAll)) +
+    (function(){
+      const gifts = referralGiftSpend(st.pStart, st.pEnd);
+      const on = !!window._roiWithGifts;
+      const add = on ? gifts : 0;
+      return _rptRow('ROI', roi(mia.totalComm, spendMia), roi(cia.totalComm, spendCia), roi(all.totalComm, spendAll + add)) +
+        (gifts > 0
+          ? '<div onclick="toggleRoiGifts()" style="display:flex;align-items:center;gap:6px;font-size:10px;color:#5E6A78;cursor:pointer;padding:5px 0;">' +
+              '<span style="width:13px;height:13px;border-radius:3px;border:1px solid ' + (on ? '#138181' : '#b9c6d4') + ';background:' +
+                (on ? '#138181' : '#fff') + ';color:#fff;font-size:9px;line-height:13px;text-align:center;">' + (on ? 'x' : '') + '</span>' +
+              'Include thank-you gifts in ROI ($' + Math.round(gifts).toLocaleString() + ')</div>'
+          : '');
+    })() +
 
-    '<div style="display:flex;gap:8px;margin-top:10px;">' +
-      '<div class="field" style="flex:1;margin:0;"><label style="font-size:10px;">MIA spend this month</label>' +
-        '<input type="number" id="rpt-spend-mia" value="' + (spendMia || '') + '" placeholder="0" ' +
-        'onchange="setLeadSpend(\'MIA\', new Date(' + pStart.getTime() + '), this.value)"></div>' +
-      '<div class="field" style="flex:1;margin:0;"><label style="font-size:10px;">CIA spend this month</label>' +
-        '<input type="number" id="rpt-spend-cia" value="' + (spendCia || '') + '" placeholder="0" ' +
-        'onchange="setLeadSpend(\'CIA\', new Date(' + pStart.getTime() + '), this.value)"></div>' +
-    '</div>' +
-    '<div style="font-size:10px;color:#8B97A6;margin-top:4px;">Spend is stored per month, so it follows the period you have selected.</div>' +
+    '<button onclick="openLeadSpend()" style="width:100%;margin-top:10px;background:none;border:1px dashed #9FE1CB;border-radius:8px;padding:9px;font-size:12px;font-weight:600;color:#138181;cursor:pointer;">+ Add or edit charges</button>' +
+    '<div style="font-size:10px;color:#8B97A6;margin-top:4px;">Every charge carries its own date, so it counts in the month you spent it.</div>' +
 
     '<div style="font-size:10px;font-weight:700;color:#5E6A78;text-transform:uppercase;letter-spacing:0.06em;margin:18px 0 4px;">Referrals only</div>' +
-    '<div style="font-size:10px;color:#8B97A6;margin-bottom:6px;">Leads that came from a referral. No acquisition cost, so they are kept out of the numbers above.</div>' +
+    '<div style="font-size:10px;color:#8B97A6;margin-bottom:6px;">Leads that came from a referral. No lead cost - only the thank-you gift once one sticks - so they are kept out of the numbers above.</div>' +
     _rptRow('Referred leads', '', '', ref.count) +
     _rptRow('Close ratio', '', '', _rptPct(ref.sales, ref.decided)) +
     _rptRow('APV', '', '', _rptMoney(ref.apv)) +
@@ -12761,6 +12838,10 @@ function openSettings() {
       '</div>' +
 
       '<div class="field"><label>Default appointment length (minutes)</label><input type="number" step="5" id="s-appt-mins" value="' + (settings.defaultApptMins || 40) + '" style="font-size:16px;"></div>' +
+      '<div class="field"><label>Lead types I buy <span style="font-weight:400;color:#8A94A2;">(comma separated)</span></label>' +
+        '<input type="text" id="s-lead-types" value="' + escAttr(purchasedLeadTypes().join(', ')) + '" placeholder="MIA, CIA" style="font-size:14px;">' +
+        '<div style="font-size:10px;color:#8A94A2;margin-top:3px;">These are the only options offered when you log a lead charge. Enter whatever you actually buy - CIA, MIA, CIG, Lighthouse.</div>' +
+      '</div>' +
       '<button onclick="saveProfileSettings()" style="width:100%;background:#1D3557;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;">Save profile</button>' +
     '</div>' +
 
@@ -12866,6 +12947,11 @@ function saveProfileSettings() {
   if (p3) settings.paceClosing = parseInt(p3.value) || 8;
   const po = document.getElementById('s-pushoff');
   if (po) settings.pushOffDays = parseInt(po.value) || 18;
+  const lt = document.getElementById('s-lead-types');
+  if (lt) {
+    const list = lt.value.split(',').map(x => x.trim()).filter(Boolean);
+    settings.purchased_lead_types = list.length ? [...new Set(list)] : SEED_LEAD_SOURCES.slice();
+  }
   saveAgentSettings(settings);
   closeModal();
   showSync('Settings saved!');
