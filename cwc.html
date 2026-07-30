@@ -146,16 +146,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .right-sidebar-col{position:static !important;}
 }
 html,body{overflow-x:hidden;}                   /* no sideways scrollbar, ever */
-.app-main{width:420px;flex-shrink:0;}
-.appt-sidebar{width:220px;flex-shrink:0;background:#fff;border-radius:12px;border:1px solid #e2eaf2;padding:14px 12px;display:none;max-height:calc(100vh - 120px);overflow-y:auto;}
+/* h172: was width:420px;flex-shrink:0 - the fixed skeleton the whole layout was
+   built on. That is why nothing could fill a wide window or fit a narrow one. */
+.app-main{width:100%;min-width:0;}
+.appt-sidebar{width:100%;min-width:0;background:#fff;border-radius:12px;border:1px solid #e2eaf2;padding:14px 12px;display:block;max-height:calc(100vh - 120px);overflow-y:auto;box-sizing:border-box;}
 .appt-sidebar-title{font-size:10px;font-weight:600;color:#1D3557;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;}
 .appt-sidebar-item{padding:8px 10px;border-radius:8px;cursor:pointer;margin-bottom:4px;transition:background 0.15s;}
 .appt-sidebar-item:hover{background:#f5f8fb;}
 .appt-sidebar-item.passed{opacity:0.55;}
 .appt-sidebar-divider{font-size:9px;font-weight:600;color:#a0b8cc;text-transform:uppercase;letter-spacing:0.07em;margin:8px 0 4px;padding:0 2px;}
 .appt-banner{background:#1D3557;color:#fff;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;cursor:pointer;display:none;}
-@media(min-width:720px){.appt-sidebar{display:block!important;}.appt-banner{display:none!important;}}
-@media(max-width:719px){.appt-sidebar{display:none!important;}.appt-banner{display:block;}#task-mobile-btn{display:block!important;}}
+/* h172: ONE PAGE. The old pair of rules DELETED the Schedule under 720px - a phone
+   rule that fires the moment a desktop window is narrowed, which is why the sidebar
+   vanished instead of moving. Nothing is hidden now. Wide windows put Tasks and
+   Schedule alongside the board; narrow ones fold them into the same single column,
+   in order, and you reach everything by scrolling down. */
+.appt-sidebar{display:block !important;}
+.appt-banner{display:none !important;}
 .task-item{display:flex;align-items:flex-start;gap:6px;padding:6px 0;border-bottom:1px solid #f0f4f8;}
 .task-item:last-child{border-bottom:none;}
 /* THEME (h130): the board is driven by CSS variables so the theme picker can
@@ -450,6 +457,31 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
 input[style*="flex:"],select[style*="flex:"],textarea[style*="flex:"]{
   min-width:0 !important;box-sizing:border-box !important;
 }
+
+/* ================= h172 ONE-PAGE FLOW - keep this block last ================= */
+/* Two columns while there is room for two, one column when there is not. The
+   sidebar never disappears and never overflows - it becomes part of the flow. */
+.page-layout{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) minmax(300px,340px) !important;
+  gap:16px !important;align-items:start !important;
+  max-width:1600px !important;margin:0 auto !important;
+  padding:0 14px !important;box-sizing:border-box !important;width:100% !important;
+}
+.page-layout > *{min-width:0 !important;}
+.right-sidebar-col{min-width:0 !important;}
+
+/* Below 1000px there is not room for a 300px column beside the board, so the
+   whole thing becomes one column. Sticky is dropped because a sticky element in a
+   single column just covers the content under it. */
+@media(max-width:999px){
+  .page-layout{grid-template-columns:minmax(0,1fr) !important;}
+  .right-sidebar-col{position:static !important;width:100% !important;}
+  .appt-sidebar,#task-sidebar{max-height:none !important;}
+  /* Schedule gets a sensible cap in one-column mode so it cannot run for pages */
+  #appt-sidebar{max-height:60vh !important;overflow-y:auto !important;}
+}
+html,body{overflow-x:hidden !important;}
 </style>
 </head>
 <body>
@@ -464,7 +496,7 @@ input[style*="flex:"],select[style*="flex:"],textarea[style*="flex:"]{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h171</span>
+        <span class="build-tag" id="build-tag" title="build">b715h174</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
         <div class="period-label" id="period-label">This week</div>
@@ -4707,17 +4739,34 @@ function getCaughtUpDaysThisWeek() {
 // outcome:'noshow', not to the call log. This counted the call log only, so the
 // text-template picker never knew the lead had stood you up and offered day-one
 // "never contacted" outreach. Count both.
+// h173/h174: a no-show STOPS COUNTING once that case is DECIDED - sale or no sale.
+// h157 gave anyone who ever no-showed a permanent badge with no way to clear it.
+// Scoped PER CASE, so a brand new case starts clean while a finished one keeps its
+// history out of the way.
+// h174: a DECIDED case stops carrying a no-show, sale or no sale. They turned up
+// and gave you an answer - that is a finished conversation either way, and no
+// longer a reliability signal. Only cases still waiting on a verdict count.
+function caseIsDecided(cs) {
+  if (!cs) return false;
+  if (['Closed Won','Closed Lost'].includes(cs.status)) return true;
+  return (cs.touchpoints||[]).some(tp => tp && ['sale','nosale'].includes(tp.outcome));
+}
 function getNoShowCount(c) {
-  const fromLog = (c.call_log||[]).filter(cl => cl.outcome === 'No show').length;
+  // A case that sold contributes nothing. Neither does the call log once ANY case
+  // has sold - log entries carry no case reference, so they cannot be split.
+  const anyDecided = (c.cases||[]).some(caseIsDecided);
+  const fromLog = anyDecided ? 0
+    : (c.call_log||[]).filter(cl => cl.outcome === 'No show').length;
   const fromTps = (c.cases||[]).reduce((n, cs) =>
-    n + (cs.touchpoints||[]).filter(tp => tp && tp.outcome === 'noshow').length, 0);
+    n + (caseIsDecided(cs) ? 0 : (cs.touchpoints||[]).filter(tp => tp && tp.outcome === 'noshow').length), 0);
   return fromLog + fromTps;
 }
 // Most recent no-show from either place - drives the 72hr recovery window.
 function lastNoShowAt(c) {
   const ts = [];
-  (c.call_log||[]).forEach(cl => { if (cl.outcome === 'No show' && cl.ts) ts.push(new Date(cl.ts)); });
-  (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+  const anyDecided = (c.cases||[]).some(caseIsDecided);
+  if (!anyDecided) (c.call_log||[]).forEach(cl => { if (cl.outcome === 'No show' && cl.ts) ts.push(new Date(cl.ts)); });
+  (c.cases||[]).filter(cs => !caseIsDecided(cs)).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
     if (tp && tp.outcome === 'noshow' && (tp.datetime || tp.logged_at)) ts.push(new Date(tp.logged_at || tp.datetime));
   }));
   const valid = ts.filter(d => !isNaN(d));
