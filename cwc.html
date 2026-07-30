@@ -458,27 +458,31 @@ input[style*="flex:"],select[style*="flex:"],textarea[style*="flex:"]{
   min-width:0 !important;box-sizing:border-box !important;
 }
 
-/* ================= h172 ONE-PAGE FLOW - keep this block last ================= */
-/* Two columns while there is room for two, one column when there is not. The
-   sidebar never disappears and never overflows - it becomes part of the flow. */
+/* ================= h175 ONE-PAGE FLOW - keep this block last =================
+   h172 removed the board's `width:420px` to kill the dead gutter and put nothing
+   in its place, so the board stretched to fill any window - three tiles spread
+   across 1100px. The gutter was space BETWEEN the two columns; outer margin on a
+   centred page is normal and not the same thing.
+   So: the board is fluid up to a READABLE cap, the sidebar takes its share, and
+   the pair centres together. Nothing is ever hidden. */
 .page-layout{
   display:grid !important;
-  grid-template-columns:minmax(0,1fr) minmax(300px,340px) !important;
-  gap:16px !important;align-items:start !important;
-  max-width:1600px !important;margin:0 auto !important;
+  grid-template-columns:minmax(0,760px) minmax(280px,340px) !important;
+  justify-content:center !important;
+  gap:18px !important;align-items:start !important;
+  max-width:1140px !important;margin:0 auto !important;
   padding:0 14px !important;box-sizing:border-box !important;width:100% !important;
 }
 .page-layout > *{min-width:0 !important;}
 .right-sidebar-col{min-width:0 !important;}
+.app-main{width:100% !important;max-width:760px !important;min-width:0 !important;}
+.appt-sidebar,#task-sidebar{width:100% !important;box-sizing:border-box !important;}
 
-/* Below 1000px there is not room for a 300px column beside the board, so the
-   whole thing becomes one column. Sticky is dropped because a sticky element in a
-   single column just covers the content under it. */
-@media(max-width:999px){
-  .page-layout{grid-template-columns:minmax(0,1fr) !important;}
+/* Not enough room for a sidebar beside a readable board -> one column, in order.
+   Sticky is dropped because in one column it would just cover what is beneath it. */
+@media(max-width:1060px){
+  .page-layout{grid-template-columns:minmax(0,1fr) !important;max-width:760px !important;}
   .right-sidebar-col{position:static !important;width:100% !important;}
-  .appt-sidebar,#task-sidebar{max-height:none !important;}
-  /* Schedule gets a sensible cap in one-column mode so it cannot run for pages */
   #appt-sidebar{max-height:60vh !important;overflow-y:auto !important;}
 }
 html,body{overflow-x:hidden !important;}
@@ -496,7 +500,7 @@ html,body{overflow-x:hidden !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h174</span>
+        <span class="build-tag" id="build-tag" title="build">b715h175</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
         <div class="period-label" id="period-label">This week</div>
