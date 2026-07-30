@@ -505,7 +505,7 @@ html,body{overflow-x:hidden !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h177</span>
+        <span class="build-tag" id="build-tag" title="build">b715h181</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
         <div class="period-label" id="period-label">This week</div>
@@ -2408,8 +2408,11 @@ function renderSourceComparison(pStart, pEnd, label) {
   const displayLabel = isDay ? 'All time' : label;
   if (el) el.textContent = displayLabel;
 
-  function sourceStats(source) {
-    const sourceClients = clients.filter(c => c.source === source);
+  // h181: was `c.source === source`. Uploads arrive as CIA/CIB/CIC and MIA/MIB/
+  // MIC, so exact matching hid every lead past the first code in each family -
+  // their commission AND their lead count. Takes a predicate now.
+  function sourceStats(matches) {
+    const sourceClients = clients.filter(c => matches(c.source));
 
     // THE COHORT: leads ASSIGNED in the selected period (all-time for day
     // view). Every milestone metric below - never-resolved, appt rate, sale
@@ -2574,8 +2577,14 @@ function renderSourceComparison(pStart, pEnd, label) {
         .reduce((a,{t,ret}) => a + (t.apps||[]).reduce((b,ap) =>
           b + (ret ? (['Submitted','Approved','Issued','Paid'].includes(ap.status||'') ? retCommissionOf(ap, cl.age) : 0)
                    : net(ap)), 0), 0);
+      // h181: a legacy sit carries no case, so isRetirementCase can't be asked and
+      // every app here went through the Life rule - premium x contract level for a
+      // retirement app whose commission is rate x ACCOUNT AMOUNT, out by ~20x.
       const st = (cl.sits||[]).filter(s => s.outcome === 'showed')
-        .reduce((a,s) => a + (s.apps||[]).reduce((b,ap)=>b+net(ap),0), 0);
+        .reduce((a,s) => a + (s.apps||[]).reduce((b,ap) =>
+          b + (isRetirementApp(ap)
+                 ? (['Submitted','Approved','Issued','Paid'].includes(ap.status||'') ? retCommissionOf(ap, cl.age) : 0)
+                 : net(ap)), 0), 0);
       return tp + st;
     }
     function referralCommission(cl, seen) {
@@ -2606,9 +2615,15 @@ function renderSourceComparison(pStart, pEnd, label) {
         return acc + apvOf(kid) + referralAPV(kid, seen);
       }, 0);
     }
-    const refAPV = sourceClients.reduce((acc, c) => acc + referralAPV(c), 0);
-    const totalComm = sourceClients.reduce((acc, c) => acc + commissionOf(c), 0);
-    const refComm   = sourceClients.reduce((acc, c) => acc + referralCommission(c), 0);
+    // h181: these summed EVERY sale the source has ever produced, then got divided
+    // by `assigned`, which is only the leads assigned in the selected period - so
+    // Comm/lead, Return per lead and ROI all read lifetime earnings against one
+    // month of leads. Same cohort rule as every other metric here: of the leads
+    // this source delivered in this period, what have they returned so far.
+    // (Recent periods therefore read low on purpose - those leads haven't sold yet.)
+    const refAPV = cohort.reduce((acc, c) => acc + referralAPV(c), 0);
+    const totalComm = cohort.reduce((acc, c) => acc + commissionOf(c), 0);
+    const refComm   = cohort.reduce((acc, c) => acc + referralCommission(c), 0);
 
     // MILESTONE METRICS. Averages are over leads that REACHED each milestone, so
     // nothing drifts when you import a fresh stack, and fast rejections can't
@@ -2646,8 +2661,12 @@ function renderSourceComparison(pStart, pEnd, label) {
   function fmtPct(n, d) { return d > 0 ? Math.round((n/d)*100) + "%" : "-"; }
   function fmtAvg(apv, sales) { return sales > 0 ? "$" + Math.round(apv/sales).toLocaleString() : "-"; }
 
-  const mia = sourceStats("MIA");
-  const cia = sourceStats("CIA");
+  const mia = sourceStats(isMISource);
+  const cia = sourceStats(isCISource);
+  // h181: ALL used to be mia + cia, so referrals, ASR and every other source were
+  // missing from the total. Computed over every lead now, whatever its code.
+  const all = sourceStats(() => true);
+  window._lastSourceAll = all;
 
   document.getElementById("mia-leads").textContent = mia.assigned;
   document.getElementById("mia-contact-ratio").textContent = fmtPct(mia.contacted, mia.assigned);
@@ -2688,17 +2707,17 @@ function renderSourceComparison(pStart, pEnd, label) {
   // h166: Reports reads these rather than recomputing. renderSourceComparison
   // writes straight into fixed DOM ids, so it cannot be pointed at a second
   // container - stashing the finished numbers is the low-risk way to reuse them.
-  window._lastSourceStats = { mia, cia, label: displayLabel, pStart, pEnd };
+  window._lastSourceStats = { mia, cia, all, label: displayLabel, pStart, pEnd };
 
   // h167: the board's combined strip - all sources together
   {
     const A = {
-      assigned: mia.assigned + cia.assigned, contacted: mia.contacted + cia.contacted,
-      apptsSet: mia.apptsSet + cia.apptsSet, apptsResolved: mia.apptsResolved + cia.apptsResolved,
-      shows: mia.shows + cia.shows, decided: mia.decided + cia.decided,
-      sales: mia.sales + cia.sales, comm: mia.totalComm + cia.totalComm,
+      assigned: all.assigned, contacted: all.contacted,
+      apptsSet: all.apptsSet, apptsResolved: all.apptsResolved,
+      shows: all.shows, decided: all.decided,
+      sales: all.sales, comm: all.totalComm,
     };
-    const apv = mia.totalAPV + cia.totalAPV;
+    const apv = all.totalAPV;
     const spend = (typeof spendInPeriod === 'function') ? spendInPeriod(pStart, pEnd) : 0;
     setEl('lp-apvlead',  fmtAvg(apv, A.assigned));
     setEl('lp-commlead', fmtAvg(A.comm, A.assigned));
@@ -3708,12 +3727,22 @@ async function setAppPlacementMonth(clientId, ci, ti, ai, monthStr) {
   renderAppsTab();
 }
 
+// The 20-day and 13-month client texts both count from the day the policy
+// ISSUED - the app stored no such date, only a written date, so there was
+// nothing to count from. Stamped once and never overwritten: a policy that
+// bounces Issued -> Approved -> Issued keeps its original issue date.
+function stampIssuedDate(app) {
+  if (!app) return;
+  if (app.status === 'Issued' && !app.issued_date) app.issued_date = new Date().toISOString();
+}
+
 async function setAppStatus(clientId, ci, ti, ai, newStatus) {
   const c = clients.find(x=>x.id===clientId); if (!c) return;
   const ap = (((c.cases||[])[ci]||{}).touchpoints||[])[ti];
   if (!ap || !ap.apps || !ap.apps[ai]) return;
   const _prevStatus = ap.apps[ai].status;
   ap.apps[ai].status = newStatus;
+  stampIssuedDate(ap.apps[ai]);   // starts the client-review clock
   // h153: ASK, don't assume. A lapse rarely claws back the whole premium - some of
   // it was earned and kept - and silently defaulting to the full amount was making
   // losses look worse than they were. The prompt is prefilled with the premium and
@@ -5183,8 +5212,11 @@ function getUrgencyScore(c) {
   }
 
   const onBreak = isOnBreak(c);
-  const isCIA = (c.source || '').toUpperCase() === 'CIA';
-  const isMIA = (c.source || '').toUpperCase() === 'MIA';
+  // SOURCE FAMILIES. Uploads are not just 'CIA' and 'MIA' - they arrive as CIA,
+  // CIB, CIC... and MIA, MIB, MIC... Exact matching silently dropped every
+  // lead past the first letter of each family out of its own cadence.
+  const isCIA = isCISource(c.source);
+  const isMIA = isMISource(c.source);
   const prefersText = c.prefers_text === true;
   const hadCallback = hasCallbackContact(c);
   // A no-show also graduates a lead out of fresh cadence: they've engaged,
@@ -5921,6 +5953,11 @@ function retCommissionRate(ap, clientAge) {
 function retCommissionOf(ap, clientAge) {
   return retAmountOf(ap) * retCommissionRate(ap, clientAge);
 }
+// An app with a recorded account amount is a retirement app. Deliberately strict:
+// only an explicit amount counts, so a Life app can never be mistaken for one.
+function isRetirementApp(ap) {
+  return !!(ap && ap.amount != null && ap.amount !== '' && Number(ap.amount) > 0);
+}
 function isRetirementCase(cs) {
   return cs && (cs.type === 'Retirement' || boardOf(cs) === 'advanced_market');
 }
@@ -6021,13 +6058,28 @@ async function removeApptMistake(id) {
   render();
 }
 
-async function cancelAppt(id) {
+async function cancelAppt(id, fallout) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   // Where they fell out is what matters. After options = they saw it and passed,
   // that's a no sale. Before options = they never got to see it, that's a
   // dropped. Two different problems: closing vs getting to the presentation.
   // (If they're rebooking, that's a reschedule - it just moves the appointment.)
-  const afterOptions = confirm(c.name + ' cancelled.\n\nHad you already shown them options?\n\nOK = yes \u2014 logs a No sale.\nCancel = no \u2014 logs a Dropped.');
+  // THIRD PATH: a cancellation is not always a fall-out. "Can't make it, but
+  // this is still a priority" is a live lead with no meeting on the calendar -
+  // no verdict, case stays open, back into the queue. See cancelApptLive.
+  if (!fallout) {
+    showSubModal(id, '<button class="close-x" onclick="closeToLead()">x</button>' +
+      '<div class="modal-title">Client cancelled</div>' +
+      '<div class="modal-sub">' + c.name + '</div>' +
+      '<div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:6px 10px;margin-bottom:12px;">Where did they fall out? This decides whether the case closes.</div>' +
+      '<div style="display:grid;gap:8px;">' +
+        '<button class="call-btn" style="background:#138181;color:#fff;padding:12px;" onclick="cancelApptLive(\'' + id + '\',null)">Still a priority - keep in the queue<div style="font-size:10px;opacity:.85;font-weight:400;">Logs Cancelled + cadence. No verdict, case stays open.</div></button>' +
+        '<button class="call-btn" style="background:#A32D2D;color:#fff;padding:12px;" onclick="cancelAppt(\'' + id + '\',\'nosale\')">Shown options - they passed<div style="font-size:10px;opacity:.85;font-weight:400;">Closes the case as a No sale.</div></button>' +
+        '<button class="call-btn" style="background:#3C3489;color:#fff;padding:12px;" onclick="cancelAppt(\'' + id + '\',\'dropped\')">Never got to options - dropped<div style="font-size:10px;opacity:.85;font-weight:400;">Closes the case as Dropped.</div></button>' +
+      '</div>');
+    return;
+  }
+  const afterOptions = (fallout === 'nosale');
   const ts = new Date().toISOString();
   const _cancelDials = window._dialCount || 1; disarmDial();   // h137: spent here
   c.call_log = [...(c.call_log||[]), {ts, outcome:'Cancelled', dials:_cancelDials}];
@@ -6051,6 +6103,48 @@ async function cancelAppt(id) {
   await saveClientRecord(c);
   window._dialCount = 1;
   closeModal();
+  render();
+}
+
+// A cancellation is not a verdict. They did not sit and they did not pass - the
+// meeting came off the calendar and the lead is still a lead. So: log it, mark
+// the pending touchpoint 'cancelled', leave the case OPEN with NO verdict, clear
+// the appointment, and drop them back into the working queue. The 'Cancelled'
+// call-log entry opens the dodge cadence by itself (see dodgeStart), so the
+// follow-up rhythm comes free.
+//   ci = the case, or null to cancel the pending appointment on every open case.
+// A 'cancelled' touchpoint is deliberately in none of the appointment buckets:
+// needsOutcomeList and computeInitialSet both only read pending/no-outcome, so
+// this neither nags for an outcome nor keeps counting as an appointment - the
+// same way cancelAppt has always behaved.
+async function cancelApptLive(id, ci) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const ts = new Date().toISOString();
+  const _dials = window._dialCount || 1; disarmDial();   // spent here
+  // logging an outcome proves you were in the appointment until now
+  if (window._timer && window._timer.activity === 'appt') { window._lastInteraction = Date.now(); timerStop({full:true}); timerUpdateStatusLabel(); }
+  const nowMs = Date.now();
+  const cases = [...(c.cases||[])];
+  const targets = (ci === null || ci === undefined) ? cases.map((_, i) => i) : [ci];
+  targets.forEach(i => {
+    const cs = cases[i]; if (!cs || cs.status !== 'Open') return;
+    (cs.touchpoints||[]).forEach(tp => {
+      if (tp && (!tp.outcome || tp.outcome === 'pending') && tp.datetime && new Date(tp.datetime).getTime() >= nowMs - 86400000) {
+        tp.outcome = 'cancelled';   // neither a show nor a no-show
+      }
+    });
+    // NO verdict, NO status change - the case is still live
+  });
+  const callLog = [...(c.call_log||[]), {ts, outcome:'Cancelled', dials:_dials}];
+  if (c.gcal_event_id) pushApptToCalendar(c, 'delete');   // don't leave a dead event
+  showSync('Saving...');
+  await sb.from('clients').update({cases, call_log:callLog, status:'Working', appt_datetime:null, appt_notes:null}).eq('id',id);
+  Object.assign(c, {cases, call_log:callLog, status:'Working', appt_datetime:null, appt_notes:null});
+  hideSync();
+  window._dialCount = 1;
+  closeModal();
+  showSync('Cancelled - still in the queue');
+  setTimeout(hideSync, 1800);
   render();
 }
 
@@ -6565,7 +6659,7 @@ function openClient(id, keepDialCount) {
   <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">
     ${isReadyForText(c)?`<button class="call-btn" style="background:#1D3557;color:#fff;border:2px solid #138181;" onclick="quickLogAndText('${id}')">No answer + &#128241;</button>`:''}
     <button onclick="openTextModal('${id}')" style="font-size:10px;background:none;border:1px solid #9FE1CB;border-radius:6px;padding:3px 10px;color:#138181;cursor:pointer;">&#128241; Text templates</button>
-    <button onclick="openTextModal('${id}')" title="Text without logging a dial" style="font-size:10px;background:none;border:1px solid #9FE1CB;border-radius:6px;padding:3px 10px;color:#0E6363;cursor:pointer;">&#128241; Text only</button>
+    <button onclick="openTextModal('${id}', null, 'vm')" title="Same scripts, worded to be read aloud - logs a dial" style="font-size:10px;background:none;border:1px solid #E3C489;border-radius:6px;padding:3px 10px;color:#BA7517;cursor:pointer;">&#9742; Voicemail</button>
   </div>
   <button class="save-btn" onclick="updateClient('${id}')" style="margin-bottom:12px;">Save & next</button>
   <div class="section-lbl">Call log</div>
@@ -6667,6 +6761,9 @@ function showSitOutcomeModal(id, ci) {
       '<button class="sit-outcome-btn" onclick="showContModal(\''+_id+'\','+_ci+')" style="background:#534AB7;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">↻ Continuation</button>' +
       '<button onclick="confirmSitOutcome(\''+_id+'\','+_ci+',\'noshow\')" style="background:#BA7517;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">✗ No Show - alive</button>' +
       '<button onclick="confirmSitOutcome(\''+_id+'\','+_ci+',\'noshow_dead\')" style="background:#7A4A0F;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">✗ No Show - dead</button>' +
+      // They cancelled but they are still a prospect: no verdict, case stays
+      // open, straight back into the call queue.
+      '<button onclick="cancelApptLive(\''+_id+'\','+_ci+')" style="grid-column:1/-1;background:#138181;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">Cancelled - still live</button>' +
     '</div>' +
     '<button onclick="openResetToPicker(\''+_id+'\')" style="width:100%;background:none;border:1px solid #BA7517;border-radius:8px;padding:10px;font-size:12px;color:#BA7517;cursor:pointer;font-weight:500;">↺ Reset to new product</button>');
 }
@@ -7109,7 +7206,7 @@ function openMoveAppt(id) {
   <div style="font-size:11px;color:#8fa0b3;margin-bottom:8px;">Or delete this appointment:</div>
   <div style="display:flex;gap:8px;">
     <button class="call-btn" style="flex:1;background:none;border:1px solid #8fa8c0;color:#5f7a99;padding:10px;" onclick="closeModal();removeApptMistake('${id}')">Booked by mistake<div style="font-size:10px;opacity:.8;font-weight:400;">Clean removal — no cadence</div></button>
-    <button class="call-btn" style="flex:1;background:#E24B4A;color:#fff;opacity:0.9;padding:10px;" onclick="closeModal();cancelAppt('${id}')">Client cancelled<div style="font-size:10px;opacity:.85;font-weight:400;">Logs Cancelled + cadence</div></button>
+    <button class="call-btn" style="flex:1;background:#E24B4A;color:#fff;opacity:0.9;padding:10px;" onclick="cancelAppt('${id}')">Client cancelled<div style="font-size:10px;opacity:.85;font-weight:400;">Logs Cancelled + cadence</div></button>
   </div>`);
 }
 
@@ -7463,6 +7560,10 @@ function resolveFollowup(tps, contIdx, nowMs) {
     const o = t.outcome;
     if (o === 'sale' || o === 'nosale' || o === 'cont' || o === 'dropped') return o;
     if (o === 'noshow') { sawNoShow = true; continue; }
+    // A cancelled follow-up is a non-event: the meeting left the calendar and
+    // owes nobody an outcome. Without this it falls through to the pending
+    // branch below and reads as a past-due 'needs' nag forever.
+    if (o === 'cancelled') continue;
     // pending / no outcome yet
     if (!t.datetime) continue;
     const ms = new Date(t.datetime).getTime();
@@ -8320,15 +8421,22 @@ const TEXT_TEMPLATES = [
         const firstPart = c.address.split(',')[0].trim();
         street = firstPart.replace(/^[\d\s-]+/, '').trim();
       }
-      const homeRef = street ? `your home on ${street}` : 'your home';
-      return `Hi ${fn}, this is Holli getting back to you about the protection info you requested for ${homeRef}. Can you give me a quick call when you get a chance?`;
+      const mortRef = street ? `your mortgage on ${street}` : 'your mortgage';
+      return `Hi ${fn}, this is Holli getting back to you about the protection info you requested for ${mortRef}. I've got a couple of quick questions so I can get that out to you - can you give me a call when you get a chance, or would text work better?`;
+    },
+    vm: (c) => {
+      const street = (c.address||'').split(',')[0].replace(/^\d+\s+/, '').trim();
+      const fn = (c.name||'').split(' ')[0];
+      const mortRef = street ? `your mortgage on ${street}` : 'your mortgage';
+      return `Hi ${fn}, this is Holli getting back to you about the protection info you requested for ${mortRef}. I've got a couple of quick questions so I can get that out to you. Give me a call back when you get a chance and we'll knock it out. Thanks.`;
     }
   },
   {
     id: 'missing',
     label: 'Text 2 - Missing each other',
     stage: ['never_spoken', 'spoken'],
-    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, Holli again. Looks like we keep missing each other - is text easier for you?`
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, Holli again. Looks like we keep missing each other - is text easier for you?`,
+    vm: (c) => `Hi ${(c.name||'').split(' ')[0]}, Holli again. Looks like we keep missing each other. Give me a call back when you get a minute, or shoot me a text if that's easier. Thanks.`
   },
   {
     id: 'impacted',
@@ -8336,8 +8444,8 @@ const TEXT_TEMPLATES = [
     stage: ['never_spoken', 'spoken'],
     text: (c) => {
       const fn = (c.name||'').split(' ')[0];
-      if (c.source === 'CIA') return `Hi ${fn}, this is Holli. Still working to get your info to you - who were you thinking of when you called in about your mortgage?`;
-      if (c.source === 'MIA') return `Hi ${fn}, this is Holli. Still working to get your info to you - who were you thinking of when you responded to that notice about your mortgage?`;
+      if (isCISource(c.source)) return `Hi ${fn}, this is Holli. Still working to get your info to you - who were you thinking of when you called in about your mortgage?`;
+      if (isMISource(c.source)) return `Hi ${fn}, this is Holli. Still working to get your info to you - who were you thinking of when you responded to that notice about your mortgage?`;
       return `Hi ${fn}, this is Holli. Still working to get your info to you - who were you thinking of when you sent in your request?`;
     }
   },
@@ -8370,7 +8478,7 @@ const TEXT_TEMPLATES = [
       const fn = (c.name||'').split(' ')[0];
       const dt = apptOf(c) ? new Date(apptOf(c)) : null;
       const when = dt ? dt.toLocaleDateString('en-US',{weekday:'long'}) + ' at ' + dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : 'our scheduled time';
-      return `Hi ${fn}, Holli here. You're all set for ${when}. Takes about 15 minutes - I'll call you then. If anything changes, just text me back.`;
+      return `Hi ${fn}, Holli here. You're all set for ${when}. I'll call you then. If anything changes, just text me back.`;
     }
   },
   {
@@ -8381,7 +8489,7 @@ const TEXT_TEMPLATES = [
       const fn = (c.name||'').split(' ')[0];
       const dt = apptOf(c) ? new Date(apptOf(c)) : null;
       const when = dt ? dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : 'our scheduled time';
-      return `Hi ${fn}, it's Holli - looking forward to our call today at ${when}. Talk soon!`;
+      return `Hi ${fn}, Holli here - just confirming our call today at ${when}. Talk soon.`;
     }
   },
   {
@@ -8394,7 +8502,7 @@ const TEXT_TEMPLATES = [
     id: 'post_noshow',
     label: 'No-show - right-now recovery',
     stage: ['noshow'],
-    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, it's Holli. Just tried you for our appointment - life happens! I'm free for the next little bit if you can still hop on.`
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, it's Holli. Just tried you again for our appointment - life happens! I have to get to another client here in just a little bit, but I have a couple of openings a little later today if that might be better.`
   },
   {
     id: 'missed_appt',
@@ -8412,13 +8520,14 @@ const TEXT_TEMPLATES = [
     id: 'noshow_3x',
     label: 'Final attempt (3rd no-show)',
     stage: ['noshow_3x'],
-    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, this is Holli. I've made several attempts to get your information to you. If it's no longer a priority, no hard feelings - this'll be my last reach out unless I hear back.`
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, Holli here. I haven't been able to reach you with the information you requested. If it's no longer a priority, just reply 'close it' and I'll finalize things on my end - no hard feelings either way.`,
+    vm: (c) => `Hi ${(c.name||'').split(' ')[0]}, Holli here. I haven't been able to reach you with the information you requested. If it's no longer a priority, just let me know and I'll finalize things on my end - no hard feelings either way. Thanks.`
   },
   {
     id: 'nurture_30',
     label: 'Nurture - 30 day',
     stage: ['nurture'],
-    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, Holli here. Circling back - anything change with the house or family that makes this worth revisiting?`
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, Holli here. Circling back - anything changed with the house or family that makes looking at your options to protect your home and equity worth revisiting?`
   },
   {
     id: 'nurture_60',
@@ -8431,8 +8540,45 @@ const TEXT_TEMPLATES = [
     label: 'Nurture - 90 day',
     stage: ['nurture'],
     text: (c) => `Hi ${(c.name||'').split(' ')[0]}, Holli. Last check-in from me - if protecting your home ever moves back up the list, you have my number.`
+  },
+  // ---- CLIENT STAGE. Both are on a clock from the policy issue date, so they
+  // stay out of the picker until they are actually due. See templateDue().
+  {
+    id: 'policy_20day',
+    label: 'Policy check-in - 20 day',
+    stage: ['client'],
+    due: (c) => { const d = daysSinceIssued(c); return d !== null && d >= 20; },
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, Holli here. Your policy's been in place a few weeks now - just checking you got everything from the carrier and it all made sense. Any questions, I'm here.`,
+    vm: (c) => `Hi ${(c.name||'').split(' ')[0]}, it's Holli. Your policy's been in place a few weeks now - just wanted to make sure everything came through from the carrier and it all made sense. Give me a call if you have any questions. Thanks.`
+  },
+  {
+    id: 'policy_13mo',
+    label: 'Policy review - 13 month',
+    stage: ['client'],
+    due: (c) => { const d = daysSinceIssued(c); return d !== null && d >= 395; },
+    text: (c) => `Hi ${(c.name||'').split(' ')[0]}, it's Holli. It's been a year since we put your coverage in place - worth a quick look to make sure it still fits where things are now. Want me to pull it up?`,
+    vm: (c) => `Hi ${(c.name||'').split(' ')[0]}, it's Holli. It's been about a year since we put your coverage in place, so I wanted to see if it still fits where things are now. Give me a call when you get a chance and we'll take a quick look. Thanks.`
   }
 ];
+
+// The earliest issue date across every app on the lead. Once a policy is in
+// force the person stops being a lead and becomes a client, and the whole text
+// vocabulary changes - which is why 'client' is checked before everything else.
+function getIssuedAt(c) {
+  let earliest = null;
+  (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp =>
+    ((tp && tp.apps) || []).forEach(ap => {
+      if (!ap || !ap.issued_date) return;
+      if (['Lapse','Cancel','Declined'].includes(ap.status)) return;   // no longer in force
+      const d = new Date(ap.issued_date);
+      if (!isNaN(d) && (!earliest || d < earliest)) earliest = d;
+    })));
+  return earliest;
+}
+function daysSinceIssued(c) {
+  const d = getIssuedAt(c);
+  return d ? (Date.now() - d.getTime()) / 86400000 : null;
+}
 
 function getLeadTextStage(c) {
   // h157: a lead you booked, met and lost can have ZERO qualifying call-log
@@ -8457,6 +8603,14 @@ function getLeadTextStage(c) {
   // with — recovery language would read as bizarre.
   const lastNsTs = lastNoShowAt(c);
   const nsRecent = lastNsTs && (new Date() - lastNsTs) / 3600000 <= 72;
+  // A client with a policy in force outranks every lead stage. Without this they
+  // fell through to 'spoken' and were offered "looks like we keep missing each
+  // other" - after buying from you.
+  if (getIssuedAt(c)) return 'client';
+  // h179: 'nurture' was tagged on three templates and returned by NOTHING, so a
+  // lead moved to Nurture status kept getting day-one 'never contacted' texts
+  // and the nurture set was unreachable.
+  if (c.status === 'Nurture') return 'nurture';
   if (isNoShow && nsRecent) return nsCount >= 3 ? 'noshow_3x' : nsCount === 2 ? 'noshow_2x' : 'noshow';
   if (isNoShow && !nsRecent) return hasConvo ? 'spoken' : 'spoken'; // they engaged — appointment happened to be missed
   if (hasAppt && isAtApptTime) return 'appt';
@@ -8469,10 +8623,17 @@ function getSentTexts(c) {
   return (c.call_log||[]).filter(cl => cl.outcome === 'Text sent' && cl.template_id);
 }
 
+// Most templates are due as soon as their stage is reached. A few are on a clock
+// (20 days after issue, 13 months after issue) and declare a `due` predicate.
+function templateDue(t, c) {
+  if (typeof t.due !== 'function') return true;
+  try { return !!t.due(c); } catch (e) { return false; }
+}
+
 function getContextualTemplates(c) {
   const stage = getLeadTextStage(c);
   const sentIds = getSentTexts(c).map(cl => cl.template_id);
-  return TEXT_TEMPLATES.filter(t => t.stage.includes(stage) && !sentIds.includes(t.id));
+  return TEXT_TEMPLATES.filter(t => t.stage.includes(stage) && !sentIds.includes(t.id) && templateDue(t, c));
 }
 
 
@@ -8496,14 +8657,20 @@ function getNextLead(finishedId, searchVal) {
 // ── EDITABLE TEXT TEMPLATES ─────────────────────────────────────────────────
 // Personal defaults live in agent settings (per-agent when rolled out to team).
 // {name} in a saved default inserts the client's first name.
-function getTemplateText(t, c) {
+// mode 'vm' returns the spoken version. Most scripts are identical either way;
+// a few cannot be read aloud ("just reply 'close it'", "is text easier for
+// you?") and carry their own `vm`. Overrides are per-mode so editing the text
+// version never silently rewrites what you say on the phone.
+function getTemplateText(t, c, mode) {
   const overrides = getAgentSettings().textTemplateOverrides || {};
   const firstName = (c.name||'').split(' ')[0];
-  if (overrides[t.id]) return overrides[t.id].replace(/\{name\}/g, firstName);
+  const key = (mode === 'vm') ? 'vm:' + t.id : t.id;
+  if (overrides[key]) return overrides[key].replace(/\{name\}/g, firstName);
+  if (mode === 'vm' && typeof t.vm === 'function') return t.vm(c);
   return t.text(c);
 }
 
-function saveTemplateDefault(tplId, clientId) {
+function saveTemplateDefault(tplId, clientId, mode) {
   const c = clients.find(x=>x.id===clientId);
   const txtEl = document.getElementById('tpl-txt-' + tplId);
   if (!txtEl) return;
@@ -8512,27 +8679,29 @@ function saveTemplateDefault(tplId, clientId) {
   if (firstName) text = text.split(firstName).join('{name}');
   const settings = getAgentSettings();
   if (!settings.textTemplateOverrides) settings.textTemplateOverrides = {};
-  settings.textTemplateOverrides[tplId] = text;
+  // keyed per mode so editing a text never rewrites the spoken script
+  settings.textTemplateOverrides[(mode === 'vm' ? 'vm:' : '') + tplId] = text;
   saveAgentSettings(settings);
   showSync('Saved as your default');
   setTimeout(hideSync, 1400);
 }
 
-function restoreTemplateDefault(tplId, clientId) {
+function restoreTemplateDefault(tplId, clientId, mode) {
   if (!confirm('This replaces your custom version with the system original. Continue?')) return;
   const settings = getAgentSettings();
-  if (settings.textTemplateOverrides) delete settings.textTemplateOverrides[tplId];
+  if (settings.textTemplateOverrides) delete settings.textTemplateOverrides[(mode === 'vm' ? 'vm:' : '') + tplId];
   saveAgentSettings(settings);
   showSync('Restored system default');
-  setTimeout(() => { hideSync(); openTextModal(clientId, tplId); }, 700);
+  setTimeout(() => { hideSync(); openTextModal(clientId, tplId, mode); }, 700);
 }
 
-function openTextModal(id, focusTplId) {
+function openTextModal(id, focusTplId, mode) {
   const c = clients.find(x=>x.id===id); if (!c) return;
+  const isVM = (mode === 'vm');
   const stage = getLeadTextStage(c);
-  const sentTexts = getSentTexts(c);
+  const sentTexts = isVM ? getSentVoicemails(c) : getSentTexts(c);
   const sentIds = sentTexts.map(cl => cl.template_id);
-  let available = TEXT_TEMPLATES.filter(t => t.stage.includes(stage) && !sentIds.includes(t.id));
+  let available = TEXT_TEMPLATES.filter(t => t.stage.includes(stage) && !sentIds.includes(t.id) && templateDue(t, c));
   // A focused template (e.g. post no-show popup) is always shown and opened first
   if (focusTplId && !available.some(t => t.id === focusTplId)) {
     const focused = TEXT_TEMPLATES.find(t => t.id === focusTplId);
@@ -8544,27 +8713,27 @@ function openTextModal(id, focusTplId) {
   const overrides = getAgentSettings().textTemplateOverrides || {};
 
   let html = '<button class="close-x" onclick="closeToLead()">x</button>' +
-    '<div class="modal-title">Text templates</div>' +
+    '<div class="modal-title">' + (isVM ? 'Voicemail scripts' : 'Text templates') + '</div>' +
     '<div class="modal-sub">' + c.name + '</div>';
 
   if (available.length) {
     html += '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Recommended for now</div>';
     html += available.map((t, i) =>
-      '<div id="tpl-' + t.id + '" style="border:1px solid #e2eaf2;border-radius:8px;padding:8px 10px;margin-bottom:6px;cursor:pointer;" onclick="expandTemplate(\''+id+'\',\''+t.id+'\')">' +
-        '<div style="font-size:11px;font-weight:600;color:#1D3557;margin-bottom:4px;">' + t.label + (overrides[t.id] ? ' <span style="font-size:9px;color:#534AB7;background:#F3EEFF;border-radius:4px;padding:1px 5px;">customized</span>' : '') + '</div>' +
-        '<div style="font-size:11px;color:#5f7a99;">' + getTemplateText(t, c) + '</div>' +
+      '<div id="tpl-' + t.id + '" style="border:1px solid #e2eaf2;border-radius:8px;padding:8px 10px;margin-bottom:6px;cursor:pointer;" onclick="expandTemplate(\''+id+'\',\''+t.id+'\',\''+(mode||'')+'\')">' +
+        '<div style="font-size:11px;font-weight:600;color:#1D3557;margin-bottom:4px;">' + t.label + (overrides[(isVM?'vm:':'')+t.id] ? ' <span style="font-size:9px;color:#534AB7;background:#F3EEFF;border-radius:4px;padding:1px 5px;">customized</span>' : '') + '</div>' +
+        '<div style="font-size:11px;color:#5f7a99;">' + getTemplateText(t, c, mode) + '</div>' +
         '<div id="tpl-edit-' + t.id + '" style="display:none;margin-top:8px;">' +
-          '<textarea id="tpl-txt-' + t.id + '" onclick="event.stopPropagation()" style="width:100%;min-height:80px;font-size:12px;border:1px solid #9FE1CB;border-radius:6px;padding:6px;font-family:inherit;box-sizing:border-box;">' + getTemplateText(t, c) + '</textarea>' +
-          '<button onclick="event.stopPropagation();copyAndLogText(\''+id+'\',\''+t.id+'\')" style="width:100%;background:#138181;color:#fff;border:none;border-radius:8px;padding:10px;font-size:12px;font-weight:600;cursor:pointer;margin-top:6px;">Copy & Log</button>' +
+          '<textarea id="tpl-txt-' + t.id + '" onclick="event.stopPropagation()" style="width:100%;min-height:80px;font-size:12px;border:1px solid #9FE1CB;border-radius:6px;padding:6px;font-family:inherit;box-sizing:border-box;">' + getTemplateText(t, c, mode) + '</textarea>' +
+          '<button onclick="event.stopPropagation();' + (isVM ? 'logVoicemail' : 'copyAndLogText') + '(\''+id+'\',\''+t.id+'\')" style="width:100%;background:' + (isVM ? '#BA7517' : '#138181') + ';color:#fff;border:none;border-radius:8px;padding:10px;font-size:12px;font-weight:600;cursor:pointer;margin-top:6px;">' + (isVM ? 'Log voicemail' : 'Copy & Log') + '</button>' +
           '<div style="display:flex;gap:6px;margin-top:6px;">' +
-            '<button onclick="event.stopPropagation();saveTemplateDefault(\''+t.id+'\',\''+id+'\')" style="flex:1;background:none;border:1px solid #C4AAFF;border-radius:6px;padding:6px;font-size:10px;color:#534AB7;cursor:pointer;">Save as my default</button>' +
-            (overrides[t.id] ? '<button onclick="event.stopPropagation();restoreTemplateDefault(\''+t.id+'\',\''+id+'\')" style="flex:1;background:none;border:1px solid #d0dcea;border-radius:6px;padding:6px;font-size:10px;color:#5f7a99;cursor:pointer;">Restore default</button>' : '') +
+            '<button onclick="event.stopPropagation();saveTemplateDefault(\''+t.id+'\',\''+id+'\',\''+(mode||'')+'\')" style="flex:1;background:none;border:1px solid #C4AAFF;border-radius:6px;padding:6px;font-size:10px;color:#534AB7;cursor:pointer;">Save as my default</button>' +
+            (overrides[(isVM?'vm:':'')+t.id] ? '<button onclick="event.stopPropagation();restoreTemplateDefault(\''+t.id+'\',\''+id+'\',\''+(mode||'')+'\')" style="flex:1;background:none;border:1px solid #d0dcea;border-radius:6px;padding:6px;font-size:10px;color:#5f7a99;cursor:pointer;">Restore default</button>' : '') +
           '</div>' +
         '</div>' +
       '</div>'
     ).join('');
   } else {
-    html += '<div style="font-size:12px;color:#a0b8cc;margin-bottom:12px;">All templates for this stage have been sent.</div>';
+    html += '<div style="font-size:12px;color:#a0b8cc;margin-bottom:12px;">' + (isVM ? 'Every voicemail script for this stage has been left.' : 'All templates for this stage have been sent.') + '</div>';
   }
 
   if (sent.length) {
@@ -8575,18 +8744,18 @@ function openTextModal(id, focusTplId) {
       return '<div style="border:1px solid #f0f4f8;border-radius:8px;padding:8px 10px;margin-bottom:4px;opacity:0.6;">' +
         '<div style="display:flex;justify-content:space-between;">' +
           '<div style="font-size:11px;font-weight:600;color:#8fa8c0;">' + t.label + '</div>' +
-          '<div style="font-size:10px;color:#a0b8cc;">Sent ' + sentDate + '</div>' +
+          '<div style="font-size:10px;color:#a0b8cc;">' + (isVM ? 'Left ' : 'Sent ') + sentDate + '</div>' +
         '</div>' +
-        '<div style="font-size:11px;color:#a0b8cc;margin-top:2px;">' + ((sentEntry && sentEntry.text_sent) ? sentEntry.text_sent : getTemplateText(t, c)) + '</div>' +
+        '<div style="font-size:11px;color:#a0b8cc;margin-top:2px;">' + ((sentEntry && sentEntry.text_sent) ? sentEntry.text_sent : getTemplateText(t, c, mode)) + '</div>' +
       '</div>';
     }).join('');
   }
 
   showSubModal(id, html);
-  if (focusTplId) setTimeout(() => expandTemplate(id, focusTplId), 50);
+  if (focusTplId) setTimeout(() => expandTemplate(id, focusTplId, mode), 50);
 }
 
-function expandTemplate(id, tplId) {
+function expandTemplate(id, tplId, mode) {
   // Close any other expanded templates
   TEXT_TEMPLATES.forEach(t => {
     const el = document.getElementById('tpl-edit-' + t.id);
@@ -8600,6 +8769,48 @@ function expandTemplate(id, tplId) {
     el.style.display = isOpen ? 'none' : 'block';
     if (card) card.style.borderColor = isOpen ? '#e2eaf2' : '#138181';
   }
+}
+
+function getSentVoicemails(c) {
+  return (c.call_log||[]).filter(cl => cl.outcome === 'Voicemail' && cl.template_id);
+}
+
+// A voicemail is a dial you made - so it banks the armed dial count exactly like
+// any other dial outcome. Logged as 'Voicemail' with its own template list, so
+// leaving a script as a voicemail never uses up the matching text.
+async function logVoicemail(id, tplId) {
+  const c = clients.find(x=>x.id===id); if (!c) return;
+  const txtEl = document.getElementById('tpl-txt-' + tplId);
+  const script = txtEl ? txtEl.value : '';
+  const _dials = window._dialCount || 1; disarmDial();
+
+  const callLog = [...(c.call_log||[]), {
+    ts: new Date().toISOString(),
+    outcome: 'Voicemail',
+    template_id: tplId,
+    text_sent: script,
+    dials: _dials
+  }];
+  c.call_log = callLog;
+
+  showSync('Saving...');
+  await sb.from('clients').update({call_log: callLog}).eq('id', id);
+  await addStat('dials', _dials);
+  hideSync();
+  window._dialCount = 1;
+
+  const searchVal = document.getElementById('client-search') ? document.getElementById('client-search').value : '';
+  const nextLead = getNextLead(id, searchVal);
+
+  closeModal();
+  renderClients(searchVal);
+  renderScore();
+
+  showSync('Voicemail logged');
+  setTimeout(() => {
+    hideSync();
+    if (nextLead) openClient(nextLead.id);
+  }, 1200);
 }
 
 async function copyAndLogText(id, tplId) {
@@ -9316,6 +9527,12 @@ function parseLeadPage(rawText) {
 
 
 // --- CIA vs MIA classification (isolated for future team levels) ---
+// A source family is its first two letters: CI* is a call-in, MI* is a mailer.
+// Everything downstream - cadence, text wording, reporting - keys off the family,
+// never the exact code.
+function isCISource(src) { return /^ci/i.test(String(src || '').trim()); }
+function isMISource(src) { return /^mi/i.test(String(src || '').trim()); }
+
 function classifyLeadSource(text) {
   const t = (text || '').toLowerCase();
   if (t.includes('postcard')) return 'CIA';
@@ -10715,6 +10932,7 @@ async function saveEditApp(id, ci, ti, ai) {
   ap.premium = Math.round(_mo * 12 * 100) / 100; // APV = monthly x 12, cents preserved
   ap.who = document.getElementById('edit-app-who').value.trim()||'Borrower';
   ap.status = document.getElementById('edit-app-status').value;
+  stampIssuedDate(ap);            // starts the client-review clock
   const _ld = document.getElementById('edit-app-lapse-date');
   if (_ld) ap.lapse_date = _ld.value ? new Date(_ld.value + 'T12:00:00').toISOString() : null;
   const _cb = document.getElementById('edit-app-chargeback');
@@ -11645,8 +11863,9 @@ function openReports() {
   if (!st) { alert('Open the Board once so the numbers are calculated, then come back.'); return; }
   const { mia, cia, label, pStart } = st;
 
-  // COMBINED - the whole book, not one source at a time
-  const all = {
+  // COMBINED - the whole book. h181: was mia + cia, which left referrals, ASR and
+  // every other source out of the total. Computed over all leads in renderSourceComparison.
+  const all = st.all || {
     assigned: mia.assigned + cia.assigned, contacted: mia.contacted + cia.contacted,
     apptsSet: mia.apptsSet + cia.apptsSet, apptsResolved: mia.apptsResolved + cia.apptsResolved,
     shows: mia.shows + cia.shows, decided: mia.decided + cia.decided,
