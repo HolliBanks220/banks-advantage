@@ -505,7 +505,7 @@ html,body{overflow-x:hidden !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h186</span>
+        <span class="build-tag" id="build-tag" title="build">b715h187</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
         <div class="period-label" id="period-label">This week</div>
@@ -5892,6 +5892,108 @@ function retCommissionOf(ap, clientAge) {
 // that was created by one. Counted per lead, and deliberately NOT board-scoped:
 // a reset-to-self spawns an Advanced Market case, but the reset itself happened
 // on the Life/MP board and belongs to whatever period it happened in.
+// ---- CONTRADICTION REPAIR -------------------------------------------------
+// A lead should never be two things at once. These are the states that got
+// written before the rules tightened, and they are why an appointment can sit on
+// the sidebar for someone who already told you no. Found, listed, and only
+// cleared when you tap - never silently.
+const _CONTRA_TERMINAL = ['Closed','Dead','No sale','No show'];
+
+function contradictionsFor(c) {
+  const out = [];
+  if (!c) return out;
+  const terminal = _CONTRA_TERMINAL.includes(c.status);
+  const pending = tp => tp && (!tp.outcome || tp.outcome === 'pending') && tp.datetime;
+
+  if (terminal && c.appt_datetime) out.push('Appointment still set on a ' + c.status + ' lead');
+
+  (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+    if (!pending(tp)) return;
+    if (cs.status !== 'Open') out.push('Pending ' + (tp.type || 'appointment') + ' on a ' + cs.status + ' case');
+    else if (terminal)        out.push('Pending ' + (tp.type || 'appointment') + ' on a ' + c.status + ' lead');
+  }));
+
+  // The pre-h186 shape: they said no, but the appointment outlived the verdict
+  // because the old rule treated a booked appointment as untouchable.
+  const at = (o) => Math.max(0, ...(c.call_log||[]).filter(cl => cl.outcome === o).map(cl => new Date(cl.ts).getTime() || 0));
+  const saidNo = at('Not interested');
+  const booked = Math.max(at('Appt set'), at('Rescheduled'));
+  if (saidNo > 0 && saidNo > booked) {
+    const liveTp = (c.cases||[]).some(cs => cs.status === 'Open' && (cs.touchpoints||[]).some(pending));
+    if (c.appt_datetime || liveTp) out.push('Marked Not interested, but still holds an appointment');
+  }
+  return [...new Set(out)];
+}
+
+function findContradictions() {
+  return (clients||[]).map(c => ({ c, issues: contradictionsFor(c) }))
+    .filter(r => r.issues.length)
+    .sort((a, b) => (a.c.name || '').localeCompare(b.c.name || ''));
+}
+
+// Clearing means: the appointment goes, every pending touchpoint on a non-open
+// case is marked cancelled, and a terminal lead loses its pending touchpoints
+// too. Cases and outcomes already recorded are never touched.
+async function repairContradiction(id) {
+  const c = clients.find(x => x.id === id); if (!c) return;
+  const terminal = _CONTRA_TERMINAL.includes(c.status);
+  const cases = JSON.parse(JSON.stringify(c.cases || []));
+  const saidNo = Math.max(0, ...(c.call_log||[]).filter(cl => cl.outcome === 'Not interested').map(cl => new Date(cl.ts).getTime() || 0));
+  const booked = Math.max(0, ...(c.call_log||[]).filter(cl => cl.outcome === 'Appt set' || cl.outcome === 'Rescheduled').map(cl => new Date(cl.ts).getTime() || 0));
+  const verdictStands = saidNo > 0 && saidNo > booked;
+
+  cases.forEach(cs => {
+    const closing = (cs.status !== 'Open') || terminal || verdictStands;
+    if (!closing) return;
+    if (verdictStands && cs.status === 'Open') cs.status = 'Closed Lost';
+    (cs.touchpoints||[]).forEach(tp => {
+      if (tp && (!tp.outcome || tp.outcome === 'pending')) tp.outcome = 'cancelled';
+    });
+  });
+
+  if (c.gcal_event_id) { try { pushApptToCalendar(c, 'delete'); } catch (e) {} }
+  const patch = { cases, appt_datetime: null, appt_notes: null };
+  if (verdictStands && !terminal) patch.status = 'Dead';
+  showSync('Repairing...');
+  await sb.from('clients').update(patch).eq('id', id);
+  Object.assign(c, patch);
+  hideSync();
+  render();
+  openRepairPanel();
+}
+
+async function repairAllContradictions() {
+  const rows = findContradictions();
+  if (!rows.length) return;
+  if (!confirm('Clear ' + rows.length + ' contradiction' + (rows.length === 1 ? '' : 's') + '? Recorded outcomes are not touched.')) return;
+  for (const r of rows) await repairContradiction(r.c.id);
+}
+
+function openRepairPanel() {
+  const rows = findContradictions();
+  let html = '<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">Repair</div>' +
+    '<div class="modal-sub">Leads that are two things at once</div>';
+  if (!rows.length) {
+    html += '<div style="font-size:12px;color:#138181;background:#E1F5EE;border-radius:8px;padding:12px;margin-top:8px;">Nothing to repair - no lead is holding an appointment it should not.</div>';
+  } else {
+    html += '<div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:8px 10px;margin:8px 0;">' +
+      'Clearing removes the appointment and marks any leftover pending step cancelled. Sales, sits and logged outcomes are never touched.</div>' +
+      '<button onclick="repairAllContradictions()" style="width:100%;background:#A32D2D;color:#fff;border:none;border-radius:8px;padding:10px;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:10px;">Clear all ' + rows.length + '</button>';
+    html += rows.map(r =>
+      '<div style="border:1px solid #e2eaf2;border-radius:8px;padding:9px 10px;margin-bottom:6px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
+          '<div onclick="closeModal();openClient(\'' + r.c.id + '\')" style="font-size:12px;font-weight:600;color:#138181;cursor:pointer;">' + esc(r.c.name || '(no name)') + '</div>' +
+          '<button onclick="repairContradiction(\'' + r.c.id + '\')" style="background:#138181;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">Clear</button>' +
+        '</div>' +
+        '<div style="font-size:10px;color:#8fa8c0;">' + esc(r.c.status || '') +
+          (r.c.appt_datetime ? ' &middot; ' + new Date(r.c.appt_datetime).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '') + '</div>' +
+        r.issues.map(i => '<div style="font-size:11px;color:#A32D2D;margin-top:3px;">' + esc(i) + '</div>').join('') +
+      '</div>').join('');
+  }
+  showModal(html);
+}
+
 function resetCountFor(c, pStart, pEnd) {
   const inWin = (d) => d && !isNaN(d) && d >= pStart && d <= pEnd;
   const tpResets = (c.cases||[]).reduce((a, cs) =>
@@ -12812,6 +12914,18 @@ function openSettings() {
       '<button class="save-btn" style="margin-bottom:4px;" onclick="openReports()">Open reports</button>' +
       '<div style="font-size:11px;color:#5f7a99;">Lead performance by source and combined, referral-only numbers, spend and ROI, recruits.</div>' +
     '</div>' +
+
+    (function(){
+      const n = findContradictions().length;
+      return '<div style="background:' + (n ? '#FFF5F5' : '#f0f4f8') + ';border-radius:10px;padding:12px;margin-bottom:12px;' +
+        (n ? 'border:1px solid #F5A0A0;' : '') + '">' +
+        '<div style="font-size:10px;font-weight:600;color:' + (n ? '#A32D2D' : '#5f7a99') + ';text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Repair' +
+          (n ? ' &middot; ' + n : '') + '</div>' +
+        '<button class="save-btn" style="margin-bottom:4px;" onclick="openRepairPanel()">' +
+          (n ? 'Review ' + n + ' contradiction' + (n === 1 ? '' : 's') : 'Check for contradictions') + '</button>' +
+        '<div style="font-size:11px;color:#5f7a99;">Leads holding an appointment they should not - a booking left on someone who already said no, or a pending step on a closed case.</div>' +
+      '</div>';
+    })() +
 
     '<div style="background:#f0f4f8;border-radius:10px;padding:12px;margin-bottom:12px;">' +
       '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Board theme</div>' +
