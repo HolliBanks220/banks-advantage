@@ -491,6 +491,11 @@ input[style*="flex:"],select[style*="flex:"],textarea[style*="flex:"]{
   #appt-sidebar{max-height:55vh !important;overflow-y:auto !important;}
 }
 html,body{overflow-x:hidden !important;}
+
+/* h190: the lead count sat on the app's fixed near-black chrome in #1D3557 navy -
+   dark ink on a dark panel, effectively invisible. The chrome is deliberately not
+   theme-driven (see applyTheme), so a single light value is safe here. */
+#client-count{color:#9FB2C4;}
 </style>
 </head>
 <body>
@@ -505,7 +510,7 @@ html,body{overflow-x:hidden !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h188</span>
+        <span class="build-tag" id="build-tag" title="build">b715h193</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
         <div class="period-label" id="period-label">This week</div>
@@ -726,9 +731,9 @@ html,body{overflow-x:hidden !important;}
         <div class="stat"><div class="stat-lbl">Lost</div><div class="stat-val" id="r-lost" style="cursor:pointer;" onclick="drillDown('ret_lost')">0</div><div class="stat-sub" id="r-lost-sub"></div></div>
       </div>
       <div class="stat-row" style="grid-template-columns:repeat(3,minmax(0,1fr));">
-        <div class="stat"><div class="stat-lbl">Amount</div><div class="stat-val" id="r-amount" style="font-size:20px;">$0</div><div class="stat-sub">account moving</div></div>
-        <div class="stat"><div class="stat-lbl">APV submitted</div><div class="stat-val" id="r-apv-sub" style="font-size:20px;">$0</div><div class="stat-sub">5% of amount</div></div>
-        <div class="stat"><div class="stat-lbl">APV placed</div><div class="stat-val" id="r-apv-placed" style="font-size:20px;">$0</div><div class="stat-sub">issued &amp; paid</div></div>
+        <div class="stat"><div class="stat-lbl">Amount</div><div class="stat-val" id="r-amount" style="font-size:20px;cursor:pointer;" onclick="openRetMoneyDetail('amount')">$0</div><div class="stat-sub">account moving</div></div>
+        <div class="stat"><div class="stat-lbl">APV submitted</div><div class="stat-val" id="r-apv-sub" style="font-size:20px;cursor:pointer;" onclick="openRetMoneyDetail('apvSub')">$0</div><div class="stat-sub">5% of amount</div></div>
+        <div class="stat"><div class="stat-lbl">APV placed</div><div class="stat-val" id="r-apv-placed" style="font-size:20px;cursor:pointer;" onclick="openRetMoneyDetail('apvPlaced')">$0</div><div class="stat-sub">issued &amp; paid</div></div>
       </div>
     </div>
   <!-- MIA vs CIA comparison panel -->
@@ -828,7 +833,7 @@ html,body{overflow-x:hidden !important;}
   <div id="tab-clients" style="display:none;">
     <div class="leads-hdr">
       <div style="display:flex;flex-direction:column;min-width:0;flex:1;">
-        <div style="font-size:13px;font-weight:500;color:#1D3557;" id="client-count">Loading...</div>
+        <div style="font-size:13px;font-weight:500;" id="client-count">Loading...</div>
         <div id="pace-line" style="font-size:11px;font-weight:600;margin-top:2px;display:none;"></div>
       </div>
       <div style="display:flex;gap:6px;">
@@ -2047,16 +2052,13 @@ function renderScore() {
     setTxt('r-lost', decided.filter(({cs}) => cs.status === 'Closed Lost').length);
     setTxt('r-inprog', retCases.filter(({cs}) => retIsInProgress(cs)).length);
 
-    retCases.forEach(({c, cs}) => (cs.touchpoints||[]).forEach(tp => (tp.apps||[]).forEach(ap => {
-      const d = new Date(ap.submitted_date || tp.datetime);
-      if (!(d >= pStart && d <= pEnd)) return;
-      const st = ap.status || '';
-      if (['Submitted','Approved','Issued','Paid'].includes(st)) {
-        amount += retAmountOf(ap);
-        apvSub += retApvFromAmount(retAmountOf(ap));
-      }
-      if (['Issued','Paid'].includes(st)) apvPlaced += retApvFromAmount(retAmountOf(ap));
-    })));
+    // h192: the same rows the drill-downs list, so a tile and its list cannot drift
+    const retRows = retMoneyRows(retCases, pStart, pEnd);
+    window._retMoneyRows = retRows;
+    retRows.forEach(r => {
+      if (r.counts) { amount += r.amount; apvSub += r.apv; }
+      if (r.placed) apvPlaced += r.apv;
+    });
     const money = n => '$' + Math.round(n).toLocaleString();
     setTxt('r-amount', money(amount));
     setTxt('r-apv-sub', money(apvSub));
@@ -5914,42 +5916,71 @@ function verdictIsNotInterested(c) {
   return saidNo > booked;   // a later re-book means they came back
 }
 
+function caseCreatedAt(cs) {
+  const d = new Date((cs && cs.created) || 0);
+  if (!isNaN(d) && d.getTime()) return d.getTime();
+  const tp = cs && cs.touchpoints && cs.touchpoints[0];
+  const t = tp ? new Date(tp.datetime) : null;
+  return (t && !isNaN(t)) ? t.getTime() : 0;
+}
+
+// h189: a Not interested is a verdict on ONE product line. Reset a declined
+// mortgage lead into Advanced Market and their live Step 1 is not a
+// contradiction - it is the whole point of a reset. Same for any case opened
+// after they said no.
+function caseSurvivesVerdict(cs, saidNoAt) {
+  if (isRetirementCase(cs)) return true;
+  return caseCreatedAt(cs) > saidNoAt;
+}
+
 function contradictionsFor(c) {
   const out = [];
   if (!c) return out;
   const pending = tp => tp && (!tp.outcome || tp.outcome === 'pending') && tp.datetime;
   const notInterested = verdictIsNotInterested(c);
+  const saidNoAt = Math.max(0, ...((c.call_log||[]).filter(cl => cl.outcome === 'Not interested').map(cl => new Date(cl.ts).getTime() || 0)));
 
   // 1. They said no, but a booking outlived the verdict.
   if (notInterested) {
-    if (c.appt_datetime) out.push('Not interested, but still holds an appointment');
-    if ((c.cases||[]).some(cs => cs.status === 'Open' && (cs.touchpoints||[]).some(pending)))
-      out.push('Not interested, but a step is still pending');
-    // the two streams that are not appointments at all
+    if (c.appt_datetime) out.push({ kind: 'clear', text: 'Not interested, but still holds an appointment' });
+    (c.cases||[]).forEach(cs => {
+      if (cs.status !== 'Open' || caseSurvivesVerdict(cs, saidNoAt)) return;
+      if ((cs.touchpoints||[]).some(pending))
+        out.push({ kind: 'clear', text: 'Not interested, but a step is still pending', where: caseLabel(cs) });
+    });
     if (!_CONTRA_TERMINAL.includes(c.status) && getScheduledCallback(c) && !isCallbackResolved(c))
-      out.push('Not interested, but a callback is still scheduled');
-    if (c.status === 'Follow-up')
-      out.push('Not interested, but still sitting in Follow-up');
+      out.push({ kind: 'clear', text: 'Not interested, but a callback is still scheduled' });
   }
 
-  // 2. A live step on a case that was LOST. Closed WON is excluded on purpose -
-  //    that is exactly where a PPU lives.
-  (c.cases||[]).forEach(cs => {
+  // 2. A live step on a LOST case never got an outcome. Not cleared - a booking
+  //    that actually happened must not be erased into nothing. It gets a verdict.
+  //    Closed WON is excluded on purpose; that is where a real PPU lives.
+  //    A Follow-up status is NOT here at all - follow-ups are post-sale work and
+  //    living on a closed case is exactly what they are for.
+  (c.cases||[]).forEach((cs, ci) => {
     if (cs.status !== 'Closed Lost' && cs.status !== 'Reset') return;
-    (cs.touchpoints||[]).forEach(tp => {
-      if (pending(tp)) out.push('Pending ' + (tp.type || 'step') + ' on a ' + cs.status + ' case');
+    (cs.touchpoints||[]).forEach((tp, ti) => {
+      if (!pending(tp)) return;
+      out.push({ kind: 'outcome', ci, ti,
+                 text: 'Pending ' + (tp.type || 'step') + ' on a ' + cs.status + ' case needs an outcome',
+                 where: caseLabel(cs) });
+      // Before h190 a cancellation closed the case with a verdict, so a lead who
+      // cancelled and meant to reschedule reads as lost. Reopen puts them back.
+      out.push({ kind: 'reopen', ci, text: 'Or reopen the case if they only cancelled', where: caseLabel(cs) });
     });
   });
 
-  // 3. A callback or follow-up still live on a lead with nothing open at all.
+  // 3. A callback still live on a lead with nothing open at all.
   if (!_CONTRA_TERMINAL.includes(c.status) && (c.cases||[]).length &&
-      !(c.cases||[]).some(cs => cs.status === 'Open')) {
-    if (getScheduledCallback(c) && !isCallbackResolved(c))
-      out.push('Callback scheduled, but every case is closed');
-    if (c.status === 'Follow-up') out.push('In Follow-up, but every case is closed');
-  }
+      !(c.cases||[]).some(cs => cs.status === 'Open') &&
+      getScheduledCallback(c) && !isCallbackResolved(c) && !notInterested)
+    out.push({ kind: 'clear', text: 'Callback scheduled, but every case is closed' });
 
-  return [...new Set(out)];
+  return out;
+}
+
+function caseLabel(cs) {
+  return (cs && cs.type) ? cs.type : 'case';
 }
 
 function findContradictions() {
@@ -5966,11 +5997,14 @@ async function repairContradiction(id) {
   const cases = JSON.parse(JSON.stringify(c.cases || []));
   const notInterested = verdictIsNotInterested(c);
 
-  cases.forEach(cs => {
-    // never touch a Closed WON case - that is where a real PPU lives
-    if (cs.status === 'Closed Won') return;
-    if (cs.status !== 'Closed Lost' && cs.status !== 'Reset' && !notInterested) return;
-    if (notInterested && cs.status === 'Open') cs.status = 'Closed Lost';
+  // h189: only OPEN cases the verdict actually killed. A closed case's unresolved
+  // step is not cleared here - it gets a verdict via resolveStaleStep, because
+  // 'cancelled' erases the appointment from every count and a booking that
+  // happened must not vanish.
+  const saidNoAt = Math.max(0, ...((c.call_log||[]).filter(cl => cl.outcome === 'Not interested').map(cl => new Date(cl.ts).getTime() || 0)));
+  if (notInterested) cases.forEach(cs => {
+    if (cs.status !== 'Open' || caseSurvivesVerdict(cs, saidNoAt)) return;
+    cs.status = 'Closed Lost';
     (cs.touchpoints||[]).forEach(tp => {
       if (tp && (!tp.outcome || tp.outcome === 'pending')) tp.outcome = 'cancelled';
     });
@@ -5994,11 +6028,50 @@ async function repairContradiction(id) {
   openRepairPanel();
 }
 
+// Only the clearable ones. A stale step needs a verdict from her, one at a time -
+// no bulk action decides whether an appointment happened.
 async function repairAllContradictions() {
-  const rows = findContradictions();
+  const rows = findContradictions().filter(r => r.issues.some(i => i.kind === 'clear'));
   if (!rows.length) return;
-  if (!confirm('Clear ' + rows.length + ' contradiction' + (rows.length === 1 ? '' : 's') + '? Recorded outcomes are not touched.')) return;
+  if (!confirm('Clear ' + rows.length + ' lead' + (rows.length === 1 ? '' : 's') + '? Appointments that were sat, no-shows and PPUs are not touched.')) return;
   for (const r of rows) await repairContradiction(r.c.id);
+}
+
+// A booking on a lost case that never got resolved. 'noshow' keeps it counting as
+// an appointment they missed; 'cancelled' says it was never a real appointment.
+// Either way she decides - never a bulk guess.
+// The case was closed by a cancellation, not by a verdict. Put it back to Open,
+// mark the stale booking cancelled, and return the lead to the queue.
+async function reopenCancelledCase(id, ci) {
+  const c = clients.find(x => x.id === id); if (!c) return;
+  const cases = JSON.parse(JSON.stringify(c.cases || []));
+  const cs = cases[ci]; if (!cs) return;
+  cs.status = 'Open';
+  (cs.touchpoints||[]).forEach(tp => {
+    if (tp && (!tp.outcome || tp.outcome === 'pending')) tp.outcome = 'cancelled';
+  });
+  const patch = { cases };
+  if (['Closed','Dead','No sale','No show'].includes(c.status)) patch.status = 'Working';
+  showSync('Reopening...');
+  await sb.from('clients').update(patch).eq('id', id);
+  Object.assign(c, patch);
+  hideSync();
+  render();
+  openRepairPanel();
+}
+
+async function resolveStaleStep(id, ci, ti, outcome) {
+  const c = clients.find(x => x.id === id); if (!c) return;
+  const cases = JSON.parse(JSON.stringify(c.cases || []));
+  const tp = cases[ci] && cases[ci].touchpoints && cases[ci].touchpoints[ti];
+  if (!tp) return;
+  tp.outcome = outcome;
+  showSync('Saving...');
+  await sb.from('clients').update({ cases }).eq('id', id);
+  c.cases = cases;
+  hideSync();
+  render();
+  openRepairPanel();
 }
 
 function openRepairPanel() {
@@ -6013,7 +6086,7 @@ function openRepairPanel() {
       'Clearing removes the appointment and marks any leftover pending step cancelled. Sales, sits and logged outcomes are never touched.</div>' +
       (function(){
         const tally = {};
-        rows.forEach(r => r.issues.forEach(i => { tally[i] = (tally[i] || 0) + 1; }));
+        rows.forEach(r => r.issues.forEach(i => { tally[i.text] = (tally[i.text] || 0) + 1; }));
         return '<div style="border:1px solid #e2eaf2;border-radius:8px;padding:8px 10px;margin-bottom:8px;">' +
           '<div style="font-size:10px;font-weight:700;color:#5f7a99;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">What is in this list</div>' +
           Object.keys(tally).sort((a,b) => tally[b] - tally[a]).map(k =>
@@ -6026,11 +6099,26 @@ function openRepairPanel() {
       '<div style="border:1px solid #e2eaf2;border-radius:8px;padding:9px 10px;margin-bottom:6px;">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
           '<div onclick="closeModal();openClient(\'' + r.c.id + '\')" style="font-size:12px;font-weight:600;color:#138181;cursor:pointer;">' + esc(r.c.name || '(no name)') + '</div>' +
-          '<button onclick="repairContradiction(\'' + r.c.id + '\')" style="background:#138181;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">Clear</button>' +
+          (r.issues.some(i => i.kind === 'clear')
+            ? '<button onclick="repairContradiction(\'' + r.c.id + '\')" style="background:#138181;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">Clear</button>'
+            : '') +
         '</div>' +
         '<div style="font-size:10px;color:#8fa8c0;">' + esc(r.c.status || '') +
           (r.c.appt_datetime ? ' &middot; ' + new Date(r.c.appt_datetime).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '') + '</div>' +
-        r.issues.map(i => '<div style="font-size:11px;color:#A32D2D;margin-top:3px;">' + esc(i) + '</div>').join('') +
+        r.issues.map(i =>
+          '<div style="margin-top:4px;">' +
+            '<div style="font-size:11px;color:#A32D2D;">' + esc(i.text) +
+              (i.where ? ' <span style="color:#8fa8c0;">&middot; ' + esc(i.where) + '</span>' : '') + '</div>' +
+            (i.kind === 'outcome'
+              ? '<div style="display:flex;gap:6px;margin-top:4px;">' +
+                  '<button onclick="resolveStaleStep(\'' + r.c.id + '\',' + i.ci + ',' + i.ti + ',\'noshow\')" style="flex:1;background:#7A4A0F;color:#fff;border:none;border-radius:6px;padding:5px;font-size:11px;font-weight:600;cursor:pointer;">No show</button>' +
+                  '<button onclick="resolveStaleStep(\'' + r.c.id + '\',' + i.ci + ',' + i.ti + ',\'cancelled\')" style="flex:1;background:none;border:1px solid #b9c6d4;color:#5f7a99;border-radius:6px;padding:5px;font-size:11px;font-weight:600;cursor:pointer;">Never happened</button>' +
+                '</div>'
+              : '') +
+            (i.kind === 'reopen'
+              ? '<button onclick="reopenCancelledCase(\'' + r.c.id + '\',' + i.ci + ')" style="width:100%;margin-top:4px;background:none;border:1px solid #9FE1CB;color:#138181;border-radius:6px;padding:5px;font-size:11px;font-weight:600;cursor:pointer;">Reopen - they only cancelled</button>'
+              : '') +
+          '</div>').join('') +
       '</div>').join('');
   }
   showModal(html);
@@ -6053,6 +6141,56 @@ function resetCountFor(c, pStart, pEnd) {
   return Math.max(tpResets, caseResets);
 }
 function isResetInPeriod(c, pStart, pEnd) { return resetCountFor(c, pStart, pEnd) > 0; }
+
+// Every retirement application inside the period, with what each contributes to
+// Amount, APV submitted and APV placed. One list, three tiles.
+function retMoneyRows(retCases, pStart, pEnd) {
+  const rows = [];
+  (retCases||[]).forEach(({ c, cs }) => (cs.touchpoints||[]).forEach(tp => (tp.apps||[]).forEach(ap => {
+    const d = new Date(ap.submitted_date || tp.datetime);
+    if (!(d >= pStart && d <= pEnd)) return;
+    const st = ap.status || '';
+    const amt = retAmountOf(ap);
+    rows.push({
+      clientId: c.id, name: c.name || '(no name)', carrier: ap.carrier || 'no carrier',
+      status: st || 'no status', when: d, amount: amt, apv: retApvFromAmount(amt),
+      counts: ['Submitted','Approved','Issued','Paid'].includes(st),
+      placed: ['Issued','Paid'].includes(st),
+    });
+  })));
+  return rows.sort((a, b) => b.amount - a.amount);
+}
+
+function openRetMoneyDetail(which) {
+  const rows = (window._retMoneyRows || []).filter(r => which === 'apvPlaced' ? r.placed : r.counts);
+  const money = n => '$' + Math.round(n || 0).toLocaleString();
+  const title = which === 'amount' ? 'Amount - account moving'
+              : which === 'apvSub' ? 'APV submitted' : 'APV placed';
+  const val = r => which === 'amount' ? r.amount : r.apv;
+  const total = rows.reduce((a, r) => a + val(r), 0);
+
+  let html = '<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">' + title + '</div>' +
+    '<div class="modal-sub">' + rows.length + ' application' + (rows.length === 1 ? '' : 's') + '</div>' +
+    '<div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#1D3557;background:#f0f4f8;border-radius:6px;padding:8px 10px;margin:8px 0;">' +
+      '<span>Total</span><span>' + money(total) + '</span></div>';
+  if (which !== 'amount')
+    html += '<div style="font-size:10px;color:#8fa8c0;margin-bottom:8px;">APV is 5% of the account amount - reporting only. Commission is your rate times the account amount.</div>';
+  if (!rows.length) html += '<div style="font-size:12px;color:#a0b8cc;">Nothing in this period.</div>';
+
+  html += rows.map(r =>
+    '<div style="border:1px solid #e2eaf2;border-radius:8px;padding:8px 10px;margin-bottom:6px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">' +
+        '<div onclick="closeModal();openClient(\'' + r.clientId + '\')" style="font-size:12px;font-weight:600;color:#138181;cursor:pointer;">' + esc(r.name) + '</div>' +
+        '<div style="font-size:12px;font-weight:700;color:#1D3557;white-space:nowrap;">' + money(val(r)) + '</div>' +
+      '</div>' +
+      '<div style="font-size:10px;color:#8fa8c0;margin-top:2px;">' +
+        esc(r.carrier) + ' &middot; ' + esc(r.status) + ' &middot; account ' + money(r.amount) +
+        ' &middot; ' + r.when.toLocaleDateString('en-US',{month:'short',day:'numeric'}) +
+      '</div>' +
+    '</div>').join('');
+  showModal(html);
+}
 
 function isRetirementApp(ap) {
   return !!(ap && ap.amount != null && ap.amount !== '' && Number(ap.amount) > 0);
@@ -6229,25 +6367,13 @@ async function removeApptMistake(id) {
 
 async function cancelAppt(id, fallout) {
   const c = clients.find(x=>x.id===id); if (!c) return;
-  // Where they fell out is what matters. After options = they saw it and passed,
-  // that's a no sale. Before options = they never got to see it, that's a
-  // dropped. Two different problems: closing vs getting to the presentation.
-  // (If they're rebooking, that's a reschedule - it just moves the appointment.)
-  // THIRD PATH: a cancellation is not always a fall-out. "Can't make it, but
-  // this is still a priority" is a live lead with no meeting on the calendar -
-  // no verdict, case stays open, back into the queue. See cancelApptLive.
-  if (!fallout) {
-    showSubModal(id, '<button class="close-x" onclick="closeToLead()">x</button>' +
-      '<div class="modal-title">Client cancelled</div>' +
-      '<div class="modal-sub">' + c.name + '</div>' +
-      '<div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:6px 10px;margin-bottom:12px;">Where did they fall out? This decides whether the case closes.</div>' +
-      '<div style="display:grid;gap:8px;">' +
-        '<button class="call-btn" style="background:#138181;color:#fff;padding:12px;" onclick="cancelApptLive(\'' + id + '\',null)">Still a priority - keep in the queue<div style="font-size:10px;opacity:.85;font-weight:400;">Logs Cancelled + cadence. No verdict, case stays open.</div></button>' +
-        '<button class="call-btn" style="background:#A32D2D;color:#fff;padding:12px;" onclick="cancelAppt(\'' + id + '\',\'nosale\')">Shown options - they passed<div style="font-size:10px;opacity:.85;font-weight:400;">Closes the case as a No sale.</div></button>' +
-        '<button class="call-btn" style="background:#3C3489;color:#fff;padding:12px;" onclick="cancelAppt(\'' + id + '\',\'dropped\')">Never got to options - dropped<div style="font-size:10px;opacity:.85;font-weight:400;">Closes the case as Dropped.</div></button>' +
-      '</div>');
-    return;
-  }
+  // h190: A CANCELLATION IS ALWAYS STILL ALIVE. This used to ask where they fell
+  // out and closed the case as a No sale or a Dropped either way - which is how a
+  // lead who cancelled and wanted to reschedule ended up Closed Lost. If they sat
+  // and passed, that is a sit outcome. If they are done, that is Not interested.
+  // Neither is a cancellation. The verdict paths below stay reachable for anything
+  // already recorded, but nothing reaches them from the Client cancelled button.
+  if (!fallout) return cancelApptLive(id, null);
   const afterOptions = (fallout === 'nosale');
   const ts = new Date().toISOString();
   const _cancelDials = window._dialCount || 1; disarmDial();   // h137: spent here
@@ -6311,10 +6437,18 @@ async function cancelApptLive(id, ci) {
   Object.assign(c, {cases, call_log:callLog, status:'Working', appt_datetime:null, appt_notes:null});
   hideSync();
   window._dialCount = 1;
-  closeModal();
-  showSync('Cancelled - still in the queue');
-  setTimeout(hideSync, 1800);
   render();
+  // They cancelled but they are still yours. Offer the reschedule now, while you
+  // have them - falling back into the queue blind loses the moment.
+  showSubModal(id, '<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">Cancelled</div>' +
+    '<div class="modal-sub">' + esc(c.name || '') + ' is back in the call queue</div>' +
+    '<div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:8px 10px;margin-bottom:12px;">Case stays open, appointment cleared. Want to lock in when you will try them again?</div>' +
+    '<div style="display:grid;gap:8px;">' +
+      '<button class="call-btn" style="background:#BA7517;color:#fff;padding:12px;" onclick="openCallbackPicker(\'' + id + '\')">Set a callback to reschedule</button>' +
+      '<button class="call-btn" style="background:#138181;color:#fff;padding:12px;" onclick="openApptSet(\'' + id + '\')">Rebook now</button>' +
+      '<button class="call-btn" style="background:none;border:1px solid #b9c6d4;color:#5f7a99;padding:10px;" onclick="closeModal()">Just leave them in the queue</button>' +
+    '</div>');
 }
 
 function dodgeDays() { return parseInt(getAgentSettings().pushOffDays) || 18; }
@@ -9087,17 +9221,33 @@ async function quickLog(id, outcome, statKey) {
   // Booking a new Life appointment later puts them back on the appointment track,
   // and a reset is a different case entirely - neither undoes this verdict.
   if (outcome==='Not interested') {
-    const closedCases = (c.cases||[]).map(cs => cs.status==='Open' ? {...cs,status:'Closed Lost'} : cs);
+    // h192: this closed EVERY open case, so declining mortgage protection also
+    // killed the Advanced Market case they had been reset into - the whole point
+    // of a reset - and dropped it into Lost on the retirement board. A verdict
+    // belongs to one product line. Same rule Repair already uses.
+    const closedCases = (c.cases||[]).map(cs =>
+      (cs.status==='Open' && !isRetirementCase(cs)) ? {...cs,status:'Closed Lost'} : cs);
     callLog[callLog.length-1].cases_closed = true;
     // h65: quietly note how many appts this lead had booked that never sat, so a
     // future "booked but never sat" rate is derivable. No new bucket/button.
     callLog[callLog.length-1].phantom_appts = (c.call_log||[]).filter(cl => cl.outcome === 'Appt set').length;
-    // any pending future touchpoint dies with the case, or the sidebar keeps it
-    closedCases.forEach(cs => (cs.touchpoints||[]).forEach(tp => {
-      if (tp && (!tp.outcome || tp.outcome==='pending')) tp.outcome = 'cancelled';
-    }));
-    if (c.gcal_event_id) { try { pushApptToCalendar(c, 'delete'); } catch(e) {} }
-    updatePayloadExtra = {cases:closedCases, appt_datetime:null, appt_notes:null};
+    // any pending future touchpoint dies with the case it belongs to - a live
+    // retirement step is untouched, it is a different product they never declined
+    closedCases.forEach(cs => {
+      if (cs.status !== 'Closed Lost') return;
+      (cs.touchpoints||[]).forEach(tp => {
+        if (tp && (!tp.outcome || tp.outcome==='pending')) tp.outcome = 'cancelled';
+      });
+    });
+    const retStillLive = closedCases.some(cs => cs.status === 'Open');
+    if (retStillLive) {
+      // they still have a live retirement case - keep them workable
+      updatePayloadExtra = {cases:closedCases};
+      newStatus = c.status === 'Appointment set' ? 'Appointment set' : 'Working';
+    } else {
+      if (c.gcal_event_id) { try { pushApptToCalendar(c, 'delete'); } catch(e) {} }
+      updatePayloadExtra = {cases:closedCases, appt_datetime:null, appt_notes:null};
+    }
   }
 
   c.call_log = callLog; c.status = newStatus;
@@ -11909,6 +12059,21 @@ function referralGiftSpend(pStart, pEnd) {
   return total;
 }
 
+// Which production month a calendar date actually lands in. A charge dated Jun 30
+// counts in JULY, because production months run from the day after one month's
+// last Friday to the next month's last Friday.
+function productionMonthLabelFor(dateStr) {
+  const d = new Date(String(dateStr) + 'T12:00:00');
+  if (isNaN(d)) return '?';
+  for (let off = -1; off <= 1; off++) {
+    const cm = new Date(d.getFullYear(), d.getMonth() + off, 1);
+    const b = getProductionMonthBounds(cm.getFullYear(), cm.getMonth());
+    if (d >= b.start && d <= b.end)
+      return cm.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  }
+  return '?';
+}
+
 function chargesInPeriod(pStart, pEnd, source) {
   return leadCharges().filter(ch => {
     if (source && !sameSourceFamily(ch.source, source)) return false;
@@ -11947,13 +12112,15 @@ async function removeLeadCharge(id) {
   openLeadSpend();
 }
 
-function openLeadSpend() {
-  const st = window._lastSourceStats || {};
-  const pStart = st.pStart || new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-  const pEnd = st.pEnd || new Date();
-  const label = st.label || 'this period';
-  const rows = chargesInPeriod(pStart, pEnd).slice()
-    .sort((a, b) => (a.date < b.date ? 1 : -1));
+function openLeadSpend(showAll) {
+  // h193: this read the LAST source-comparison render instead of the period you
+  // are actually looking at, so the two could drift. Same bounds as every other
+  // number on the board now.
+  const b = getPeriodBounds('production');
+  const pStart = b.start, pEnd = b.end, label = b.label;
+  const all = !!showAll;
+  const rows = (all ? leadCharges().slice() : chargesInPeriod(pStart, pEnd).slice())
+    .sort((a, b2) => (a.date < b2.date ? 1 : -1));
   const srcs = chargeSourceOptions();
   const today = new Date().toISOString().slice(0, 10);
   const byS = {};
@@ -11963,7 +12130,16 @@ function openLeadSpend() {
   showModal(
     '<button class="close-x" onclick="closeModal()">x</button>' +
     '<div class="modal-title">Lead spend</div>' +
-    '<div class="modal-sub">' + esc(label) + '</div>' +
+    '<div class="modal-sub">' + (all ? 'Every charge on file' : esc(label)) + '</div>' +
+    // Months here are CARRIER PRODUCTION months, Friday to Friday - not calendar
+    // months. A charge dated the 28th can land in the next month and look lost.
+    '<div style="font-size:10px;color:#8fa8c0;margin-bottom:6px;">' +
+      (all ? 'Newest first. The month shown is where each charge counts.'
+           : esc(label) + ' runs ' + pStart.toLocaleDateString('en-US',{month:'short',day:'numeric'}) +
+             ' to ' + pEnd.toLocaleDateString('en-US',{month:'short',day:'numeric'}) +
+             ' - production months run Saturday to Friday, not 1st to 31st.') + '</div>' +
+    '<button onclick="openLeadSpend(' + (all ? 'false' : 'true') + ')" style="width:100%;background:none;border:1px solid #9FE1CB;border-radius:8px;padding:7px;font-size:11px;font-weight:600;color:#138181;cursor:pointer;margin-bottom:8px;">' +
+      (all ? 'Show only ' + esc(label) : 'Show all charges') + '</button>' +
 
     '<div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 12px;">' +
       srcs.map(s => '<div style="flex:1;min-width:78px;background:#DEE4EC;border-radius:8px;padding:7px 9px;">' +
@@ -11999,7 +12175,8 @@ function openLeadSpend() {
       ? rows.map(ch =>
           '<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.07);">' +
             '<div style="font-size:11px;color:#5E6A78;width:64px;flex-shrink:0;">' +
-              new Date(ch.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '</div>' +
+              new Date(ch.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
+              (all ? '<div style="font-size:9px;color:#8fa8c0;">counts in ' + esc(productionMonthLabelFor(ch.date)) + '</div>' : '') + '</div>' +
             '<div style="font-size:10px;font-weight:700;color:#0E6363;width:34px;flex-shrink:0;">' + esc(ch.source) + '</div>' +
             '<div style="flex:1;font-size:11px;color:#5E6A78;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(ch.note || '') + '</div>' +
             '<div style="font-size:12px;font-weight:600;">$' + Number(ch.amount).toLocaleString() + '</div>' +
