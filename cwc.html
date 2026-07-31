@@ -505,7 +505,7 @@ html,body{overflow-x:hidden !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h187</span>
+        <span class="build-tag" id="build-tag" title="build">b715h188</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
         <div class="period-label" id="period-label">This week</div>
@@ -5897,31 +5897,58 @@ function retCommissionOf(ap, clientAge) {
 // written before the rules tightened, and they are why an appointment can sit on
 // the sidebar for someone who already told you no. Found, listed, and only
 // cleared when you tap - never silently.
-const _CONTRA_TERMINAL = ['Closed','Dead','No sale','No show'];
+// h188: the first version flagged 65 leads and most were fine. Two lessons, both
+// from her: an appointment a lead SAT for is real history and survives the case
+// closing, and a PPU is a pending step on a Closed WON case by design. The only
+// verdict that unmakes an appointment is Not interested - if they never saw
+// numbers, there was never really an appointment to keep.
+const _CONTRA_TERMINAL = ['Closed','Dead','No sale'];   // statuses the sidebar already hides
+
+// Did this lead's last word amount to "not interested"? Only then is a booking
+// on them fictional. A no-show is NOT this - they stay real until you drop them.
+function verdictIsNotInterested(c) {
+  const at = (o) => Math.max(0, ...((c.call_log||[]).filter(cl => cl.outcome === o).map(cl => new Date(cl.ts).getTime() || 0)));
+  const saidNo = at('Not interested');
+  if (!saidNo) return false;
+  const booked = Math.max(at('Appt set'), at('Rescheduled'));
+  return saidNo > booked;   // a later re-book means they came back
+}
 
 function contradictionsFor(c) {
   const out = [];
   if (!c) return out;
-  const terminal = _CONTRA_TERMINAL.includes(c.status);
   const pending = tp => tp && (!tp.outcome || tp.outcome === 'pending') && tp.datetime;
+  const notInterested = verdictIsNotInterested(c);
 
-  if (terminal && c.appt_datetime) out.push('Appointment still set on a ' + c.status + ' lead');
-
-  (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
-    if (!pending(tp)) return;
-    if (cs.status !== 'Open') out.push('Pending ' + (tp.type || 'appointment') + ' on a ' + cs.status + ' case');
-    else if (terminal)        out.push('Pending ' + (tp.type || 'appointment') + ' on a ' + c.status + ' lead');
-  }));
-
-  // The pre-h186 shape: they said no, but the appointment outlived the verdict
-  // because the old rule treated a booked appointment as untouchable.
-  const at = (o) => Math.max(0, ...(c.call_log||[]).filter(cl => cl.outcome === o).map(cl => new Date(cl.ts).getTime() || 0));
-  const saidNo = at('Not interested');
-  const booked = Math.max(at('Appt set'), at('Rescheduled'));
-  if (saidNo > 0 && saidNo > booked) {
-    const liveTp = (c.cases||[]).some(cs => cs.status === 'Open' && (cs.touchpoints||[]).some(pending));
-    if (c.appt_datetime || liveTp) out.push('Marked Not interested, but still holds an appointment');
+  // 1. They said no, but a booking outlived the verdict.
+  if (notInterested) {
+    if (c.appt_datetime) out.push('Not interested, but still holds an appointment');
+    if ((c.cases||[]).some(cs => cs.status === 'Open' && (cs.touchpoints||[]).some(pending)))
+      out.push('Not interested, but a step is still pending');
+    // the two streams that are not appointments at all
+    if (!_CONTRA_TERMINAL.includes(c.status) && getScheduledCallback(c) && !isCallbackResolved(c))
+      out.push('Not interested, but a callback is still scheduled');
+    if (c.status === 'Follow-up')
+      out.push('Not interested, but still sitting in Follow-up');
   }
+
+  // 2. A live step on a case that was LOST. Closed WON is excluded on purpose -
+  //    that is exactly where a PPU lives.
+  (c.cases||[]).forEach(cs => {
+    if (cs.status !== 'Closed Lost' && cs.status !== 'Reset') return;
+    (cs.touchpoints||[]).forEach(tp => {
+      if (pending(tp)) out.push('Pending ' + (tp.type || 'step') + ' on a ' + cs.status + ' case');
+    });
+  });
+
+  // 3. A callback or follow-up still live on a lead with nothing open at all.
+  if (!_CONTRA_TERMINAL.includes(c.status) && (c.cases||[]).length &&
+      !(c.cases||[]).some(cs => cs.status === 'Open')) {
+    if (getScheduledCallback(c) && !isCallbackResolved(c))
+      out.push('Callback scheduled, but every case is closed');
+    if (c.status === 'Follow-up') out.push('In Follow-up, but every case is closed');
+  }
+
   return [...new Set(out)];
 }
 
@@ -5936,24 +5963,29 @@ function findContradictions() {
 // too. Cases and outcomes already recorded are never touched.
 async function repairContradiction(id) {
   const c = clients.find(x => x.id === id); if (!c) return;
-  const terminal = _CONTRA_TERMINAL.includes(c.status);
   const cases = JSON.parse(JSON.stringify(c.cases || []));
-  const saidNo = Math.max(0, ...(c.call_log||[]).filter(cl => cl.outcome === 'Not interested').map(cl => new Date(cl.ts).getTime() || 0));
-  const booked = Math.max(0, ...(c.call_log||[]).filter(cl => cl.outcome === 'Appt set' || cl.outcome === 'Rescheduled').map(cl => new Date(cl.ts).getTime() || 0));
-  const verdictStands = saidNo > 0 && saidNo > booked;
+  const notInterested = verdictIsNotInterested(c);
 
   cases.forEach(cs => {
-    const closing = (cs.status !== 'Open') || terminal || verdictStands;
-    if (!closing) return;
-    if (verdictStands && cs.status === 'Open') cs.status = 'Closed Lost';
+    // never touch a Closed WON case - that is where a real PPU lives
+    if (cs.status === 'Closed Won') return;
+    if (cs.status !== 'Closed Lost' && cs.status !== 'Reset' && !notInterested) return;
+    if (notInterested && cs.status === 'Open') cs.status = 'Closed Lost';
     (cs.touchpoints||[]).forEach(tp => {
       if (tp && (!tp.outcome || tp.outcome === 'pending')) tp.outcome = 'cancelled';
     });
   });
 
-  if (c.gcal_event_id) { try { pushApptToCalendar(c, 'delete'); } catch (e) {} }
-  const patch = { cases, appt_datetime: null, appt_notes: null };
-  if (verdictStands && !terminal) patch.status = 'Dead';
+  const patch = { cases };
+  if (notInterested) {
+    // only a not-interested verdict unmakes the appointment itself
+    if (c.gcal_event_id) { try { pushApptToCalendar(c, 'delete'); } catch (e) {} }
+    patch.appt_datetime = null;
+    patch.appt_notes = null;
+    // Dead is what removes them from the callback and follow-up streams - those
+    // read status, not cases, which is how they survived every earlier fix.
+    if (!_CONTRA_TERMINAL.includes(c.status)) patch.status = 'Dead';
+  }
   showSync('Repairing...');
   await sb.from('clients').update(patch).eq('id', id);
   Object.assign(c, patch);
@@ -5979,6 +6011,16 @@ function openRepairPanel() {
   } else {
     html += '<div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:8px 10px;margin:8px 0;">' +
       'Clearing removes the appointment and marks any leftover pending step cancelled. Sales, sits and logged outcomes are never touched.</div>' +
+      (function(){
+        const tally = {};
+        rows.forEach(r => r.issues.forEach(i => { tally[i] = (tally[i] || 0) + 1; }));
+        return '<div style="border:1px solid #e2eaf2;border-radius:8px;padding:8px 10px;margin-bottom:8px;">' +
+          '<div style="font-size:10px;font-weight:700;color:#5f7a99;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">What is in this list</div>' +
+          Object.keys(tally).sort((a,b) => tally[b] - tally[a]).map(k =>
+            '<div style="display:flex;justify-content:space-between;font-size:11px;color:#5f7a99;padding:2px 0;">' +
+              '<span>' + esc(k) + '</span><span style="font-weight:700;color:#1D3557;">' + tally[k] + '</span></div>').join('') +
+        '</div>';
+      })() +
       '<button onclick="repairAllContradictions()" style="width:100%;background:#A32D2D;color:#fff;border:none;border-radius:8px;padding:10px;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:10px;">Clear all ' + rows.length + '</button>';
     html += rows.map(r =>
       '<div style="border:1px solid #e2eaf2;border-radius:8px;padding:9px 10px;margin-bottom:6px;">' +
