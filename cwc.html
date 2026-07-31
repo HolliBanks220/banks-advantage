@@ -510,7 +510,7 @@ html,body{overflow-x:hidden !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h193</span>
+        <span class="build-tag" id="build-tag" title="build">b715h194</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
         <div class="period-label" id="period-label">This week</div>
@@ -2470,20 +2470,17 @@ function renderSourceComparison(pStart, pEnd, label) {
       }))
     ).length;
 
-    // APV from sales in period (all-time for day)
-    const totalAPV = sourceClients.reduce((acc, c) => {
-      const tpAPV = (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).filter(tp => {
-        if (tp.outcome !== 'sale') return false;
-        if (isDay) return true;
-        const d = new Date(tp.datetime);
-        return d >= pStart && d <= pEnd;
-      })).reduce((a,tp) => a + (tp.apps||[]).reduce((b,ap) => b+premOf(ap), 0), 0);
-      const sitAPV = (c.sits||[]).filter(s => {
-        if (s.outcome !== 'showed') return false;
-        if (isDay) return true;
-        const d = new Date(s.datetime);
-        return d >= pStart && d <= pEnd;
-      }).reduce((a,s) => a + (s.apps||[]).reduce((b,ap) => b+premOf(ap), 0), 0);
+    // h194: COHORT, like commission. These two answered different questions with
+    // the same denominator - APV counted sales that HAPPENED in the period from any
+    // lead, commission counted every sale the period's leads have ever made. So a
+    // June lead that closed in July landed in June's commission and not its APV,
+    // which is how $77 APV/lead sat beside $592 commission/lead.
+    // Recent periods read low on purpose: those leads have not closed yet.
+    const totalAPV = cohort.reduce((acc, c) => {
+      const tpAPV = (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).filter(tp => tp.outcome === 'sale'))
+        .reduce((a,tp) => a + (tp.apps||[]).reduce((b,ap) => b+premOf(ap), 0), 0);
+      const sitAPV = (c.sits||[]).filter(s => s.outcome === 'showed')
+        .reduce((a,s) => a + (s.apps||[]).reduce((b,ap) => b+premOf(ap), 0), 0);
       return acc + tpAPV + sitAPV;
     }, 0);
 
@@ -5848,11 +5845,14 @@ function isSuperseded(ap) {
 // ============================================================================
 const RETIREMENT_APV_RATE = 0.05;
 function retApvFromAmount(amount) { return (Number(amount) || 0) * RETIREMENT_APV_RATE; }
+// h194: this used to invent an account by dividing the premium by 5% - times
+// twenty - whenever `amount` was blank. A $3,567 whole life policy sitting on a
+// retirement case therefore reported a $71,345 account moving. A blank account
+// field means no account is moving. Full stop.
 function retAmountOf(ap) {
   if (!ap) return 0;
   if (ap.amount != null && ap.amount !== '') return Number(ap.amount) || 0;
-  // no amount recorded -> back it out of APV so older rows still report
-  return (Number(ap.premium) || 0) / RETIREMENT_APV_RATE;
+  return 0;
 }
 
 // Insure Realty is not a carrier in COMP_DATA, so its ladder lives here. Half a
@@ -6150,6 +6150,7 @@ function retMoneyRows(retCases, pStart, pEnd) {
     const d = new Date(ap.submitted_date || tp.datetime);
     if (!(d >= pStart && d <= pEnd)) return;
     const st = ap.status || '';
+    if (!isRetirementApp(ap)) return;   // h194: a life policy on this board is not an account
     const amt = retAmountOf(ap);
     rows.push({
       clientId: c.id, name: c.name || '(no name)', carrier: ap.carrier || 'no carrier',
@@ -6192,8 +6193,28 @@ function openRetMoneyDetail(which) {
   showModal(html);
 }
 
+// What COMP_DATA calls this product. Annuities are typed 'Advanced Markets, Annuity'.
+function appProductType(ap) {
+  const comp = COMP_DATA[(ap && ap.carrier) || ''];
+  if (!comp || !comp.products) return '';
+  const named = comp.products.find(pr => pr.name === ((ap && ap.product) || ''));
+  return (named && named.type) || '';
+}
+
+// ONLY INSURE REALTY OR AN ANNUITY IS RETIREMENT. h194: this was decided by the
+// CASE - so a reset routed the case to Advanced Market and every application
+// written on it counted as retirement, including an American Amicable whole life
+// mortgage protection policy. The product decides, never the board it sits on.
 function isRetirementApp(ap) {
-  return !!(ap && ap.amount != null && ap.amount !== '' && Number(ap.amount) > 0);
+  if (!ap) return false;
+  if (/insure\s*realty/i.test(ap.carrier || '')) return true;
+  if (/annuity/i.test(appProductType(ap))) return true;
+  if (/annuity/i.test(ap.product || '')) return true;
+  // An explicit account amount is only ever filled in for an account app. Kept as
+  // a signal so an annuity written without its product name recorded still counts
+  // - but note Dennis and Emily's whole life policy has NO amount, which is
+  // exactly why it no longer qualifies.
+  return Number(ap.amount) > 0;
 }
 
 // THE single commission ledger. The Reports drill-down and the Lead Source
@@ -6228,13 +6249,14 @@ function commissionDetail(cl) {
 
   (cl.cases||[]).forEach((cs, ci) => (cs.touchpoints||[]).forEach((t, ti) => {
     if (!t || t.outcome !== 'sale') return;
-    const ret = isRetirementCase(cs);
+    // h194: was isRetirementCase(cs). A life policy written on an Advanced Market
+    // case is still a life policy and earns premium x contract level.
     (t.apps||[]).forEach((ap, ai) => rows.push({
-      from: 'case', ci, ti, ai, ret, when: t.datetime,
+      from: 'case', ci, ti, ai, ret: isRetirementApp(ap), when: t.datetime,
       carrier: ap.carrier || '', product: ap.product || '',
       status: ap.status || '', premium: Number(ap.premium) || 0,
       amount: ap.amount != null && ap.amount !== '' ? Number(ap.amount) : null,
-      value: value(ap, ret),
+      value: value(ap, isRetirementApp(ap)),
     }));
   }));
   (cl.sits||[]).forEach((sit, si) => {
