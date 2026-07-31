@@ -510,8 +510,9 @@ html,body{overflow-x:hidden !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h195</span>
+        <span class="build-tag" id="build-tag" title="build">b715h197</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
+        <button class="gear-btn" id="undo-btn" onclick="undoLastAction()" style="display:none;" title="Undo the last action">&#8634;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
         <div class="period-label" id="period-label">This week</div>
         <button class="arrow-btn" onclick="shiftPeriod(1)">&#8594;</button>
@@ -830,7 +831,6 @@ html,body{overflow-x:hidden !important;}
   </div>
   </div>
 
-  <div id="undo-bar" style="display:none;background:#1D3557;color:#fff;border-radius:8px;padding:7px 10px;margin-bottom:8px;font-size:11px;font-weight:600;"></div>
   <div id="tab-clients" style="display:none;">
     <div class="leads-hdr">
       <div style="display:flex;flex-direction:column;min-width:0;flex:1;">
@@ -3670,6 +3670,9 @@ function stampIssuedDate(app) {
 }
 
 async function setAppStatus(clientId, ci, ti, ai, newStatus) {
+  return recordAction(clientId, 'App status \u2192 ' + newStatus, () => _setAppStatus(clientId, ci, ti, ai, newStatus));
+}
+async function _setAppStatus(clientId, ci, ti, ai, newStatus) {
   const c = clients.find(x=>x.id===clientId); if (!c) return;
   const ap = (((c.cases||[])[ci]||{}).touchpoints||[])[ti];
   if (!ap || !ap.apps || !ap.apps[ai]) return;
@@ -6436,6 +6439,9 @@ async function cancelAppt(id, fallout) {
 // this neither nags for an outcome nor keeps counting as an appointment - the
 // same way cancelAppt has always behaved.
 async function cancelApptLive(id, ci) {
+  return recordAction(id, 'Client cancelled', () => _cancelApptLive(id, ci));
+}
+async function _cancelApptLive(id, ci) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const ts = new Date().toISOString();
   const _dials = window._dialCount || 1; disarmDial();   // spent here
@@ -7119,6 +7125,9 @@ function showContModal(id, ci) {
 }
 
 async function confirmSitOutcome(id, ci, outcome, opts) {
+  return recordAction(id, 'Sit outcome \u2192 ' + outcome, () => _confirmSitOutcome(id, ci, outcome, opts));
+}
+async function _confirmSitOutcome(id, ci, outcome, opts) {
   opts = opts || {};
   const c = clients.find(x=>x.id===id); if (!c) return;
   // "No show - dead": the slot still evaporated, so it logs a REAL no-show in
@@ -8226,6 +8235,9 @@ function openApptPicker(id) {
 }
 
 async function confirmAppt(id) {
+  return recordAction(id, 'Appointment booked', () => _confirmAppt(id));
+}
+async function _confirmAppt(id) {
   // A slow save + an impatient second tap wrote identical pending touchpoints
   // 2-3x (three copies of one appointment observed in the wild). One save at
   // a time; the button simply does nothing while a save is in flight.
@@ -8443,6 +8455,44 @@ function _statLine(bundle, sign) {
 // So: before any outcome rewrites the record, photograph it. The photo rides on
 // the log entry, so putting the entry back puts the record back - however long
 // afterwards - and the same photo powers the global Undo.
+// ACTION HISTORY. h197: every record-changing action photographs the lead first
+// and files the photo here, so any of them can be undone later and the whole day
+// can be read back in order. Rolling 500, kept in localStorage - it survives a
+// refresh and never grows without bound.
+const ACTION_LOG_KEY = 'cwc_action_log';
+const ACTION_LOG_MAX = 500;
+
+function actionLog() {
+  try { return JSON.parse(localStorage.getItem(ACTION_LOG_KEY) || '[]'); } catch (e) { return []; }
+}
+function writeActionLog(list) {
+  try { localStorage.setItem(ACTION_LOG_KEY, JSON.stringify(list.slice(-ACTION_LOG_MAX))); } catch (e) {}
+}
+
+// EVERY writer that changes a lead's record goes through this. It photographs the
+// lead, runs the work, files the photo, and arms Undo. Nothing else needs to
+// remember to do any of that - which is exactly why the old per-writer approach
+// left holes.
+async function recordAction(id, label, fn) {
+  const c = clients.find(x => x.id === id);
+  const before = c ? snapshotOf(c) : null;
+  const out = await fn();
+  const after = clients.find(x => x.id === id);
+  if (before && after) {
+    const changed = JSON.stringify(before) !== JSON.stringify(snapshotOf(after));
+    if (changed) {
+      const list = actionLog();
+      list.push({
+        aid: 'a_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+        id, name: after.name || '', label, at: new Date().toISOString(), before,
+      });
+      writeActionLog(list);
+      rememberUndo(id, before, label);
+    }
+  }
+  return out;
+}
+
 function snapshotOf(c) {
   if (!c) return null;
   return {
@@ -8513,16 +8563,16 @@ async function undoLastAction() {
   setTimeout(hideSync, 2000);
 }
 
+// h196: this was a banner across the top of the lead list. Too loud for something
+// you need twice a month - it is an icon beside the gear now, shown only when
+// there is something to undo, and it says what it will undo when you tap it.
 function renderUndoBar() {
-  const el = document.getElementById('undo-bar'); if (!el) return;
+  const el = document.getElementById('undo-btn'); if (!el) return;
   const a = getLastAction();
-  if (!a) { el.style.display = 'none'; return; }
-  const c = clients.find(x => x.id === a.id);
-  if (!c) { el.style.display = 'none'; return; }
-  el.style.display = 'block';
-  el.innerHTML = '<span style="opacity:.85;">' + esc(a.label || 'Last action') + ' &middot; ' + esc(c.name || '') + '</span>' +
-    '<button onclick="undoLastAction()" style="margin-left:8px;background:#fff;color:#1D3557;border:none;border-radius:5px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;">Undo</button>' +
-    '<button onclick="clearUndo()" style="margin-left:5px;background:none;border:none;color:#fff;opacity:.6;font-size:14px;cursor:pointer;">&times;</button>';
+  const c = a && clients.find(x => x.id === a.id);
+  if (!a || !c) { el.style.display = 'none'; return; }
+  el.style.display = '';
+  el.title = 'Undo: ' + (a.label || 'last action') + ' on ' + (c.name || 'this lead');
 }
 
 // Everything touched in the last 24 hours, so a lead can be misfiled but never
@@ -8539,6 +8589,70 @@ function recentlyChanged() {
     rows.push({ c, when, what: tomb > last ? 'entry removed' : ((lastEntry && lastEntry.outcome) || 'changed') });
   });
   return rows.sort((a, b) => b.when - a.when);
+}
+
+// A day, read back in order. Pick the date and the hours, see every action with
+// its time and undo any of them.
+function openActionHistory(dateStr, fromH, toH) {
+  const today = new Date().toISOString().slice(0, 10);
+  const d = dateStr || window._ahDate || today;
+  const f = (fromH == null) ? (window._ahFrom == null ? 0 : window._ahFrom) : fromH;
+  const t = (toH == null) ? (window._ahTo == null ? 24 : window._ahTo) : toH;
+  window._ahDate = d; window._ahFrom = f; window._ahTo = t;
+
+  const rows = actionLog().filter(a => {
+    const when = new Date(a.at);
+    if (isNaN(when)) return false;
+    if (when.toISOString().slice(0, 10) !== d && when.toLocaleDateString('en-CA') !== d) return false;
+    const h = when.getHours() + when.getMinutes() / 60;
+    return h >= f && h < t;
+  }).reverse();
+
+  const hr = (n) => { const ap = n < 12 ? 'am' : 'pm'; const h12 = n % 12 === 0 ? 12 : n % 12;
+    return n === 24 ? 'midnight' : h12 + ap; };
+  const opts = (sel) => Array.from({length: 25}, (_, i) => i)
+    .map(i => '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>' + hr(i) + '</option>').join('');
+
+  let html = '<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">History</div>' +
+    '<div class="modal-sub">' + rows.length + ' action' + (rows.length === 1 ? '' : 's') + '</div>' +
+    '<div style="display:flex;gap:6px;margin:8px 0;">' +
+      '<input type="date" id="ah-date" value="' + d + '" onchange="openActionHistory(this.value)" style="flex:1.3;font-size:12px;">' +
+      '<select id="ah-from" onchange="openActionHistory(null,parseInt(this.value),null)" style="flex:1;font-size:12px;">' + opts(f) + '</select>' +
+      '<select id="ah-to" onchange="openActionHistory(null,null,parseInt(this.value))" style="flex:1;font-size:12px;">' + opts(t) + '</select>' +
+    '</div>';
+
+  if (!rows.length) html += '<div style="font-size:12px;color:#a0b8cc;">Nothing in that window.</div>';
+  html += rows.map(a => {
+    const when = new Date(a.at);
+    return '<div style="border:1px solid #e2eaf2;border-radius:8px;padding:8px 10px;margin-bottom:6px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">' +
+        '<div onclick="closeModal();openClient(\'' + a.id + '\')" style="font-size:12px;font-weight:600;color:#138181;cursor:pointer;">' + esc(a.name || '(no name)') + '</div>' +
+        '<div style="font-size:10px;color:#8fa8c0;white-space:nowrap;">' +
+          when.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'}) + '</div>' +
+      '</div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:3px;">' +
+        '<div style="font-size:11px;color:#5f7a99;">' + esc(a.label || 'changed') + '</div>' +
+        '<button onclick="undoAction(\'' + a.aid + '\')" style="background:none;border:1px solid #b9c6d4;color:#5f7a99;border-radius:6px;padding:3px 9px;font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;">Undo this</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+  showModal(html);
+}
+
+// Undo one action from the history, however long ago.
+async function undoAction(aid) {
+  const a = actionLog().find(x => x.aid === aid); if (!a) return;
+  const c = clients.find(x => x.id === a.id);
+  if (!c) { alert('That lead is no longer here.'); return; }
+  if (!confirm('Undo "' + (a.label || 'this action') + '" on ' + (c.name || 'this lead') + '?\n\n' +
+               'The lead goes back exactly as it was just before it.')) return;
+  await restoreSnapshot(a.id, a.before, 'Undoing...');
+  writeActionLog(actionLog().filter(x => x.aid !== aid));
+  const last = getLastAction();
+  if (last && last.id === a.id) clearUndo();
+  render();
+  openActionHistory();
 }
 
 function openRecentlyChanged() {
@@ -8615,6 +8729,9 @@ function openLogEntryEditor(id, idx) {
 }
 
 async function saveLogEntryEdit(id, idx) {
+  return recordAction(id, 'Call log edited', () => _saveLogEntryEdit(id, idx));
+}
+async function _saveLogEntryEdit(id, idx) {
   const c = clients.find(x => x.id === id); if (!c) return;
   const log = [...(c.call_log || [])];
   const e = log[idx]; if (!e) return;
@@ -9345,6 +9462,9 @@ async function quickLogAndText(id) {
 }
 
 async function quickLog(id, outcome, statKey) {
+  return recordAction(id, outcome, () => _quickLog(id, outcome, statKey));
+}
+async function _quickLog(id, outcome, statKey) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const _before = snapshotOf(c);   // h195: so this is always reversible
   const dialCount = window._dialCount || 1;
@@ -9427,8 +9547,7 @@ async function quickLog(id, outcome, statKey) {
   // The photo rides on the entry itself, so removing the entry later restores the
   // record - not just its stats. Only stored when the record actually changed.
   if (callLog.length && (newStatus !== _before.status || Object.keys(updatePayloadExtra).length)) {
-    callLog[callLog.length - 1]._before = _before;
-    rememberUndo(id, _before, outcome);
+    callLog[callLog.length - 1]._before = _before;   // so removing the entry reverses it
   }
   c.call_log = callLog; c.status = newStatus;
   showSync('Saving...');
@@ -10718,6 +10837,9 @@ async function deleteCase(id, ci) {
 }
 
 async function saveEditCase(id, ci) {
+  return recordAction(id, 'Case edited', () => _saveEditCase(id, ci));
+}
+async function _saveEditCase(id, ci) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   c.cases[ci].type = document.getElementById('ec-type').value;
   c.cases[ci].status = document.getElementById('ec-status').value;
@@ -11269,6 +11391,9 @@ function updateAppCompDisplay(i) {
 }
 
 async function saveAppsToTouchpoint(id, ci, ti) {
+  return recordAction(id, 'Applications saved', () => _saveAppsToTouchpoint(id, ci, ti));
+}
+async function _saveAppsToTouchpoint(id, ci, ti) {
   const c = clients.find(x=>x.id===id); if(!c) return;
   // Rule: a sale dates to the SIT it was run on — this specific touchpoint's
   // datetime — not the day it was logged. Falls back to now only if the sit
@@ -11645,6 +11770,9 @@ function updateProducts() {
 }
 
 async function saveApp(id, si) {
+  return recordAction(id, 'Application edited', () => _saveApp(id, si));
+}
+async function _saveApp(id, si) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   const app = {who:(document.getElementById('ap-who')||{value:''}).value.trim(), carrier:document.getElementById('ap-carrier').value, product:document.getElementById('ap-product').value, faceAmount:parseInt(document.getElementById('ap-face').value)||0, premium:parseInt(document.getElementById('ap-premium').value)||0, notes:document.getElementById('ap-notes').value.trim(), uploaded:document.getElementById('ap-uploaded').checked, created:new Date().toISOString()};
   c.sits[si].apps = [...(c.sits[si].apps||[]), app];
@@ -13320,7 +13448,7 @@ function openSettings() {
         (n ? 'border:1px solid #F5A0A0;' : '') + '">' +
         '<div style="font-size:10px;font-weight:600;color:' + (n ? '#A32D2D' : '#5f7a99') + ';text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Repair' +
           (n ? ' &middot; ' + n : '') + '</div>' +
-        '<button class="save-btn" style="margin-bottom:4px;" onclick="openRecentlyChanged()">Recently changed - last 24 hours</button>' +
+        '<button class="save-btn" style="margin-bottom:4px;" onclick="openActionHistory()">History - what changed, and when</button>' +
         '<button class="save-btn" style="margin-bottom:4px;" onclick="openRepairPanel()">' +
           (n ? 'Review ' + n + ' contradiction' + (n === 1 ? '' : 's') : 'Check for contradictions') + '</button>' +
         '<div style="font-size:11px;color:#5f7a99;">Leads holding an appointment they should not - a booking left on someone who already said no, or a pending step on a closed case.</div>' +
