@@ -510,7 +510,7 @@ html,body{overflow-x:hidden !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h194</span>
+        <span class="build-tag" id="build-tag" title="build">b715h195</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
         <div class="period-label" id="period-label">This week</div>
@@ -830,6 +830,7 @@ html,body{overflow-x:hidden !important;}
   </div>
   </div>
 
+  <div id="undo-bar" style="display:none;background:#1D3557;color:#fff;border-radius:8px;padding:7px 10px;margin-bottom:8px;font-size:11px;font-weight:600;"></div>
   <div id="tab-clients" style="display:none;">
     <div class="leads-hdr">
       <div style="display:flex;flex-direction:column;min-width:0;flex:1;">
@@ -6618,6 +6619,7 @@ function dormantLeads() {
 }
 
 function renderClients(q='') {
+  try { renderUndoBar(); } catch (e) {}
   window._freshRemaining = countFreshCallable();
   const el = document.getElementById('clients-list');
   const list = getFilteredClients(q);
@@ -8432,6 +8434,132 @@ function _statLine(bundle, sign) {
 // Does this entry own the lead's current appointment? Then removing it has to
 // take the pending touchpoint and the calendar event with it, or you keep driving
 // to an appointment that no longer exists.
+// UNDO. h195: a logged outcome rewrites the record - status, cases, the
+// appointment, the calendar event - and until now deleting that log entry only
+// reversed the STATS. Removing a Not interested left the lead Dead, its case
+// closed, its appointment gone and its calendar event deleted, with nothing left
+// on the record to say why. A lead could disappear entirely.
+//
+// So: before any outcome rewrites the record, photograph it. The photo rides on
+// the log entry, so putting the entry back puts the record back - however long
+// afterwards - and the same photo powers the global Undo.
+function snapshotOf(c) {
+  if (!c) return null;
+  return {
+    status: c.status,
+    appt_datetime: c.appt_datetime || null,
+    appt_notes: c.appt_notes || null,
+    gcal_event_id: c.gcal_event_id || null,
+    resolved_at: c.resolved_at || null,
+    resolved_as: c.resolved_as || null,
+    cases: JSON.parse(JSON.stringify(c.cases || [])),
+  };
+}
+
+// Put a record back exactly as it was. Rebuilds the calendar event if the
+// snapshot had an appointment and the record has since lost it.
+async function restoreSnapshot(id, snap, why) {
+  const c = clients.find(x => x.id === id); if (!c || !snap) return false;
+  const patch = {
+    status: snap.status,
+    appt_datetime: snap.appt_datetime,
+    appt_notes: snap.appt_notes,
+    resolved_at: snap.resolved_at,
+    resolved_as: snap.resolved_as,
+    cases: JSON.parse(JSON.stringify(snap.cases || [])),
+  };
+  showSync(why || 'Undoing...');
+  try { await sb.from('clients').update(patch).eq('id', id); }
+  catch (err) { console.error('restoreSnapshot', err); }
+  Object.assign(c, patch);
+  if (snap.appt_datetime && !c.gcal_event_id) {
+    try { await pushApptToCalendar(c, 'create'); } catch (e) {}
+  }
+  hideSync();
+  return true;
+}
+
+// The last record-changing action, for the Undo button. One deep, deliberately -
+// anything older is undone from the log entry that carries its own snapshot.
+function rememberUndo(id, snap, label) {
+  if (!snap) return;
+  window._lastAction = { id, snap, label, at: Date.now() };
+  try { localStorage.setItem('cwc_last_action', JSON.stringify(window._lastAction)); } catch (e) {}
+  renderUndoBar();
+}
+
+function getLastAction() {
+  if (window._lastAction) return window._lastAction;
+  try { const raw = localStorage.getItem('cwc_last_action'); if (raw) return JSON.parse(raw); } catch (e) {}
+  return null;
+}
+
+function clearUndo() {
+  window._lastAction = null;
+  try { localStorage.removeItem('cwc_last_action'); } catch (e) {}
+  renderUndoBar();
+}
+
+async function undoLastAction() {
+  const a = getLastAction(); if (!a) return;
+  const c = clients.find(x => x.id === a.id);
+  if (!c) { clearUndo(); return; }
+  if (!confirm('Undo "' + (a.label || 'last action') + '" on ' + (c.name || 'this lead') + '?\n\n' +
+               'The lead goes back exactly as it was, including the appointment.')) return;
+  await restoreSnapshot(a.id, a.snap, 'Undoing...');
+  clearUndo();
+  render();
+  showSync('Undone - ' + (c.name || ''));
+  setTimeout(hideSync, 2000);
+}
+
+function renderUndoBar() {
+  const el = document.getElementById('undo-bar'); if (!el) return;
+  const a = getLastAction();
+  if (!a) { el.style.display = 'none'; return; }
+  const c = clients.find(x => x.id === a.id);
+  if (!c) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = '<span style="opacity:.85;">' + esc(a.label || 'Last action') + ' &middot; ' + esc(c.name || '') + '</span>' +
+    '<button onclick="undoLastAction()" style="margin-left:8px;background:#fff;color:#1D3557;border:none;border-radius:5px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;">Undo</button>' +
+    '<button onclick="clearUndo()" style="margin-left:5px;background:none;border:none;color:#fff;opacity:.6;font-size:14px;cursor:pointer;">&times;</button>';
+}
+
+// Everything touched in the last 24 hours, so a lead can be misfiled but never
+// lost. This is the list she needed when a lead vanished mid-dial.
+function recentlyChanged() {
+  const cutoff = Date.now() - 86400000;
+  const rows = [];
+  (clients || []).forEach(c => {
+    const last = (c.call_log || []).reduce((m, e) => Math.max(m, new Date(e.ts).getTime() || 0), 0);
+    const tomb = (c.deleted_log || []).reduce((m, t) => Math.max(m, new Date(t.deleted_at).getTime() || 0), 0);
+    const when = Math.max(last, tomb);
+    if (when < cutoff) return;
+    const lastEntry = (c.call_log || []).slice().sort((a, b) => new Date(b.ts) - new Date(a.ts))[0];
+    rows.push({ c, when, what: tomb > last ? 'entry removed' : ((lastEntry && lastEntry.outcome) || 'changed') });
+  });
+  return rows.sort((a, b) => b.when - a.when);
+}
+
+function openRecentlyChanged() {
+  const rows = recentlyChanged();
+  let html = '<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">Recently changed</div>' +
+    '<div class="modal-sub">Everything touched in the last 24 hours</div>';
+  if (!rows.length) html += '<div style="font-size:12px;color:#a0b8cc;margin-top:8px;">Nothing changed today.</div>';
+  html += rows.map(r =>
+    '<div onclick="closeModal();openClient(\'' + r.c.id + '\')" style="border:1px solid #e2eaf2;border-radius:8px;padding:8px 10px;margin-bottom:6px;cursor:pointer;">' +
+      '<div style="display:flex;justify-content:space-between;gap:8px;">' +
+        '<div style="font-size:12px;font-weight:600;color:#138181;">' + esc(r.c.name || '(no name)') + '</div>' +
+        '<div style="font-size:10px;color:#8fa8c0;white-space:nowrap;">' +
+          new Date(r.when).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + '</div>' +
+      '</div>' +
+      '<div style="font-size:10px;color:#8fa8c0;">' + esc(r.what) + ' &middot; now ' + esc(r.c.status || '') +
+        (r.c.phone ? ' &middot; ' + esc(r.c.phone) : '') + '</div>' +
+    '</div>').join('');
+  showModal(html);
+}
+
 function _entryOwnsAppt(c, entry) {
   const ea = apptOf(entry);
   if (!ea) return false;
@@ -8528,7 +8656,10 @@ async function confirmDeleteLogEntry(id, idx) {
     '  ' + e.outcome + (e.dials ? '  (' + e.dials + ' dial' + (e.dials > 1 ? 's' : '') + ')' : '') + '\n' +
     '  ' + new Date(e.ts).toLocaleString() + '\n\n' +
     'Your board changes by: ' + _statLine(bundle, -1) + '\n' +
-    (ownsAppt ? 'The appointment and its calendar event are also removed.\n' : '') +
+    ((e._before)
+      ? 'This also puts the lead back as it was before: ' + (e._before.status || '?') +
+        (e._before.appt_datetime ? ', appointment restored' : '') + '.\n'
+      : (ownsAppt ? 'The appointment and its calendar event are also removed.\n' : '')) +
     '\nThe entry is kept under "Removed entries" so you can put it back.';
   if (!confirm(summary)) return;
 
@@ -8536,11 +8667,25 @@ async function confirmDeleteLogEntry(id, idx) {
   const [removed] = log.splice(idx, 1);
 
   const tomb = [...(c.deleted_log || [])];
-  tomb.push({ entry: removed, deleted_at: new Date().toISOString(), stats: bundle, owned_appt: !!ownsAppt });
+  tomb.push({ entry: removed, deleted_at: new Date().toISOString(), stats: bundle, owned_appt: !!ownsAppt,
+              undid: !!(removed && removed._before) });
 
   const patch = { call_log: log, deleted_log: tomb };
 
-  if (ownsAppt) {
+  // h195: THE BUG THAT LOST A LEAD. Removing a Not interested used to reverse the
+  // stats and nothing else - the lead stayed Dead, its case closed, its
+  // appointment and calendar event gone, and it vanished from every list with
+  // nothing left explaining why. If the entry carries a snapshot, taking the
+  // entry away takes its effects away too.
+  if (removed && removed._before) {
+    const snap = removed._before;
+    patch.status = snap.status;
+    patch.appt_datetime = snap.appt_datetime;
+    patch.appt_notes = snap.appt_notes;
+    patch.resolved_at = snap.resolved_at;
+    patch.resolved_as = snap.resolved_as;
+    patch.cases = JSON.parse(JSON.stringify(snap.cases || []));
+  } else if (ownsAppt) {
     if (c.gcal_event_id) { try { await pushApptToCalendar(c, 'delete'); } catch (err) {} }
     const now = Date.now();
     const cases = (c.cases || []).map(cs => ({
@@ -8561,6 +8706,12 @@ async function confirmDeleteLogEntry(id, idx) {
   try { await sb.from('clients').update(patch).eq('id', id); }
   catch (err) { console.error('confirmDeleteLogEntry', err); }
   Object.assign(c, patch);
+
+  // the appointment came back - so must its calendar event
+  if (removed && removed._before && patch.appt_datetime && !c.gcal_event_id) {
+    try { await pushApptToCalendar(c, 'create'); } catch (err) {}
+  }
+  clearUndo();   // that action no longer exists to undo
 
   await applyStatDelta(bundle, -1, e.ts);
 
@@ -9195,6 +9346,7 @@ async function quickLogAndText(id) {
 
 async function quickLog(id, outcome, statKey) {
   const c = clients.find(x=>x.id===id); if (!c) return;
+  const _before = snapshotOf(c);   // h195: so this is always reversible
   const dialCount = window._dialCount || 1;
   disarmDial();   // h137: these dials are spent by THIS entry
   let updatePayloadExtra = {};
@@ -9272,6 +9424,12 @@ async function quickLog(id, outcome, statKey) {
     }
   }
 
+  // The photo rides on the entry itself, so removing the entry later restores the
+  // record - not just its stats. Only stored when the record actually changed.
+  if (callLog.length && (newStatus !== _before.status || Object.keys(updatePayloadExtra).length)) {
+    callLog[callLog.length - 1]._before = _before;
+    rememberUndo(id, _before, outcome);
+  }
   c.call_log = callLog; c.status = newStatus;
   showSync('Saving...');
   await sb.from('clients').update({call_log:callLog, status:newStatus, ...updatePayloadExtra}).eq('id',id);
@@ -13162,6 +13320,7 @@ function openSettings() {
         (n ? 'border:1px solid #F5A0A0;' : '') + '">' +
         '<div style="font-size:10px;font-weight:600;color:' + (n ? '#A32D2D' : '#5f7a99') + ';text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Repair' +
           (n ? ' &middot; ' + n : '') + '</div>' +
+        '<button class="save-btn" style="margin-bottom:4px;" onclick="openRecentlyChanged()">Recently changed - last 24 hours</button>' +
         '<button class="save-btn" style="margin-bottom:4px;" onclick="openRepairPanel()">' +
           (n ? 'Review ' + n + ' contradiction' + (n === 1 ? '' : 's') : 'Check for contradictions') + '</button>' +
         '<div style="font-size:11px;color:#5f7a99;">Leads holding an appointment they should not - a booking left on someone who already said no, or a pending step on a closed case.</div>' +
