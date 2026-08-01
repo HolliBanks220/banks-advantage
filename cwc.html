@@ -510,7 +510,7 @@ html,body{overflow-x:hidden !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h197</span>
+        <span class="build-tag" id="build-tag" title="build">b715h201</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="gear-btn" id="undo-btn" onclick="undoLastAction()" style="display:none;" title="Undo the last action">&#8634;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
@@ -1001,7 +1001,9 @@ async function init() {
   initTimer();
   showSync('Loading your data...');
   await Promise.all([loadClients(), loadStats(), loadAgentSettings()]);
+  try { await loadDeviceState(); } catch (e) {}          // scripts, history, agent id, timer
   try { await migrateLegacyLeadSpend(); } catch (e) {}   // old monthly totals -> dated charges
+  try { await migrateFreeLookStatus(); } catch (e) {}   // h199: 'Free Look' -> 'Not taken'
   loadCustomCarriers();
   // Load tasks separately so a failure can't block the rest of init
   loadTasksFromDB().then(() => renderTasks()).catch(() => renderTasks());
@@ -1751,7 +1753,7 @@ function renderProduction() {
   // This strip holds the two things that only matter when they're pending:
   // a referral thank-you you owe, and appointments still needing an outcome.
   // Both stay hidden otherwise so the board isn't carrying dead weight.
-  const APPROVED = ['Approved','Issued','Paid','Free Look','Lapse','Cancel'];
+  const APPROVED = ['Approved','Issued','Paid','Not taken','Lapse','Cancel'];
   const reachedApproved = (lead) => !!lead && (lead.cases||[]).some(cs =>
     (cs.touchpoints||[]).some(tp => (tp.apps||[]).some(ap => APPROVED.includes(ap.status||''))));
   const owed = [];
@@ -2746,6 +2748,7 @@ async function editTimerTime(activity) {
 
 function timerSaveSessions(sessions) {
   localStorage.setItem('cwc_sessions_' + timerTodayKey(), JSON.stringify(sessions));
+  saveDeviceState();
 }
 
 function timerGetTotals() {
@@ -3806,11 +3809,11 @@ function renderAppsTab() {
     (ap.status||'').toLowerCase().includes(searchVal)
   );
 
-  const STATUS_ORDER = ['Written','Submitted','Approved','Issued','Paid','Free Look','Declined','Cancel','Lapse'];
+  const STATUS_ORDER = ['Written','Submitted','Approved','Issued','Paid','Not taken','Declined','Cancel','Lapse'];
   const STATUS_COLOR = {
     'Written':'#1D3557','Submitted':'#BA7517','Approved':'#534AB7',
     'Issued':'#138181','Placed':'#138181','Paid':'#3B6D11',
-    'Free Look':'#BA7517','Cancel':'#A32D2D','Lapse':'#A32D2D'
+    'Not taken':'#BA7517','Free Look':'#BA7517','Cancel':'#A32D2D','Lapse':'#A32D2D'
   };
 
   const fmt = v => '$'+Math.round(v).toLocaleString();
@@ -5301,8 +5304,14 @@ function getUrgencyBadge(c) {
     return {label:'\u23F0 Upcoming', color:'#8fa8c0', bg:'#F0F4F8', fire:false};
   }
 
-  // Out of the lead's calling window (score carries the +500 penalty)
-  if (!isGoodTimeToCall(c)) return {label:'\u23F0 Upcoming', color:'#8fa8c0', bg:'#F0F4F8', fire:false};
+  // Out of the lead's calling window. h198: they are filtered OUT of the active
+  // queue now, so this only shows on a search or another filter - and it should say
+  // plainly why, not the vague 'Upcoming'.
+  if (!isGoodTimeToCall(c)) {
+    const h = getLeadLocalHour(c);
+    return {label: (h < getCallWindow(c).start ? '\u23F0 Too early to call' : '\u23F0 Too late to call'),
+            color:'#8fa8c0', bg:'#F0F4F8', fire:false};
+  }
 
   return {label:'Open', color:'#5f7a99', bg:'#EBF3FF', fire:false};
 }
@@ -5598,7 +5607,12 @@ function getFilteredClients(q='') {
     const isNoShow = c.status === 'No show';
     const hasOpenCase = (c.cases||[]).some(cs => cs.status === 'Open' && (cs.touchpoints||[]).length > 0);
     let matchF = false;
-    if (activeFilter==='active') matchF = (c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale' && c.status !== 'Appointment set' && !isCallbackFuture(c) && !isFollowUpFuture(c) && !isOnBreak(c)) || isApptImminent(c);    else if (activeFilter==='all') matchF = true;
+    // h198: THE CALLING WINDOW IS A CURFEW, NOT A PREFERENCE. Being outside it used
+    // to add 500 to the sort score, which only pushed a lead down - so an 81-year-old
+    // still surfaced at 7:47pm their time when nothing better was due. Out of the
+    // window is out of the queue. An imminent appointment still overrides: that is
+    // a meeting they agreed to, not a cold call.
+    if (activeFilter==='active') matchF = (c.status !== 'Dead' && c.status !== 'Closed' && c.status !== 'No sale' && c.status !== 'Appointment set' && !isCallbackFuture(c) && !isFollowUpFuture(c) && !isOnBreak(c) && isGoodTimeToCall(c)) || isApptImminent(c);    else if (activeFilter==='all') matchF = true;
     else if (LEAD_STAGES.includes(activeFilter)) matchF = leadStage(c) === activeFilter && !isAppt && !isNoShow;
     else if (activeFilter==='none') matchF = (c.call_log||[]).length === 0 && c.status !== 'Dead';
     else if (activeFilter==='working') matchF = hasOpenCase && !isAppt && !isNoShow && c.status !== 'Dead' && c.status !== 'Closed';
@@ -6229,7 +6243,7 @@ function isRetirementApp(ap) {
 //   Submitted/Approved/Issued/Paid earn in full - issue and pay lag by weeks and
 //     that lag should not drag the number down.
 //   Lapse/Cancel keep premium minus the chargeback; money kept is money made.
-//   Written has not reached the carrier; Free Look and Declined never paid.
+//   Written has not reached the carrier; Not taken and Declined never paid.
 //   Retirement earns rate x ACCOUNT AMOUNT, never premium x contract level.
 function commissionDetail(cl) {
   const rows = [];
@@ -6239,7 +6253,7 @@ function commissionDetail(cl) {
   const NETTED  = ['Lapse','Cancel'];
 
   function value(ap, ret) {
-    const st = ap.status || '';
+    const st = normalizeAppStatus(ap.status);   // h199: legacy 'Free Look' reads as 'Not taken'
     if (ret) return EARNING.includes(st) ? retCommissionOf(ap, cl.age) : 0;
     const prem = Number(ap.premium) || 0;
     if (NETTED.includes(st)) {
@@ -8467,6 +8481,7 @@ function actionLog() {
 }
 function writeActionLog(list) {
   try { localStorage.setItem(ACTION_LOG_KEY, JSON.stringify(list.slice(-ACTION_LOG_MAX))); } catch (e) {}
+  saveDeviceState();
 }
 
 // EVERY writer that changes a lead's record goes through this. It photographs the
@@ -8502,6 +8517,10 @@ function snapshotOf(c) {
     gcal_event_id: c.gcal_event_id || null,
     resolved_at: c.resolved_at || null,
     resolved_as: c.resolved_as || null,
+    // h200: the delivery clock is part of the record too - without these a push or
+    // a confirmation looked like nothing changed and could not be undone.
+    delivery_due: c.delivery_due || null,
+    delivery_confirmed: c.delivery_confirmed || null,
     cases: JSON.parse(JSON.stringify(c.cases || [])),
   };
 }
@@ -8516,6 +8535,8 @@ async function restoreSnapshot(id, snap, why) {
     appt_notes: snap.appt_notes,
     resolved_at: snap.resolved_at,
     resolved_as: snap.resolved_as,
+    delivery_due: snap.delivery_due || null,
+    delivery_confirmed: snap.delivery_confirmed || null,
     cases: JSON.parse(JSON.stringify(snap.cases || [])),
   };
   showSync(why || 'Undoing...');
@@ -8535,6 +8556,7 @@ function rememberUndo(id, snap, label) {
   if (!snap) return;
   window._lastAction = { id, snap, label, at: Date.now() };
   try { localStorage.setItem('cwc_last_action', JSON.stringify(window._lastAction)); } catch (e) {}
+  saveDeviceState();
   renderUndoBar();
 }
 
@@ -9157,6 +9179,111 @@ const TEXT_TEMPLATES = [
 // The earliest issue date across every app on the lead. Once a policy is in
 // force the person stops being a lead and becomes a client, and the whole text
 // vocabulary changes - which is why 'client' is checked before everything else.
+// POLICY DELIVERY. h200: an issued policy that never gets confirmed is the
+// quietest way to lose one - a wrong account number or an unexpected draft date
+// shows up as a lapse two months later. Two weeks after issue, ask. Pushable a
+// week at a time for as long as the carrier takes.
+const DELIVERY_WAIT_DAYS = 14;
+
+function deliveryDueList() {
+  const now = Date.now();
+  const out = [];
+  (clients || []).forEach(c => {
+    const issued = getIssuedAt(c);
+    if (!issued) return;
+    if (c.delivery_confirmed) return;
+    const due = c.delivery_due
+      ? new Date(c.delivery_due).getTime()
+      : issued.getTime() + DELIVERY_WAIT_DAYS * 86400000;
+    if (due > now) return;
+    out.push({ c, due: new Date(due), issued });
+  });
+  return out.sort((a, b) => a.due - b.due);
+}
+
+// The day of the month their payment drafts, taken off the first app that has it.
+function draftDayOf(c) {
+  let day = null;
+  (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => (tp.apps||[]).forEach(ap => {
+    if (day == null && ap && ap.draft_day) day = Number(ap.draft_day) || null;
+  })));
+  return day;
+}
+
+function ordinal(n) {
+  const s = ['th','st','nd','rd'], v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+function deliveryScript(c) {
+  const fn = (c.name || '').split(' ')[0];
+  const day = draftDayOf(c);
+  return 'Hi ' + fn + ', Holli here. Just checking your policy arrived and everything looks right. '
+    + 'Any questions on it? '
+    + (day ? 'And your payment is scheduled to draft on or just after the ' + ordinal(day) + ' of each month - does that work for you?'
+           : 'And I want to confirm the draft date works for you.');
+}
+
+async function pushDelivery(id, days) {
+  const c = clients.find(x => x.id === id); if (!c) return;
+  const base = c.delivery_due ? new Date(c.delivery_due) : new Date();
+  const next = new Date(Math.max(base.getTime(), Date.now()) + (days || 7) * 86400000);
+  await recordAction(id, 'Delivery check pushed', async () => {
+    showSync('Saving...');
+    await sb.from('clients').update({ delivery_due: next.toISOString() }).eq('id', id);
+    c.delivery_due = next.toISOString();
+    hideSync();
+  });
+  render(); openDeliveryPanel();
+}
+
+async function confirmDelivery(id) {
+  const c = clients.find(x => x.id === id); if (!c) return;
+  await recordAction(id, 'Delivery confirmed', async () => {
+    showSync('Saving...');
+    const when = new Date().toISOString();
+    await sb.from('clients').update({ delivery_confirmed: when }).eq('id', id);
+    c.delivery_confirmed = when;
+    hideSync();
+  });
+  render();
+  // Straight into the ask. Confirming delivery is the warmest they will ever be -
+  // the policy is in their hands and it did what you said it would. Reuses the
+  // same capture screen the sit uses: referrals, resets, recruits, one place.
+  const sale = (c.cases||[]).reduce((found, cs, ci) => found ||
+    (cs.touchpoints||[]).reduce((f2, tp, ti) => f2 || (tp.outcome === 'sale' ? {ci, ti} : null), null), null);
+  if (sale) {
+    window._cap = { id, ci: sale.ci, ti: sale.ti, outcome: 'sale', phase: 'post' };
+    return showCaptureScreen();
+  }
+  openDeliveryPanel();
+}
+
+function openDeliveryPanel() {
+  const rows = deliveryDueList();
+  let html = '<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">Policy delivery</div>' +
+    '<div class="modal-sub">' + rows.length + ' to confirm</div>';
+  if (!rows.length) {
+    html += '<div style="font-size:12px;color:#138181;background:#E1F5EE;border-radius:8px;padding:12px;margin-top:8px;">Nothing waiting. Every issued policy has been confirmed.</div>';
+  }
+  html += rows.map(r =>
+    '<div style="border:1px solid #e2eaf2;border-radius:8px;padding:10px;margin-bottom:6px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">' +
+        '<div onclick="closeModal();openClient(\'' + r.c.id + '\')" style="font-size:13px;font-weight:600;color:#138181;cursor:pointer;">' + esc(r.c.name || '') + '</div>' +
+        '<div style="font-size:10px;color:#8fa8c0;white-space:nowrap;">issued ' +
+          r.issued.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + '</div>' +
+      '</div>' +
+      (r.c.phone ? '<div style="font-size:12px;color:#138181;">' + esc(r.c.phone) + '</div>' : '') +
+      '<div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:7px 9px;margin:6px 0;">' + esc(deliveryScript(r.c)) + '</div>' +
+      '<div style="display:flex;gap:6px;">' +
+        '<button onclick="confirmDelivery(\'' + r.c.id + '\')" style="flex:1.2;background:#138181;color:#fff;border:none;border-radius:6px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;">Confirmed - go to the ask</button>' +
+        '<button onclick="pushDelivery(\'' + r.c.id + '\',7)" style="flex:1;background:none;border:1px solid #b9c6d4;color:#5f7a99;border-radius:6px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;">Not yet - push a week</button>' +
+      '</div>' +
+    '</div>').join('');
+  showModal(html);
+}
+
 function getIssuedAt(c) {
   let earliest = null;
   (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp =>
@@ -11122,10 +11249,29 @@ async function saveEditTouchpoint(id, ci, ti) {
 // ONE list, used by every status control on the card, in the Edit app modal, and
 // in Business. They all read and write the same ap.status, so matching the option
 // list is what makes the card and the business list agree in both directions.
-const APP_STATUSES = ['Written','Submitted','Approved','Issued','Paid','Free Look','Declined','Lapse','Cancel'];
+// 'Not taken' - the carrier approved it and the CLIENT declined the offer, usually
+// over the rating. Already submitted to the IMO and logged in OPT, so it cannot be
+// taken back: it counts as a sale and as APV submitted, sits in the denominator of
+// 'Not taken' - the carrier said yes and the CLIENT walked, usually over the
+// rating. h199: it REPLACES 'Free Look', which described the same thing from the
+// carrier's side; one status covers both. Already submitted to the IMO and logged
+// in OPT, so it cannot be taken back: it counts as a sale and as APV submitted,
+// sits in the denominator of net placed and never the numerator, and earns
+// nothing - there was never a payment to claw back.
+const APP_STATUSES = ['Written','Submitted','Approved','Issued','Paid','Not taken','Declined','Lapse','Cancel'];
+
+// Day of the month the payment drafts. Asked on the application so the delivery
+// call can confirm it - a surprise draft date is a first-month lapse.
+const DRAFT_DAYS = Array.from({length: 28}, (_, i) => i + 1);
+
+// Old records still say 'Free Look'. Read paths accept both so nothing falls
+// through a status that is not in the list - the failure that made commission
+// miscount silently for months.
+const LEGACY_APP_STATUS = { 'Free Look': 'Not taken' };
+function normalizeAppStatus(st) { return LEGACY_APP_STATUS[st] || st || ''; }
 const APP_STATUS_COLORS = {
   'Written':'#1D3557','Submitted':'#BA7517','Approved':'#534AB7','Issued':'#138181',
-  'Paid':'#3B6D11','Placed':'#138181','Free Look':'#BA7517',
+  'Paid':'#3B6D11','Placed':'#138181','Not taken':'#BA7517','Free Look':'#BA7517',
   'Declined':'#A32D2D','Lapse':'#A32D2D','Cancel':'#A32D2D'
 };
 function appStatusColor(s) { return APP_STATUS_COLORS[s] || '#1D3557'; }
@@ -11531,6 +11677,7 @@ function openEditApp(id, ci, ti, ai) {
   <div class="field"><label>Who</label><input type="text" id="edit-app-who" value="${ap.who||'Borrower'}"></div>
   <div class="field"><label>Date written (the day this app was actually done)</label><input type="date" id="edit-app-date" value="${(ap.writtenDate||ap.written_date||new Date().toISOString()).slice(0,10)}" style="font-size:16px;"></div>
   <div class="field"><label>Status</label><select id="edit-app-status">${APP_STATUSES.map(s=>`<option${ap.status===s?' selected':''}>${s}</option>`).join('')}</select></div>
+  <div class="field"><label>Drafts on the</label><select id="edit-app-draft-day"><option value="">not set</option>${DRAFT_DAYS.map(d=>`<option value="${d}"${String(ap.draft_day)===String(d)?' selected':''}>${d}</option>`).join('')}</select></div>
   <div class="field"><label>Lapse/Cancel date (chargeback lands in this month)</label><input type="date" id="edit-app-lapse-date" value="${(ap.lapse_date||'').slice(0,10)}" style="font-size:16px;"></div>
   <div class="field"><label>Chargeback $ (blank = full premium)</label><input type="number" step="0.01" id="edit-app-chargeback" value="${ap.chargeback_amount!=null&&ap.chargeback_amount!==''?ap.chargeback_amount:''}" placeholder="${ap.premium||''}" style="font-size:16px;"></div>
   <button class="save-btn" onclick="saveEditApp('${id}',${ci},${ti},${ai})">Save</button>
@@ -11556,6 +11703,8 @@ async function saveEditApp(id, ci, ti, ai) {
   ap.premium = Math.round(_mo * 12 * 100) / 100; // APV = monthly x 12, cents preserved
   ap.who = document.getElementById('edit-app-who').value.trim()||'Borrower';
   ap.status = document.getElementById('edit-app-status').value;
+  const _dd = document.getElementById('edit-app-draft-day');
+  if (_dd) ap.draft_day = _dd.value ? Number(_dd.value) : null;
   stampIssuedDate(ap);            // starts the client-review clock
   const _ld = document.getElementById('edit-app-lapse-date');
   if (_ld) ap.lapse_date = _ld.value ? new Date(_ld.value + 'T12:00:00').toISOString() : null;
@@ -12170,9 +12319,43 @@ function renderPeople(k) {
 function _recruitRows() {
   const rows = [];
   clients.forEach(c => (c.cases||[]).forEach((cs,ci) => (cs.touchpoints||[]).forEach((tp,ti) =>
-    (tp.recruit_people||[]).forEach((pp,pi) => rows.push({pp, cid:c.id, ci, ti, pi}))
+    (tp.recruit_people||[]).forEach((pp,pi) => rows.push({
+      pp, cid:c.id, ci, ti, pi,
+      when: tp.datetime || cs.created || c.created_at || null,
+    }))
   )));
   return rows;
+}
+
+// h200: recruits are people, not rows in a report - they need calling and they
+// need to reach GHL. Name, phone, email, source, date added: the columns GHL
+// wants for an import.
+function recruitCsv() {
+  const esc = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const head = ['Name','Phone','Email','Source','Date added'];
+  const body = _recruitRows().map(r => {
+    const p = r.pp || {};
+    const d = r.when ? new Date(r.when) : null;
+    return [
+      p.name || '',
+      p.phone || '',
+      p.email || '',
+      'Recruit - referred by ' + (p.from_name || 'unknown'),
+      (d && !isNaN(d)) ? d.toISOString().slice(0, 10) : '',
+    ].map(esc).join(',');
+  });
+  return [head.map(esc).join(','), ...body].join('\n');
+}
+
+function downloadRecruitCsv() {
+  const rows = _recruitRows();
+  if (!rows.length) { alert('No recruits captured yet.'); return; }
+  const blob = new Blob([recruitCsv()], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'recruits-' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
 function renderRecruitRows(q) {
@@ -12195,9 +12378,14 @@ function renderRecruitRows(q) {
           (r.pp.why ? '<div style="font-size:12px;color:#5f7a99;margin-top:2px;">' + esc(r.pp.why) + '</div>' : '') +
           '<div style="font-size:10px;color:#8fa8c0;margin-top:3px;">via ' + esc(r.pp.from_name||'') + '</div>' +
         '</div>' +
-        '<label style="display:flex;align-items:center;gap:5px;font-size:11px;color:#1D3557;cursor:pointer;white-space:nowrap;">' +
-          '<input type="checkbox" ' + (r.pp.stp_sent?'checked':'') + ' onchange="toggleProspectSTP(\'' + r.cid + '\',' + r.ci + ',' + r.ti + ',' + r.pi + ',this.checked)" style="width:16px;height:16px;"> STP sent' +
-        '</label>' +
+        '<div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end;">' +
+          (r.pp.phone
+            ? '<a href="tel:' + escAttr(String(r.pp.phone).replace(/[^0-9+]/g,'')) + '" style="background:#138181;color:#fff;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap;">Call</a>'
+            : '') +
+          '<label style="display:flex;align-items:center;gap:5px;font-size:11px;color:#1D3557;cursor:pointer;white-space:nowrap;">' +
+            '<input type="checkbox" ' + (r.pp.stp_sent?'checked':'') + ' onchange="toggleProspectSTP(\'' + r.cid + '\',' + r.ci + ',' + r.ti + ',' + r.pi + ',this.checked)" style="width:16px;height:16px;"> STP sent' +
+          '</label>' +
+        '</div>' +
       '</div>' +
     '</div>').join('');
 }
@@ -12214,6 +12402,7 @@ function openRecruitProspects() {
     '<div class="modal-title">Recruits</div>' +
     '<div class="modal-sub">' + sent + ' of ' + rows.length + ' sent the plan</div>' +
     '<input type="text" id="recruit-search" placeholder="Search recruits — name, phone, relationship..." oninput="filterRecruits(this.value)" style="width:100%;padding:9px 10px;border:1px solid #d0dcea;border-radius:8px;font-size:13px;margin:8px 0 12px;box-sizing:border-box;">' +
+    '<button onclick="downloadRecruitCsv()" style="width:100%;background:none;border:1px solid #9FE1CB;border-radius:8px;padding:8px;font-size:12px;font-weight:600;color:#138181;cursor:pointer;margin-bottom:10px;">Export for GHL (CSV)</button>' +
     '<div id="recruit-list">' + renderRecruitRows('') + '</div>');
 }
 async function toggleProspectSTP(cid, ci, ti, pi, val) {
@@ -12514,6 +12703,27 @@ function getLeadSpend(source, pStart, pEnd) {
 
 // Every old monthly total becomes a real charge dated to the 1st of its month, so
 // history survives and there is only one place spend lives. Runs once.
+// h199: 'Free Look' folded into 'Not taken'. Rewrites the stored value once so no
+// record is left pointing at a status the app no longer knows about.
+async function migrateFreeLookStatus() {
+  const touched = [];
+  (clients || []).forEach(c => {
+    let changed = false;
+    (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => (tp.apps||[]).forEach(ap => {
+      if (ap && ap.status === 'Free Look') { ap.status = 'Not taken'; changed = true; }
+    })));
+    (c.sits||[]).forEach(si => (si.apps||[]).forEach(ap => {
+      if (ap && ap.status === 'Free Look') { ap.status = 'Not taken'; changed = true; }
+    }));
+    if (changed) touched.push(c);
+  });
+  for (const c of touched) {
+    try { await sb.from('clients').update({ cases: c.cases, sits: c.sits }).eq('id', c.id); }
+    catch (e) { console.error('migrateFreeLookStatus', e); }
+  }
+  return touched.length;
+}
+
 async function migrateLegacyLeadSpend() {
   const s = getAgentSettings();
   const legacy = s.lead_spend || {};
@@ -12746,7 +12956,7 @@ function openReferralList() {
 
 function getAgentId() {
   let id = localStorage.getItem('cwc_agent_id');
-  if (!id) { id = 'agent_' + Math.random().toString(36).slice(2, 11); localStorage.setItem('cwc_agent_id', id); }
+  if (!id) { id = 'agent_' + Math.random().toString(36).slice(2, 11); localStorage.setItem('cwc_agent_id', id); saveDeviceState(); }
   return id;
 }
 
@@ -12837,6 +13047,60 @@ async function pushApptToCalendar(client, action) {
   }
 }
 
+
+// DEVICE STATE THAT ISN'T. h201: these lived only in localStorage, so clearing
+// cache and cookies wiped them - the sit scripts most painfully, since an edited
+// script is real work. They belong with everything else. localStorage stays as
+// the fast read; agent_settings in Supabase is the truth, and whatever is local
+// on first load gets pushed up before anything can overwrite it.
+const DEVICE_KEYS = ['cwc_agent_id', 'cwc_action_log', 'cwc_last_action',
+                     'cwc_script_ref', 'cwc_script_reset', 'cwc_script_rec'];
+const AGENT_SETTINGS_ROW = 'agent_settings';
+
+function isSessionKey(k) { return /^cwc_sessions_/.test(k); }
+
+function collectDeviceState() {
+  const out = {};
+  DEVICE_KEYS.forEach(k => { try { const v = localStorage.getItem(k); if (v !== null) out[k] = v; } catch (e) {} });
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (isSessionKey(k)) out[k] = localStorage.getItem(k);
+    }
+  } catch (e) {}
+  return out;
+}
+
+let _deviceSaveT = null;
+function saveDeviceState() {
+  clearTimeout(_deviceSaveT);
+  _deviceSaveT = setTimeout(async () => {
+    const state = collectDeviceState();
+    try {
+      await sb.from('agent_settings')
+        .upsert({ id: AGENT_SETTINGS_ROW, data: state, updated_at: new Date().toISOString() });
+    } catch (e) { /* localStorage still holds it */ }
+  }, 800);
+}
+
+// Merge, never clobber. If this browser has something the database does not, the
+// local copy wins and gets pushed up - a fresh device must not blank the record.
+async function loadDeviceState() {
+  let remote = null;
+  try {
+    const { data } = await sb.from('agent_settings').select('data').eq('id', AGENT_SETTINGS_ROW).single();
+    remote = (data && data.data) || null;
+  } catch (e) { return; }
+  const local = collectDeviceState();
+  let pushBack = false;
+  if (remote) {
+    Object.keys(remote).forEach(k => {
+      if (local[k] === undefined) { try { localStorage.setItem(k, remote[k]); } catch (e) {} }
+      else if (local[k] !== remote[k]) pushBack = true;
+    });
+  }
+  if (!remote || pushBack || Object.keys(local).length) saveDeviceState();
+}
 
 function getAgentSettings() {
   const defaults = { contractLevel: 105, enabledCarriers: {}, asEarnedOverrides: {}, agentName: 'Holli Banks' };
@@ -13448,6 +13712,8 @@ function openSettings() {
         (n ? 'border:1px solid #F5A0A0;' : '') + '">' +
         '<div style="font-size:10px;font-weight:600;color:' + (n ? '#A32D2D' : '#5f7a99') + ';text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Repair' +
           (n ? ' &middot; ' + n : '') + '</div>' +
+        '<button class="save-btn" style="margin-bottom:4px;" onclick="openDeliveryPanel()">Policy delivery' +
+          (deliveryDueList().length ? ' - ' + deliveryDueList().length + ' to confirm' : '') + '</button>' +
         '<button class="save-btn" style="margin-bottom:4px;" onclick="openActionHistory()">History - what changed, and when</button>' +
         '<button class="save-btn" style="margin-bottom:4px;" onclick="openRepairPanel()">' +
           (n ? 'Review ' + n + ' contradiction' + (n === 1 ? '' : 's') : 'Check for contradictions') + '</button>' +
@@ -13928,7 +14194,7 @@ function capSectionHtml(s, tp){
 }
 
 function capToggleScript(k){ const el=document.getElementById('cap-script-'+k); if(el) el.style.display = el.style.display==='none'?'block':'none'; }
-function capSaveScript(k){ const t=document.getElementById('cap-scripttext-'+k); if(!t) return; try{ localStorage.setItem('cwc_script_'+k, t.value); }catch(e){} showCaptureScreen(); }
+function capSaveScript(k){ const t=document.getElementById('cap-scripttext-'+k); if(!t) return; try{ localStorage.setItem('cwc_script_'+k, t.value); }catch(e){} saveDeviceState(); showCaptureScreen(); }
 function capRevertScript(k){ try{ localStorage.removeItem('cwc_script_'+k); }catch(e){} showCaptureScreen(); }
 
 function capToggle(k, val){
