@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CWC — how to work your day</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#1D3557; --teal:#138181; --teal-lt:#9FE1CB; --teal-pale:#E1F5EE;
+  --gold:#BA7517; --red:#A32D2D; --plum:#3C3489;
+  --ink:#16202E; --dim:#5F7A99; --faint:#93A7BC;
+  --paper:#FBFAF7; --card:#FFFFFF; --line:#E4E9F0;
+  --chrome:#1A1D23; --chrome-card:#E9EDF2;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:'IBM Plex Sans',-apple-system,sans-serif; font-size:15px; line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ---------- shell ---------- */
+.wrap{max-width:1180px;margin:0 auto;padding:0 22px}
+header{padding:56px 0 30px;border-bottom:1px solid var(--line)}
+.eyebrow{
+  font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--teal); font-weight:600; margin-bottom:12px;
+}
+h1{
+  font-family:'Playfair Display',Georgia,serif; font-weight:700;
+  font-size:clamp(34px,5.5vw,56px); line-height:1.02; margin:0 0 14px; color:var(--navy);
+  letter-spacing:-.015em;
+}
+h1 em{font-style:italic;color:var(--teal)}
+.lede{font-size:17px;color:var(--dim);max-width:56ch;margin:0}
+
+/* ---------- search ---------- */
+.searchbar{position:sticky;top:0;z-index:40;background:var(--paper);padding:14px 0 12px;border-bottom:1px solid var(--line)}
+.searchbar .wrap{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#q{
+  flex:1;min-width:220px;font-family:inherit;font-size:15px;padding:11px 15px;
+  border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);
+}
+#q:focus{outline:2px solid var(--teal);outline-offset:1px;border-color:transparent}
+.jump{display:flex;gap:5px;flex-wrap:wrap}
+.jump a{
+  font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.05em;text-transform:uppercase;
+  text-decoration:none;color:var(--dim);border:1px solid var(--line);border-radius:999px;
+  padding:6px 12px;background:var(--card);white-space:nowrap;
+}
+.jump a:hover{border-color:var(--teal);color:var(--teal)}
+#count{font-size:12px;color:var(--faint);font-family:'IBM Plex Mono',monospace}
+
+/* ---------- sections ---------- */
+section{padding:52px 0 8px;border-bottom:1px solid var(--line)}
+.sec-head{display:flex;gap:18px;align-items:baseline;margin-bottom:6px}
+.sec-num{
+  font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:var(--teal);
+  letter-spacing:.1em;padding-top:9px;white-space:nowrap;
+}
+h2{font-family:'Playfair Display',serif;font-size:clamp(25px,3.4vw,34px);margin:0;color:var(--navy);font-weight:700;letter-spacing:-.01em}
+.sec-sub{color:var(--dim);margin:2px 0 26px 0;max-width:60ch;font-size:15px}
+.sec-sub.indent{margin-left:calc(12px + 4.2em)}
+
+/* ---------- steps ---------- */
+.step{
+  display:grid;grid-template-columns:34px 1fr 300px;gap:20px;align-items:start;
+  padding:20px 0;border-top:1px solid var(--line);
+}
+.step:first-of-type{border-top:none}
+.step.done .step-body h3{color:var(--faint);text-decoration:line-through;text-decoration-thickness:1px}
+.tick{
+  width:26px;height:26px;border:1.5px solid var(--line);border-radius:7px;background:var(--card);
+  cursor:pointer;margin-top:2px;display:grid;place-items:center;padding:0;
+  font-size:14px;color:transparent;transition:all .12s;
+}
+.tick:hover{border-color:var(--teal)}
+.tick[aria-pressed="true"]{background:var(--teal);border-color:var(--teal);color:#fff}
+.step-body h3{font-size:16px;margin:0 0 5px;color:var(--navy);font-weight:600;transition:color .12s}
+.step-body p{margin:0 0 8px;color:var(--dim)}
+.step-body p:last-child{margin-bottom:0}
+kbd{
+  font-family:'IBM Plex Mono',monospace;font-size:12.5px;background:var(--teal-pale);color:#0E6363;
+  border-radius:5px;padding:2px 7px;font-weight:600;white-space:nowrap;
+}
+.why{
+  border-left:2px solid var(--teal-lt);padding:2px 0 2px 13px;margin:10px 0 0;
+  font-size:14px;color:var(--dim);
+}
+.why b{color:var(--navy);font-weight:600}
+.warn{border-left-color:var(--gold)}
+.warn b{color:var(--gold)}
+
+/* ---------- mockups ---------- */
+.shot{background:var(--chrome);border-radius:12px;padding:12px;font-size:11px;line-height:1.35;position:sticky;top:74px}
+.shot-lbl{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#6B7A8C;margin-bottom:9px}
+.tile{background:var(--chrome-card);border-radius:8px;padding:8px 10px;margin-bottom:5px}
+.tile .l{font-size:8.5px;letter-spacing:.09em;text-transform:uppercase;color:#68737F;font-weight:600}
+.tile .v{font-size:19px;font-weight:600;color:#1D2733;line-height:1.15;font-family:'IBM Plex Sans'}
+.tile .s{font-size:9px;color:#7B8794}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}
+.lite{background:#fff;border-radius:8px;padding:9px 10px;margin-bottom:5px;color:var(--ink)}
+.lite .n{font-size:12.5px;font-weight:600;color:var(--navy)}
+.lite .m{font-size:10px;color:var(--dim)}
+.pill{display:inline-block;border-radius:999px;padding:2px 9px;font-size:9px;font-weight:600}
+.p-teal{background:var(--teal);color:#fff}
+.p-ghost{background:#fff;color:var(--dim);border:1px solid #D5DEE8}
+.p-gold{background:#FFF1DC;color:#7A4A0F}
+.p-red{background:#FBE4E4;color:var(--red)}
+.btnrow{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.b{border-radius:6px;padding:5px 9px;font-size:9.5px;font-weight:600;text-align:center}
+.b-teal{background:var(--teal);color:#fff}
+.b-navy{background:var(--navy);color:#fff}
+.b-gold{background:var(--gold);color:#fff}
+.b-plum{background:var(--plum);color:#fff}
+.b-red{background:var(--red);color:#fff}
+.b-out{background:transparent;color:#9FB2C4;border:1px solid #3A414C}
+.banner{background:var(--red);color:#fff;border-radius:7px;padding:6px 10px;font-size:10px;font-weight:600;margin-bottom:6px}
+.hi{outline:2px solid var(--teal-lt);outline-offset:2px}
+
+/* ---------- faq ---------- */
+.faq{border-top:1px solid var(--line);padding:0}
+.faq summary{
+  cursor:pointer;padding:15px 0 15px 2px;font-weight:600;color:var(--navy);font-size:15px;
+  list-style:none;display:flex;gap:12px;align-items:baseline;
+}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::before{content:'?';font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:13px;font-weight:600}
+.faq summary:hover{color:var(--teal)}
+.faq[open] summary{color:var(--teal)}
+.faq-body{padding:0 0 18px 25px;color:var(--dim);max-width:66ch}
+.faq-body p{margin:0 0 9px}
+.faq-body a{color:var(--teal);font-weight:600;text-decoration:none;border-bottom:1px solid var(--teal-lt)}
+
+/* ---------- misc ---------- */
+.hidden{display:none !important}
+.empty{padding:38px 0;color:var(--faint);font-size:15px}
+footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
+.wave{color:var(--teal)}
+.progress{
+  font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);
+  border:1px solid var(--line);border-radius:999px;padding:6px 13px;background:var(--card);white-space:nowrap;
+}
+.progress b{color:var(--teal)}
+@media(max-width:900px){
+  .step{grid-template-columns:30px 1fr}
+  .shot{display:none}
+  .sec-sub.indent{margin-left:0}
+  .sec-head{gap:12px}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+@media print{
+  .searchbar,.shot,.tick{display:none}
+  .step{grid-template-columns:1fr;page-break-inside:avoid}
+  .faq{page-break-inside:avoid}
+  details{open:true}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="eyebrow">Banks Advantage &middot; Client Workflow Console</div>
+    <h1>Work the day.<br>The <em>console</em> keeps the score.</h1>
+    <p class="lede">Open CWC in another window and work down this page. Every step is something you do in the app, not something you read about. Tick them off as you go — the page remembers where you got to.</p>
+  </div>
+</header>
+
+<div class="searchbar">
+  <div class="wrap">
+    <input id="q" type="search" placeholder="Search — try “no show”, “reset”, “my lead disappeared”" autocomplete="off">
+    <div class="jump">
+      <a href="#setup">Set up</a>
+      <a href="#dial">First block</a>
+      <a href="#appt">Appointment</a>
+      <a href="#after">After the sale</a>
+      <a href="#numbers">Your numbers</a>
+      <a href="#stuck">Stuck?</a>
+    </div>
+    <div class="progress" id="prog">0 of 0 done</div>
+    <div id="count"></div>
+  </div>
+</div>
+
+<!-- ============================ SET UP ============================ -->
+<section id="setup">
+<div class="wrap">
+  <div class="sec-head"><div class="sec-num">01</div><h2>Set up, once</h2></div>
+  <p class="sec-sub indent">Ten minutes now. Skip it and your commission numbers will be wrong, which you won't notice until they matter.</p>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="s1">✓</button>
+    <div class="step-body">
+      <h3>Open Settings</h3>
+      <p>The gear icon, top left of the board, next to your name.</p>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Board header</div>
+      <div class="lite"><div class="n">BANKS ADVANTAGE</div>
+        <div class="btnrow"><span class="b b-out hi">⚙</span><span class="b b-out">↺</span><span class="b b-out">←</span><span class="b b-out">Today</span><span class="b b-out">→</span></div>
+      </div>
+      <div class="btnrow"><span class="b b-teal">Day</span><span class="b b-out">Week</span><span class="b b-out">Month</span><span class="b b-out">Qtr</span><span class="b b-out">Year</span></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="s2">✓</button>
+    <div class="step-body">
+      <h3>Set your contract level</h3>
+      <p>Your level from your agreement — 80 through 130. If you're not sure, ask your upline before you guess.</p>
+      <div class="why"><b>Why it matters.</b> Every commission figure in the app is premium × your level. Set it to 105 when you're really at 90 and every number you look at for the next month is 17% too high.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Settings → Profile</div>
+      <div class="lite"><div class="m">Contract level</div><div class="n hi">105</div></div>
+      <div class="lite"><div class="m">Default appointment length</div><div class="n">40 minutes</div></div>
+      <div class="lite"><div class="m">Lead types I buy</div><div class="n">MIA, CIA</div></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="s3">✓</button>
+    <div class="step-body">
+      <h3>Turn on the carriers you're appointed with</h3>
+      <p>Settings → Carriers. Tick the ones you can actually write, and the products within them.</p>
+      <div class="why"><b>Why it matters.</b> This is the list you'll pick from when you log an application. A short, accurate list is faster to work than a long one — and the comp rate comes from the product you choose.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Settings → Carriers</div>
+      <div class="lite"><div class="n">Foresters <span class="pill p-teal">on</span></div><div class="m">Strong Foundation · Your Term · PlanRight</div></div>
+      <div class="lite"><div class="n">AmAm &amp; Occidental <span class="pill p-teal">on</span></div><div class="m">Home Certainty · Express Term</div></div>
+      <div class="lite"><div class="n">Athene <span class="pill p-ghost">off</span></div><div class="m">Annuities</div></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="s4">✓</button>
+    <div class="step-body">
+      <h3>Enter the lead types you buy</h3>
+      <p>Comma separated — <kbd>CIC, CID</kbd>, or whatever you're working. It's the only list offered when you log a lead charge.</p>
+      <div class="why"><b>A lead is a lead.</b> Don't spend time deciding which codes are "good" ones. Dial them.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Settings → Profile</div>
+      <div class="lite"><div class="m">Lead types I buy</div><div class="n hi">CIC, CID</div>
+        <div class="m" style="margin-top:4px">These are the only options offered when you log a lead charge.</div></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="s5">✓</button>
+    <div class="step-body">
+      <h3>Set one goal</h3>
+      <p>Tap the small <kbd>+ set a goal</kbd> under any tile. Start with dials — it's the only number entirely inside your control.</p>
+      <div class="why"><b>One, not six.</b> A tile with a goal fills with colour as you close on it. Six goals is six things to feel behind on.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Board → Dialing activity</div>
+      <div class="row2">
+        <div class="tile"><div class="l">Dials</div><div class="v">0</div><div class="s hi" style="color:var(--teal);font-weight:600">+ set a goal</div></div>
+        <div class="tile"><div class="l">Appts set</div><div class="v">0</div><div class="s" style="color:var(--teal)">+ set a goal</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ============================ FIRST BLOCK ============================ -->
+<section id="dial">
+<div class="wrap">
+  <div class="sec-head"><div class="sec-num">02</div><h2>Your first dial block</h2></div>
+  <p class="sec-sub indent">The part you'll do a thousand times. Learn it once properly and the rest of the app takes care of itself.</p>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="d1">✓</button>
+    <div class="step-body">
+      <h3>Import your leads</h3>
+      <p><kbd>Leads</kbd> tab → <kbd>+ Add leads</kbd>. Drop in the PDF from your lead vendor and it reads the names, addresses, phones and ages out of it.</p>
+      <p>Anything it couldn't read cleanly appears at the top, unticked, so you can fix it before importing.</p>
+      <div class="why warn"><b>Handwritten mailers.</b> Printed details come through — name, address, lender, loan amount. The handwritten bits usually don't. Type those in yourself.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Leads → Import</div>
+      <div class="lite"><div class="n">18 leads found</div><div class="m">2 need a look</div></div>
+      <div class="lite" style="border-left:3px solid var(--gold)"><div class="n">M elissa Thayer <span class="pill p-gold">check</span></div><div class="m">Name looks split</div></div>
+      <div class="lite"><div class="n">Dennis &amp; Emily Rourke</div><div class="m">42 Old Buckingham Rd · 61 · CIC</div></div>
+      <div class="btnrow"><span class="b b-teal">Import 18</span><span class="b b-out">Select none</span></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="d2">✓</button>
+    <div class="step-body">
+      <h3>Open the first lead in the queue</h3>
+      <p>The <kbd>Active</kbd> chip is your call queue, already in the order you should work it. Freshest first, then whoever's due. Tap the top card.</p>
+      <div class="why"><b>Don't pick.</b> The order accounts for how fresh the lead is, how many times you've tried, what time it is where they are, and whether they've asked you to call back. Working top-down beats choosing.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Leads</div>
+      <div style="color:#9FB2C4;font-size:11px;margin-bottom:6px">131 active · 121 callable now</div>
+      <div class="btnrow" style="margin-bottom:7px">
+        <span class="b b-teal">Active 131</span><span class="b b-out">Fresh 22</span><span class="b b-out">Warm 10</span>
+      </div>
+      <div class="lite hi"><div class="n">Jacqueline Benson <span class="pill p-teal">fresh</span></div>
+        <div class="m">832-468-3125 · TX · 60 · CIC</div>
+        <div class="m" style="margin-top:3px">Jul 30 5:30 PM — No answer</div></div>
+      <div class="lite"><div class="n">Ronald &amp; Judith Kuhn</div><div class="m">615-310-8846 · TN · 62 · CIC</div></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="d3">✓</button>
+    <div class="step-body">
+      <h3>Count the dial before you log the outcome</h3>
+      <p>If you rang twice before anyone picked up, tap <kbd>2</kbd> on the dial counter first. Then log what happened.</p>
+      <div class="why"><b>This is your dials-per-sale number.</b> It's the one thing that tells you whether a bad week was bad luck or low activity. Under-count it and you'll never know which.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Lead card</div>
+      <div class="lite"><div class="n">Jacqueline Benson</div><div class="m">832-468-3125 · TX · 60</div></div>
+      <div class="btnrow" style="margin:7px 0"><span class="b b-out">1</span><span class="b b-teal hi">2</span><span class="b b-out">3</span><span class="b b-out">4+</span></div>
+      <div class="btnrow">
+        <span class="b b-navy">No answer</span><span class="b b-gold">Callback</span><span class="b b-teal">Conversation</span>
+      </div>
+      <div class="btnrow"><span class="b b-teal">Appt set</span><span class="b b-red">Not interested</span></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="d4">✓</button>
+    <div class="step-body">
+      <h3>Log the outcome honestly</h3>
+      <p><kbd>No answer</kbd> for a ring-out. <kbd>Callback</kbd> when they name a time. <kbd>Conversation</kbd> when you spoke but didn't book. <kbd>Not interested</kbd> when they're done.</p>
+      <div class="why warn"><b>Not interested is final.</b> It closes their case, clears any appointment and takes them out of your queue. It's the right button when they mean it — and the wrong one when they're just busy. That's what Callback is for.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">After logging</div>
+      <div class="lite"><div class="n">Jacqueline Benson</div>
+        <div class="m">Aug 2 9:14 AM — <b>2x No answer</b></div>
+        <div class="m">Jul 30 5:30 PM — No answer</div>
+        <div class="m">Jul 29 6:21 PM — Text sent</div></div>
+      <div class="tile" style="margin-top:6px"><div class="l">Dials</div><div class="v">2</div></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="d5">✓</button>
+    <div class="step-body">
+      <h3>Send the text it offers you</h3>
+      <p>When a lead's due one, the card says <kbd>Text needed</kbd>. Open <kbd>Text templates</kbd> and the right message for where they are is already written — day one outreach, missed-you, going cold.</p>
+      <p><kbd>Voicemail</kbd> beside it gives you the same scripts worded to be read aloud.</p>
+      <div class="why"><b>They're not the same message.</b> A lead who no-showed you gets different words than one you've never reached. The picker knows which is which.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Text templates</div>
+      <div class="lite"><div class="n">Initial outreach</div>
+        <div class="m">Hi Jacqueline, this is Holli getting back to you about the protection info you requested for your mortgage on Cedar Ln…</div>
+        <div class="btnrow"><span class="b b-teal">Copy &amp; Log</span></div></div>
+      <div class="lite" style="opacity:.55"><div class="n">Missing each other</div><div class="m">Sent Jul 30</div></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="d6">✓</button>
+    <div class="step-body">
+      <h3>Book one</h3>
+      <p><kbd>Appt set</kbd> → pick the day and time → confirm. It lands on your schedule on the right and pushes to your Google Calendar.</p>
+      <div class="why"><b>The red banner is your pace.</b> "Behind pace — call 24 now" is the number of dials that puts you back on your goal today. It goes away when you're on track.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Schedule</div>
+      <div class="banner">Behind pace — call 24 now · appt in 10 min</div>
+      <div class="lite" style="border-left:3px solid var(--teal)"><div class="n">Peter Lastowski</div><div class="m">4:30 PM · Mortgage Protection — Initial</div></div>
+      <div class="lite" style="border-left:3px solid var(--plum)"><div class="n">Bobbie Weaver</div><div class="m">5:30 PM · Retirement — Initial</div></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ============================ APPOINTMENT ============================ -->
+<section id="appt">
+<div class="wrap">
+  <div class="sec-head"><div class="sec-num">03</div><h2>The appointment, start to finish</h2></div>
+  <p class="sec-sub indent">Everything from sitting down to the application being in.</p>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="a1">✓</button>
+    <div class="step-body">
+      <h3>Log what happened</h3>
+      <p>Open the lead → <kbd>Log outcome</kbd>. Five choices, and they mean different things:</p>
+      <p><kbd>Sale</kbd> · <kbd>No sale</kbd> — you sat and showed numbers.<br>
+         <kbd>No Show — alive</kbd> — didn't turn up, still worth working.<br>
+         <kbd>No Show — dead</kbd> — didn't turn up, and you're done.<br>
+         <kbd>Cancelled — still live</kbd> — they called ahead. Stays open, back in your queue.</p>
+      <div class="why"><b>Cancelled is not a no sale.</b> If they never saw numbers, it was never really an appointment. Logging it as a no sale makes your close ratio a lie.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Log outcome</div>
+      <div class="btnrow"><span class="b b-teal" style="flex:1">✓ Sale</span><span class="b b-red" style="flex:1">✗ No Sale</span></div>
+      <div class="btnrow"><span class="b b-gold" style="flex:1">✗ No Show — alive</span><span class="b" style="flex:1;background:#7A4A0F;color:#fff">✗ No Show — dead</span></div>
+      <div class="btnrow"><span class="b b-teal hi" style="flex:1">Cancelled — still live</span></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="a2">✓</button>
+    <div class="step-body">
+      <h3>Ask, while you're still sitting there</h3>
+      <p>Logging a sale or a no sale opens one screen: referrals, resets, recruits. Fill in what you got.</p>
+      <div class="why"><b>Yes, after a no sale too.</b> They didn't buy. They still know people, and they've just spent an hour with you. The ask costs nothing.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Capture</div>
+      <div class="lite"><div class="m">Referrals</div><div class="n">Marla Finch · sister</div><div class="n">Tony Vega · neighbour</div></div>
+      <div class="lite"><div class="m">Reset to another product</div><div class="n">Yes — retirement</div></div>
+      <div class="lite"><div class="m">Recruits</div><div class="n">Dee Okafor · looking for work</div></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="a3">✓</button>
+    <div class="step-body">
+      <h3>Enter the application</h3>
+      <p>Carrier, product, face amount, then the <b>monthly premium as you quoted it</b> — the app works out the annual figure. Then who it's on, their birth date, and the day of the month it drafts.</p>
+      <div class="why"><b>Fill in the draft day.</b> It's how the app knows when to remind you to check the carrier portal, and it's what you'll confirm with them on the delivery call. A surprise draft date is a first-month lapse.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Application</div>
+      <div class="lite"><div class="m">Carrier</div><div class="n">Foresters</div></div>
+      <div class="lite"><div class="m">Monthly premium</div><div class="n">$95.20</div><div class="m">= $1,142.40 APV</div></div>
+      <div class="lite"><div class="m">Who</div><div class="n">Jane Smith</div></div>
+      <div class="lite hi"><div class="m">Drafts on the</div><div class="n">12th</div></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="a4">✓</button>
+    <div class="step-body">
+      <h3>Move the status as it moves</h3>
+      <p><kbd>Written</kbd> → <kbd>Submitted</kbd> → <kbd>Approved</kbd> → <kbd>Issued</kbd> → <kbd>Paid</kbd>. Update it in the <kbd>Business</kbd> tab as the carrier does.</p>
+      <p>Three that aren't the ladder: <kbd>Declined</kbd> — the carrier said no. <kbd>Not taken</kbd> — the carrier said yes and the client walked. <kbd>Lapse</kbd> / <kbd>Cancel</kbd> — it was in force and stopped.</p>
+      <div class="why"><b>Written earns nothing.</b> It hasn't reached the carrier. Your commission figures only start counting at Submitted, which is the honest place to start counting.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Business</div>
+      <div class="lite"><div class="n">Dennis &amp; Emily Rourke <span class="m">· Jane Smith</span></div>
+        <div class="m">Foresters · Strong Foundation</div>
+        <div class="btnrow"><span class="b b-teal">Submitted</span></div></div>
+      <div class="lite"><div class="n">Ronald Kuhn</div><div class="m">AmAm · Home Certainty</div>
+        <div class="btnrow"><span class="b" style="background:#3B6D11;color:#fff">Issued</span></div></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ============================ AFTER THE SALE ============================ -->
+<section id="after">
+<div class="wrap">
+  <div class="sec-head"><div class="sec-num">04</div><h2>After the sale</h2></div>
+  <p class="sec-sub indent">A policy that lapses in month two pays you nothing and costs you the chargeback. This is the part that stops that happening.</p>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="c1">✓</button>
+    <div class="step-body">
+      <h3>Work the Client care tile</h3>
+      <p>It sits on the board and shows how many people need something. Tap it when you're ready — nothing here interrupts your dialing.</p>
+      <div class="why"><b>Do it in a block.</b> Follow-up work and appointment-setting work are different jobs. Mixing them costs you at both.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Board</div>
+      <div class="row2">
+        <div class="tile"><div class="l">Lead spend</div><div class="v">$6,395</div><div class="s" style="color:var(--teal)">tap to add a charge</div></div>
+        <div class="tile hi"><div class="l">Client care</div><div class="v">4</div><div class="s" style="color:var(--teal)">tap to work them</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="c2">✓</button>
+    <div class="step-body">
+      <h3>Check the portal when it asks</h3>
+      <p>A few days after their draft date, you'll get <kbd>Check the portal — did it draft?</kbd> Look it up in your agent portal. If it drafted, tap <kbd>It drafted — mark placed</kbd>.</p>
+      <div class="why"><b>This is how a policy gets marked placed.</b> Nothing else moves it. And marking it placed is what starts the delivery clock.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Client care</div>
+      <div class="lite" style="border-left:3px solid var(--plum)">
+        <div class="n">Dennis &amp; Emily Rourke</div>
+        <div class="m" style="color:var(--plum);font-weight:600">CHECK THE PORTAL — DID IT DRAFT?</div>
+        <div class="btnrow"><span class="b" style="background:#3B6D11;color:#fff">It drafted — mark placed</span><span class="b b-out" style="border-color:#D5DEE8;color:var(--dim)">Not yet — 3 days</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="c3">✓</button>
+    <div class="step-body">
+      <h3>Make the delivery call</h3>
+      <p>Ten days after it places, you'll be asked to confirm they have the policy. The script is on the card, including their draft date.</p>
+      <p>Tap <kbd>Confirmed</kbd> and it takes you straight into referrals, resets and recruits.</p>
+      <div class="why"><b>Best ask you'll get all month.</b> The policy is in their hands and it did exactly what you said it would. Nobody is warmer than that.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Client care</div>
+      <div class="lite" style="border-left:3px solid var(--teal)">
+        <div class="n">Ronald Kuhn</div>
+        <div class="m" style="color:var(--teal);font-weight:600">POLICY DELIVERY</div>
+        <div class="m" style="background:#F0F4F8;border-radius:5px;padding:6px;margin-top:4px">Hi Ronald, Holli here. Just checking your policy arrived and everything looks right. Any questions on it? And your payment is scheduled to draft on or just after the 12th of each month — does that work for you?</div>
+        <div class="btnrow"><span class="b b-teal">Confirmed — go to the ask</span><span class="b b-out" style="border-color:#D5DEE8;color:var(--dim)">Not yet</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="c4">✓</button>
+    <div class="step-body">
+      <h3>Keep showing up</h3>
+      <p>After delivery the app spaces out the rest for you: <b>90 days</b> a check-in, <b>11 months</b> the one that catches problems while they're still fixable, <b>13 months</b> a proper review, plus birthdays.</p>
+      <div class="why"><b>11 months is the money one.</b> Your chargeback window is twelve. A problem found at month eleven can be saved. The same problem found at month thirteen already cost you.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Client care</div>
+      <div class="lite" style="border-left:3px solid var(--gold)"><div class="n">Marla Finch</div><div class="m" style="color:var(--gold);font-weight:600">11 MONTH REVIEW</div></div>
+      <div class="lite" style="border-left:3px solid #7A4A0F"><div class="n">Jane Smith</div><div class="m" style="color:#7A4A0F;font-weight:600">BIRTHDAY CARD</div><div class="m">Birthday is Monday, August 10.</div></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ============================ NUMBERS ============================ -->
+<section id="numbers">
+<div class="wrap">
+  <div class="sec-head"><div class="sec-num">05</div><h2>Your numbers</h2></div>
+  <p class="sec-sub indent">Two places. The board is today. Reports is everything else.</p>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="n1">✓</button>
+    <div class="step-body">
+      <h3>Read the board</h3>
+      <p>Tap any number and it opens the list behind it. Every tile does this. If a figure looks wrong, tap it and you'll see exactly which clients made it.</p>
+      <div class="why"><b>Never argue with a number you haven't opened.</b> Nine times in ten the drill-down explains it in a second.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Board</div>
+      <div class="row3">
+        <div class="tile"><div class="l">Appts</div><div class="v">3</div></div>
+        <div class="tile"><div class="l">Sits</div><div class="v">2</div></div>
+        <div class="tile hi"><div class="l">Sales</div><div class="v">1</div></div>
+      </div>
+      <div class="tile"><div class="l">Submitted APV</div><div class="v">$1,142</div></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="n2">✓</button>
+    <div class="step-body">
+      <h3>Know which month you're looking at</h3>
+      <p>The period arrows move you back and forth. But a "month" here is the <b>production month</b> — Saturday after one month's last Friday, through the next month's last Friday. It's the month carriers pay on, not the 1st to the 31st.</p>
+      <div class="why warn"><b>So June might start on May 30.</b> A charge you dated June 30 counts in July. Not a bug — it's the calendar your commission runs on.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Lead spend</div>
+      <div class="lite"><div class="n">July</div><div class="m">Runs Jun 27 – Jul 31</div>
+        <div class="m" style="margin-top:4px">Production months run Saturday to Friday, not the 1st to the 31st.</div></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="n3">✓</button>
+    <div class="step-body">
+      <h3>Build a report</h3>
+      <p>Settings → <kbd>Build a report</kbd>. Pick the calendar, pick week / month / quarter / year, then add as many columns as you want — July this year against July last year, or Q1 against Q2.</p>
+      <p>Export to CSV, or print to PDF. Save the setup and pull the same report next month in one tap.</p>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Reports</div>
+      <div class="btnrow"><span class="b b-teal">Production</span><span class="b b-out">Calendar</span><span class="b b-out">Activity</span></div>
+      <div class="btnrow" style="margin-bottom:7px"><span class="b b-out">Week</span><span class="b b-teal">Month</span><span class="b b-out">Quarter</span><span class="b b-out">Year</span></div>
+      <div class="lite"><div class="m">Jul 2026 &nbsp;·&nbsp; Jul 2025 &nbsp;·&nbsp; TOTAL &nbsp;·&nbsp; AVG</div>
+        <div class="n">Sit to sale &nbsp; 34% · 29% · 32% · 31%</div>
+        <div class="n">Dials per sale &nbsp; 141 · 168 · 152 · 155</div></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="n4">✓</button>
+    <div class="step-body">
+      <h3>Log what you spend on leads</h3>
+      <p>Tap the <kbd>Lead spend</kbd> tile. Enter each charge the way it appears on your statement — date, type, amount.</p>
+      <div class="why"><b>Without it there's no ROI.</b> Commission on its own doesn't tell you whether the leads paid for themselves, and that's the number that decides whether you buy more.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Lead spend</div>
+      <div class="lite"><div class="m">Jul 14 · CIC</div><div class="n">$1,240</div></div>
+      <div class="lite"><div class="m">Jul 7 · CIC</div><div class="n">$980</div></div>
+      <div class="lite"><div class="m">Jun 30 · CID</div><div class="n">$1,100</div><div class="m">counts in July</div></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ============================ STUCK ============================ -->
+<section id="stuck">
+<div class="wrap">
+  <div class="sec-head"><div class="sec-num">06</div><h2>Stuck?</h2></div>
+  <p class="sec-sub indent">The things that catch everyone. Search at the top of the page finds these too.</p>
+
+  <details class="faq"><summary>A lead disappeared and I can't find them</summary>
+  <div class="faq-body">
+    <p>Search finds leads in any status, including dead ones — type any part of the name or number in the Leads search box. It also matches the name on an application, so a spouse is findable too.</p>
+    <p>If they're gone because you logged something by mistake, use <b>Settings → History</b>. Pick today and the hour, find the action, tap <b>Undo this</b>. The lead comes back exactly as it was, appointment and all.</p>
+    <p>The <b>↺</b> icon next to the gear undoes the very last thing you did, if it was just now.</p>
+  </div></details>
+
+  <details class="faq"><summary>I logged Not interested by mistake</summary>
+  <div class="faq-body">
+    <p>Open the lead, find that line in the call log, and remove it. Taking the entry away puts the lead back the way it was — case reopened, appointment restored, status back to what it was. <a href="#dial">See logging outcomes</a>.</p>
+  </div></details>
+
+  <details class="faq"><summary>I sold a policy but I can't enter the application</summary>
+  <div class="faq-body">
+    <p>The <b>+ Log outcome</b> button only appears on an <b>open</b> case. If every case on that lead is closed, there's nothing for the application to attach to.</p>
+    <p>Book the appointment again and you'll be offered <b>Reopen a case</b> — it lists every closed case so you can pick the right one. It goes back to open and you can log the sit and the application. <a href="#appt">See the appointment section</a>.</p>
+  </div></details>
+
+  <details class="faq"><summary>What's the difference between a reset and a continuation?</summary>
+  <div class="faq-body">
+    <p>A <b>continuation</b> is the same case, next meeting — you sat, and you're going back. Policy pickup, a rewrite, a think-about-it.</p>
+    <p>A <b>reset</b> is a different product. They said no to mortgage protection but they'll talk about retirement. That opens a new case, and it doesn't undo the first verdict.</p>
+  </div></details>
+
+  <details class="faq"><summary>They cancelled but want to reschedule — what do I log?</summary>
+  <div class="faq-body">
+    <p><b>Cancelled — still live</b>. The case stays open, the appointment clears, and they go straight back into your call queue. You'll be offered a callback or a rebook right after.</p>
+    <p>Don't use no sale — that means they saw your numbers and passed.</p>
+  </div></details>
+
+  <details class="faq"><summary>An old client is showing an appointment that shouldn't be there</summary>
+  <div class="faq-body">
+    <p><b>Settings → Repair</b>. It lists anyone in a contradictory state — an appointment on a lead who said no, a live step on a closed case, a callback on someone with nothing open.</p>
+    <p>It shows what's wrong before it changes anything, and it never touches sales, sits or logged outcomes.</p>
+  </div></details>
+
+  <details class="faq"><summary>Why did my client disappear from the call list this evening?</summary>
+  <div class="faq-body">
+    <p>Calling curfew. It's by their local time, and by age: <b>70 and over stops at 7pm</b>, <b>65 to 69 at 8pm</b>, everyone else at 9:30. Their card reads <b>Too late to call</b>.</p>
+    <p>An appointment you already booked still shows. It's cold calling that stops.</p>
+  </div></details>
+
+  <details class="faq"><summary>My commission per lead looks far too high or too low</summary>
+  <div class="faq-body">
+    <p>Check your contract level first — Settings → Profile. Every figure is premium × that number.</p>
+    <p>Then tap the commission figure in Reports. It lists every application behind it, biggest first, with what each one contributed. One wrong application is usually the whole gap.</p>
+  </div></details>
+
+  <details class="faq"><summary>Why does a month show numbers from the month before?</summary>
+  <div class="faq-body">
+    <p>It doesn't — you're looking at a <a href="#numbers">production month</a>. July runs from the Saturday after June's last Friday through July's last Friday. A charge dated June 30 lands in July because that's the carrier's July.</p>
+  </div></details>
+
+  <details class="faq"><summary>What does N/A mean in a report?</summary>
+  <div class="faq-body">
+    <p>No data for that period — usually a period before you started using CWC. It's deliberately not a zero, because zero would read as "you did nothing" rather than "nothing was recorded".</p>
+  </div></details>
+
+  <details class="faq"><summary>Will I lose everything if I clear my browser?</summary>
+  <div class="faq-body">
+    <p>No. Leads, calls, appointments, applications and settings all live in the database. Log in from another machine and it's all there.</p>
+  </div></details>
+
+  <details class="faq"><summary>What counts as a sit?</summary>
+  <div class="faq-body">
+    <p>You showed them numbers. That's it. One per case, whatever it took to get there — so a lead you met three times before they decided is still one sit.</p>
+    <p>A cancellation isn't a sit. A no-show isn't a sit.</p>
+  </div></details>
+
+  <details class="faq"><summary>Should I be looking at which lead types perform best?</summary>
+  <div class="faq-body">
+    <p>Not yet, and it isn't turned on for you. New agents who study lead quality learn to blame the leads. Learn to work them first — the numbers will still be there in three months, and they'll mean more.</p>
+  </div></details>
+</div>
+</section>
+
+<footer><div class="wrap">
+  Banks Advantage &middot; Client Workflow Console &middot; <span class="wave">Making a splash</span>
+</div></footer>
+
+<script>
+(function(){
+  var KEY='cwc_guide_progress';
+  var ticks=[].slice.call(document.querySelectorAll('.tick'));
+  var prog=document.getElementById('prog');
+  var saved={};
+  try{ saved=JSON.parse(localStorage.getItem(KEY)||'{}'); }catch(e){ saved={}; }
+
+  function render(){
+    var done=0;
+    ticks.forEach(function(t){
+      var on=!!saved[t.dataset.id];
+      t.setAttribute('aria-pressed',on?'true':'false');
+      t.closest('.step').classList.toggle('done',on);
+      if(on)done++;
+    });
+    prog.innerHTML='<b>'+done+'</b> of '+ticks.length+' done';
+  }
+  ticks.forEach(function(t){
+    t.addEventListener('click',function(){
+      saved[t.dataset.id]=!saved[t.dataset.id];
+      try{ localStorage.setItem(KEY,JSON.stringify(saved)); }catch(e){}
+      render();
+    });
+  });
+  render();
+
+  // search across steps and questions alike
+  var q=document.getElementById('q');
+  var count=document.getElementById('count');
+  var items=[].slice.call(document.querySelectorAll('.step,.faq'));
+  var secs=[].slice.call(document.querySelectorAll('section'));
+  items.forEach(function(el){ el.dataset.hay=el.textContent.toLowerCase(); });
+
+  q.addEventListener('input',function(){
+    var v=q.value.trim().toLowerCase();
+    if(!v){
+      items.forEach(function(e){ e.classList.remove('hidden'); });
+      secs.forEach(function(s){ s.classList.remove('hidden'); });
+      document.querySelectorAll('.empty').forEach(function(e){e.remove();});
+      count.textContent='';
+      return;
+    }
+    var hits=0;
+    items.forEach(function(e){
+      var m=e.dataset.hay.indexOf(v)>-1;
+      e.classList.toggle('hidden',!m);
+      if(m)hits++;
+      if(m&&e.tagName==='DETAILS')e.open=true;
+    });
+    secs.forEach(function(s){
+      var any=s.querySelector('.step:not(.hidden),.faq:not(.hidden)');
+      s.classList.toggle('hidden',!any);
+    });
+    count.textContent=hits?hits+' match'+(hits===1?'':'es'):'nothing found';
+  });
+})();
+</script>
+</body>
+</html>
