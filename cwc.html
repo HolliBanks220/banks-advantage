@@ -510,7 +510,7 @@ html,body{overflow-x:hidden !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h201</span>
+        <span class="build-tag" id="build-tag" title="build">b715h206</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="gear-btn" id="undo-btn" onclick="undoLastAction()" style="display:none;" title="Undo the last action">&#8634;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
@@ -757,6 +757,7 @@ html,body{overflow-x:hidden !important;}
       <div class="stat"><div class="stat-lbl">Avg APV / sale</div><div class="stat-val" id="lp-avgapv" style="font-size:18px;">-</div><div class="stat-sub">per sale</div></div>
       <div class="stat"><div class="stat-lbl">Never resolved</div><div class="stat-val" id="lp-never">-</div><div class="stat-sub">of the cohort</div></div>
       <div class="stat" style="cursor:pointer;" onclick="openLeadSpend()"><div class="stat-lbl">Lead spend</div><div class="stat-val" id="lp-spend" style="font-size:18px;">-</div><div class="stat-sub" style="color:var(--teal);font-weight:700;">tap to add a charge</div></div>
+      <div class="stat" style="cursor:pointer;" onclick="openClientCare()"><div class="stat-lbl">Client care</div><div class="stat-val" id="lp-care" style="font-size:18px;">0</div><div class="stat-sub" id="lp-care-sub" style="color:var(--teal);font-weight:700;">nothing due</div></div>
     </div>
   </div>
 
@@ -2659,6 +2660,14 @@ function renderSourceComparison(pStart, pEnd, label) {
     };
     const apv = all.totalAPV;
     const spend = (typeof spendInPeriod === 'function') ? spendInPeriod(pStart, pEnd) : 0;
+    // h202: deliberately NOT in the pace banner and NOT in the call queue -
+    // follow-up work does not belong inside appointment-setting time.
+    try {
+      const careN = clientCareDue().length;
+      const cv = document.getElementById('lp-care'), cs2 = document.getElementById('lp-care-sub');
+      if (cv) cv.textContent = careN;
+      if (cs2) cs2.textContent = careN ? 'tap to work them' : 'nothing due';
+    } catch (e) {}
     setEl('lp-apvlead',  fmtAvg(apv, A.assigned));
     setEl('lp-commlead', fmtAvg(A.comm, A.assigned));
     // profit per lead: what you earned minus what the leads cost, per lead
@@ -5601,7 +5610,13 @@ function getFilteredClientsForCount(filter) {
 
 function getFilteredClients(q='') {
   const filtered = clients.filter(c => {
-    const matchQ = !q || (c.name||'').toLowerCase().includes(q.toLowerCase()) || (c.phone||'').includes(q);
+    // h203: searching the LEADS tab only ever looked at the lead's own name, so a
+    // spouse written on an application was invisible - findable in Business but
+    // nowhere else. Now the whole household is reachable from either name.
+    const _ql = (q||'').toLowerCase();
+    const matchQ = !q || (c.name||'').toLowerCase().includes(_ql) || (c.phone||'').includes(q) ||
+      (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => (tp.apps||[]).some(ap =>
+        ap && (ap.who||'').toLowerCase().includes(_ql))));
     const days = Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24));
     const isAppt = c.status === 'Appointment set';
     const isNoShow = c.status === 'No show';
@@ -8215,16 +8230,67 @@ function openApptSet(id) {
   const c = clients.find(x=>x.id===id); if (!c) return;
   if (!hasPriorAppointment(c)) { openApptPicker(id); return; }
   const ci = (c.cases||[]).findIndex(cs => cs.status === 'Open');
-  const contArg = ci > -1 ? ci : 'null';
+  const hasOpen = ci > -1;
+  const closedCount = (c.cases||[]).filter(cs => cs.status && cs.status !== 'Open').length;
   showSubModal(id, `<button class="close-x" onclick="closeToLead()">x</button>
   <div class="modal-title">Already has an appointment</div>
   <div class="modal-sub">${c.name} — what is this?</div>
   <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px;">
     <button class="save-btn" style="background:#BA7517;" onclick="openResetToPicker('${id}')">↺ Reset — new product<div style="font-size:11px;opacity:.85;font-weight:400;">Re-engaging to a different product. Tracks reset → type.</div></button>
     <button class="save-btn" style="background:#534AB7;" onclick="openReschedulePicker('${id}')">Reschedule<div style="font-size:11px;opacity:.85;font-weight:400;">Same appointment, new time. Pick a reason.</div></button>
-    <button class="save-btn" style="background:#138181;" onclick="showContModal('${id}',${contArg})">Continuation<div style="font-size:11px;opacity:.85;font-weight:400;">They sat — next meeting on the same case.</div></button>
+    ${hasOpen
+      ? `<button class="save-btn" style="background:#138181;" onclick="showContModal('${id}',${ci})">Continuation<div style="font-size:11px;opacity:.85;font-weight:400;">They sat — next meeting on the same case.</div></button>`
+      : ''}
+    ${!hasOpen && closedCount
+      ? `<button class="save-btn" style="background:#138181;" onclick="openReopenCasePicker('${id}')">Reopen a case<div style="font-size:11px;opacity:.85;font-weight:400;">Every case is closed. Pick which one this appointment belongs to.</div></button>`
+      : ''}
     <button class="save-btn" style="background:#1D3557;" onclick="openFollowUpPicker('${id}')">Follow-up<div style="font-size:11px;opacity:.85;font-weight:400;">Post-appointment: policy pickup, ASRs, reset check.</div></button>
   </div>`);
+}
+
+// h205: with every case closed, Continuation used to be offered anyway and was
+// handed a null case - so the appointment booked against nothing and there was
+// nowhere to log the sit or the application. She sold a policy and could not
+// enter it. Continuation now only appears when there IS something to continue,
+// and reopening asks WHICH case rather than guessing the most recent: reopening
+// a mortgage protection case from six months ago is a different thing entirely
+// from reopening last week's retirement.
+function openReopenCasePicker(id) {
+  const c = clients.find(x => x.id === id); if (!c) return;
+  const rows = (c.cases||[]).map((cs, i) => ({ cs, i }))
+    .filter(r => r.cs.status && r.cs.status !== 'Open')
+    .sort((a, b) => new Date(b.cs.created || 0) - new Date(a.cs.created || 0));
+  if (!rows.length) { openApptPicker(id); return; }
+
+  showSubModal(id, '<button class="close-x" onclick="closeToLead()">x</button>' +
+    '<div class="modal-title">Reopen a case</div>' +
+    '<div class="modal-sub">' + esc(c.name || '') + '</div>' +
+    '<div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:7px 10px;margin-bottom:10px;">Which case does this appointment belong to? It goes back to Open so you can log the sit and the application.</div>' +
+    rows.map(r => {
+      const apps = (r.cs.touchpoints||[]).reduce((a, tp) => a + ((tp.apps||[]).length), 0);
+      const when = r.cs.created ? new Date(r.cs.created).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+      return '<button class="save-btn" style="background:#138181;text-align:left;margin-bottom:6px;" onclick="reopenCaseAndBook(\'' + id + '\',' + r.i + ')">' +
+        esc(r.cs.type || 'Case') +
+        '<div style="font-size:11px;opacity:.85;font-weight:400;">' + esc(r.cs.status) +
+          (when ? ' &middot; opened ' + when : '') +
+          (apps ? ' &middot; ' + apps + ' application' + (apps === 1 ? '' : 's') : '') + '</div>' +
+      '</button>';
+    }).join(''));
+}
+
+async function reopenCaseAndBook(id, ci) {
+  const c = clients.find(x => x.id === id); if (!c) return;
+  await recordAction(id, 'Case reopened to book', async () => {
+    const cases = JSON.parse(JSON.stringify(c.cases || []));
+    if (!cases[ci]) return;
+    cases[ci].status = 'Open';
+    showSync('Reopening...');
+    await sb.from('clients').update({ cases }).eq('id', id);
+    c.cases = cases;
+    hideSync();
+  });
+  render();
+  showContModal(id, ci);
 }
 
 function openApptPicker(id) {
@@ -8521,6 +8587,8 @@ function snapshotOf(c) {
     // a confirmation looked like nothing changed and could not be undone.
     delivery_due: c.delivery_due || null,
     delivery_confirmed: c.delivery_confirmed || null,
+    care_done: JSON.parse(JSON.stringify(c.care_done || {})),
+    care_push: JSON.parse(JSON.stringify(c.care_push || {})),
     cases: JSON.parse(JSON.stringify(c.cases || [])),
   };
 }
@@ -8537,6 +8605,8 @@ async function restoreSnapshot(id, snap, why) {
     resolved_as: snap.resolved_as,
     delivery_due: snap.delivery_due || null,
     delivery_confirmed: snap.delivery_confirmed || null,
+    care_done: JSON.parse(JSON.stringify(snap.care_done || {})),
+    care_push: JSON.parse(JSON.stringify(snap.care_push || {})),
     cases: JSON.parse(JSON.stringify(snap.cases || [])),
   };
   showSync(why || 'Undoing...');
@@ -9183,25 +9253,189 @@ const TEXT_TEMPLATES = [
 // quietest way to lose one - a wrong account number or an unexpected draft date
 // shows up as a lapse two months later. Two weeks after issue, ask. Pushable a
 // week at a time for as long as the carrier takes.
-const DELIVERY_WAIT_DAYS = 14;
+// CLIENT CARE. h202: the chain that keeps a policy on the books. Deliberately
+// OUT of the call queue and out of the pace banner - appointment-setting time and
+// follow-up time are different work and interleaving them costs both. It sits on
+// a tile; she opens it when she is ready to work the block.
+//
+// The chain, in order:
+//   portal   - draft day + 3 days. INTERNAL. Did it draft? She watches the agent
+//              portal; this is how placement gets logged in the first place.
+//   delivery - 10 days after it placed, so the policy has time to arrive.
+//   90 day / 11 month / 13 month - persistency, then review.
+//   birthday - every year, from dob.
+// 11 months is the one that earns its keep: inside the 12-month chargeback
+// window, so a problem found there is still fixable.
+const DELIVERY_WAIT_DAYS = 10;    // after PLACED, not after issue
+const DRAFT_CHECK_LAG = 3;        // carriers run 2-5 days behind the draft date
 
-function deliveryDueList() {
+function _firstAppWithDraftDay(c) {
+  let found = null;
+  (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => (tp.apps||[]).forEach(ap => {
+    if (!found && ap && ap.draft_day) found = ap;
+  })));
+  return found;
+}
+
+// When the draft check is due: the first draft day on or after the app went in,
+// plus a few days for the carrier to run it.
+function draftCheckDue(c) {
+  const ap = _firstAppWithDraftDay(c);
+  if (!ap) return null;
+  if (!['Submitted','Approved'].includes(ap.status || '')) return null;   // already placed, or dead
+  const day = Number(ap.draft_day);
+  const from = new Date(ap.writtenDate || ap.written_date || c.created_at || Date.now());
+  const d = new Date(from.getFullYear(), from.getMonth(), day, 12, 0, 0);
+  if (d < from) d.setMonth(d.getMonth() + 1);
+  return new Date(d.getTime() + DRAFT_CHECK_LAG * 86400000);
+}
+
+const CARE_STEPS = [
+  { key: 'd90',   afterDays: 90,  label: '90 day check-in',
+    script: (fn) => 'Hi ' + fn + ', Holli here. Everything still good with the policy? And if anyone came to mind since we talked, I always have room for one more.' },
+  { key: 'm11',   afterDays: 335, label: '11 month review',
+    script: (fn) => 'Hi ' + fn + ', Holli. Coming up on a year - I want to make sure the payments have all gone through clean and nothing has slipped. Quick call?' },
+  { key: 'm13',   afterDays: 395, label: '13 month policy review',
+    script: (fn) => "Hi " + fn + ", it's Holli. It's been a year since we put your coverage in place - worth a quick look to make sure it still fits where things are now." },
+];
+
+// How far ahead each birthday prompt lands. A card needs posting time; a text
+// needs the day. null means she has switched that prompt off.
+function birthdayCardLead() {
+  const v = getAgentSettings().birthdayCardLead;
+  if (v === 'off' || v === null) return null;
+  const n = parseInt(v);
+  return isNaN(n) ? 10 : n;
+}
+function birthdayTextLead() {
+  const v = getAgentSettings().birthdayTextLead;
+  if (v === 'off' || v === null) return null;
+  const n = parseInt(v);
+  return isNaN(n) ? 1 : n;
+}
+
+function careDone(c, key) { return !!((c.care_done || {})[key]); }
+function carePushed(c, key) { const v = (c.care_push || {})[key]; return v ? new Date(v).getTime() : 0; }
+
+// A date of birth arrives two ways: 'M/D/YYYY' from the PDF importer, or
+// 'YYYY-MM-DD' from a date input. Both reduce to a month and a day.
+function dobMonthDay(raw) {
+  if (!raw) return null;
+  const iso = String(raw).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return { m: Number(iso[2]), d: Number(iso[3]) };
+  const us = String(raw).match(/^(\d{1,2})[\/-](\d{1,2})/);
+  if (us) return { m: Number(us[1]), d: Number(us[2]) };
+  return null;
+}
+
+function appDobIso(raw) {
+  if (!raw) return '';
+  if (/^\d{4}-\d{2}-\d{2}/.test(String(raw))) return String(raw).slice(0, 10);
+  const m = String(raw).match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+  if (!m) return '';
+  return m[3] + '-' + String(m[1]).padStart(2, '0') + '-' + String(m[2]).padStart(2, '0');
+}
+
+function _nextFrom(md) {
+  if (!md) return null;
+  const now = new Date();
+  let d = new Date(now.getFullYear(), md.m - 1, md.d, 12, 0, 0);
+  if (isNaN(d)) return null;
+  if (d < new Date(now.getTime() - 3 * 86400000)) d = new Date(now.getFullYear() + 1, md.m - 1, md.d, 12, 0, 0);
+  return d;
+}
+
+function nextBirthday(c) { return _nextFrom(dobMonthDay(c.dob || c.birthday)); }
+
+// EVERY person on the lead with a birth date - the lead themselves, and anyone
+// named on an application. h203: keyed by NAME, so two applications for Jane
+// Smith produce ONE reminder, not two. Whichever record has a date wins.
+function birthdayPeopleFor(c) {
+  const byName = new Map();
+  const add = (name, raw) => {
+    const md = dobMonthDay(raw);
+    if (!md || !name) return;
+    const key = String(name).trim().toLowerCase();
+    if (!key || byName.has(key)) return;
+    byName.set(key, { name: String(name).trim(), md });
+  };
+  add(c.name, c.dob || c.birthday);
+  (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => (tp.apps||[]).forEach(ap => {
+    if (!ap || !ap.dob) return;
+    const who = (ap.who && ap.who !== 'Borrower') ? ap.who : c.name;
+    add(who, ap.dob);
+  })));
+  return [...byName.values()].map(p => ({ name: p.name, when: _nextFrom(p.md) })).filter(p => p.when);
+}
+
+// Everything DUE today. Upcoming is deliberately hidden - a list you scroll past
+// is a list you stop reading.
+function clientCareDue() {
   const now = Date.now();
   const out = [];
+  const push = (c, key, label, due, kind, script) => {
+    if (careDone(c, key)) return;
+    const pushed = carePushed(c, key);
+    const when = Math.max(due, pushed);
+    if (when > now) return;
+    out.push({ c, key, label, due: new Date(when), kind, script });
+  };
+
   (clients || []).forEach(c => {
+    // 1. did it draft? internal, no call
+    const dc = draftCheckDue(c);
+    if (dc) push(c, 'portal', 'Check the portal - did it draft?', dc.getTime(), 'portal', null);
+
     const issued = getIssuedAt(c);
     if (!issued) return;
-    if (c.delivery_confirmed) return;
-    const due = c.delivery_due
-      ? new Date(c.delivery_due).getTime()
-      : issued.getTime() + DELIVERY_WAIT_DAYS * 86400000;
-    if (due > now) return;
-    out.push({ c, due: new Date(due), issued });
+
+    // 2. do they have the policy
+    if (!c.delivery_confirmed) {
+      // one push mechanism for every step - care_push - so a delivery push and a
+      // 13-month push behave identically. c.delivery_due is the pre-h202 field.
+      const base = c.delivery_due ? new Date(c.delivery_due).getTime()
+                                  : issued.getTime() + DELIVERY_WAIT_DAYS * 86400000;
+      const due = Math.max(base, carePushed(c, 'delivery'));
+      if (due <= now) out.push({ c, key: 'delivery', label: 'Policy delivery', due: new Date(due), kind: 'delivery', script: deliveryScript(c) });
+      return;   // nothing else starts until they have it in hand
+    }
+
+    // 3. the persistency chain
+    const fn = (c.name || '').split(' ')[0];
+    CARE_STEPS.forEach(st =>
+      push(c, st.key, st.label, issued.getTime() + st.afterDays * 86400000, 'call', st.script(fn)));
+
+    // 4. birthdays - one per PERSON, and TWO prompts per birthday. A card has to be
+    // bought, written and posted, so it needs real notice; a text needs the day.
+    // One lead time cannot serve both, which is why these are separate settings
+    // and separate items - marking the card done leaves the text alone.
+    birthdayPeopleFor(c).forEach(p => {
+      const first = p.name.split(' ')[0];
+      const slug = p.name.toLowerCase().replace(/\s+/g, '_') + '_' + p.when.getFullYear();
+      const cardDays = birthdayCardLead(), textDays = birthdayTextLead();
+      if (cardDays !== null) {
+        push(c, 'bcard_' + slug, 'Birthday card - ' + p.name,
+             p.when.getTime() - cardDays * 86400000, 'card',
+             // the date, not "N days out" - once this has been pushed a few times
+             // the lead time is no longer the truth and the date always is
+             'Send a card - ' + p.name + "'s birthday is " +
+               p.when.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric'}) + '.');
+      }
+      if (textDays !== null) {
+        push(c, 'bday_' + slug, 'Birthday - ' + p.name,
+             p.when.getTime() - textDays * 86400000, 'call',
+             textDays > 0
+               ? 'Hi ' + first + ', Holli here - happy birthday for tomorrow! Hope you get spoiled.'
+               : 'Hi ' + first + ', Holli here - happy birthday! Hope you get spoiled today.');
+      }
+    });
   });
   return out.sort((a, b) => a.due - b.due);
 }
 
-// The day of the month their payment drafts, taken off the first app that has it.
+// kept for the old entry point
+function deliveryDueList() { return clientCareDue().filter(r => r.kind === 'delivery'); }
+
 function draftDayOf(c) {
   let day = null;
   (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => (tp.apps||[]).forEach(ap => {
@@ -9224,18 +9458,51 @@ function deliveryScript(c) {
            : 'And I want to confirm the draft date works for you.');
 }
 
-async function pushDelivery(id, days) {
+async function careDoneMark(id, key) {
   const c = clients.find(x => x.id === id); if (!c) return;
-  const base = c.delivery_due ? new Date(c.delivery_due) : new Date();
-  const next = new Date(Math.max(base.getTime(), Date.now()) + (days || 7) * 86400000);
-  await recordAction(id, 'Delivery check pushed', async () => {
+  await recordAction(id, 'Client care - ' + key, async () => {
+    const done = Object.assign({}, c.care_done || {}); done[key] = new Date().toISOString();
     showSync('Saving...');
-    await sb.from('clients').update({ delivery_due: next.toISOString() }).eq('id', id);
-    c.delivery_due = next.toISOString();
+    await sb.from('clients').update({ care_done: done }).eq('id', id);
+    c.care_done = done;
     hideSync();
   });
-  render(); openDeliveryPanel();
+  render(); openClientCare();
 }
+
+async function carePush(id, key, days) {
+  const c = clients.find(x => x.id === id); if (!c) return;
+  await recordAction(id, 'Client care pushed', async () => {
+    const p = Object.assign({}, c.care_push || {});
+    p[key] = new Date(Date.now() + (days || 7) * 86400000).toISOString();
+    showSync('Saving...');
+    await sb.from('clients').update({ care_push: p }).eq('id', id);
+    c.care_push = p;
+    hideSync();
+  });
+  render(); openClientCare();
+}
+
+// The portal check is how a policy gets logged as placed in the first place.
+async function markPlacedFromPortal(id) {
+  const c = clients.find(x => x.id === id); if (!c) return;
+  await recordAction(id, 'Placed from portal check', async () => {
+    const cases = JSON.parse(JSON.stringify(c.cases || []));
+    cases.forEach(cs => (cs.touchpoints||[]).forEach(tp => (tp.apps||[]).forEach(ap => {
+      if (ap && ['Submitted','Approved'].includes(ap.status || '')) {
+        ap.status = 'Issued';
+        stampIssuedDate(ap);   // starts the delivery clock
+      }
+    })));
+    showSync('Saving...');
+    await sb.from('clients').update({ cases }).eq('id', id);
+    c.cases = cases;
+    hideSync();
+  });
+  render(); openClientCare();
+}
+
+async function pushDelivery(id, days) { return carePush(id, 'delivery', days); }
 
 async function confirmDelivery(id) {
   const c = clients.find(x => x.id === id); if (!c) return;
@@ -9248,41 +9515,54 @@ async function confirmDelivery(id) {
   });
   render();
   // Straight into the ask. Confirming delivery is the warmest they will ever be -
-  // the policy is in their hands and it did what you said it would. Reuses the
-  // same capture screen the sit uses: referrals, resets, recruits, one place.
+  // the policy is in their hands and it did what you said it would.
   const sale = (c.cases||[]).reduce((found, cs, ci) => found ||
     (cs.touchpoints||[]).reduce((f2, tp, ti) => f2 || (tp.outcome === 'sale' ? {ci, ti} : null), null), null);
   if (sale) {
     window._cap = { id, ci: sale.ci, ti: sale.ti, outcome: 'sale', phase: 'post' };
     return showCaptureScreen();
   }
-  openDeliveryPanel();
+  openClientCare();
 }
 
-function openDeliveryPanel() {
-  const rows = deliveryDueList();
+function openClientCare() {
+  const rows = clientCareDue();
   let html = '<button class="close-x" onclick="closeModal()">x</button>' +
-    '<div class="modal-title">Policy delivery</div>' +
-    '<div class="modal-sub">' + rows.length + ' to confirm</div>';
+    '<div class="modal-title">Client care</div>' +
+    '<div class="modal-sub">' + rows.length + ' due</div>';
   if (!rows.length) {
-    html += '<div style="font-size:12px;color:#138181;background:#E1F5EE;border-radius:8px;padding:12px;margin-top:8px;">Nothing waiting. Every issued policy has been confirmed.</div>';
+    html += '<div style="font-size:12px;color:#138181;background:#E1F5EE;border-radius:8px;padding:12px;margin-top:8px;">Nothing due. Every policy is where it should be.</div>';
   }
-  html += rows.map(r =>
-    '<div style="border:1px solid #e2eaf2;border-radius:8px;padding:10px;margin-bottom:6px;">' +
+  html += rows.map(r => {
+    const tone = r.kind === 'portal' ? '#3C3489' : r.kind === 'delivery' ? '#138181'
+               : r.kind === 'card' ? '#7A4A0F' : '#BA7517';
+    let actions;
+    if (r.kind === 'portal') {
+      actions = '<button onclick="markPlacedFromPortal(\'' + r.c.id + '\')" style="flex:1.2;background:#3B6D11;color:#fff;border:none;border-radius:6px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;">It drafted - mark placed</button>' +
+                '<button onclick="carePush(\'' + r.c.id + '\',\'portal\',3)" style="flex:1;background:none;border:1px solid #b9c6d4;color:#5f7a99;border-radius:6px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;">Not yet - 3 days</button>';
+    } else if (r.kind === 'delivery') {
+      actions = '<button onclick="confirmDelivery(\'' + r.c.id + '\')" style="flex:1.2;background:#138181;color:#fff;border:none;border-radius:6px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;">Confirmed - go to the ask</button>' +
+                '<button onclick="carePush(\'' + r.c.id + '\',\'delivery\',7)" style="flex:1;background:none;border:1px solid #b9c6d4;color:#5f7a99;border-radius:6px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;">Not yet - a week</button>';
+    } else {
+      actions = '<button onclick="careDoneMark(\'' + r.c.id + '\',\'' + r.key + '\')" style="flex:1.2;background:' + (r.kind === 'card' ? '#7A4A0F' : '#138181') + ';color:#fff;border:none;border-radius:6px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;">' + (r.kind === 'card' ? 'Card sent' : 'Done') + '</button>' +
+                '<button onclick="carePush(\'' + r.c.id + '\',\'' + r.key + '\',7)" style="flex:1;background:none;border:1px solid #b9c6d4;color:#5f7a99;border-radius:6px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;">Push a week</button>';
+    }
+    return '<div style="border:1px solid #e2eaf2;border-left:3px solid ' + tone + ';border-radius:8px;padding:10px;margin-bottom:6px;">' +
       '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">' +
         '<div onclick="closeModal();openClient(\'' + r.c.id + '\')" style="font-size:13px;font-weight:600;color:#138181;cursor:pointer;">' + esc(r.c.name || '') + '</div>' +
-        '<div style="font-size:10px;color:#8fa8c0;white-space:nowrap;">issued ' +
-          r.issued.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + '</div>' +
+        '<div style="font-size:10px;color:#8fa8c0;white-space:nowrap;">' +
+          r.due.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + '</div>' +
       '</div>' +
-      (r.c.phone ? '<div style="font-size:12px;color:#138181;">' + esc(r.c.phone) + '</div>' : '') +
-      '<div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:7px 9px;margin:6px 0;">' + esc(deliveryScript(r.c)) + '</div>' +
-      '<div style="display:flex;gap:6px;">' +
-        '<button onclick="confirmDelivery(\'' + r.c.id + '\')" style="flex:1.2;background:#138181;color:#fff;border:none;border-radius:6px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;">Confirmed - go to the ask</button>' +
-        '<button onclick="pushDelivery(\'' + r.c.id + '\',7)" style="flex:1;background:none;border:1px solid #b9c6d4;color:#5f7a99;border-radius:6px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;">Not yet - push a week</button>' +
-      '</div>' +
-    '</div>').join('');
+      '<div style="font-size:10px;font-weight:700;color:' + tone + ';text-transform:uppercase;letter-spacing:0.04em;margin-top:2px;">' + esc(r.label) + '</div>' +
+      (r.c.phone && r.kind !== 'portal' && r.kind !== 'card' ? '<div style="font-size:12px;color:#138181;margin-top:2px;">' + esc(r.c.phone) + '</div>' : '') +
+      (r.script ? '<div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:7px 9px;margin:6px 0;">' + esc(r.script) + '</div>' : '<div style="height:6px;"></div>') +
+      '<div style="display:flex;gap:6px;">' + actions + '</div>' +
+    '</div>';
+  }).join('');
   showModal(html);
 }
+
+function openDeliveryPanel() { return openClientCare(); }
 
 function getIssuedAt(c) {
   let earliest = null;
@@ -11407,6 +11687,7 @@ function openAddAppToTouchpoint(id, ci, ti, label) {
       <div style="display:flex;gap:8px;">
         <div class="field" style="flex:1;"><label>Who</label><input type="text" id="app-who-0" placeholder="Borrower" value="Borrower"></div>
         <div class="field" style="width:80px;"><label>Age</label><input type="number" id="app-age-0" placeholder="e.g. 45" style="font-size:16px;"></div>
+        <div class="field" style="width:135px;"><label>Birth date</label><input type="date" id="app-dob-0" style="font-size:14px;"></div>
       </div>
     </div>
   </div>
@@ -11449,6 +11730,7 @@ function addAnotherApp() {
     <div style="display:flex;gap:8px;">
       <div class="field" style="flex:1;"><label>Who</label><input type="text" id="app-who-${i}" placeholder="Borrower" value="Borrower"></div>
       <div class="field" style="width:80px;"><label>Age</label><input type="number" id="app-age-${i}" placeholder="e.g. 45" style="font-size:16px;"></div>
+      <div class="field" style="width:135px;"><label>Birth date</label><input type="date" id="app-dob-${i}" style="font-size:14px;"></div>
     </div>`;
   container.appendChild(div);
 }
@@ -11559,6 +11841,7 @@ async function _saveAppsToTouchpoint(id, ci, ti) {
     const face = parseFloat((document.getElementById('app-face-'+idx)||{value:0}).value)||0;
     const apv = parseFloat((document.getElementById('app-apv-'+idx)||{value:0}).value)||0;
     const who = (document.getElementById('app-who-'+idx)||{value:'Borrower'}).value.trim()||'Borrower';
+    const dob = ((document.getElementById('app-dob-'+idx)||{value:''}).value || '').trim();
     // A filled-in app with no product picked would save the wrong comp — block it.
     if (carrier && apv > 0 && !product) { _missingProduct = true; return; }
     if (carrier && apv > 0) {
@@ -11574,7 +11857,7 @@ async function _saveAppsToTouchpoint(id, ci, ti) {
       const _compBasis = _isAccount ? _amount : apv;
       const comp = carrier && productName && _compBasis ? calcAppComp(carrier, productName, _compBasis, null, undefined, age, productRange) : null;
       apps.push({
-        carrier, product: productName, product_range: productRange, face, premium: apv, who, age,
+        carrier, product: productName, product_range: productRange, face, premium: apv, who, age, dob: dob || null,
         amount: _amount, is_account: _isAccount,
         status:'Written', written_date: appDate, writtenDate: appDate, id: Date.now()+idx,
         // Set when this app replaces a declined one. The declined app is then
@@ -11675,6 +11958,7 @@ function openEditApp(id, ci, ti, ai) {
   <div class="field"><label>Monthly premium ($ and cents — the number you quote)</label><input type="number" step="0.01" id="edit-app-monthly" value="${ap.premium ? (ap.premium/12).toFixed(2) : ''}" placeholder="e.g. 95.20" style="font-size:16px;" oninput="const a=document.getElementById('edit-app-apv-display'); if(a) a.textContent = this.value ? '= $' + (parseFloat(this.value)*12).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' APV' : '';">
   <div id="edit-app-apv-display" style="font-size:10px;color:#5f7a99;margin-top:3px;">${ap.premium ? '= $' + ap.premium.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' APV' : ''}</div></div>
   <div class="field"><label>Who</label><input type="text" id="edit-app-who" value="${ap.who||'Borrower'}"></div>
+  <div class="field"><label>Their birth date <span style="font-weight:400;color:#8A94A2;">(for the birthday reminder)</span></label><input type="date" id="edit-app-dob" value="${appDobIso(ap.dob)}" style="font-size:16px;"></div>
   <div class="field"><label>Date written (the day this app was actually done)</label><input type="date" id="edit-app-date" value="${(ap.writtenDate||ap.written_date||new Date().toISOString()).slice(0,10)}" style="font-size:16px;"></div>
   <div class="field"><label>Status</label><select id="edit-app-status">${APP_STATUSES.map(s=>`<option${ap.status===s?' selected':''}>${s}</option>`).join('')}</select></div>
   <div class="field"><label>Drafts on the</label><select id="edit-app-draft-day"><option value="">not set</option>${DRAFT_DAYS.map(d=>`<option value="${d}"${String(ap.draft_day)===String(d)?' selected':''}>${d}</option>`).join('')}</select></div>
@@ -11702,6 +11986,8 @@ async function saveEditApp(id, ci, ti, ai) {
   const _mo = parseFloat(document.getElementById('edit-app-monthly').value)||0;
   ap.premium = Math.round(_mo * 12 * 100) / 100; // APV = monthly x 12, cents preserved
   ap.who = document.getElementById('edit-app-who').value.trim()||'Borrower';
+  const _dob = document.getElementById('edit-app-dob');
+  if (_dob) ap.dob = _dob.value || null;
   ap.status = document.getElementById('edit-app-status').value;
   const _dd = document.getElementById('edit-app-draft-day');
   if (_dd) ap.draft_day = _dd.value ? Number(_dd.value) : null;
@@ -12777,6 +13063,556 @@ function referralOnlyStats(pStart, pEnd) {
   return { count: cohort.length, sales, decided, apv, comm };
 }
 
+// ============================================================================
+// REPORT BUILDER (h206)
+// Rebuilds the cumulative dashboard she ran CWC from, with any number of period
+// columns side by side. Three things it does that the board cannot:
+//   - the CALENDAR BASIS is a choice. Carriers pay on a production month
+//     (Saturday after one month's last Friday to the next month's last Friday);
+//     dialing runs on an activity month; a spreadsheet runs on the calendar. The
+//     same July is three different windows and the answer differs. She picks.
+//   - any number of columns, any years. July 26 vs July 25 vs July 24, or Q1 vs Q2.
+//   - TOTAL and AVERAGE are different questions and both are shown. Counts sum.
+//     Ratios are RECOMPUTED across the whole span, never averaged - averaging a
+//     ratio weights a 20-lead month the same as a 200-lead one.
+// ============================================================================
+
+function reportPeriodBounds(basis, gran, year, idx) {
+  // idx: month 0-11, quarter 0-3, week 0-52, year ignored beyond `year`
+  const cal = (a, b) => ({ start: a, end: b });
+  const eod = (d) => { const x = new Date(d); x.setHours(23,59,59,999); return x; };
+  const sod = (d) => { const x = new Date(d); x.setHours(0,0,0,0); return x; };
+
+  if (gran === 'month') {
+    if (basis === 'production') return getProductionMonthBounds(year, idx);
+    if (basis === 'activity')   return getActivityMonthBounds(year, idx);
+    return cal(sod(new Date(year, idx, 1)), eod(new Date(year, idx + 1, 0)));
+  }
+  if (gran === 'quarter') {
+    const m0 = idx * 3;
+    if (basis === 'production' || basis === 'activity') {
+      const f = (basis === 'production' ? getProductionMonthBounds : getActivityMonthBounds);
+      return cal(f(year, m0).start, f(year, m0 + 2).end);
+    }
+    return cal(sod(new Date(year, m0, 1)), eod(new Date(year, m0 + 3, 0)));
+  }
+  if (gran === 'year') {
+    if (basis === 'production' || basis === 'activity') {
+      const f = (basis === 'production' ? getProductionMonthBounds : getActivityMonthBounds);
+      return cal(f(year, 0).start, f(year, 11).end);
+    }
+    return cal(sod(new Date(year, 0, 1)), eod(new Date(year, 11, 31)));
+  }
+  // week: idx is the ISO-ish week number, weeks run Saturday to Friday to match
+  // the production calendar rather than Sunday to Saturday
+  const jan1 = new Date(year, 0, 1);
+  const firstSat = new Date(jan1); while (firstSat.getDay() !== 6) firstSat.setDate(firstSat.getDate() + 1);
+  const st = new Date(firstSat); st.setDate(st.getDate() + idx * 7);
+  const en = new Date(st); en.setDate(en.getDate() + 6);
+  return cal(sod(st), eod(en));
+}
+
+function reportPeriodLabel(gran, year, idx) {
+  const M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  if (gran === 'month')   return M[idx] + ' ' + year;
+  if (gran === 'quarter') return 'Q' + (idx + 1) + ' ' + year;
+  if (gran === 'year')    return String(year);
+  return 'Wk ' + (idx + 1) + ' ' + year;
+}
+
+// Sum every stat whose key STARTS with a prefix. Timer sessions are stored one
+// key per day (time_dial_2026-07-31), so a range needs a prefix match.
+function sumStatPrefix(prefix, start, end) {
+  return (stats || []).filter(s => {
+    if (!s || !s.recorded_at || !s.stat_key) return false;
+    if (String(s.stat_key).indexOf(prefix) !== 0) return false;
+    const t = new Date(s.recorded_at);
+    return t >= start && t <= end;
+  }).reduce((a, s) => a + (s.value || 0), 0);
+}
+
+// The advance is what the carrier fronts you now; the rest arrives as earned.
+// Split for reporting only - the TOTAL is unchanged and remains the truth.
+function advanceShareOf(ap) {
+  const comp = COMP_DATA[(ap && ap.carrier) || ''];
+  if (!comp) return 0.75;
+  if (comp.as_earned) return 0;
+  const pct = Number(comp.advance_pct);
+  return isNaN(pct) ? 0.75 : pct / 100;
+}
+
+// Every number on the report, for one window. Anything divided by a lead count is
+// COHORT based (of the leads assigned in this window, what have they produced) so
+// numerator and denominator answer the same question - see h181.
+function reportStats(pStart, pEnd) {
+  const inWin = (d) => { const x = new Date(d); return !isNaN(x) && x >= pStart && x <= pEnd; };
+  const cohort = (clients || []).filter(c => inWin(c.assigned_date || c.created_at));
+
+  let contacted = 0, apptsBooked = 0, apptsSat = 0, noShows = 0, decided = 0,
+      sales = 0, apps = 0, appsPPU = 0, ppu = 0, resolved = 0,
+      apvSub = 0, apvPlaced = 0, comm = 0, advance = 0, chargeback = 0,
+      leadToApptDays = [], apptToSaleDays = [], resets = 0, resetSold = 0;
+
+  cohort.forEach(c => {
+    const log = c.call_log || [];
+    if (log.some(e => ['Appt set','Callback','Conversation','Not interested','Rescheduled'].includes(e.outcome))) contacted++;
+    if (['Closed','No sale','Dead','No show'].includes(c.status)) resolved++;
+    const booked = log.filter(e => e.outcome === 'Appt set');
+    if (booked.length) apptsBooked++;
+
+    const assigned = new Date(c.assigned_date || c.created_at);
+    if (booked.length && !isNaN(assigned)) {
+      const d = new Date(booked[0].ts);
+      if (!isNaN(d)) leadToApptDays.push((d - assigned) / 86400000);
+    }
+
+    let sat = false, sold = false, firstAppt = null, saleAt = null;
+    (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+      if (!tp) return;
+      if (tp.datetime && !firstAppt) firstAppt = new Date(tp.datetime);
+      if (['sale','nosale'].includes(tp.outcome)) sat = true;
+      if (tp.outcome === 'noshow') noShows++;
+      if (/PPU|Pickup/i.test(tp.type || '')) ppu++;
+      if (tp.outcome === 'sale') {
+        sold = true;
+        if (tp.datetime) saleAt = new Date(tp.datetime);
+        if (/PPU|Pickup/i.test(tp.type || '')) appsPPU++;
+      }
+      (tp.apps||[]).forEach(ap => {
+        apps++;
+        const st = normalizeAppStatus(ap.status);
+        const prem = Number(ap.premium) || 0;
+        if (['Submitted','Approved','Issued','Paid','Not taken','Lapse','Cancel'].includes(st)) apvSub += prem;
+        if (['Issued','Paid'].includes(st)) apvPlaced += prem;
+        if (['Lapse','Cancel'].includes(st)) {
+          const raw = ap.chargeback_amount;
+          chargeback += (raw !== undefined && raw !== null && raw !== '') ? Number(raw) : prem;
+        }
+      });
+    }));
+    if (sat) { decided++; if (sold) sales++; }
+    if (firstAppt && saleAt) apptToSaleDays.push(Math.max(0, (saleAt - firstAppt) / 86400000));
+
+    const r = resetCountFor(c, pStart, pEnd);
+    if (r) { resets += r; if (sold) resetSold++; }
+
+    const d = commissionDetail(c);
+    comm += d.total;
+    d.rows.forEach(row => {
+      const ap = ((((c.cases||[])[row.ci]||{}).touchpoints||[])[row.ti]||{}).apps;
+      const rec = ap ? ap[row.ai] : null;
+      advance += row.value * advanceShareOf(rec || {});
+    });
+  });
+
+  const dials = sumStat('dials', pStart, pEnd);
+  const texts = sumStat('texts', pStart, pEnd);
+  const dialSecs = sumStatPrefix('time_dial_', pStart, pEnd);
+  const apptSecs = sumStatPrefix('time_appt_', pStart, pEnd);
+  const spend = (typeof spendInPeriod === 'function') ? spendInPeriod(pStart, pEnd) : 0;
+  const ref = referralOnlyStats(pStart, pEnd);
+  const refAppts = (clients||[]).filter(c => c.referred_by && inWin(c.assigned_date || c.created_at) &&
+    (c.call_log||[]).some(e => e.outcome === 'Appt set')).length;
+  const refSits = (clients||[]).filter(c => c.referred_by && inWin(c.assigned_date || c.created_at) &&
+    (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => ['sale','nosale'].includes(tp.outcome)))).length;
+  const avg = (a) => a.length ? a.reduce((x,y)=>x+y,0) / a.length : null;
+
+  return {
+    _hasData: cohort.length > 0 || dials > 0 || apvSub > 0,
+    leads: cohort.length, contacted, resolved, dials, texts,
+    dialHours: dialSecs / 3600, apptHours: apptSecs / 3600,
+    apptsBooked, apptsSat, noShows, decided, sales, apps, ppu, appsPPU,
+    resets, resetSold,
+    refLeads: ref.count, refAppts, refSits, refSales: ref.sales, refApv: ref.apv,
+    apvSub, apvPlaced, chargeback,
+    comm, advance, backend: comm - advance, spend,
+    leadToApptDays: avg(leadToApptDays), apptToSaleDays: avg(apptToSaleDays),
+  };
+}
+
+// label, group, how to read it, and how to combine columns. 'sum' adds; 'ratio'
+// is recomputed from its parts for the Total and Average columns.
+const REPORT_METRICS = [
+  {k:'leads',        g:'Activity',   l:'Leads received',        t:'int',   c:'sum'},
+  {k:'contacted',    g:'Activity',   l:'Contacts',              t:'int',   c:'sum'},
+  {k:'_resolution',  g:'Activity',   l:'Lead resolution',       t:'pct',   c:'ratio', n:'resolved', d:'leads'},
+  {k:'dials',        g:'Activity',   l:'Dials',                 t:'int',   c:'sum'},
+  {k:'texts',        g:'Activity',   l:'Texts sent',            t:'int',   c:'sum'},
+  {k:'dialHours',    g:'Activity',   l:'Hours dialing',         t:'hrs',   c:'sum'},
+  {k:'apptHours',    g:'Activity',   l:'Hours in appointments', t:'hrs',   c:'sum'},
+  {k:'_dph',         g:'Activity',   l:'Dials per hour',        t:'num',   c:'ratio', n:'dials', d:'dialHours'},
+  {k:'_dpa',         g:'Activity',   l:'Dials per appt set',    t:'num',   c:'ratio', n:'dials', d:'apptsBooked'},
+  {k:'_dps',         g:'Activity',   l:'Dials per sale',        t:'num',   c:'ratio', n:'dials', d:'sales'},
+
+  {k:'apptsBooked',  g:'Production', l:'Appointments booked',   t:'int',   c:'sum'},
+  {k:'apptsSat',     g:'Production', l:'Appointments sat',      t:'int',   c:'sum'},
+  {k:'_sitRatio',    g:'Production', l:'Sit ratio',             t:'pct',   c:'ratio', n:'decided', d:'apptsBooked'},
+  {k:'noShows',      g:'Production', l:'No shows',              t:'int',   c:'sum'},
+  {k:'_noShowRate',  g:'Production', l:'No show rate',          t:'pct',   c:'ratio', n:'noShows', d:'apptsBooked'},
+  {k:'resets',       g:'Production', l:'Resets',                t:'int',   c:'sum'},
+  {k:'resetSold',    g:'Production', l:'Resets sold',           t:'int',   c:'sum'},
+  {k:'ppu',          g:'Production', l:'Policy pickups',        t:'int',   c:'sum'},
+  {k:'appsPPU',      g:'Production', l:'Sales from PPU',        t:'int',   c:'sum'},
+  {k:'sales',        g:'Production', l:'Sales',                 t:'int',   c:'sum'},
+  {k:'apps',         g:'Production', l:'Apps written',          t:'int',   c:'sum'},
+  {k:'_closeRatio',  g:'Production', l:'Sit to sale ratio',     t:'pct',   c:'ratio', n:'sales', d:'decided'},
+  {k:'_leadToApp',   g:'Production', l:'Lead to app CR',        t:'pct',   c:'ratio', n:'sales', d:'leads'},
+  {k:'leadToApptDays', g:'Production', l:'Days lead to appt',   t:'days',  c:'avg'},
+  {k:'apptToSaleDays', g:'Production', l:'Days appt to sale',   t:'days',  c:'avg'},
+
+  {k:'refLeads',     g:'Referrals',  l:'Referrals',             t:'int',   c:'sum'},
+  {k:'refAppts',     g:'Referrals',  l:'Referral appointments', t:'int',   c:'sum'},
+  {k:'refSits',      g:'Referrals',  l:'Referral sits',         t:'int',   c:'sum'},
+  {k:'refSales',     g:'Referrals',  l:'Referral sales',        t:'int',   c:'sum'},
+  {k:'_refCR',       g:'Referrals',  l:'Referral sit to sale',  t:'pct',   c:'ratio', n:'refSales', d:'refSits'},
+  {k:'refApv',       g:'Referrals',  l:'Referral APV',          t:'money', c:'sum'},
+
+  {k:'apvSub',       g:'APV',        l:'APV submitted',         t:'money', c:'sum'},
+  {k:'apvPlaced',    g:'APV',        l:'APV placed',            t:'money', c:'sum'},
+  {k:'_netPlaced',   g:'APV',        l:'Net placed ratio',      t:'pct',   c:'ratio', n:'apvPlaced', d:'apvSub'},
+  {k:'chargeback',   g:'APV',        l:'Chargebacks',           t:'money', c:'sum'},
+  {k:'_avgApv',      g:'APV',        l:'Avg APV per sale',      t:'money', c:'ratio', n:'apvSub', d:'sales'},
+
+  {k:'advance',      g:'Money',      l:'Up front advance',      t:'money', c:'sum'},
+  {k:'backend',      g:'Money',      l:'Backend pay',           t:'money', c:'sum'},
+  {k:'comm',         g:'Money',      l:'Total commission',      t:'money', c:'sum'},
+  {k:'spend',        g:'Money',      l:'Lead spend',            t:'money', c:'sum'},
+  {k:'_costLead',    g:'Money',      l:'Cost per lead',         t:'money', c:'ratio', n:'spend', d:'leads'},
+  {k:'_returnLead',  g:'Money',      l:'Return per lead',       t:'money', c:'ratio', n:'comm', d:'leads'},
+  {k:'_profit',      g:'Money',      l:'Total profit',          t:'money', c:'diff',  n:'comm', d:'spend'},
+  {k:'_roi',         g:'Money',      l:'Return on total',       t:'pct',   c:'ratio', n:'comm', d:'spend'},
+  {k:'_roiDollar',   g:'Money',      l:'Return on $1.00',       t:'money2',c:'ratio', n:'comm', d:'spend'},
+  {k:'_advProfit',   g:'Money',      l:'Advance profit',        t:'money', c:'diff',  n:'advance', d:'spend'},
+  {k:'_roiAdvance',  g:'Money',      l:'Return on advance',     t:'pct',   c:'ratio', n:'advance', d:'spend'},
+];
+
+function reportValue(m, st) {
+  if (!st) return null;
+  if (m.c === 'ratio') { const d = st[m.d]; return (d > 0) ? st[m.n] / d : null; }
+  if (m.c === 'diff')  return (st[m.n] || 0) - (st[m.d] || 0);
+  const v = st[m.k];
+  return (v === undefined) ? null : v;
+}
+
+function reportFmt(m, v) {
+  if (v === null || v === undefined || (typeof v === 'number' && isNaN(v))) return 'N/A';
+  switch (m.t) {
+    case 'money':  return '$' + Math.round(v).toLocaleString();
+    case 'money2': return '$' + v.toFixed(2);
+    case 'pct':    return Math.round(v * 100) + '%';
+    case 'hrs':    return v.toFixed(1);
+    case 'days':   return v.toFixed(1);
+    case 'num':    return v.toFixed(1);
+    default:       return Math.round(v).toLocaleString();
+  }
+}
+
+// Total = the whole span as one window. Average = the typical column. Ratios are
+// recomputed from summed parts in BOTH, never averaged.
+function reportAggregate(mode, cols) {
+  const live = cols.filter(c => c.stats && c.stats._hasData);
+  if (!live.length) return null;
+  const summed = {};
+  Object.keys(live[0].stats).forEach(k => {
+    if (k === '_hasData') return;
+    const vals = live.map(c => c.stats[k]).filter(v => typeof v === 'number' && !isNaN(v));
+    if (!vals.length) { summed[k] = null; return; }
+    const total = vals.reduce((a, b) => a + b, 0);
+    summed[k] = (mode === 'avg') ? total / live.length : total;
+  });
+  summed._hasData = true;
+  return summed;
+}
+
+function _fmtRange(b) {
+  const o = { month: 'short', day: 'numeric' };
+  return b.start.toLocaleDateString('en-US', o) + ' - ' + b.end.toLocaleDateString('en-US', o);
+}
+
+// ---- the report builder screen --------------------------------------------
+function reportCfg() {
+  const c = window._rptCfg || (window._rptCfg = {
+    basis: 'production', gran: 'month', periods: [], metrics: null,
+    showChange: false, showTotal: true, showAvg: true,
+  });
+  if (!c.periods.length) {
+    const now = new Date();
+    c.periods = [{ year: now.getFullYear(), idx: now.getMonth() }];
+  }
+  return c;
+}
+
+function rptSet(key, val) {
+  const c = reportCfg();
+  c[key] = val;
+  if (key === 'gran') c.periods = c.periods.map(p => ({ year: p.year, idx: 0 }));
+  openReportBuilder();
+}
+function rptToggle(key) { const c = reportCfg(); c[key] = !c[key]; openReportBuilder(); }
+function rptAddPeriod() {
+  const c = reportCfg();
+  const last = c.periods[c.periods.length - 1] || { year: new Date().getFullYear(), idx: 0 };
+  c.periods.push({ year: last.year - 1, idx: last.idx });   // same period, a year back
+  openReportBuilder();
+}
+function rptRemovePeriod(i) { const c = reportCfg(); c.periods.splice(i, 1); if (!c.periods.length) rptAddPeriod(); else openReportBuilder(); }
+function rptSetPeriod(i, field, val) {
+  const c = reportCfg();
+  c.periods[i][field] = parseInt(val);
+  openReportBuilder();
+}
+function rptToggleMetric(k) {
+  const c = reportCfg();
+  if (!c.metrics) c.metrics = REPORT_METRICS.map(m => m.k);
+  const i = c.metrics.indexOf(k);
+  if (i > -1) c.metrics.splice(i, 1); else c.metrics.push(k);
+  openReportBuilder();
+}
+function rptAllMetrics() { const c = reportCfg(); c.metrics = null; openReportBuilder(); }
+
+function reportColumns() {
+  const c = reportCfg();
+  return c.periods.map(p => {
+    const b = reportPeriodBounds(c.basis, c.gran, p.year, p.idx);
+    return { label: reportPeriodLabel(c.gran, p.year, p.idx), range: _fmtRange(b),
+             start: b.start, end: b.end, stats: reportStats(b.start, b.end) };
+  });
+}
+
+function reportRows() {
+  const c = reportCfg();
+  return REPORT_METRICS.filter(m => !c.metrics || c.metrics.includes(m.k));
+}
+
+function openReportBuilder() {
+  const c = reportCfg();
+  const cols = reportColumns();
+  const rows = reportRows();
+  const total = c.showTotal ? reportAggregate('sum', cols) : null;
+  const avg   = c.showAvg   ? reportAggregate('avg', cols) : null;
+  window._rptCols = cols;
+
+  const yr = new Date().getFullYear();
+  const years = []; for (let y = yr + 1; y >= yr - 6; y--) years.push(y);
+  const idxOpts = () => {
+    if (c.gran === 'month') return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    if (c.gran === 'quarter') return ['Q1','Q2','Q3','Q4'];
+    if (c.gran === 'year') return ['—'];
+    return Array.from({length: 53}, (_, i) => 'Wk ' + (i + 1));
+  };
+  const pill = (label, active, onclick) =>
+    '<button onclick="' + onclick + '" style="border:1px solid ' + (active ? '#138181' : '#d0dcea') +
+    ';background:' + (active ? '#138181' : '#fff') + ';color:' + (active ? '#fff' : '#5f7a99') +
+    ';border-radius:999px;padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;">' + label + '</button>';
+
+  let html = '<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">Reports</div>' +
+    '<div class="modal-sub">Build a comparison</div>' +
+
+    '<div style="font-size:10px;font-weight:700;color:#5f7a99;text-transform:uppercase;letter-spacing:.05em;margin:10px 0 4px;">Calendar</div>' +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+      pill('Production', c.basis === 'production', "rptSet('basis','production')") +
+      pill('Calendar', c.basis === 'calendar', "rptSet('basis','calendar')") +
+      pill('Activity', c.basis === 'activity', "rptSet('basis','activity')") +
+    '</div>' +
+    '<div style="font-size:10px;color:#8fa8c0;margin-top:4px;">Production runs Saturday to Friday - the month carriers pay on. Activity is the dialing month. Calendar is the 1st to the 31st.</div>' +
+
+    '<div style="font-size:10px;font-weight:700;color:#5f7a99;text-transform:uppercase;letter-spacing:.05em;margin:12px 0 4px;">Period</div>' +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+      pill('Week', c.gran === 'week', "rptSet('gran','week')") +
+      pill('Month', c.gran === 'month', "rptSet('gran','month')") +
+      pill('Quarter', c.gran === 'quarter', "rptSet('gran','quarter')") +
+      pill('Year', c.gran === 'year', "rptSet('gran','year')") +
+    '</div>' +
+
+    '<div style="font-size:10px;font-weight:700;color:#5f7a99;text-transform:uppercase;letter-spacing:.05em;margin:12px 0 4px;">Columns</div>' +
+    c.periods.map((p, i) =>
+      '<div style="display:flex;gap:6px;align-items:center;margin-bottom:5px;">' +
+        (c.gran === 'year' ? '' :
+          '<select onchange="rptSetPeriod(' + i + ',\'idx\',this.value)" style="flex:1.2;font-size:12px;">' +
+            idxOpts().map((o, j) => '<option value="' + j + '"' + (p.idx === j ? ' selected' : '') + '>' + o + '</option>').join('') +
+          '</select>') +
+        '<select onchange="rptSetPeriod(' + i + ',\'year\',this.value)" style="flex:1;font-size:12px;">' +
+          years.map(y => '<option value="' + y + '"' + (p.year === y ? ' selected' : '') + '>' + y + '</option>').join('') +
+        '</select>' +
+        '<div style="font-size:10px;color:#8fa8c0;flex:1.4;">' + esc(cols[i] ? cols[i].range : '') + '</div>' +
+        (c.periods.length > 1
+          ? '<button onclick="rptRemovePeriod(' + i + ')" style="background:none;border:none;color:#A32D2D;font-size:16px;cursor:pointer;padding:0 4px;">&times;</button>'
+          : '<span style="width:16px;"></span>') +
+      '</div>').join('') +
+    '<button onclick="rptAddPeriod()" style="width:100%;background:none;border:1px dashed #9FE1CB;border-radius:8px;padding:7px;font-size:11px;font-weight:600;color:#138181;cursor:pointer;margin-bottom:10px;">+ Add a column</button>' +
+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">' +
+      pill('Total', c.showTotal, "rptToggle('showTotal')") +
+      pill('Average', c.showAvg, "rptToggle('showAvg')") +
+      pill('Change', c.showChange, "rptToggle('showChange')") +
+      pill(c.metrics ? 'All metrics' : 'Pick metrics', !c.metrics, c.metrics ? 'rptAllMetrics()' : "rptToggleMetric('leads')") +
+    '</div>' +
+
+    '<div style="display:flex;gap:6px;margin-bottom:12px;">' +
+      '<button onclick="downloadReportCsv()" style="flex:1;background:#138181;color:#fff;border:none;border-radius:8px;padding:9px;font-size:12px;font-weight:600;cursor:pointer;">Export CSV</button>' +
+      '<button onclick="printReport()" style="flex:1;background:none;border:1px solid #9FE1CB;color:#138181;border-radius:8px;padding:9px;font-size:12px;font-weight:600;cursor:pointer;">Print / PDF</button>' +
+      '<button onclick="saveReportConfig()" style="flex:1;background:none;border:1px solid #b9c6d4;color:#5f7a99;border-radius:8px;padding:9px;font-size:12px;font-weight:600;cursor:pointer;">Save</button>' +
+    '</div>' +
+    reportSavedList() +
+    '<div id="rpt-table">' + reportTableHtml(cols, rows, total, avg) + '</div>';
+
+  showModal(html);
+}
+
+function reportTableHtml(cols, rows, total, avg) {
+  const c = reportCfg();
+  const nCols = cols.length + (total ? 1 : 0) + (avg ? 1 : 0) + (c.showChange && cols.length > 1 ? 1 : 0);
+  const grid = 'display:grid;grid-template-columns:1.5fr repeat(' + nCols + ',1fr);gap:3px;';
+  let out = '<div style="overflow-x:auto;"><div style="min-width:' + (170 + nCols * 78) + 'px;">' +
+    '<div style="' + grid + 'padding:6px 0;border-bottom:2px solid #1D3557;">' +
+      '<div style="font-size:10px;font-weight:700;color:#5f7a99;">METRIC</div>' +
+      cols.map(x => '<div style="font-size:10px;font-weight:700;color:#1D3557;text-align:right;">' + esc(x.label) + '</div>').join('') +
+      (total ? '<div style="font-size:10px;font-weight:700;color:#0E6363;text-align:right;">TOTAL</div>' : '') +
+      (avg ? '<div style="font-size:10px;font-weight:700;color:#0E6363;text-align:right;">AVG</div>' : '') +
+      (c.showChange && cols.length > 1 ? '<div style="font-size:10px;font-weight:700;color:#7A4A0F;text-align:right;">CHANGE</div>' : '') +
+    '</div>';
+
+  let lastGroup = '';
+  rows.forEach(m => {
+    if (m.g !== lastGroup) {
+      lastGroup = m.g;
+      out += '<div style="font-size:9px;font-weight:700;color:#8fa8c0;text-transform:uppercase;letter-spacing:.06em;padding:8px 0 3px;">' + esc(m.g) + '</div>';
+    }
+    const cells = cols.map(x => reportFmt(m, reportValue(m, x.stats && x.stats._hasData ? x.stats : null)));
+    let change = '';
+    if (c.showChange && cols.length > 1) {
+      const a = reportValue(m, cols[0].stats && cols[0].stats._hasData ? cols[0].stats : null);
+      const b = reportValue(m, cols[cols.length-1].stats && cols[cols.length-1].stats._hasData ? cols[cols.length-1].stats : null);
+      if (a === null || b === null || !a) change = 'N/A';
+      else {
+        const pc = ((b - a) / Math.abs(a)) * 100;
+        change = (pc >= 0 ? '+' : '') + Math.round(pc) + '%';
+      }
+    }
+    out += '<div style="' + grid + 'padding:3px 0;border-bottom:1px solid rgba(0,0,0,.05);">' +
+      '<div style="font-size:11px;color:#5E6A78;">' + esc(m.l) + '</div>' +
+      cells.map(v => '<div style="font-size:11px;font-weight:600;text-align:right;color:' + (v === 'N/A' ? '#c3ccd6' : '#1D3557') + ';">' + v + '</div>').join('') +
+      (total ? '<div style="font-size:11px;font-weight:700;text-align:right;color:#0E6363;">' + reportFmt(m, reportValue(m, total)) + '</div>' : '') +
+      (avg ? '<div style="font-size:11px;font-weight:700;text-align:right;color:#0E6363;">' + reportFmt(m, reportValue(m, avg)) + '</div>' : '') +
+      (c.showChange && cols.length > 1 ? '<div style="font-size:11px;font-weight:700;text-align:right;color:' + (/^\+/.test(change) ? '#3B6D11' : change === 'N/A' ? '#c3ccd6' : '#A32D2D') + ';">' + change + '</div>' : '') +
+    '</div>';
+  });
+  return out + '</div></div>';
+}
+
+// ---- export ---------------------------------------------------------------
+function reportCsv() {
+  const c = reportCfg();
+  const cols = reportColumns();
+  const rows = reportRows();
+  const total = c.showTotal ? reportAggregate('sum', cols) : null;
+  const avg   = c.showAvg   ? reportAggregate('avg', cols) : null;
+  const q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const raw = (m, st) => { const v = reportValue(m, st && st._hasData ? st : null);
+    return (v === null || v === undefined || isNaN(v)) ? 'N/A' : (m.t === 'pct' ? (v * 100).toFixed(1) : Number(v).toFixed(2)); };
+
+  const out = [];
+  // A file opened in three months has to explain itself.
+  out.push([q('CWC report'), q(new Date().toLocaleString())].join(','));
+  out.push([q('Calendar basis'), q(c.basis)].join(','));
+  out.push([q('Period type'), q(c.gran)].join(','));
+  cols.forEach(x => out.push([q('Column'), q(x.label), q(x.range)].join(',')));
+  out.push('');
+  out.push(['Group','Metric','Unit'].map(q).concat(cols.map(x => q(x.label)))
+    .concat(total ? [q('Total')] : []).concat(avg ? [q('Average')] : []).join(','));
+  rows.forEach(m => {
+    out.push([q(m.g), q(m.l), q(m.t === 'pct' ? '%' : m.t)]
+      .concat(cols.map(x => q(raw(m, x.stats))))
+      .concat(total ? [q(raw(m, total))] : [])
+      .concat(avg ? [q(raw(m, avg))] : []).join(','));
+  });
+  return out.join('\n');
+}
+
+function downloadReportCsv() {
+  const blob = new Blob([reportCsv()], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'cwc-report-' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function printReport() {
+  const c = reportCfg();
+  const cols = reportColumns();
+  const rows = reportRows();
+  const total = c.showTotal ? reportAggregate('sum', cols) : null;
+  const avg   = c.showAvg   ? reportAggregate('avg', cols) : null;
+  const w = window.open('', '_blank');
+  if (!w) { alert('Allow pop-ups to print.'); return; }
+  w.document.write('<html><head><title>CWC report</title><style>' +
+    'body{font-family:-apple-system,Segoe UI,sans-serif;padding:24px;color:#1D3557;}' +
+    'h1{font-size:18px;margin:0 0 2px;}.sub{font-size:11px;color:#5f7a99;margin-bottom:14px;}' +
+    'table{border-collapse:collapse;width:100%;}th,td{padding:4px 8px;font-size:11px;border-bottom:1px solid #e2eaf2;}' +
+    'th{text-align:right;font-size:10px;text-transform:uppercase;color:#5f7a99;}th:first-child,td:first-child{text-align:left;}' +
+    'td{text-align:right;}tr.grp td{font-size:9px;text-transform:uppercase;color:#8fa8c0;padding-top:10px;border:none;}' +
+    '</style></head><body>' +
+    '<h1>Banks Advantage - performance report</h1>' +
+    '<div class="sub">' + esc(c.basis) + ' calendar &middot; by ' + esc(c.gran) + ' &middot; run ' + new Date().toLocaleString() + '<br>' +
+      cols.map(x => esc(x.label) + ' (' + esc(x.range) + ')').join(' &nbsp;|&nbsp; ') + '</div>' +
+    '<table><thead><tr><th>Metric</th>' + cols.map(x => '<th>' + esc(x.label) + '</th>').join('') +
+      (total ? '<th>Total</th>' : '') + (avg ? '<th>Avg</th>' : '') + '</tr></thead><tbody>' +
+    (function(){ let g = '', o = '';
+      rows.forEach(m => {
+        if (m.g !== g) { g = m.g; o += '<tr class="grp"><td colspan="9">' + esc(g) + '</td></tr>'; }
+        o += '<tr><td>' + esc(m.l) + '</td>' +
+          cols.map(x => '<td>' + reportFmt(m, reportValue(m, x.stats && x.stats._hasData ? x.stats : null)) + '</td>').join('') +
+          (total ? '<td><b>' + reportFmt(m, reportValue(m, total)) + '</b></td>' : '') +
+          (avg ? '<td><b>' + reportFmt(m, reportValue(m, avg)) + '</b></td>' : '') + '</tr>';
+      });
+      return o; })() +
+    '</tbody></table></body></html>');
+  w.document.close();
+  setTimeout(() => w.print(), 300);
+}
+
+// ---- saved reports --------------------------------------------------------
+function savedReports() { return getAgentSettings().saved_reports || []; }
+
+async function saveReportConfig() {
+  const name = prompt('Name this report:', reportCfg().gran + ' comparison');
+  if (!name) return;
+  const s = getAgentSettings();
+  s.saved_reports = (s.saved_reports || []).filter(r => r.name !== name)
+    .concat([{ name, cfg: JSON.parse(JSON.stringify(reportCfg())) }]);
+  await saveAgentSettings(s);
+  openReportBuilder();
+}
+
+async function deleteReportConfig(name) {
+  if (!confirm('Delete "' + name + '"?')) return;
+  const s = getAgentSettings();
+  s.saved_reports = (s.saved_reports || []).filter(r => r.name !== name);
+  await saveAgentSettings(s);
+  openReportBuilder();
+}
+
+function loadReportConfig(name) {
+  const r = savedReports().find(x => x.name === name);
+  if (!r) return;
+  window._rptCfg = JSON.parse(JSON.stringify(r.cfg));
+  openReportBuilder();
+}
+
+function reportSavedList() {
+  const saved = savedReports();
+  if (!saved.length) return '';
+  return '<div style="font-size:10px;font-weight:700;color:#5f7a99;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Saved</div>' +
+    '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;">' +
+    saved.map(r =>
+      '<span style="display:inline-flex;align-items:center;gap:4px;border:1px solid #d0dcea;border-radius:999px;padding:3px 6px 3px 11px;">' +
+        '<span onclick="loadReportConfig(\'' + escAttr(r.name) + '\')" style="font-size:11px;color:#138181;cursor:pointer;font-weight:600;">' + esc(r.name) + '</span>' +
+        '<button onclick="deleteReportConfig(\'' + escAttr(r.name) + '\')" style="background:none;border:none;color:#c3ccd6;font-size:13px;cursor:pointer;padding:0 2px;">&times;</button>' +
+      '</span>').join('') + '</div>';
+}
+
 function _rptMoney(n) { return '$' + Math.round(n || 0).toLocaleString(); }
 function _rptPct(n, d) { return d > 0 ? Math.round((n / d) * 100) + '%' : '-'; }
 function _rptAvg(total, n) { return n > 0 ? '$' + Math.round(total / n).toLocaleString() : '-'; }
@@ -13702,8 +14538,10 @@ function openSettings() {
 
     '<div style="background:#f0f4f8;border-radius:10px;padding:12px;margin-bottom:12px;">' +
       '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Reports</div>' +
-      '<button class="save-btn" style="margin-bottom:4px;" onclick="openReports()">Open reports</button>' +
-      '<div style="font-size:11px;color:#5f7a99;">Lead performance by source and combined, referral-only numbers, spend and ROI, recruits.</div>' +
+      '<button class="save-btn" style="margin-bottom:4px;" onclick="openReportBuilder()">Build a report</button>' +
+      '<div style="font-size:11px;color:#5f7a99;margin-bottom:8px;">Any periods side by side - July 26 vs July 25, or Q1 vs Q2. Pick the calendar, pick the metrics, export CSV or print.</div>' +
+      '<button class="save-btn" style="margin-bottom:4px;" onclick="openReports()">Lead source comparison</button>' +
+      '<div style="font-size:11px;color:#5f7a99;">Performance by source and combined, referral-only numbers, spend and ROI, recruits.</div>' +
     '</div>' +
 
     (function(){
@@ -13712,8 +14550,8 @@ function openSettings() {
         (n ? 'border:1px solid #F5A0A0;' : '') + '">' +
         '<div style="font-size:10px;font-weight:600;color:' + (n ? '#A32D2D' : '#5f7a99') + ';text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Repair' +
           (n ? ' &middot; ' + n : '') + '</div>' +
-        '<button class="save-btn" style="margin-bottom:4px;" onclick="openDeliveryPanel()">Policy delivery' +
-          (deliveryDueList().length ? ' - ' + deliveryDueList().length + ' to confirm' : '') + '</button>' +
+        '<button class="save-btn" style="margin-bottom:4px;" onclick="openClientCare()">Client care' +
+          (clientCareDue().length ? ' - ' + clientCareDue().length + ' due' : '') + '</button>' +
         '<button class="save-btn" style="margin-bottom:4px;" onclick="openActionHistory()">History - what changed, and when</button>' +
         '<button class="save-btn" style="margin-bottom:4px;" onclick="openRepairPanel()">' +
           (n ? 'Review ' + n + ' contradiction' + (n === 1 ? '' : 's') : 'Check for contradictions') + '</button>' +
@@ -13746,6 +14584,21 @@ function openSettings() {
       '</div>' +
 
       '<div class="field"><label>Default appointment length (minutes)</label><input type="number" step="5" id="s-appt-mins" value="' + (settings.defaultApptMins || 40) + '" style="font-size:16px;"></div>' +
+      '<div style="display:flex;gap:8px;">' +
+        '<div class="field" style="flex:1;"><label>Birthday card, days ahead</label>' +
+          '<select id="s-bday-card">' +
+            '<option value="off"' + (birthdayCardLead() === null ? ' selected' : '') + '>off</option>' +
+            [3,5,7,10,14,21,30].map(d => '<option value="' + d + '"' + (birthdayCardLead() === d ? ' selected' : '') + '>' + d + ' days</option>').join('') +
+          '</select></div>' +
+        '<div class="field" style="flex:1;"><label>Birthday text</label>' +
+          '<select id="s-bday-text">' +
+            '<option value="off"' + (birthdayTextLead() === null ? ' selected' : '') + '>off</option>' +
+            '<option value="0"' + (birthdayTextLead() === 0 ? ' selected' : '') + '>day of</option>' +
+            '<option value="1"' + (birthdayTextLead() === 1 ? ' selected' : '') + '>day before</option>' +
+            '<option value="2"' + (birthdayTextLead() === 2 ? ' selected' : '') + '>2 days before</option>' +
+          '</select></div>' +
+      '</div>' +
+      '<div style="font-size:10px;color:#8A94A2;margin:-6px 0 10px;">Two separate prompts - a card needs posting time, a text needs the day. Marking one done leaves the other.</div>' +
       '<div class="field"><label>Lead types I buy <span style="font-weight:400;color:#8A94A2;">(comma separated)</span></label>' +
         '<input type="text" id="s-lead-types" value="' + escAttr(purchasedLeadTypes().join(', ')) + '" placeholder="MIA, CIA" style="font-size:14px;">' +
         '<div style="font-size:10px;color:#8A94A2;margin-top:3px;">These are the only options offered when you log a lead charge. Enter whatever you actually buy - CIA, MIA, CIG, Lighthouse.</div>' +
@@ -13855,6 +14708,10 @@ function saveProfileSettings() {
   if (p3) settings.paceClosing = parseInt(p3.value) || 8;
   const po = document.getElementById('s-pushoff');
   if (po) settings.pushOffDays = parseInt(po.value) || 18;
+  const bc = document.getElementById('s-bday-card');
+  if (bc) settings.birthdayCardLead = bc.value;
+  const bt = document.getElementById('s-bday-text');
+  if (bt) settings.birthdayTextLead = bt.value;
   const lt = document.getElementById('s-lead-types');
   if (lt) {
     const list = lt.value.split(',').map(x => x.trim()).filter(Boolean);
