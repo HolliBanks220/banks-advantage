@@ -3,17 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CWC — how to work your day</title>
+<title>Client Workflow Console — how to work your day</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --navy:#1D3557; --teal:#138181; --teal-lt:#9FE1CB; --teal-pale:#E1F5EE;
-  --gold:#BA7517; --red:#A32D2D; --plum:#3C3489;
-  --ink:#16202E; --dim:#5F7A99; --faint:#93A7BC;
-  --paper:#FBFAF7; --card:#FFFFFF; --line:#E4E9F0;
-  --chrome:#1A1D23; --chrome-card:#E9EDF2;
+  /* lifted straight from the console's own stylesheet - if the app changes
+     these, this page should change with it */
+  --chrome:#1A1D23;      /* --dk-bg      the app frame            */
+  --tile:#E9EDF2;        /* --dk-card    a tile face              */
+  --tile-2:#DEE4EC;      /* --tile-base2 the alternating tone     */
+  --ink:#1D2733;         /* --dk-ink     text on a tile           */
+  --dim:#5E6A78;         /* --dk-dim     secondary text           */
+  --teal:#138181; --teal-lt:#9FE1CB; --teal-pale:#E1F5EE;
+  --gold:#BA7517; --red:#A32D2D; --plum:#3C3489; --green:#3B6D11;
+  --faint:#9AA6B2;
+  --paper:#F4F6F9; --card:#FFFFFF; --line:#DFE5EC;
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
@@ -25,18 +31,18 @@ body{
 
 /* ---------- shell ---------- */
 .wrap{max-width:1180px;margin:0 auto;padding:0 22px}
-header{padding:56px 0 30px;border-bottom:1px solid var(--line)}
+header{padding:52px 0 34px;background:var(--chrome);color:#fff;margin-bottom:0}
 .eyebrow{
   font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.16em;
   text-transform:uppercase; color:var(--teal); font-weight:600; margin-bottom:12px;
 }
 h1{
   font-family:'Playfair Display',Georgia,serif; font-weight:700;
-  font-size:clamp(34px,5.5vw,56px); line-height:1.02; margin:0 0 14px; color:var(--navy);
+  font-size:clamp(32px,5.2vw,52px); line-height:1.04; margin:0 0 14px; color:#fff;
   letter-spacing:-.015em;
 }
 h1 em{font-style:italic;color:var(--teal)}
-.lede{font-size:17px;color:var(--dim);max-width:56ch;margin:0}
+.lede{font-size:16px;color:#9FB2C4;max-width:58ch;margin:0}
 
 /* ---------- search ---------- */
 .searchbar{position:sticky;top:0;z-index:40;background:var(--paper);padding:14px 0 12px;border-bottom:1px solid var(--line)}
@@ -62,7 +68,7 @@ section{padding:52px 0 8px;border-bottom:1px solid var(--line)}
   font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:var(--teal);
   letter-spacing:.1em;padding-top:9px;white-space:nowrap;
 }
-h2{font-family:'Playfair Display',serif;font-size:clamp(25px,3.4vw,34px);margin:0;color:var(--navy);font-weight:700;letter-spacing:-.01em}
+h2{font-family:'Playfair Display',serif;font-size:clamp(24px,3.2vw,32px);margin:0;color:var(--ink);font-weight:700;letter-spacing:-.01em}
 .sec-sub{color:var(--dim);margin:2px 0 26px 0;max-width:60ch;font-size:15px}
 .sec-sub.indent{margin-left:calc(12px + 4.2em)}
 
@@ -80,7 +86,7 @@ h2{font-family:'Playfair Display',serif;font-size:clamp(25px,3.4vw,34px);margin:
 }
 .tick:hover{border-color:var(--teal)}
 .tick[aria-pressed="true"]{background:var(--teal);border-color:var(--teal);color:#fff}
-.step-body h3{font-size:16px;margin:0 0 5px;color:var(--navy);font-weight:600;transition:color .12s}
+.step-body h3{font-size:15.5px;margin:0 0 5px;color:var(--ink);font-weight:600;transition:color .12s}
 .step-body p{margin:0 0 8px;color:var(--dim)}
 .step-body p:last-child{margin-bottom:0}
 kbd{
@@ -91,21 +97,21 @@ kbd{
   border-left:2px solid var(--teal-lt);padding:2px 0 2px 13px;margin:10px 0 0;
   font-size:14px;color:var(--dim);
 }
-.why b{color:var(--navy);font-weight:600}
+.why b{color:var(--ink);font-weight:600}
 .warn{border-left-color:var(--gold)}
 .warn b{color:var(--gold)}
 
 /* ---------- mockups ---------- */
 .shot{background:var(--chrome);border-radius:12px;padding:12px;font-size:11px;line-height:1.35;position:sticky;top:74px}
 .shot-lbl{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#6B7A8C;margin-bottom:9px}
-.tile{background:var(--chrome-card);border-radius:8px;padding:8px 10px;margin-bottom:5px}
+.tile{background:var(--tile);border-radius:8px;padding:8px 10px;margin-bottom:5px}
 .tile .l{font-size:8.5px;letter-spacing:.09em;text-transform:uppercase;color:#68737F;font-weight:600}
 .tile .v{font-size:19px;font-weight:600;color:#1D2733;line-height:1.15;font-family:'IBM Plex Sans'}
 .tile .s{font-size:9px;color:#7B8794}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:5px}
 .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}
 .lite{background:#fff;border-radius:8px;padding:9px 10px;margin-bottom:5px;color:var(--ink)}
-.lite .n{font-size:12.5px;font-weight:600;color:var(--navy)}
+.lite .n{font-size:12.5px;font-weight:600;color:var(--ink)}
 .lite .m{font-size:10px;color:var(--dim)}
 .pill{display:inline-block;border-radius:999px;padding:2px 9px;font-size:9px;font-weight:600}
 .p-teal{background:var(--teal);color:#fff}
@@ -115,7 +121,7 @@ kbd{
 .btnrow{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
 .b{border-radius:6px;padding:5px 9px;font-size:9.5px;font-weight:600;text-align:center}
 .b-teal{background:var(--teal);color:#fff}
-.b-navy{background:var(--navy);color:#fff}
+.b-ink{background:var(--ink);color:#fff}
 .b-gold{background:var(--gold);color:#fff}
 .b-plum{background:var(--plum);color:#fff}
 .b-red{background:var(--red);color:#fff}
@@ -126,7 +132,7 @@ kbd{
 /* ---------- faq ---------- */
 .faq{border-top:1px solid var(--line);padding:0}
 .faq summary{
-  cursor:pointer;padding:15px 0 15px 2px;font-weight:600;color:var(--navy);font-size:15px;
+  cursor:pointer;padding:15px 0 15px 2px;font-weight:600;color:var(--ink);font-size:15px;
   list-style:none;display:flex;gap:12px;align-items:baseline;
 }
 .faq summary::-webkit-details-marker{display:none}
@@ -166,7 +172,7 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
 
 <header>
   <div class="wrap">
-    <div class="eyebrow">Banks Advantage &middot; Client Workflow Console</div>
+    <div class="eyebrow">Client Workflow Console</div>
     <h1>Work the day.<br>The <em>console</em> keeps the score.</h1>
     <p class="lede">Open CWC in another window and work down this page. Every step is something you do in the app, not something you read about. Tick them off as you go — the page remembers where you got to.</p>
   </div>
@@ -202,7 +208,7 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
     </div>
     <div class="shot">
       <div class="shot-lbl">Board header</div>
-      <div class="lite"><div class="n">BANKS ADVANTAGE</div>
+      <div class="lite"><div class="n">YOUR BOARD</div>
         <div class="btnrow"><span class="b b-out hi">⚙</span><span class="b b-out">↺</span><span class="b b-out">←</span><span class="b b-out">Today</span><span class="b b-out">→</span></div>
       </div>
       <div class="btnrow"><span class="b b-teal">Day</span><span class="b b-out">Week</span><span class="b b-out">Month</span><span class="b b-out">Qtr</span><span class="b b-out">Year</span></div>
@@ -326,7 +332,7 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
       <div class="lite"><div class="n">Jacqueline Benson</div><div class="m">832-468-3125 · TX · 60</div></div>
       <div class="btnrow" style="margin:7px 0"><span class="b b-out">1</span><span class="b b-teal hi">2</span><span class="b b-out">3</span><span class="b b-out">4+</span></div>
       <div class="btnrow">
-        <span class="b b-navy">No answer</span><span class="b b-gold">Callback</span><span class="b b-teal">Conversation</span>
+        <span class="b b-ink">No answer</span><span class="b b-gold">Callback</span><span class="b b-teal">Conversation</span>
       </div>
       <div class="btnrow"><span class="b b-teal">Appt set</span><span class="b b-red">Not interested</span></div>
     </div>
@@ -360,7 +366,7 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
     <div class="shot">
       <div class="shot-lbl">Text templates</div>
       <div class="lite"><div class="n">Initial outreach</div>
-        <div class="m">Hi Jacqueline, this is Holli getting back to you about the protection info you requested for your mortgage on Cedar Ln…</div>
+        <div class="m">Hi Jacqueline, this is [your name] getting back to you about the protection info you requested for your mortgage on Cedar Ln…</div>
         <div class="btnrow"><span class="b b-teal">Copy &amp; Log</span></div></div>
       <div class="lite" style="opacity:.55"><div class="n">Missing each other</div><div class="m">Sent Jul 30</div></div>
     </div>
@@ -511,7 +517,7 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
       <div class="lite" style="border-left:3px solid var(--teal)">
         <div class="n">Ronald Kuhn</div>
         <div class="m" style="color:var(--teal);font-weight:600">POLICY DELIVERY</div>
-        <div class="m" style="background:#F0F4F8;border-radius:5px;padding:6px;margin-top:4px">Hi Ronald, Holli here. Just checking your policy arrived and everything looks right. Any questions on it? And your payment is scheduled to draft on or just after the 12th of each month — does that work for you?</div>
+        <div class="m" style="background:#F0F4F8;border-radius:5px;padding:6px;margin-top:4px">Hi Ronald, [your name] here. Just checking your policy arrived and everything looks right. Any questions on it? And your payment is scheduled to draft on or just after the 12th of each month — does that work for you?</div>
         <div class="btnrow"><span class="b b-teal">Confirmed — go to the ask</span><span class="b b-out" style="border-color:#D5DEE8;color:var(--dim)">Not yet</span></div>
       </div>
     </div>
@@ -688,7 +694,7 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
 </section>
 
 <footer><div class="wrap">
-  Banks Advantage &middot; Client Workflow Console &middot; <span class="wave">Making a splash</span>
+  Client Workflow Console &middot; <span class="wave">keep this open beside the app</span>
 </div></footer>
 
 <script>
