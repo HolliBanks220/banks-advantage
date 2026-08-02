@@ -174,7 +174,7 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
   <div class="wrap">
     <div class="eyebrow">Client Workflow Console</div>
     <h1>Work the day.<br>The <em>console</em> keeps the score.</h1>
-    <p class="lede">Open CWC in another window and work down this page. Every step is something you do in the app, not something you read about. Tick them off as you go — the page remembers where you got to.</p>
+    <p class="lede">Open CWC in another window and work down this page. It follows the real order of the job: set yourself up, buy leads, dial them, sit with them, and keep them on the books. Every step is something you do in the app. Tick them off as you go — the page remembers where you got to.</p>
   </div>
 </header>
 
@@ -183,11 +183,16 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
     <input id="q" type="search" placeholder="Search — try “no show”, “reset”, “my lead disappeared”" autocomplete="off">
     <div class="jump">
       <a href="#setup">Set up</a>
-      <a href="#dial">First block</a>
+      <a href="#leads">Get leads</a>
+      <a href="#board">The board</a>
+      <a href="#dial">Dialing</a>
       <a href="#appt">Appointment</a>
+      <a href="#retirement">Retirement</a>
+      <a href="#business">Business</a>
       <a href="#after">After the sale</a>
-      <a href="#numbers">Your numbers</a>
+      <a href="#numbers">Numbers</a>
       <a href="#stuck">Stuck?</a>
+    </div>
     </div>
     <div class="progress" id="prog">0 of 0 done</div>
     <div id="count"></div>
@@ -195,165 +200,335 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
 </div>
 
 <!-- ============================ SET UP ============================ -->
+<!-- ============================ SET UP ============================ -->
 <section id="setup">
 <div class="wrap">
-  <div class="sec-head"><div class="sec-num">01</div><h2>Set up, once</h2></div>
-  <p class="sec-sub indent">Ten minutes now. Skip it and your commission numbers will be wrong, which you won't notice until they matter.</p>
+  <div class="sec-head"><div class="sec-num">01</div><h2>Set yourself up</h2></div>
+  <p class="sec-sub indent">Ten minutes, once. Settings has five tabs &mdash; work through them left to right and you will not have to come back.</p>
 
   <div class="step">
     <button class="tick" aria-pressed="false" data-id="s1">✓</button>
     <div class="step-body">
-      <h3>Open Settings</h3>
-      <p>The gear icon, top left of the board, next to your name.</p>
+      <h3>Profile &mdash; who you are</h3>
+      <p>The gear icon, top left. <b>Name</b> is you. <b>Board name</b> is what sits across the top of your board, so make it yours.</p>
+      <p><b>Your runner</b> is the little figure that appears on a fresh lead when you have fallen behind on it. Pick a person and a skin tone &mdash; it is yours, not the app's.</p>
     </div>
     <div class="shot">
-      <div class="shot-lbl">Board header</div>
-      <div class="lite"><div class="n">YOUR BOARD</div>
-        <div class="btnrow"><span class="b b-out hi">⚙</span><span class="b b-out">↺</span><span class="b b-out">←</span><span class="b b-out">Today</span><span class="b b-out">→</span></div>
+      <div class="shot-lbl">Settings</div>
+      <div class="btnrow" style="margin-bottom:7px;">
+        <span class="b b-teal hi">Profile</span><span class="b b-out">Business</span><span class="b b-out">Cadence</span><span class="b b-out">Reports</span><span class="b b-out">Help</span>
       </div>
-      <div class="btnrow"><span class="b b-teal">Day</span><span class="b b-out">Week</span><span class="b b-out">Month</span><span class="b b-out">Qtr</span><span class="b b-out">Year</span></div>
+      <div class="lite"><div class="m">Name</div><div class="n">Your name</div></div>
+      <div class="lite"><div class="m">Board name</div><div class="n">Cruising the numbers</div></div>
+      <div class="lite"><div class="m">Your runner</div><div class="n">&#127939; Woman &middot; Medium light</div></div>
     </div>
   </div>
 
   <div class="step">
     <button class="tick" aria-pressed="false" data-id="s2">✓</button>
     <div class="step-body">
-      <h3>Set your contract level</h3>
-      <p>Your level from your agreement — 80 through 130. If you're not sure, ask your upline before you guess.</p>
-      <div class="why"><b>Why it matters.</b> Every commission figure in the app is premium × your level. Set it to 105 when you're really at 90 and every number you look at for the next month is 17% too high.</div>
+      <h3>Connect Google Calendar</h3>
+      <p>Still on Profile, at the bottom. Connect once and every appointment you book in CWC appears on your calendar.</p>
+      <p>If you already have appointments in CWC, hit <kbd>Sync existing appointments</kbd> after connecting.</p>
+      <div class="why"><b>Worth doing now.</b> Your phone reminds you about the calendar, not about CWC. This is what stops you missing one.</div>
     </div>
     <div class="shot">
-      <div class="shot-lbl">Settings → Profile</div>
-      <div class="lite"><div class="m">Contract level</div><div class="n hi">105</div></div>
-      <div class="lite"><div class="m">Default appointment length</div><div class="n">40 minutes</div></div>
-      <div class="lite"><div class="m">Lead types I buy</div><div class="n">MIA, CIA</div></div>
+      <div class="shot-lbl">Settings &rarr; Profile</div>
+      <div class="lite"><div class="m" style="font-weight:600;text-transform:uppercase;font-size:9px;letter-spacing:.08em;">Google Calendar</div>
+        <div class="m">Not connected. Connect once and your CWC appointments will show up on your Google Calendar.</div>
+        <div class="btnrow"><span class="b b-teal">Connect Google Calendar</span></div></div>
     </div>
   </div>
 
   <div class="step">
     <button class="tick" aria-pressed="false" data-id="s3">✓</button>
     <div class="step-body">
-      <h3>Turn on the carriers you're appointed with</h3>
-      <p>Settings → Carriers. Tick the ones you can actually write, and the products within them.</p>
-      <div class="why"><b>Why it matters.</b> This is the list you'll pick from when you log an application. A short, accurate list is faster to work than a long one — and the comp rate comes from the product you choose.</div>
+      <h3>Business &mdash; contract level</h3>
+      <p>Your level from your agreement, 80 through 130. It shows the bonus qualifier beside each one. If you are not sure, ask your upline before you guess.</p>
+      <div class="why"><b>Every commission figure is premium &times; this number.</b> Set it to 105 when you are really at 90 and everything you look at for the next month is 17% too high.</div>
+      <div class="why"><b>A promotion will not rewrite history.</b> Applications keep the level they were written at. When you change this, it asks once whether to lock the ones already on file &mdash; say yes.</div>
     </div>
     <div class="shot">
-      <div class="shot-lbl">Settings → Carriers</div>
-      <div class="lite"><div class="n">Foresters <span class="pill p-teal">on</span></div><div class="m">Strong Foundation · Your Term · PlanRight</div></div>
-      <div class="lite"><div class="n">AmAm &amp; Occidental <span class="pill p-teal">on</span></div><div class="m">Home Certainty · Express Term</div></div>
-      <div class="lite"><div class="n">Athene <span class="pill p-ghost">off</span></div><div class="m">Annuities</div></div>
+      <div class="shot-lbl">Settings &rarr; Business</div>
+      <div class="btnrow" style="margin-bottom:7px;">
+        <span class="b b-out">Profile</span><span class="b b-teal hi">Business</span><span class="b b-out">Cadence</span><span class="b b-out">Reports</span><span class="b b-out">Help</span>
+      </div>
+      <div class="lite"><div class="m">Contract level</div><div class="n">95% &mdash; Bonus qualifier: $10,000</div></div>
     </div>
   </div>
 
   <div class="step">
     <button class="tick" aria-pressed="false" data-id="s4">✓</button>
     <div class="step-body">
-      <h3>Enter the lead types you buy</h3>
-      <p>Comma separated, and just the <b>type</b> — <kbd>CI, MI, Lighthouse, Level Up</kbd>. Whatever you're actually buying.</p>
-      <p>Not the freshness letter. CIA, CIB and CIC are all CI, and the app groups them for you.</p>
-      <div class="why"><b>A lead is a lead.</b> Don't spend time deciding which codes are the "good" ones. Dial them.</div>
+      <h3>Business &mdash; lead types and birthdays</h3>
+      <p><b>Lead types I buy</b>, comma separated, and just the <b>type</b>: <kbd>CI, MI, Lighthouse, Level Up</kbd>. Not the freshness letter &mdash; CIA, CIB and CIC are all CI, and the app groups them.</p>
+      <p><b>Birthdays</b> get two prompts on separate clocks. A card needs posting time, so it defaults to 10 days ahead. A text needs the day, so it defaults to the day before. Either can be off.</p>
+      <div class="why"><b>A lead is a lead.</b> Do not spend time deciding which codes are the good ones. Dial them.</div>
     </div>
     <div class="shot">
-      <div class="shot-lbl">Settings → Profile</div>
-      <div class="lite"><div class="m">Lead types I buy</div><div class="n hi">CI, MI</div>
-        <div class="m" style="margin-top:4px">These are the only options offered when you log a lead charge.</div></div>
+      <div class="shot-lbl">Settings &rarr; Business</div>
+      <div class="lite"><div class="m">Lead types I buy</div><div class="n">CI, MI</div></div>
+      <div class="lite"><div class="m">Birthday card, days ahead</div><div class="n">10 days</div></div>
+      <div class="lite"><div class="m">Birthday text</div><div class="n">day before</div></div>
     </div>
   </div>
 
   <div class="step">
     <button class="tick" aria-pressed="false" data-id="s5">✓</button>
     <div class="step-body">
-      <h3>Set a goal</h3>
-      <p>Tap the small <kbd>+ set a goal</kbd> under any tile. It applies to whichever period you're looking at — so a goal set on Day is today's, a goal set on Month is the month's.</p>
-      <p>Run one per time period. A dials goal for <b>today</b>, an APV goal for the <b>month</b>. They can feed each other — dials today building toward the month's APV — or they can be different things to keep an eye on.</p>
-      <div class="why"><b>One per period, not six on one.</b> A tile with a goal fills with colour as you close on it. Six goals in the same day is six things to feel behind on before lunch.</div>
+      <h3>Business &mdash; turn on your carriers</h3>
+      <p><kbd>Manage carriers &amp; products</kbd>. Tick only the ones you are appointed with, and the products inside them. There is an <kbd>+ Add custom carrier</kbd> if yours is not listed.</p>
+      <div class="why"><b>A short list is faster to work.</b> This is what you pick from when you log an application, and the comp rate comes from the product you choose.</div>
     </div>
     <div class="shot">
-      <div class="shot-lbl">Board → Dialing activity</div>
-      <div class="row2">
-        <div class="tile"><div class="l">Dials · today</div><div class="v">0</div><div class="s hi" style="color:var(--teal);font-weight:600">+ set a goal</div></div>
-        <div class="tile"><div class="l">Submitted APV · month</div><div class="v">$0</div><div class="s" style="color:var(--teal)">+ set a goal</div></div>
+      <div class="shot-lbl">Carriers &amp; products</div>
+      <div class="lite"><div class="n">Foresters <span class="pill p-teal">on</span></div><div class="m">Strong Foundation &middot; Your Term &middot; PlanRight</div></div>
+      <div class="lite"><div class="n">AmAm &amp; Occidental <span class="pill p-teal">on</span></div><div class="m">Home Certainty &middot; Express Term</div></div>
+      <div class="lite"><div class="n">Athene <span class="pill p-ghost">off</span></div><div class="m">Annuities</div></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="s6">✓</button>
+    <div class="step-body">
+      <h3>Cadence &mdash; leave it alone at first</h3>
+      <p>This tab decides how hard the app pushes you at a lead: how many attempts before it goes dormant, how many times a day to try a fresh one, how long to rest a push-off.</p>
+      <p>Set <b>default appointment length</b> to whatever you actually book, and leave the rest until you have worked a few hundred leads and have an opinion.</p>
+      <div class="why"><b>Restore defaults</b> is at the bottom if you change something and want it back.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Settings &rarr; Cadence</div>
+      <div class="btnrow" style="margin-bottom:7px;">
+        <span class="b b-out">Profile</span><span class="b b-out">Business</span><span class="b b-teal hi">Cadence</span><span class="b b-out">Reports</span><span class="b b-out">Help</span>
       </div>
+      <div class="lite"><div class="m">Default appointment length</div><div class="n">40 minutes</div></div>
+      <div class="lite"><div class="m">Attempt pace</div><div class="n">Fresh 3 &middot; Warm 6 &middot; Cooling 8</div></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="s7">✓</button>
+    <div class="step-body">
+      <h3>Know where Reports and Help live</h3>
+      <p><b>Reports</b> builds comparisons &mdash; any periods side by side. Covered at the end of this page.</p>
+      <p><b>Help</b> has this guide, plus three tools you will want eventually: <b>Repair</b> for leads that end up in a contradictory state, <b>History</b> for undoing something from any point today, and <b>Recheck comp</b> for checking every application against the current rates.</p>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Settings &rarr; Help</div>
+      <div class="btnrow" style="margin-bottom:7px;">
+        <span class="b b-out">Profile</span><span class="b b-out">Business</span><span class="b b-out">Cadence</span><span class="b b-out">Reports</span><span class="b b-teal hi">Help</span>
+      </div>
+      <div class="lite"><div class="n">How to work your day</div></div>
+      <div class="lite"><div class="n">Check for contradictions</div></div>
+      <div class="lite"><div class="n">History &mdash; what changed, and when</div></div>
     </div>
   </div>
 </div>
 </section>
 
-<!-- ============================ FIRST BLOCK ============================ -->
-<section id="dial">
+<!-- ============================ GET LEADS ============================ -->
+<section id="leads">
 <div class="wrap">
-  <div class="sec-head"><div class="sec-num">02</div><h2>Your first dial block</h2></div>
-  <p class="sec-sub indent">The part you'll do a thousand times. Learn it once properly and the rest of the app takes care of itself.</p>
+  <div class="sec-head"><div class="sec-num">02</div><h2>Get leads in</h2></div>
+  <p class="sec-sub indent">You buy them before you dial them, so this comes first. Log what you paid, then import.</p>
 
   <div class="step">
-    <button class="tick" aria-pressed="false" data-id="d0">✓</button>
+    <button class="tick" aria-pressed="false" data-id="L1">✓</button>
     <div class="step-body">
-      <h3>Tap the red banner</h3>
-      <p>It sits across the top of the board and reads your pace: <b>"Behind pace — call 24 now"</b> is how many dials puts you back on your goal today. It disappears when you're on track.</p>
-      <p><b>It's also a button.</b> Tap it and you land straight in your call list, at the top of the queue. Fastest way from the board to dialing, and you never have to think about which tab you're on.</p>
-      <div class="why"><b>Start every block here.</b> The banner tells you the number and then takes you to the work. The <b>15 overdue</b> in it is a link too — that's the leads you've let slip.</div>
+      <h3>Log what you spent</h3>
+      <p>Board &rarr; the <kbd>Lead spend</kbd> tile &rarr; enter each charge the way it appears on your bank statement. Date, type, amount.</p>
+      <p>Every charge carries its own date, so it counts in the month you actually spent it. <kbd>Show all charges</kbd> lists everything you have entered with the month each one lands in.</p>
+      <div class="why"><b>Without this there is no ROI.</b> Commission on its own does not tell you whether the leads paid for themselves, and that is the number that decides whether you buy more.</div>
     </div>
     <div class="shot">
-      <div class="shot-lbl">Board</div>
-      <div class="banner hi">Behind pace — call 24 now · <u>15 overdue</u> · appt in 10 min</div>
+      <div class="shot-lbl">Lead spend</div>
+      <div class="lite"><div class="m">July &middot; runs Jun 27 &ndash; Jul 31</div></div>
+      <div class="lite"><div class="m">Jul 14 &middot; CI</div><div class="n">$1,240</div></div>
+      <div class="lite"><div class="m">Jul 7 &middot; CI</div><div class="n">$980</div></div>
+      <div class="lite"><div class="m">Jun 30 &middot; MI</div><div class="n">$1,100</div><div class="m">counts in July</div></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="L2">✓</button>
+    <div class="step-body">
+      <h3>Import the leads</h3>
+      <p><kbd>Leads</kbd> tab &rarr; <kbd>+ Add leads</kbd>. Drop in the PDF from your vendor and it reads the names, addresses, phones, ages and dates of birth out of it.</p>
+      <p>Anything it could not read cleanly appears <b>at the top, unticked</b>, so you fix it before importing rather than after.</p>
+      <div class="why warn"><b>Handwritten mailers.</b> The printed details come through &mdash; name, address, lender, loan amount. Handwritten phone numbers and ages usually do not. Type those in yourself.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Leads &rarr; Import</div>
+      <div class="lite"><div class="n">18 leads found</div><div class="m">2 need a look</div></div>
+      <div class="lite" style="border-left:3px solid var(--gold)"><div class="n">M elissa Thayer <span class="pill p-gold">check</span></div><div class="m">Name looks split</div></div>
+      <div class="lite"><div class="n">Dennis &amp; Emily Rourke</div><div class="m">42 Old Buckingham Rd &middot; 61 &middot; CI</div></div>
+      <div class="btnrow"><span class="b b-teal">Import 18</span><span class="b b-out">Select none</span></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ============================ THE BOARD ============================ -->
+<section id="board">
+<div class="wrap">
+  <div class="sec-head"><div class="sec-num">03</div><h2>Read the board</h2></div>
+  <p class="sec-sub indent">Four tabs across the top, and a period selector. Everything else on the board is a number you can tap.</p>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="b1">✓</button>
+    <div class="step-body">
+      <h3>The four tabs</h3>
+      <p><b>Board</b> is your numbers. <b>Leads</b> is your call queue. <b>Appts</b> is everything scheduled. <b>Business</b> is applications and money.</p>
+      <p>Above them, <b>Day / Week / Month / Qtr / Year</b> with arrows either side. Every number on the board follows whatever period you pick.</p>
+      <div class="why warn"><b>A month here is a production month.</b> Saturday after one month's last Friday, through the next month's last Friday &mdash; the month carriers pay on, not the 1st to the 31st. So June might start on May 30.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Header</div>
+      <div class="btnrow" style="margin-bottom:6px;"><span class="b b-out">&larr;</span><span class="b b-out">Today</span><span class="b b-out">&rarr;</span></div>
+      <div class="btnrow" style="margin-bottom:7px;"><span class="b b-teal">Day</span><span class="b b-out">Week</span><span class="b b-out">Month</span><span class="b b-out">Qtr</span><span class="b b-out">Year</span></div>
+      <div class="btnrow"><span class="b b-teal hi">Board</span><span class="b b-out">Leads</span><span class="b b-out">Appts</span><span class="b b-out">Business</span></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="b2">✓</button>
+    <div class="step-body">
+      <h3>Set a goal</h3>
+      <p>Tap the small <kbd>+ set a goal</kbd> under any tile. It applies to the period you are looking at &mdash; set it on Day and it is today's, set it on Month and it is the month's.</p>
+      <p>Run <b>one per time period</b>. A dials goal for today, an APV goal for the month. They can feed each other, or be different things to keep an eye on.</p>
+      <div class="why"><b>One per period, not six on one.</b> A tile with a goal fills with colour as you close on it. Six goals in the same day is six things to feel behind on before lunch.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Board &rarr; Dialing activity</div>
       <div class="row2">
-        <div class="tile"><div class="l">Dials</div><div class="v">12</div><div class="s">of 60</div></div>
-        <div class="tile"><div class="l">Appts set</div><div class="v">1</div></div>
+        <div class="tile"><div class="l">Dials &middot; today</div><div class="v">12</div><div class="s hi" style="color:var(--teal);font-weight:600">of 60</div></div>
+        <div class="tile"><div class="l">Appts set</div><div class="v">1</div><div class="s" style="color:var(--teal)">+ set a goal</div></div>
       </div>
     </div>
   </div>
 
   <div class="step">
-    <button class="tick" aria-pressed="false" data-id="d1">✓</button>
+    <button class="tick" aria-pressed="false" data-id="b3">✓</button>
     <div class="step-body">
-      <h3>Import your leads</h3>
-      <p><kbd>Leads</kbd> tab → <kbd>+ Add leads</kbd>. Drop in the PDF from your lead vendor and it reads the names, addresses, phones and ages out of it.</p>
-      <p>Anything it couldn't read cleanly appears at the top, unticked, so you can fix it before importing.</p>
-      <div class="why warn"><b>Handwritten mailers.</b> Printed details come through — name, address, lender, loan amount. The handwritten bits usually don't. Type those in yourself.</div>
+      <h3>Tap the numbers</h3>
+      <p>Every tile opens the list behind it. Appointments, sits, sales, resets, dropped, the money tiles on the retirement board &mdash; all of them.</p>
+      <div class="why"><b>Never argue with a number you have not opened.</b> Nine times in ten the drill-down explains it in a second.</div>
     </div>
     <div class="shot">
-      <div class="shot-lbl">Leads → Import</div>
-      <div class="lite"><div class="n">18 leads found</div><div class="m">2 need a look</div></div>
-      <div class="lite" style="border-left:3px solid var(--gold)"><div class="n">M elissa Thayer <span class="pill p-gold">check</span></div><div class="m">Name looks split</div></div>
-      <div class="lite"><div class="n">Dennis &amp; Emily Rourke</div><div class="m">42 Old Buckingham Rd · 61 · CIC</div></div>
-      <div class="btnrow"><span class="b b-teal">Import 18</span><span class="b b-out">Select none</span></div>
+      <div class="shot-lbl">Board &rarr; Production</div>
+      <div class="row3">
+        <div class="tile"><div class="l">Appts</div><div class="v">3</div></div>
+        <div class="tile"><div class="l">Sits</div><div class="v">2</div></div>
+        <div class="tile hi"><div class="l">Sales</div><div class="v">1</div></div>
+      </div>
+      <div class="row2">
+        <div class="tile"><div class="l">No sales</div><div class="v">1</div><div class="s">50% close ratio</div></div>
+        <div class="tile"><div class="l">Dropped</div><div class="v">2</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="b4">✓</button>
+    <div class="step-body">
+      <h3>The red banner</h3>
+      <p>Across the top of the board when you are behind: <b>"Behind pace &mdash; call 24 now"</b> is how many dials puts you back on your goal today. It disappears when you are on track.</p>
+      <p><b>It is also a button.</b> Tap it and you land in your call list at the top of the queue. Fastest way from the board to the work. The <b>overdue</b> count inside it is a link too.</p>
+      <div class="why"><b>Start every block here</b> once you have leads in. The banner tells you the number and then takes you to it.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Board</div>
+      <div class="banner hi">Behind pace &mdash; call 24 now &middot; <u>15 overdue</u> &middot; appt in 10 min</div>
+      <div class="row2">
+        <div class="tile"><div class="l">Dials</div><div class="v">12</div><div class="s">of 60</div></div>
+        <div class="tile"><div class="l">Texts sent</div><div class="v">4</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="b5">✓</button>
+    <div class="step-body">
+      <h3>The right-hand column</h3>
+      <p><b>Tasks</b> is your own list &mdash; type in the box, hit <kbd>+</kbd>, tick it off when it is done. Drag to reorder. The heading opens the full list.</p>
+      <p><b>Client care</b> is the small button in the Tasks header with a count. That is your post-sale work &mdash; tap it when you are ready to work that block, not while you are dialing.</p>
+      <p><b>Schedule</b> below shows today first, then upcoming. Colour-coded down the left: teal for life and mortgage protection, purple for retirement, gold for callbacks and follow-ups.</p>
+      <div class="why"><b>A card turns red</b> five minutes before an appointment and stays red until you log an outcome. If something is red on your schedule, that is where you should be.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Right column</div>
+      <div class="lite"><div class="m" style="font-weight:600;text-transform:uppercase;font-size:9px;letter-spacing:.08em;">Tasks (5) <span style="float:right;border:1px solid #D5DEE8;border-radius:999px;padding:1px 7px;color:var(--teal);">Client care &middot; 4</span></div>
+        <div class="n" style="font-weight:400;font-size:11px;">&#9744; Call Matthew Meyers after 7</div>
+        <div class="n" style="font-weight:400;font-size:11px;">&#9744; Reschedule Tammie</div></div>
+      <div class="lite" style="border-left:3px solid var(--teal)"><div class="n">Peter Lastowski</div><div class="m">4:30 PM &middot; Mortgage Protection &mdash; Initial</div></div>
+      <div class="lite" style="border-left:3px solid var(--gold)"><div class="n">Jesse Lloyd</div><div class="m">Sat 9:00 AM &middot; Scheduled callback</div></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ============================ DIALING ============================ -->
+<section id="dial">
+<div class="wrap">
+  <div class="sec-head"><div class="sec-num">04</div><h2>Work the queue</h2></div>
+  <p class="sec-sub indent">The part you will do a thousand times. Learn it properly once and the rest of the app takes care of itself.</p>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="d1">✓</button>
+    <div class="step-body">
+      <h3>Take them top down</h3>
+      <p>The <kbd>Active</kbd> chip is your call queue, already in the order you should work it. Tap the top card.</p>
+      <p>The chips beside it are filters, not a to-do list: <b>Fresh</b>, <b>Warm</b>, <b>Cooling</b>, <b>Open</b>, <b>No show</b>, <b>Dormant</b>. Use them to look at something specific, then come back to Active.</p>
+      <div class="why"><b>Do not pick.</b> The order accounts for how fresh the lead is, how many times you have tried, what time it is where they are, and whether they asked for a callback. Working top-down beats choosing.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Leads</div>
+      <div style="color:#9FB2C4;font-size:11px;margin-bottom:6px">131 active &middot; 121 callable now</div>
+      <div class="btnrow" style="margin-bottom:7px">
+        <span class="b b-teal">Active 131</span><span class="b b-out">Fresh 22</span><span class="b b-out">Warm 10</span><span class="b b-out">No show 35</span>
+      </div>
+      <div class="lite hi"><div class="n">Jacqueline Benson <span class="pill p-teal">fresh</span></div>
+        <div class="m">832-468-3125 &middot; TX &middot; 60 &middot; CI</div>
+        <div class="m" style="margin-top:3px">Jul 30 5:30 PM &mdash; No answer</div></div>
+      <div class="lite"><div class="n">Ronald &amp; Judith Kuhn</div><div class="m">615-310-8846 &middot; TN &middot; 62 &middot; CI</div></div>
     </div>
   </div>
 
   <div class="step">
     <button class="tick" aria-pressed="false" data-id="d2">✓</button>
     <div class="step-body">
-      <h3>Open the first lead in the queue</h3>
-      <p>The <kbd>Active</kbd> chip is your call queue, already in the order you should work it. Freshest first, then whoever's due. Tap the top card.</p>
-      <div class="why"><b>Don't pick.</b> The order accounts for how fresh the lead is, how many times you've tried, what time it is where they are, and whether they've asked you to call back. Working top-down beats choosing.</div>
+      <h3>Read the badges</h3>
+      <p>Every card tells you what it needs without opening it.</p>
+      <p>&#128293; <b>Appt now</b> &mdash; red, happening this minute. Drop what you are doing.<br>
+         &#128533; <b>Never attempted</b> &mdash; a fresh lead nobody has touched.<br>
+         &#127939; <b>Behind pace</b> &mdash; a fresh lead you have started and not kept up with. This is your runner.<br>
+         &#128260; <b>Callback</b> due &mdash; gold. They named a time and it has come.<br>
+         &#128203; <b>Follow-up</b> due &mdash; purple. Post-sale work.<br>
+         &#128172; <b>Text needed</b> &mdash; teal. The right message is already written for them.<br>
+         &#128197; <b>Upcoming</b> &mdash; grey. An appointment ahead of them.</p>
+      <div class="why"><b>The first two only show on fresh leads</b>, days 0 to 3. After that a lead speaks through its status and its place in the queue instead.</div>
     </div>
     <div class="shot">
-      <div class="shot-lbl">Leads</div>
-      <div style="color:#9FB2C4;font-size:11px;margin-bottom:6px">131 active · 121 callable now</div>
-      <div class="btnrow" style="margin-bottom:7px">
-        <span class="b b-teal">Active 131</span><span class="b b-out">Fresh 22</span><span class="b b-out">Warm 10</span>
-      </div>
-      <div class="lite hi"><div class="n">Jacqueline Benson <span class="pill p-teal">fresh</span></div>
-        <div class="m">832-468-3125 · TX · 60 · CIC</div>
-        <div class="m" style="margin-top:3px">Jul 30 5:30 PM — No answer</div></div>
-      <div class="lite"><div class="n">Ronald &amp; Judith Kuhn</div><div class="m">615-310-8846 · TN · 62 · CIC</div></div>
+      <div class="shot-lbl">Lead cards</div>
+      <div class="lite"><div class="n">Gloria Bruce <span class="pill p-red">&#128293; Appt now</span></div></div>
+      <div class="lite"><div class="n">&#128533; Admasu Yemane</div><div class="m">never attempted</div></div>
+      <div class="lite"><div class="n">&#127939; Anthony Carlon</div><div class="m">behind pace</div></div>
+      <div class="lite"><div class="n">Jacqueline Benson <span class="pill p-teal">&#128172; Text needed</span></div></div>
     </div>
   </div>
 
   <div class="step">
     <button class="tick" aria-pressed="false" data-id="d3">✓</button>
     <div class="step-body">
-      <h3>Count the dial before you log the outcome</h3>
-      <p>If you rang twice before anyone picked up, tap <kbd>2</kbd> on the dial counter first. Then log what happened.</p>
-      <div class="why"><b>This is your dials-per-sale number.</b> It's the one thing that tells you whether a bad week was bad luck or low activity. Under-count it and you'll never know which.</div>
+      <h3>Count the dial first</h3>
+      <p>Rang twice before anyone picked up? Tap <kbd>2</kbd> on the dial counter <b>before</b> you log the outcome.</p>
+      <div class="why"><b>This is your dials-per-sale number.</b> It is the one thing that tells you whether a bad week was bad luck or low activity. Under-count it and you will never know which.</div>
     </div>
     <div class="shot">
       <div class="shot-lbl">Lead card</div>
-      <div class="lite"><div class="n">Jacqueline Benson</div><div class="m">832-468-3125 · TX · 60</div></div>
+      <div class="lite"><div class="n">Jacqueline Benson</div><div class="m">832-468-3125 &middot; TX &middot; 60</div></div>
       <div class="btnrow" style="margin:7px 0"><span class="b b-out">1</span><span class="b b-teal hi">2</span><span class="b b-out">3</span><span class="b b-out">4+</span></div>
-      <div class="btnrow">
-        <span class="b b-ink">No answer</span><span class="b b-gold">Callback</span>
-      </div>
+      <div class="btnrow"><span class="b b-ink">No answer</span><span class="b b-gold">Callback</span></div>
       <div class="btnrow"><span class="b b-teal">Appt set</span><span class="b b-red">Not interested</span></div>
     </div>
   </div>
@@ -361,17 +536,17 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
   <div class="step">
     <button class="tick" aria-pressed="false" data-id="d4">✓</button>
     <div class="step-body">
-      <h3>Log the outcome honestly</h3>
-      <p>Four outcomes, and every call is one of them. <kbd>Appt set</kbd> when you book it. <kbd>Callback</kbd> when they name a time. <kbd>Not interested</kbd> when they're done. <kbd>No answer</kbd> for everything else — including a conversation that went nowhere.</p>
-      <p>If you spoke but they wouldn't name a time, that's still No answer. Use Callback without a time only if you want them back sooner than the queue would bring them.</p>
-      <div class="why warn"><b>Not interested is final.</b> It closes their case, clears any appointment and takes them out of your queue. It's the right button when they mean it — and the wrong one when they're just busy. That's what Callback is for.</div>
+      <h3>Log it honestly</h3>
+      <p>Four outcomes, and every call is one of them. <kbd>Appt set</kbd> when you book it. <kbd>Callback</kbd> when they name a time. <kbd>Not interested</kbd> when they are done. <kbd>No answer</kbd> for everything else &mdash; including a conversation that went nowhere.</p>
+      <p>Spoke to them but they would not name a time? That is still No answer. Use Callback without a time only when you want them back sooner than the queue would bring them.</p>
+      <div class="why warn"><b>Not interested is final.</b> It closes their case, clears any appointment and takes them out of your queue. Right button when they mean it, wrong one when they are just busy. That is what Callback is for.</div>
     </div>
     <div class="shot">
       <div class="shot-lbl">After logging</div>
       <div class="lite"><div class="n">Jacqueline Benson</div>
-        <div class="m">Aug 2 9:14 AM — <b>2x No answer</b></div>
-        <div class="m">Jul 30 5:30 PM — No answer</div>
-        <div class="m">Jul 29 6:21 PM — Text sent</div></div>
+        <div class="m">Aug 2 9:14 AM &mdash; <b>2x No answer</b></div>
+        <div class="m">Jul 30 5:30 PM &mdash; No answer</div>
+        <div class="m">Jul 29 6:21 PM &mdash; Text sent</div></div>
       <div class="tile" style="margin-top:6px"><div class="l">Dials</div><div class="v">2</div></div>
     </div>
   </div>
@@ -379,15 +554,15 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
   <div class="step">
     <button class="tick" aria-pressed="false" data-id="d5">✓</button>
     <div class="step-body">
-      <h3>Send the text it offers you</h3>
-      <p>When a lead's due one, the card says <kbd>Text needed</kbd>. Open <kbd>Text templates</kbd> and the right message for where they are is already written — day one outreach, missed-you, going cold.</p>
-      <p><kbd>Voicemail</kbd> beside it gives you the same scripts worded to be read aloud.</p>
-      <div class="why"><b>They're not the same message.</b> A lead who no-showed you gets different words than one you've never reached. The picker knows which is which.</div>
+      <h3>Send the text it offers</h3>
+      <p>When a lead is due one the card says <kbd>Text needed</kbd>. Open <kbd>Text templates</kbd> and the right message for where they are is already written &mdash; day-one outreach, missed-you, going cold, no-show recovery.</p>
+      <p><kbd>Voicemail</kbd> beside it gives you the same scripts worded to be read aloud, and logs a dial.</p>
+      <div class="why"><b>They are not the same message.</b> A lead who no-showed you gets different words than one you have never reached. The picker knows which is which. You can edit any of them and it saves as your version.</div>
     </div>
     <div class="shot">
       <div class="shot-lbl">Text templates</div>
       <div class="lite"><div class="n">Initial outreach</div>
-        <div class="m">Hi Jacqueline, this is [your name] getting back to you about the protection info you requested for your mortgage on Cedar Ln…</div>
+        <div class="m">Hi Jacqueline, this is [your name] getting back to you about the protection info you requested for your mortgage on Cedar Ln&hellip;</div>
         <div class="btnrow"><span class="b b-teal">Copy &amp; Log</span></div></div>
       <div class="lite" style="opacity:.55"><div class="n">Missing each other</div><div class="m">Sent Jul 30</div></div>
     </div>
@@ -397,12 +572,16 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
     <button class="tick" aria-pressed="false" data-id="d6">✓</button>
     <div class="step-body">
       <h3>Book one</h3>
-      <p><kbd>Appt set</kbd> → pick the day and time → confirm. It lands on your schedule on the right and pushes to your Google Calendar.</p>
+      <p><kbd>Appt set</kbd> &rarr; pick the day and time &rarr; confirm. It lands on your schedule and pushes to Google Calendar.</p>
+      <p>If they already have an appointment you get a choice instead: <b>Reset</b> (a different product), <b>Reschedule</b> (same appointment, new time), <b>Continuation</b> (they sat, next meeting on the same case), or <b>Follow-up</b>.</p>
+      <div class="why warn"><b>Calling curfew.</b> A lead drops out of the queue past their own local cut-off &mdash; 70 and over at 7pm, 65 to 69 at 8pm, everyone else at 9:30. Their card reads <b>Too late to call</b>. Booked appointments still show.</div>
     </div>
     <div class="shot">
-      <div class="shot-lbl">Schedule</div>
-      <div class="lite" style="border-left:3px solid var(--teal)"><div class="n">Peter Lastowski</div><div class="m">4:30 PM · Mortgage Protection — Initial</div></div>
-      <div class="lite" style="border-left:3px solid var(--plum)"><div class="n">Bobbie Weaver</div><div class="m">5:30 PM · Retirement — Initial</div></div>
+      <div class="shot-lbl">Already has an appointment</div>
+      <div class="btnrow"><span class="b b-gold" style="flex:1">&#8634; Reset &mdash; new product</span></div>
+      <div class="btnrow"><span class="b b-plum" style="flex:1">Reschedule</span></div>
+      <div class="btnrow"><span class="b b-teal" style="flex:1">Continuation</span></div>
+      <div class="btnrow"><span class="b b-ink" style="flex:1">Follow-up</span></div>
     </div>
   </div>
 </div>
@@ -411,53 +590,72 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
 <!-- ============================ APPOINTMENT ============================ -->
 <section id="appt">
 <div class="wrap">
-  <div class="sec-head"><div class="sec-num">03</div><h2>The appointment, start to finish</h2></div>
-  <p class="sec-sub indent">Everything from sitting down to the application being in.</p>
+  <div class="sec-head"><div class="sec-num">05</div><h2>The appointment</h2></div>
+  <p class="sec-sub indent">Sitting down, through to the application being in.</p>
 
   <div class="step">
     <button class="tick" aria-pressed="false" data-id="a1">✓</button>
     <div class="step-body">
-      <h3>Log what happened</h3>
-      <p>Open the lead → <kbd>Log outcome</kbd>. Five choices, and they mean different things:</p>
-      <p><kbd>Sale</kbd> · <kbd>No sale</kbd> — you sat and showed numbers.<br>
-         <kbd>No Show — alive</kbd> — didn't turn up, still worth working.<br>
-         <kbd>No Show — dead</kbd> — didn't turn up, and you're done.<br>
-         <kbd>Cancelled — still live</kbd> — they called ahead. Stays open, back in your queue.</p>
-      <div class="why"><b>Cancelled is not a no sale.</b> If they never saw numbers, it was never really an appointment. Logging it as a no sale makes your close ratio a lie.</div>
+      <h3>Log the outcome from the appointment</h3>
+      <p>Open the lead &rarr; <kbd>Log outcome</kbd>. Six choices, and they mean different things:</p>
+      <p><kbd>Sale</kbd> &middot; <kbd>No sale</kbd> &mdash; you sat and showed numbers.<br>
+         <kbd>Continuation</kbd> &mdash; you sat, and you are going back. Policy pickup, think about it, a rewrite.<br>
+         <kbd>Sat &mdash; no offer made</kbd> &mdash; you sat and never presented. No need, already covered, could not present.<br>
+         <kbd>Cancelled &mdash; still live</kbd> &mdash; they called ahead. Case stays open, back into your queue.<br>
+         <kbd>Cancelled &mdash; not interested</kbd> &mdash; they called to say they are done.</p>
+      <div class="why"><b>Log it here, not from the business list.</b> Logging the outcome is what brings up the referral, reset and recruit questions &mdash; and you want those while you are still with them.</div>
+      <div class="why warn"><b>Cancelled is not a no sale.</b> If they never saw numbers there was never really an appointment. Logging it as a no sale makes your close ratio a lie. And <b>sat &mdash; no offer</b> stays out of close ratio entirely: you cannot fail to close something you never presented.</div>
     </div>
     <div class="shot">
       <div class="shot-lbl">Log outcome</div>
       <div class="btnrow"><span class="b b-teal" style="flex:1">✓ Sale</span><span class="b b-red" style="flex:1">✗ No Sale</span></div>
-      <div class="btnrow"><span class="b b-gold" style="flex:1">✗ No Show — alive</span><span class="b" style="flex:1;background:#7A4A0F;color:#fff">✗ No Show — dead</span></div>
-      <div class="btnrow"><span class="b b-teal hi" style="flex:1">Cancelled — still live</span></div>
+      <div class="btnrow"><span class="b b-plum" style="flex:1">&#8635; Continuation</span></div>
+      <div class="btnrow"><span class="b" style="flex:1;background:#5F7A99;color:#fff">Sat &mdash; no offer made</span></div>
+      <div class="btnrow"><span class="b b-teal" style="flex:1">Cancelled &mdash; still live</span><span class="b b-red" style="flex:1">Cancelled &mdash; not interested</span></div>
     </div>
   </div>
 
   <div class="step">
     <button class="tick" aria-pressed="false" data-id="a2">✓</button>
     <div class="step-body">
-      <h3>Ask, while you're still sitting there</h3>
-      <p>The moment you log a sale or a no sale, one screen opens: referrals, resets, recruits. It comes up <b>before</b> you enter the application, on purpose — so you do the asking while you're still in the room.</p>
-      <p>You get it again <b>after</b> the application, to add anyone who came up while you were writing.</p>
-      <div class="why"><b>Yes, after a no sale too.</b> They didn't buy. They still know people, and they've just spent an hour with you. The ask costs nothing.</div>
+      <h3>Ask, while you are still sitting there</h3>
+      <p>The moment you log a sale or a no sale, one screen opens: <b>referrals, resets, recruits</b>. It comes up <b>before</b> you enter the application, on purpose &mdash; do the asking while you are in the room.</p>
+      <p>You get it again <b>after</b> the application, for anyone who came up while you were writing.</p>
+      <div class="why"><b>Yes, after a no sale too.</b> They did not buy. They still know people, and they have just spent an hour with you. The ask costs nothing.</div>
     </div>
     <div class="shot">
       <div class="shot-lbl">Capture</div>
-      <div class="lite"><div class="m">Referrals</div><div class="n">Marla Finch · sister</div><div class="n">Tony Vega · neighbour</div></div>
-      <div class="lite"><div class="m">Reset to another product</div><div class="n">Yes — retirement</div></div>
-      <div class="lite"><div class="m">Recruits</div><div class="n">Dee Okafor · looking for work</div></div>
+      <div class="lite"><div class="m">Referrals</div><div class="n">Marla Finch &middot; sister</div><div class="n">Tony Vega &middot; neighbour</div></div>
+      <div class="lite"><div class="m">Reset to another product</div><div class="n">Yes &mdash; retirement</div></div>
+      <div class="lite"><div class="m">Recruits</div><div class="n">Dee Okafor &middot; looking for work</div></div>
     </div>
   </div>
 
   <div class="step">
     <button class="tick" aria-pressed="false" data-id="a3">✓</button>
     <div class="step-body">
+      <h3>Reset them to something else</h3>
+      <p>They said no to mortgage protection but they will talk about retirement. That is a <b>reset</b>, and it is on that same capture screen.</p>
+      <p>A reset opens a <b>new case</b>. The first verdict stands &mdash; you did not undo the no, you started something else. Reset to retirement and that case moves to the <b>Advanced Market</b> board.</p>
+      <div class="why"><b>Resets have their own tile</b>, and it taps through. A reset that produces a sale still counts as a sale &mdash; just a different product than they came in for.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">After a no sale</div>
+      <div class="lite"><div class="m">Reset to another product</div><div class="n">Retirement</div>
+        <div class="m" style="margin-top:3px">Opens a new case on the Advanced Market board.</div></div>
+      <div class="tile" style="margin-top:6px"><div class="l">Resets</div><div class="v">3</div><div class="s">tap to see who</div></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="a4">✓</button>
+    <div class="step-body">
       <h3>Enter the application</h3>
-      <p>Carrier, product, face amount, then the <b>monthly premium as you quoted it</b> — the app works out the annual figure. Then who it's on, their birth date, and the day of the month it drafts.</p>
-      <p>New applications default to <kbd>Submitted</kbd>, since that's what usually happened.</p>
-      <div class="why"><b>Fill in the draft day.</b> It's how the app knows when to remind you to check the carrier portal, and it's what you'll confirm on the delivery call. A surprise draft date is a first-month lapse.</div>
-      <div class="why"><b>Take the birth date.</b> It's per person, so a spouse on their own application gets their own. It's what the birthday reminders run on — one per person, however many policies they have.</div>
-      <div class="why"><b>And write what it did for them.</b> "Six months of mortgage payments." That's the line you'll want at the 13 month review, and the one that makes a referral ask concrete instead of vague.</div>
+      <p>Carrier, product, face amount, then the <b>monthly premium as you quoted it</b> &mdash; the app works out the annual figure. Then who it is on, their birth date, and the day of the month it drafts.</p>
+      <p>New applications default to <kbd>Submitted</kbd>, since that is what usually happened.</p>
+      <div class="why"><b>Fill in the draft day.</b> It is how the app knows when to remind you to check the carrier portal, and it is what you confirm on the delivery call. A surprise draft date is a first-month lapse.</div>
+      <div class="why"><b>Take the birth date.</b> It is per person, so a spouse on their own application gets their own. One birthday reminder per person, however many policies they hold.</div>
+      <div class="why"><b>Write what it did for them.</b> "Six months of mortgage payments." That is the line you want at the 13 month review, and the one that makes a referral ask concrete instead of vague.</div>
     </div>
     <div class="shot">
       <div class="shot-lbl">Application</div>
@@ -469,22 +667,125 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
       <div class="lite"><div class="m">What this did for them</div><div class="n" style="font-size:11px;font-weight:400">Six months of mortgage payments. Kids stay in the house.</div></div>
     </div>
   </div>
+</div>
+</section>
+
+<!-- ============================ RETIREMENT ============================ -->
+<section id="retirement">
+<div class="wrap">
+  <div class="sec-head"><div class="sec-num">06</div><h2>Retirement, if you write it</h2></div>
+  <p class="sec-sub indent">Different work, tracked separately. Skip this section if you only write life and mortgage protection.</p>
 
   <div class="step">
-    <button class="tick" aria-pressed="false" data-id="a4">✓</button>
+    <button class="tick" aria-pressed="false" data-id="r1">✓</button>
     <div class="step-body">
-      <h3>Move the status as it moves</h3>
-      <p><kbd>Written</kbd> → <kbd>Submitted</kbd> → <kbd>Approved</kbd> → <kbd>Issued</kbd> → <kbd>Paid</kbd>. Update it in the <kbd>Business</kbd> tab as the carrier does.</p>
-      <p>Three that aren't the ladder: <kbd>Declined</kbd> — the carrier said no. <kbd>Not taken</kbd> — the carrier said yes and the client walked. <kbd>Lapse</kbd> / <kbd>Cancel</kbd> — it was in force and stopped.</p>
-      <div class="why"><b>Written earns nothing.</b> It hasn't reached the carrier. Your commission figures only start counting at Submitted, which is the honest place to start counting.</div>
+      <h3>Switch to the Advanced Market board</h3>
+      <p>Above the production tiles there are two buttons: <kbd>Life / MP</kbd> and <kbd>Retirement</kbd>. Retirement switches the whole production section to the Advanced Market board.</p>
+      <p>Your dialing activity does not change &mdash; it is the same day's calls. Only what you did with them.</p>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Board &rarr; Production</div>
+      <div class="btnrow" style="margin-bottom:6px"><span class="b b-out">Life / MP</span><span class="b b-teal hi">Retirement</span></div>
+      <div class="row3">
+        <div class="tile"><div class="l">Step 1 sched</div><div class="v">2</div></div>
+        <div class="tile"><div class="l">Step 2 sched</div><div class="v">1</div></div>
+        <div class="tile"><div class="l">Step 3 sched</div><div class="v">0</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="r2">✓</button>
+    <div class="step-body">
+      <h3>It runs on steps, not one appointment</h3>
+      <p>Step 1, Step 2, Step 3 &mdash; each scheduled and attended, tracked separately. Book a retirement appointment and the app advances the step for you.</p>
+      <p><b>In progress</b> means all three attended with no verdict yet. <b>Won</b> and <b>Lost</b> are the verdicts.</p>
+      <div class="why"><b>Every one of the twelve tiles taps through</b> to the list behind it.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Advanced Market</div>
+      <div class="row3">
+        <div class="tile"><div class="l">Step 1 att</div><div class="v">2</div></div>
+        <div class="tile"><div class="l">Step 2 att</div><div class="v">1</div></div>
+        <div class="tile"><div class="l">Step 3 att</div><div class="v">0</div></div>
+      </div>
+      <div class="row3">
+        <div class="tile"><div class="l">In progress</div><div class="v">1</div></div>
+        <div class="tile"><div class="l">Won</div><div class="v">1</div></div>
+        <div class="tile"><div class="l">Lost</div><div class="v">0</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="r3">✓</button>
+    <div class="step-body">
+      <h3>The money works differently</h3>
+      <p><b>Amount</b> is the account moving &mdash; the money itself, not your revenue. <b>APV</b> is 5% of that and is <b>reporting only</b>.</p>
+      <p>Your commission is your rate times the <b>account amount</b>, never times APV. Insure Realty runs its own ladder, 3.5% at 80 up to 9% at 130.</p>
+      <div class="why warn"><b>Only Insure Realty or an annuity counts as retirement.</b> A life policy written on an Advanced Market case is still a life policy and is priced as one. And if you leave the account amount blank, nothing is counted &mdash; no account, no number.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Advanced Market</div>
+      <div class="tile"><div class="l">Amount</div><div class="v">$195,000</div><div class="s">account moving &middot; tap</div></div>
+      <div class="tile"><div class="l">APV submitted</div><div class="v">$9,750</div><div class="s">5% of amount</div></div>
+      <div class="tile"><div class="l">APV placed</div><div class="v">$9,750</div><div class="s">issued &amp; paid</div></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ============================ BUSINESS ============================ -->
+<section id="business">
+<div class="wrap">
+  <div class="sec-head"><div class="sec-num">07</div><h2>Track it through</h2></div>
+  <p class="sec-sub indent">The Business tab is every application you have written and where each one stands.</p>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="B1">✓</button>
+    <div class="step-body">
+      <h3>Move the status as the carrier does</h3>
+      <p><kbd>Written</kbd> &rarr; <kbd>Submitted</kbd> &rarr; <kbd>Approved</kbd> &rarr; <kbd>Issued</kbd> &rarr; <kbd>Paid</kbd>. Update it in <kbd>Business</kbd> as it moves.</p>
+      <p>Three that are not the ladder: <kbd>Declined</kbd> &mdash; the carrier said no. <kbd>Not taken</kbd> &mdash; the carrier said yes and the client walked, usually over the rating. <kbd>Lapse</kbd> / <kbd>Cancel</kbd> &mdash; it was in force and stopped.</p>
+      <div class="why"><b>Written earns nothing.</b> It has not reached the carrier. Your commission figures start counting at Submitted, which is the honest place to start.</div>
+      <div class="why"><b>Not taken still counts as a sale</b> and still counts in your submitted APV &mdash; you closed them, and it is on your record either way. It drags your net placed ratio down, because it should.</div>
     </div>
     <div class="shot">
       <div class="shot-lbl">Business</div>
-      <div class="lite"><div class="n">Dennis &amp; Emily Rourke <span class="m">· Jane Smith</span></div>
-        <div class="m">Foresters · Strong Foundation</div>
+      <div class="lite"><div class="n">Dennis &amp; Emily Rourke <span class="m">&middot; Jane Smith</span></div>
+        <div class="m">Foresters &middot; Strong Foundation &middot; $1,142 APV</div>
         <div class="btnrow"><span class="b b-teal">Submitted</span></div></div>
-      <div class="lite"><div class="n">Ronald Kuhn</div><div class="m">AmAm · Home Certainty</div>
+      <div class="lite"><div class="n">Ronald Kuhn</div><div class="m">AmAm &middot; Home Certainty</div>
         <div class="btnrow"><span class="b" style="background:#3B6D11;color:#fff">Issued</span></div></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="B2">✓</button>
+    <div class="step-body">
+      <h3>Find anyone in it</h3>
+      <p>Search matches the lead's name, their phone, <b>and the name on any application</b>. So a policy written on a spouse is findable by their name, from either tab.</p>
+      <p>Applications show the lead in bold with the person it is on in light text beside them &mdash; both applications for one household sit under the one lead.</p>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Search "Jane"</div>
+      <div class="lite"><div class="n">Jim Smith <span class="m">&middot; Jane Smith</span></div><div class="m">Foresters &middot; $900 APV &middot; Issued</div></div>
+      <div class="lite"><div class="n">Jim Smith <span class="m">&middot; Jane Smith</span></div><div class="m">Gerber &middot; $700 APV &middot; Submitted</div></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="B3">✓</button>
+    <div class="step-body">
+      <h3>If a policy lapses</h3>
+      <p>Set it to <kbd>Lapse</kbd> or <kbd>Cancel</kbd> and it asks for the <b>chargeback amount</b>. Enter what the carrier actually took back, not the whole premium.</p>
+      <div class="why"><b>You keep the difference.</b> A $1,000 premium with a $400 clawback counts $600, because that is money you actually kept. Fully charged back is zero.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Status &rarr; Lapse</div>
+      <div class="lite"><div class="m">Premium</div><div class="n">$1,000</div></div>
+      <div class="lite hi"><div class="m">Chargeback amount</div><div class="n">$400</div></div>
+      <div class="lite"><div class="m">Counts as</div><div class="n">$600</div></div>
     </div>
   </div>
 </div>
@@ -493,22 +794,19 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
 <!-- ============================ AFTER THE SALE ============================ -->
 <section id="after">
 <div class="wrap">
-  <div class="sec-head"><div class="sec-num">04</div><h2>After the sale</h2></div>
-  <p class="sec-sub indent">A policy that lapses in month two pays you nothing and costs you the chargeback. This is the part that stops that happening.</p>
+  <div class="sec-head"><div class="sec-num">08</div><h2>Keep it on the books</h2></div>
+  <p class="sec-sub indent">A policy that lapses in month two pays you nothing and costs you the chargeback. This is what stops that.</p>
 
   <div class="step">
     <button class="tick" aria-pressed="false" data-id="c1">✓</button>
     <div class="step-body">
-      <h3>Work the Client care tile</h3>
-      <p>It sits on the board and shows how many people need something. Tap it when you're ready — nothing here interrupts your dialing.</p>
-      <div class="why"><b>Do it in a block.</b> Follow-up work and appointment-setting work are different jobs. Mixing them costs you at both.</div>
+      <h3>Work Client care in a block</h3>
+      <p>The button in the Tasks header shows how many people need something. Tap it when you are ready.</p>
+      <div class="why"><b>Do it in a block.</b> Follow-up work and appointment-setting work are different jobs. Mixing them costs you at both, which is why none of this ever appears in your call queue.</div>
     </div>
     <div class="shot">
-      <div class="shot-lbl">Board</div>
-      <div class="row2">
-        <div class="tile"><div class="l">Lead spend</div><div class="v">$6,395</div><div class="s" style="color:var(--teal)">tap to add a charge</div></div>
-        <div class="tile hi"><div class="l">Client care</div><div class="v">4</div><div class="s" style="color:var(--teal)">tap to work them</div></div>
-      </div>
+      <div class="shot-lbl">Tasks header</div>
+      <div class="lite"><div class="m" style="font-weight:600;text-transform:uppercase;font-size:9px;letter-spacing:.08em;">Tasks (5) <span class="hi" style="float:right;border:1px solid var(--teal);border-radius:999px;padding:1px 7px;color:var(--teal);">Client care &middot; 4</span></div></div>
     </div>
   </div>
 
@@ -516,15 +814,15 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
     <button class="tick" aria-pressed="false" data-id="c2">✓</button>
     <div class="step-body">
       <h3>Check the portal when it asks</h3>
-      <p>A few days after their draft date, you'll get <kbd>Check the portal — did it draft?</kbd> Look it up in your agent portal. If it drafted, tap <kbd>It drafted — mark placed</kbd>.</p>
-      <div class="why"><b>This is how a policy gets marked placed.</b> Nothing else moves it. And marking it placed is what starts the delivery clock.</div>
+      <p>A few days after their draft date you get <kbd>Check the portal &mdash; did it draft?</kbd> Look it up in your agent portal. If it drafted, tap <kbd>It drafted &mdash; mark placed</kbd>.</p>
+      <div class="why"><b>This is how a policy gets marked placed.</b> Nothing else moves it, and marking it placed is what starts the delivery clock.</div>
     </div>
     <div class="shot">
       <div class="shot-lbl">Client care</div>
       <div class="lite" style="border-left:3px solid var(--plum)">
         <div class="n">Dennis &amp; Emily Rourke</div>
-        <div class="m" style="color:var(--plum);font-weight:600">CHECK THE PORTAL — DID IT DRAFT?</div>
-        <div class="btnrow"><span class="b" style="background:#3B6D11;color:#fff">It drafted — mark placed</span><span class="b b-out" style="border-color:#D5DEE8;color:var(--dim)">Not yet — 3 days</span></div>
+        <div class="m" style="color:var(--plum);font-weight:600">CHECK THE PORTAL &mdash; DID IT DRAFT?</div>
+        <div class="btnrow"><span class="b" style="background:#3B6D11;color:#fff">It drafted &mdash; mark placed</span><span class="b b-out" style="border-color:#D5DEE8;color:var(--dim)">Not yet &mdash; 3 days</span></div>
       </div>
     </div>
   </div>
@@ -533,17 +831,17 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
     <button class="tick" aria-pressed="false" data-id="c3">✓</button>
     <div class="step-body">
       <h3>Make the delivery call</h3>
-      <p>Ten days after it places, you'll be asked to confirm they have the policy. The script is on the card, including their draft date.</p>
-      <p>Tap <kbd>Confirmed</kbd> and it takes you straight into referrals, resets and recruits.</p>
-      <div class="why"><b>Best ask you'll get all month.</b> The policy is in their hands and it did exactly what you said it would. Nobody is warmer than that.</div>
+      <p>Ten days after it places you are asked to confirm they have the policy. The script is on the card, including their draft date.</p>
+      <p><kbd>Confirmed</kbd> takes you straight into referrals, resets and recruits.</p>
+      <div class="why"><b>Best ask you will get all month.</b> The policy is in their hands and it did exactly what you said it would. Nobody is warmer than that.</div>
     </div>
     <div class="shot">
       <div class="shot-lbl">Client care</div>
       <div class="lite" style="border-left:3px solid var(--teal)">
         <div class="n">Ronald Kuhn</div>
         <div class="m" style="color:var(--teal);font-weight:600">POLICY DELIVERY</div>
-        <div class="m" style="background:#F0F4F8;border-radius:5px;padding:6px;margin-top:4px">Hi Ronald, [your name] here. Just checking your policy arrived and everything looks right. Any questions on it? And your payment is scheduled to draft on or just after the 12th of each month — does that work for you?</div>
-        <div class="btnrow"><span class="b b-teal">Confirmed — go to the ask</span><span class="b b-out" style="border-color:#D5DEE8;color:var(--dim)">Not yet</span></div>
+        <div class="m" style="background:#F0F4F8;border-radius:5px;padding:6px;margin-top:4px">Hi Ronald, [your name] here. Just checking your policy arrived and everything looks right. Any questions on it? And your payment is scheduled to draft on or just after the 12th of each month &mdash; does that work for you?</div>
+        <div class="btnrow"><span class="b b-teal">Confirmed &mdash; go to the ask</span><span class="b b-out" style="border-color:#D5DEE8;color:var(--dim)">Not yet</span></div>
       </div>
     </div>
   </div>
@@ -552,8 +850,9 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
     <button class="tick" aria-pressed="false" data-id="c4">✓</button>
     <div class="step-body">
       <h3>Keep showing up</h3>
-      <p>After delivery the app spaces out the rest for you: <b>90 days</b> a check-in, <b>11 months</b> the one that catches problems while they're still fixable, <b>13 months</b> a proper review, plus birthdays.</p>
-      <div class="why"><b>11 months is the money one.</b> Your chargeback window is twelve. A problem found at month eleven can be saved. The same problem found at month thirteen already cost you.</div>
+      <p>After delivery the app spaces the rest out for you: <b>90 days</b> a check-in, <b>11 months</b> the one that catches problems while they are still fixable, <b>13 months</b> a proper review, plus birthdays.</p>
+      <p>Every one has a script and two buttons: <b>Done</b>, or <b>Push a week</b>.</p>
+      <div class="why"><b>11 months is the money one.</b> Your chargeback window is twelve. A problem found at month eleven can be saved. The same problem at month thirteen already cost you.</div>
     </div>
     <div class="shot">
       <div class="shot-lbl">Client care</div>
@@ -567,79 +866,76 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
 <!-- ============================ NUMBERS ============================ -->
 <section id="numbers">
 <div class="wrap">
-  <div class="sec-head"><div class="sec-num">05</div><h2>Your numbers</h2></div>
-  <p class="sec-sub indent">Two places. The board is today. Reports is everything else.</p>
+  <div class="sec-head"><div class="sec-num">09</div><h2>Your numbers</h2></div>
+  <p class="sec-sub indent">The board is today. Reports is everything else.</p>
 
   <div class="step">
     <button class="tick" aria-pressed="false" data-id="n1">✓</button>
     <div class="step-body">
-      <h3>Read the board</h3>
-      <p>Tap any number and it opens the list behind it. Every tile does this. If a figure looks wrong, tap it and you'll see exactly which clients made it.</p>
-      <div class="why"><b>Never argue with a number you haven't opened.</b> Nine times in ten the drill-down explains it in a second.</div>
+      <h3>Build a report</h3>
+      <p>Settings &rarr; Reports &rarr; <kbd>Build a report</kbd>. Pick the calendar, pick week / month / quarter / year, then add as many columns as you want &mdash; July this year against July last year, or Q1 against Q2.</p>
+      <p><b>Total</b> and <b>Average</b> are both shown, because they answer different questions. Total is the whole span. Average is the typical month.</p>
     </div>
     <div class="shot">
-      <div class="shot-lbl">Board</div>
-      <div class="row3">
-        <div class="tile"><div class="l">Appts</div><div class="v">3</div></div>
-        <div class="tile"><div class="l">Sits</div><div class="v">2</div></div>
-        <div class="tile hi"><div class="l">Sales</div><div class="v">1</div></div>
-      </div>
-      <div class="tile"><div class="l">Submitted APV</div><div class="v">$1,142</div></div>
+      <div class="shot-lbl">Reports</div>
+      <div class="btnrow"><span class="b b-teal">Production</span><span class="b b-out">Calendar</span><span class="b b-out">Activity</span></div>
+      <div class="btnrow" style="margin-bottom:7px"><span class="b b-out">Week</span><span class="b b-teal">Month</span><span class="b b-out">Quarter</span><span class="b b-out">Year</span></div>
+      <div class="lite"><div class="m">Jul 2026 &nbsp;&middot;&nbsp; Jul 2025 &nbsp;&middot;&nbsp; TOTAL &nbsp;&middot;&nbsp; AVG</div>
+        <div class="n">Sit to sale &nbsp; 34% &middot; 29% &middot; 32% &middot; 31%</div>
+        <div class="n">Dials per sale &nbsp; 141 &middot; 168 &middot; 152 &middot; 155</div></div>
     </div>
   </div>
 
   <div class="step">
     <button class="tick" aria-pressed="false" data-id="n2">✓</button>
     <div class="step-body">
-      <h3>Know which month you're looking at</h3>
-      <p>The period arrows move you back and forth. But a "month" here is the <b>production month</b> — Saturday after one month's last Friday, through the next month's last Friday. It's the month carriers pay on, not the 1st to the 31st.</p>
-      <div class="why warn"><b>So June might start on May 30.</b> A charge you dated June 30 counts in July. Not a bug — it's the calendar your commission runs on.</div>
+      <h3>Save it and pull it again</h3>
+      <p><kbd>Save</kbd> names the setup. Next month it is one tap. Export to <b>CSV</b>, or <b>print to PDF</b> &mdash; both carry the basis, the periods and the date it was run, so a file you open in three months still explains itself.</p>
+      <div class="why"><b>N/A means no data</b> for that period, usually before you started using CWC. Deliberately not a zero, because zero reads as "you did nothing".</div>
     </div>
     <div class="shot">
-      <div class="shot-lbl">Lead spend</div>
-      <div class="lite"><div class="n">July</div><div class="m">Runs Jun 27 – Jul 31</div>
-        <div class="m" style="margin-top:4px">Production months run Saturday to Friday, not the 1st to the 31st.</div></div>
+      <div class="shot-lbl">Reports</div>
+      <div class="btnrow"><span class="b b-teal" style="flex:1">Export CSV</span><span class="b b-out" style="flex:1;border-color:#9FE1CB;color:var(--teal)">Print / PDF</span><span class="b b-out" style="flex:1">Save</span></div>
+      <div class="lite" style="margin-top:6px"><div class="m">Saved</div><div class="n" style="font-size:11px;color:var(--teal)">July vs July &nbsp; &middot; &nbsp; Q1 vs Q2</div></div>
     </div>
   </div>
 
   <div class="step">
     <button class="tick" aria-pressed="false" data-id="n3">✓</button>
     <div class="step-body">
-      <h3>Build a report</h3>
-      <p>Settings → <kbd>Build a report</kbd>. Pick the calendar, pick week / month / quarter / year, then add as many columns as you want — July this year against July last year, or Q1 against Q2.</p>
-      <p>Export to CSV, or print to PDF. Save the setup and pull the same report next month in one tap.</p>
+      <h3>Two things worth watching</h3>
+      <p><b>Dials per sale.</b> The number that tells you what your activity is actually buying, and the first thing to look at in a bad month.</p>
+      <p><b>Sits with a pickup vs without.</b> A policy pickup costs you an extra meeting. This is where you find out whether it earns it back in close ratio and average APV &mdash; and how many you lose along the way.</p>
+      <div class="why"><b>Recent months read low on purpose.</b> Everything per-lead counts the leads assigned in that period, and this month's leads have not had time to close yet.</div>
     </div>
     <div class="shot">
-      <div class="shot-lbl">Reports</div>
-      <div class="btnrow"><span class="b b-teal">Production</span><span class="b b-out">Calendar</span><span class="b b-out">Activity</span></div>
-      <div class="btnrow" style="margin-bottom:7px"><span class="b b-out">Week</span><span class="b b-teal">Month</span><span class="b b-out">Quarter</span><span class="b b-out">Year</span></div>
-      <div class="lite"><div class="m">Jul 2026 &nbsp;·&nbsp; Jul 2025 &nbsp;·&nbsp; TOTAL &nbsp;·&nbsp; AVG</div>
-        <div class="n">Sit to sale &nbsp; 34% · 29% · 32% · 31%</div>
-        <div class="n">Dials per sale &nbsp; 141 · 168 · 152 · 155</div></div>
+      <div class="shot-lbl">Reports &rarr; Pickup</div>
+      <div class="lite"><div class="m">Sits WITH a pickup</div><div class="n">12 &middot; 58% close &middot; $1,840 avg</div></div>
+      <div class="lite"><div class="m">Sits with NO pickup</div><div class="n">31 &middot; 41% close &middot; $1,190 avg</div></div>
+      <div class="lite"><div class="m">PPUs dropped</div><div class="n">4</div></div>
     </div>
   </div>
 
   <div class="step">
     <button class="tick" aria-pressed="false" data-id="n4">✓</button>
     <div class="step-body">
-      <h3>Log what you spend on leads</h3>
-      <p>Tap the <kbd>Lead spend</kbd> tile. Enter each charge the way it appears on your statement — date, type, amount.</p>
-      <div class="why"><b>Without it there's no ROI.</b> Commission on its own doesn't tell you whether the leads paid for themselves, and that's the number that decides whether you buy more.</div>
+      <h3>If you get something wrong</h3>
+      <p><b>Settings &rarr; Help &rarr; History.</b> Pick a date and an hour range, find the action, tap <kbd>Undo this</kbd>. The lead goes back exactly as it was, appointment and all.</p>
+      <p>The <kbd>&#8634;</kbd> icon next to the gear undoes the very last thing, if it was just now.</p>
+      <div class="why"><b>Nothing you do here is permanent.</b> Removing a line from a call log reverses whatever that outcome did &mdash; it reopens the case, restores the appointment, puts the calendar event back.</div>
     </div>
     <div class="shot">
-      <div class="shot-lbl">Lead spend</div>
-      <div class="lite"><div class="m">Jul 14 · CIC</div><div class="n">$1,240</div></div>
-      <div class="lite"><div class="m">Jul 7 · CIC</div><div class="n">$980</div></div>
-      <div class="lite"><div class="m">Jun 30 · CID</div><div class="n">$1,100</div><div class="m">counts in July</div></div>
+      <div class="shot-lbl">History</div>
+      <div class="lite"><div class="m">Sat 1 Aug &middot; 10am to 12pm</div></div>
+      <div class="lite"><div class="n">Robert Gillanders <span class="m" style="float:right">11:14 AM</span></div>
+        <div class="m">Not interested <span style="float:right;border:1px solid #D5DEE8;border-radius:5px;padding:0 6px;">Undo this</span></div></div>
     </div>
   </div>
 </div>
 </section>
-
-<!-- ============================ STUCK ============================ -->
 <section id="stuck">
 <div class="wrap">
-  <div class="sec-head"><div class="sec-num">06</div><h2>Stuck?</h2></div>
+  <div class="sec-head"><div class="sec-num">07</div><h2>Stuck?</h2></div>
   <p class="sec-sub indent">The things that catch everyone. Search at the top of the page finds these too.</p>
 
   <details class="faq"><summary>A lead disappeared and I can't find them</summary>
