@@ -2749,6 +2749,34 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
 /* h287 closes the boot-quote typography: the line is wider and balanced, so a
    two-sentence quote breaks between the sentences rather than inside one. */
 #boot-quote{ text-wrap:balance; max-width:34ch; }
+
+/* ============================================================================
+   h288 - HAIRLINES BETWEEN THE TILES
+   The seamless grid lost its separators along the way, so a row of numbers ran
+   together with nothing to say where one tile ended. Inset shadows draw the
+   lines rather than borders, so nothing shifts and no row gains a stray edge.
+   ========================================================================== */
+.stat-row:not(.hero-row):not(.money-row), .stat-row2{
+  background:var(--surface) !important;
+  border:1px solid var(--line) !important;
+  border-radius:var(--r) !important;
+  overflow:hidden !important;
+}
+.stat-row:not(.hero-row):not(.money-row) > .stat, .stat-row2 > .stat{
+  background:transparent !important;
+  border:none !important;
+  border-radius:0 !important;
+  box-shadow:
+    inset -1px 0 0 var(--line),      /* the line on its right */
+    inset 0 -1px 0 var(--line);      /* and the one underneath */
+}
+/* the last tile in a row keeps no right-hand line, and the panel edge covers the
+   bottom of the final row */
+.stat-row:not(.hero-row):not(.money-row) > .stat:last-child,
+.stat-row2 > .stat:last-child{ box-shadow:inset 0 -1px 0 var(--line); }
+
+/* the hero cards stay separate objects with real gaps between them */
+.stat-row.hero-row{ background:none !important; border:none !important; overflow:visible !important; }
 </style>
 </head>
 <body>
@@ -2775,7 +2803,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h287</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h288</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
