@@ -1502,7 +1502,6 @@ html,body{ overflow-x:hidden !important; }
 /* h237: the status line. Act-now on the left in the red glow, the waiting queue
    in amber beside it, and the next thing on the clock pushed hard right next to
    the gear - because that one is about WHEN, not about what to do now. */
-.pace-warm{ color:#E0A44A !important; font-weight:600 !important; }
 .pace-next{ margin-left:auto !important; color:var(--muted) !important; white-space:nowrap; }
 #pace-line .pace-banner{
   display:flex !important; align-items:center !important; gap:14px !important;
@@ -1581,6 +1580,13 @@ html,body{ overflow-x:hidden !important; }
 }
 .stat-row.money-row .stat-sub{ font-size:12px !important; margin-top:10px !important; }
 @media(max-width:640px){ .stat-row.money-row{ grid-template-columns:minmax(0,1fr) !important; } }
+
+/* h239: the next thing on the schedule is the only other thing on this line and
+   it reads as plain white - it is information, not a warning. */
+.pace-next{
+  margin-left:auto !important; color:#fff !important;
+  font-weight:600 !important; font-size:13px !important; white-space:nowrap;
+}
 </style>
 </head>
 <body>
@@ -1599,7 +1605,7 @@ html,body{ overflow-x:hidden !important; }
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h238</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h239</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -6897,16 +6903,8 @@ function renderAlerts() {
     if (behindNow > 0) parts.push('<span class="pace-hot">Behind pace \u2014 call ' + behindNow + ' now</span>');
     else if (dueNow > 0) parts.push('<span class="pace-hot">' + dueNow + ' lead' + (dueNow>1?'s':'') + ' due now</span>');
 
-    // the breakdown of who is waiting, in amber - a warning, not an alarm
-    let ps = null;
-    try { ps = paceStats(); } catch (e) {}
-    if (ps) {
-      const bits = [];
-      if (ps.now > 0)     bits.push(ps.now + ' call now');
-      if (ps.warm > 0)    bits.push(ps.warm + ' warm');
-      if (ps.cooling > 0) bits.push(ps.cooling + ' cooling');
-      if (bits.length) parts.push('<span class="pace-warm">' + bits.join(' &middot; ') + '</span>');
-    }
+    // h239: the warm/cooling breakdown is gone. It repeated what "behind pace"
+    // already says and it was the only orange on the board.
 
     // and the next thing on the schedule, hard right, beside the gear
     parts.push('<span class="pace-next">' + apptPart + apptFire + '</span>');
