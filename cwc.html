@@ -1211,9 +1211,13 @@ html,body{ overflow-x:hidden !important; }
   display:flex !important;
   flex-direction:row !important;          /* the line that was missing */
   align-items:flex-start !important;
-  justify-content:space-between !important;
+  justify-content:flex-start !important;  /* h232: was space-between, which threw
+                                             the three groups to the far edges of
+                                             a 1500px board. v0's is 965px wide,
+                                             so the same rule reads as one band
+                                             there and as three islands here. */
   flex-wrap:nowrap !important;
-  gap:32px !important;
+  gap:0 !important;
   width:100% !important; margin:0 !important;
   padding:22px 0 0 !important;
   background:transparent !important; border:none !important;
@@ -1224,7 +1228,8 @@ html,body{ overflow-x:hidden !important; }
 .hdr-left{
   display:flex !important; flex-direction:column !important;
   align-items:flex-start !important; gap:2px !important;
-  flex:0 1 auto !important; min-width:0 !important; margin:0 !important;
+  flex:0 1 auto !important; min-width:0 !important;
+  margin:0 auto 0 0 !important;          /* the only thing that spreads */
 }
 .hdr-title{
   font-size:11px !important; font-weight:600 !important; letter-spacing:.22em !important;
@@ -1250,7 +1255,7 @@ html,body{ overflow-x:hidden !important; }
 .tab-bar{
   display:flex !important; flex-direction:row !important; align-items:flex-start !important;
   gap:20px !important; flex:0 0 auto !important; flex-wrap:nowrap !important;
-  margin:0 !important; padding:2px 0 0 !important;
+  margin:0 22px 0 0 !important; padding:3px 0 0 !important;
   background:transparent !important; border:none !important; border-radius:0 !important;
 }
 .tab{
@@ -1308,7 +1313,7 @@ html,body{ overflow-x:hidden !important; }
 /* the status line follows straight on, no rule across the page */
 #pace-line{
   display:flex !important; align-items:center !important; gap:16px !important;
-  width:100% !important; margin:16px 0 22px !important; padding:0 !important;
+  width:100% !important; margin:14px 0 18px !important; padding:0 !important;
   border:none !important;
 }
 
@@ -1318,6 +1323,26 @@ html,body{ overflow-x:hidden !important; }
   .hdr-right{ order:2 !important; }
   .tab.on::after{ bottom:-6px !important; }
 }
+
+/* h232: the header band, tightened. The three groups were reading as three
+   separate islands because the board is far wider than the design was drawn at.
+   Tabs and the time controls now travel together on the right, and the type is
+   sized so the whole band is one object rather than three. */
+.hdr{ padding:20px 0 0 !important; }
+.hdr-left{ padding-right:24px !important; }
+.hdr-title{ font-size:10.5px !important; letter-spacing:.20em !important; }
+.hdr-who{ font-size:19px !important; }
+.hdr-sub{ font-size:12.5px !important; }
+.tab-bar{ gap:18px !important; }
+.tab{ font-size:13px !important; }
+.hdr-right{ gap:7px !important; }
+.hdr-right .nav-row:last-child .pill{ padding:5px 12px !important; font-size:12px !important; }
+.period-label{ font-size:12px !important; min-width:66px !important; }
+.arrow-btn{ padding:2px 8px !important; font-size:11.5px !important; }
+/* the dead band under the header is gone */
+#pace-line{ margin:12px 0 16px !important; }
+.page-layout{ padding-top:0 !important; }
+.page-outer{ padding-top:0 !important; }
 </style>
 </head>
 <body>
@@ -1336,7 +1361,7 @@ html,body{ overflow-x:hidden !important; }
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h231</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h232</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
