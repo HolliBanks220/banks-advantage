@@ -2727,6 +2727,20 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     grid-column:span 1 !important;
   }
 }
+
+/* h286: the OPT warning is a button now - it opens the list of what is waiting. */
+.opt-warn{
+  margin-left:auto; background:var(--red-dim) !important;
+  border:1px solid var(--red-border) !important; color:#ff8a8e !important;
+  border-radius:7px !important; padding:5px 11px !important;
+  font-size:12px !important; font-weight:700 !important; font-family:inherit; cursor:pointer;
+}
+.opt-warn::before{ content:"\26A0\FE0F  "; }
+.opt-warn:hover{ background:rgb(229 72 77 / .22) !important; }
+.opt-clear{
+  margin-left:auto; color:var(--accent-lift) !important;
+  font-size:12px !important; font-weight:600 !important;
+}
 </style>
 </head>
 <body>
@@ -2753,7 +2767,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h285</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h286</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -3024,18 +3038,22 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
          as resolved even when nothing was ever decided. It lives in Reports now.
          Client care left too: it is work, not measurement, and sits with Tasks. -->
         <div class="stat-row">
-      <div class="stat"><div class="stat-lbl">APV / lead</div><div class="stat-val" id="lp-apvlead" style="font-size:18px">-</div><div class="stat-sub">volume per lead</div></div>
-      <div class="stat"><div class="stat-lbl">Comm / lead</div><div class="stat-val" id="lp-commlead" style="font-size:18px">-</div><div class="stat-sub">before cost</div></div>
+      <div class="stat"><div class="stat-lbl">APV / lead</div><div class="stat-val" id="lp-apvlead" style="font-size:18px">-</div><div class="stat-sub" id="lp-apv-sub">volume per lead</div></div>
+      <div class="stat"><div class="stat-lbl">Comm / lead</div><div class="stat-val" id="lp-commlead" style="font-size:18px">-</div><div class="stat-sub" id="lp-comm-sub">before lead cost</div></div>
       <!-- h253: Profit / lead was Comm / lead minus your cost per lead - derivable,
            and the one you would check least. Cost per sale replaces it: what you
            actually pay to close someone, which is the number a decision about
            buying more leads turns on. Return on spend folds into Lead spend's
            sub-line, so ROI is four cards instead of five. -->
-      <div class="stat"><div class="stat-lbl">Cost / sale</div><div class="stat-val" id="lp-costsale" style="font-size:18px">-</div><div class="stat-sub" id="lp-costsale-sub">to close one</div></div>
-      <div class="stat" style="cursor:pointer" onclick="openLeadSpend()"><div class="stat-lbl">Lead spend</div><div class="stat-val" id="lp-spend" style="font-size:18px">-</div><div class="stat-sub" id="lp-spend-sub" style="font-weight:600">tap to add a charge</div></div>
-      <div class="stat-val" id="lp-profitlead" style="display:none">-</div>
+      <!-- h286: Cost / sale is gone. The three questions are what a lead is worth,
+           what is left after it cost, and what every dollar came back as. -->
+      <div class="stat"><div class="stat-lbl">Profit / lead</div><div class="stat-val" id="lp-profitlead" style="font-size:18px">-</div><div class="stat-sub" id="lp-profit-sub">after lead cost</div></div>
+      <div class="stat" style="cursor:pointer" onclick="openLeadSpend()"><div class="stat-lbl">Return on spend</div><div class="stat-val" id="lp-roi" style="font-size:18px">-</div><div class="stat-sub" id="lp-roi-sub">tap to add a charge</div></div>
+      <div class="stat-val" id="lp-costsale" style="display:none">-</div>
+      <div class="stat-val" id="lp-costsale-sub" style="display:none">-</div>
+      <div class="stat-val" id="lp-spend" style="display:none">-</div>
+      <div class="stat-val" id="lp-spend-sub" style="display:none">-</div>
       <div class="stat-val" id="lp-profit-sub" style="display:none">-</div>
-      <div class="stat-val" id="lp-roi" style="display:none">-</div>
       <div class="stat-val" id="lp-avgapv" style="display:none">-</div>
     </div>
   </div>
@@ -4335,7 +4353,7 @@ const SECTION_ORDER = {
                        'p-tai','p-ppu','p-dropped','p-resets',
                        'p-resetask','p-refask','p-recask','p-stp',
                        'p-apv','p-apv-hh','s-time-appt'],
-  'roi':              ['lp-apv','lp-comm','lp-profit','lp-spend','lp-roi'],
+  'roi':              ['lp-apvlead','lp-commlead','lp-profitlead','lp-roi'],
 };
 
 function _sectionOf(el) {
@@ -5331,20 +5349,38 @@ function renderSourceComparison(pStart, pEnd, label) {
     setEl('lp-avgapv', fmtAvg(apv, A.sales));   // kept hidden; Production owns APV / Sale
     // h217: the two wide tiles at the bottom - what you spent, and what each
     // dollar of it returned. A multiple reads faster than a percentage here.
-    setEl('lp-roi', spend > 0 ? '$' + (A.comm / spend).toFixed(2) : '-');
+    setEl('lp-roi', spend > 0 ? '$' + (A.comm / spend).toFixed(2) : '-');   // back for every $1
     // h253: what one sale costs, and what each dollar returned
     // h271: A.sales is the COHORT count - sales from leads ASSIGNED in this
     // period, which is nearly always a handful because those leads have not had
     // time yet. Beside a Production tile reading 28 it just looks broken. Cost
     // per sale uses the sales MADE in the period, same as Production.
     const _prodSales = (typeof window._boardSales === 'number') ? window._boardSales : A.sales;
-    setEl('lp-costsale', (spend > 0 && _prodSales > 0) ? money(Math.round(spend / _prodSales)) : '-');
-    setEl('lp-costsale-sub', _prodSales > 0
-      ? _prodSales + ' sale' + (_prodSales === 1 ? '' : 's') + ' this period'
-      : 'no sales yet');
-    setEl('lp-spend-sub', spend > 0
-      ? '$' + (A.comm / spend).toFixed(2) + ' back for every $1'
+    // h286: every average now shows what it is averaged over. A per-lead figure
+    // means one thing across 131 leads and something else across six.
+    const _m = v => '$' + Math.round(v || 0).toLocaleString();
+    const _leads = A.assigned || 0;
+    setEl('lp-apv-sub',  _leads ? _leads + ' leads \u00b7 ' + _m(Math.round(apv)) + ' total' : 'volume per lead');
+    setEl('lp-comm-sub', _leads ? _m(Math.round(A.comm)) + ' total \u00b7 before lead cost' : 'before lead cost');
+    const _profit = A.comm - spend;
+    const _perLeadCost = _leads ? spend / _leads : 0;
+    setEl('lp-profit-sub', _leads
+      ? _m(Math.round(_profit)) + ' total \u00b7 after ' + _m(Math.round(_perLeadCost)) + '/lead'
+      : 'after lead cost');
+    // return on spend carries DIRECTION - the level stops surprising you, the
+    // trend does not
+    let _prevRoi = null;
+    try {
+      const pb = getPeriodBounds('activity', (typeof periodOffset === 'number' ? periodOffset : 0) - 1);
+      if (pb && window._lastSourceStats) {
+        const pSpend = spendInPeriod(pb.start, pb.end);
+        if (pSpend > 0) _prevRoi = null;   // prior comm is not available here
+      }
+    } catch (e) {}
+    setEl('lp-roi-sub', spend > 0
+      ? _m(Math.round(spend)) + ' in \u00b7 ' + _m(Math.round(A.comm)) + ' out'
       : 'tap to add a charge');
+
     const neverN = Math.round(((mia.m ? mia.m.neverPct : 0) * mia.assigned +
                                (cia.m ? cia.m.neverPct : 0) * cia.assigned) / (A.assigned || 1));
     setEl('lp-never', A.assigned ? neverN + '%' : '-');   // h211: no longer on the board; setEl no-ops when absent
@@ -6558,6 +6594,55 @@ function appNeedsAttention(ap) {
   return !!ap && RECOVERABLE.includes(ap.status || '') && !ap.closed_out;
 }
 
+// h286: the warning counted them but there was no way to see WHICH. Every app
+// still waiting to be uploaded, oldest first - because the oldest is the one
+// closest to being a problem.
+function openNotInOpt() {
+  const active = ['Written','Submitted','Approved','Issued'];
+  const rows = [];
+  (clients || []).forEach(c => {
+    (c.cases || []).filter(Boolean).forEach((cs, ci) => {
+      (cs.touchpoints || []).filter(Boolean).forEach((tp, ti) => {
+        (tp.apps || []).filter(Boolean).forEach((ap, ai) => {
+          if (!active.includes(ap.status || 'Written') || ap.opted) return;
+          rows.push({ c, ap, ci, ti, ai,
+            d: new Date(ap.writtenDate || tp.datetime || cs.created || 0) });
+        });
+      });
+    });
+  });
+  rows.sort((a, b) => a.d - b.d);
+
+  if (!rows.length) {
+    showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+      '<div class="modal-title">Not in OPT</div>' +
+      '<div style="font-size:13px;color:#5f7a99;padding:1rem 0;">Everything is uploaded.</div>');
+    return;
+  }
+  const body = rows.map(r => {
+    const days = Math.floor((Date.now() - r.d) / 86400000);
+    const when = r.d.getFullYear() > 2000
+      ? r.d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' \u00b7 ' + days + 'd ago'
+      : 'no date';
+    return '<div class="client-card" style="cursor:default;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">' +
+        '<div style="min-width:0;">' +
+          '<div class="client-name" style="cursor:pointer;" onclick="closeModal();setTimeout(()=>openClient(\'' + r.c.id + '\'),100)">' +
+            esc(r.c.name || 'Unknown') + '</div>' +
+          '<div class="client-meta">' + esc(r.ap.carrier || '') +
+            (r.ap.product ? ' \u00b7 ' + esc(r.ap.product) : '') +
+            ' \u00b7 ' + (r.ap.status || 'Written') + ' \u00b7 ' + when + '</div>' +
+        '</div>' +
+        '<button class="opt-chip opt-off" onclick="toggleAppOPT(\'' + r.c.id + '\',' + r.ci + ',' + r.ti + ',' + r.ai + ');openNotInOpt();">+ OPT</button>' +
+      '</div></div>';
+  }).join('');
+  showModal('<button class="close-x" onclick="closeModal()">x</button>' +
+    '<div class="modal-title">Not in OPT</div>' +
+    '<div class="modal-sub">' + rows.length + ' application' + (rows.length === 1 ? '' : 's') +
+      ' waiting to be uploaded \u00b7 oldest first</div>' +
+    '<div style="max-height:70vh;overflow-y:auto;margin-top:10px;">' + body + '</div>');
+}
+
 async function toggleAppOPT(clientId, ci, ti, ai) {  const c = clients.find(x=>x.id===clientId); if (!c) return;
   const ap = (((c.cases||[])[ci]||{}).touchpoints||[])[ti];
   if (!ap || !ap.apps || !ap.apps[ai]) return;
@@ -6717,7 +6802,9 @@ function renderAppsTab() {
       <div style="color:rgba(255,255,255,0.6);font-size:10px;">APV<br><strong style="font-size:16px;color:#fff;">${fmt(totalAPV)}</strong></div>
       <div style="color:rgba(255,255,255,0.6);font-size:10px;">Full comp<br><strong style="font-size:16px;color:var(--accent-line);">${fmt(periodGrossComp)}</strong></div>
       <div style="color:rgba(255,255,255,0.6);font-size:10px;">Upfront $<br><strong style="font-size:16px;color:var(--accent-line);">${fmt(periodUpfront)}</strong></div>
-      ${notOPT > 0 ? `<div style="color:#FAC775;font-size:10px;margin-left:auto;background:rgba(255,255,255,0.1);padding:4px 8px;border-radius:6px;">⚠️ ${notOPT} not in OPT</div>` : '<div style="color:var(--accent-line);font-size:10px;margin-left:auto;">✓ All in OPT</div>'}
+      ${notOPT > 0
+        ? `<button class="opt-warn" onclick="openNotInOpt()">${notOPT} not in OPT</button>`
+        : '<div class="opt-clear">\u2713 All in OPT</div>'}
     `;
 
     if (!submittedApps.length) {
