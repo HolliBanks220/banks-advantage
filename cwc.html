@@ -2664,7 +2664,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h278</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h279</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -8308,19 +8308,23 @@ function renderAlerts() {
     // h245: the countdown sits right after the glow, and the day's appointment
     // count travels with it rather than sitting alone at the far right.
     parts.push('<span class="pace-next">' + apptPart + apptFire + '</span>');
+    // h279: this said "today" but counted getPeriodBounds('activity') - the whole
+    // SELECTED period. On month view it reported the month's appointments as
+    // today's, and only looked right on day view, which is what made it seem to
+    // "reconcile". This line is about right now, so it counts today, always -
+    // and it counts everything scheduled, not just appointments, since a callback
+    // at 3pm is as much a commitment as a meeting.
     let todayCount = 0;
     try {
-      const { start, end } = getPeriodBounds('activity');
-      todayCount = (clients || []).filter(c => {
-        const dt = apptOf(c); if (!dt) return false;
-        const d = new Date(dt); return d >= start && d <= end;
-      }).length;
+      const _t = new Date().toDateString();
+      todayCount = (getAllScheduled() || [])
+        .filter(a => a && a.datetime && new Date(a.datetime).toDateString() === _t).length;
     } catch (e) {}
     // h249: only show the count when there is one - "no appts today" straight
     // after a line that already said there is nothing next says it twice.
     // h251: always shown - "0 appts today" is information, not an empty state.
     parts.push('<span class="pace-count">' + todayCount +
-      ' appt' + (todayCount === 1 ? '' : 's') + ' today</span>');
+      ' on the books today</span>');
     // h228: the inline light-mode fill is gone. The line is plain white text on
     // the board; only the "behind pace" span carries a colour, and it carries it
     // from the stylesheet where the glow lives.
