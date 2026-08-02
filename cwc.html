@@ -510,7 +510,7 @@ html,body{overflow-x:hidden !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h209</span>
+        <span class="build-tag" id="build-tag" title="build">b715h210</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="gear-btn" id="undo-btn" onclick="undoLastAction()" style="display:none;" title="Undo the last action">&#8634;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
@@ -14726,80 +14726,78 @@ function getBonusRate(carrierName, productName) {
   return 0; // qualifier only
 }
 
-function openSettings() {
+function openSettings(tab) {
   const settings = getAgentSettings();
   const level = settings.contractLevel || 105;
   const levels = [80, 85, 90, 95, 100, 105, 110, 115, 120, 125, 130];
   const enabledCarriers = settings.enabledCarriers || {};
-
   const carrierList = getCarrierList();
   const enabledCount = carrierList.filter(c => enabledCarriers[c] && enabledCarriers[c]._enabled).length;
 
-  showModal(
-    '<button class="close-x" onclick="closeToLead()">x</button>' +
-    '<div class="modal-title">⚙️ Settings</div>' +
+  // h210: Settings was one long scroll with the things you set once buried
+  // among the things you touch daily, and the runner sharing a Save button with
+  // dormancy. Tabs, in the order you would meet them: who you are, how you get
+  // paid, how the queue behaves, then what you can pull out of it.
+  const t = tab || window._settingsTab || 'profile';
+  window._settingsTab = t;
+  const TABS = [
+    { k: 'profile',  l: 'Profile'  },
+    { k: 'business', l: 'Business' },
+    { k: 'cadence',  l: 'Cadence'  },
+    { k: 'reports',  l: 'Reports'  },
+    { k: 'help',     l: 'Help'     },
+  ];
+  const nRepair = findContradictions().length;
+  const card = (inner) => '<div style="background:#f0f4f8;border-radius:10px;padding:12px;margin-bottom:12px;">' + inner + '</div>';
+  const head = (txt, colour) => '<div style="font-size:10px;font-weight:600;color:' + (colour || '#5f7a99') +
+    ';text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">' + txt + '</div>';
+  const saveBtn = (fn, label) => '<button onclick="' + fn + '" style="width:100%;background:#1D3557;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;margin-top:4px;">' + label + '</button>';
 
-    '<div style="background:#E1F5EE;border-radius:10px;padding:12px;margin-bottom:12px;">' +
-      '<div style="font-size:10px;font-weight:600;color:#0E6363;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Help</div>' +
-      '<button class="save-btn" style="margin-bottom:4px;background:#138181;" onclick="openGuide()">How to work your day</button>' +
-      '<div style="font-size:11px;color:#5f7a99;">Step by step, with the answers to whatever has you stuck. Search it. Opens in a new tab.</div>' +
-    '</div>' +
+  let body = '';
 
-    '<div style="background:#f0f4f8;border-radius:10px;padding:12px;margin-bottom:12px;">' +
-      '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Reports</div>' +
-      '<button class="save-btn" style="margin-bottom:4px;" onclick="openReportBuilder()">Build a report</button>' +
-      '<div style="font-size:11px;color:#5f7a99;margin-bottom:8px;">Any periods side by side - July 26 vs July 25, or Q1 vs Q2. Pick the calendar, pick the metrics, export CSV or print.</div>' +
-      '<button class="save-btn" style="margin-bottom:4px;" onclick="openReports()">Lead source comparison</button>' +
-      '<div style="font-size:11px;color:#5f7a99;">Performance by source and combined, referral-only numbers, spend and ROI, recruits.</div>' +
-    '</div>' +
-
-    (function(){
-      const n = findContradictions().length;
-      return '<div style="background:' + (n ? '#FFF5F5' : '#f0f4f8') + ';border-radius:10px;padding:12px;margin-bottom:12px;' +
-        (n ? 'border:1px solid #F5A0A0;' : '') + '">' +
-        '<div style="font-size:10px;font-weight:600;color:' + (n ? '#A32D2D' : '#5f7a99') + ';text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Repair' +
-          (n ? ' &middot; ' + n : '') + '</div>' +
-        '<button class="save-btn" style="margin-bottom:4px;" onclick="openClientCare()">Client care' +
-          (clientCareDue().length ? ' - ' + clientCareDue().length + ' due' : '') + '</button>' +
-        '<button class="save-btn" style="margin-bottom:4px;" onclick="openActionHistory()">History - what changed, and when</button>' +
-        '<button class="save-btn" style="margin-bottom:4px;" onclick="openRepairPanel()">' +
-          (n ? 'Review ' + n + ' contradiction' + (n === 1 ? '' : 's') : 'Check for contradictions') + '</button>' +
-        '<div style="font-size:11px;color:#5f7a99;">Leads holding an appointment they should not - a booking left on someone who already said no, or a pending step on a closed case.</div>' +
-      '</div>';
-    })() +
-
-    '<div style="background:#f0f4f8;border-radius:10px;padding:12px;margin-bottom:12px;">' +
-      '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Board theme</div>' +
-      '<div style="font-size:11px;color:#5f7a99;margin-bottom:8px;">Presets still need a proper pass - these are the old ones.</div>' +
-      '<div style="display:flex;flex-wrap:wrap;gap:6px;">' +
-        ['light','slate','midnight','scoreboard','navy'].map(function(nm){
-          var t = getTheme();
-          return '<button onclick="setThemePreset(\'' + nm + '\')" style="font-size:12px;font-weight:600;border:1px solid ' +
-            (t.preset===nm?'#138181':'#dde7f0') + ';background:' + (t.preset===nm?'#E1F5EE':'#fff') +
-            ';color:#1D3557;border-radius:8px;padding:6px 11px;cursor:pointer;">' + nm.charAt(0).toUpperCase()+nm.slice(1) + '</button>';
-        }).join('') +
-      '</div>' +
-    '</div>' +
-
-    '<div style="background:#f0f4f8;border-radius:10px;padding:12px;margin-bottom:12px;">' +
-      '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Profile</div>' +
-      '<div class="field"><label>Name</label><input type="text" id="s-name" value="' + (settings.agentName||'Holli Banks') + '" style="font-size:14px;"></div>' +
+  if (t === 'profile') {
+    body = card(head('You') +
+      '<div class="field"><label>Name</label><input type="text" id="s-name" value="' + escAttr(settings.agentName || '') + '" style="font-size:14px;"></div>' +
       '<div class="field"><label>Board name <span style="font-weight:400;color:#8A94A2;">(shown in the header)</span></label>' +
-        '<input type="text" id="s-agency" value="' + escAttr(settings.agencyName || 'Banks Advantage - CWC') + '" style="font-size:14px;"></div>' +
-      '<div class="field"><label>Contract level</label>' +
-        '<select id="s-level" style="font-size:16px;width:100%;border:1px solid #d0dcea;border-radius:8px;padding:8px;">' +
-          levels.map(l => '<option value="' + l + '"' + (l===level?' selected':'') + '>' + l + '%' + (BONUS_THRESHOLDS[l] ? ' — Bonus qualifier: $' + BONUS_THRESHOLDS[l].toLocaleString() : ' — Below bonus level') + '</option>').join('') +
-        '</select>' +
+        '<input type="text" id="s-agency" value="' + escAttr(settings.agencyName || 'CWC') + '" style="font-size:14px;"></div>' +
+      head('Your runner') +
+      '<div style="font-size:10px;color:#8A94A2;margin:-4px 0 6px;">The badge you see when you are behind pace.</div>' +
+      '<div style="display:flex;gap:8px;align-items:flex-end;">' +
+        '<div style="font-size:30px;line-height:1;padding-bottom:4px;" id="s-runner-preview">' + runnerEmoji() + '</div>' +
+        '<div class="field" style="flex:1;"><label>Person</label><select id="s-runner-person" onchange="previewRunner()">' +
+          RUNNER_PEOPLE.map(p => '<option value="' + p.v + '"' + (runnerPrefs().person === p.v ? ' selected' : '') + '>' + p.n + '</option>').join('') +
+        '</select></div>' +
+        '<div class="field" style="flex:1;"><label>Tone</label><select id="s-runner-tone" onchange="previewRunner()">' +
+          RUNNER_TONES.map(x => '<option value="' + x.v + '"' + (runnerPrefs().tone === x.v ? ' selected' : '') + '>' + x.n + '</option>').join('') +
+        '</select></div>' +
       '</div>' +
+      saveBtn('saveProfileSettings()', 'Save profile')) +
 
-      '<div class="field"><label>Default appointment length (minutes)</label><input type="number" step="5" id="s-appt-mins" value="' + (settings.defaultApptMins || 40) + '" style="font-size:16px;"></div>' +
+      card(head('Google Calendar') +
+        '<div id="cal-status" style="font-size:12px;color:#5f7a99;margin-bottom:8px;">Checking...</div>' +
+        '<div id="cal-actions"></div>');
+  }
+
+  else if (t === 'business') {
+    body = card(head('Contract level') +
+      '<div class="field">' +
+        '<select id="s-level" style="font-size:16px;width:100%;border:1px solid #d0dcea;border-radius:8px;padding:8px;">' +
+          levels.map(l => '<option value="' + l + '"' + (l === level ? ' selected' : '') + '>' + l + '%' + (BONUS_THRESHOLDS[l] ? ' - Bonus qualifier: $' + BONUS_THRESHOLDS[l].toLocaleString() : ' - Below bonus level') + '</option>').join('') +
+        '</select>' +
+        '<div style="font-size:10px;color:#8A94A2;margin-top:3px;">Applications keep the level they were written at. Changing this asks before it touches anything already on file.</div>' +
+      '</div>' +
+      '<div class="field"><label>Lead types I buy <span style="font-weight:400;color:#8A94A2;">(comma separated)</span></label>' +
+        '<input type="text" id="s-lead-types" value="' + escAttr(purchasedLeadTypes().join(', ')) + '" placeholder="CI, MI" style="font-size:14px;">' +
+        '<div style="font-size:10px;color:#8A94A2;margin-top:3px;">Just the type - CI, MI, Lighthouse, Level Up. Not the freshness letter; CIA and CIC are both CI.</div>' +
+      '</div>' +
+      head('Birthdays') +
       '<div style="display:flex;gap:8px;">' +
-        '<div class="field" style="flex:1;"><label>Birthday card, days ahead</label>' +
+        '<div class="field" style="flex:1;"><label>Card, days ahead</label>' +
           '<select id="s-bday-card">' +
             '<option value="off"' + (birthdayCardLead() === null ? ' selected' : '') + '>off</option>' +
             [3,5,7,10,14,21,30].map(d => '<option value="' + d + '"' + (birthdayCardLead() === d ? ' selected' : '') + '>' + d + ' days</option>').join('') +
           '</select></div>' +
-        '<div class="field" style="flex:1;"><label>Birthday text</label>' +
+        '<div class="field" style="flex:1;"><label>Text</label>' +
           '<select id="s-bday-text">' +
             '<option value="off"' + (birthdayTextLead() === null ? ' selected' : '') + '>off</option>' +
             '<option value="0"' + (birthdayTextLead() === 0 ? ' selected' : '') + '>day of</option>' +
@@ -14807,71 +14805,93 @@ function openSettings() {
             '<option value="2"' + (birthdayTextLead() === 2 ? ' selected' : '') + '>2 days before</option>' +
           '</select></div>' +
       '</div>' +
-      '<div style="font-size:10px;color:#8A94A2;margin:-6px 0 10px;">Two separate prompts - a card needs posting time, a text needs the day. Marking one done leaves the other.</div>' +
-      '<div class="field"><label>Lead types I buy <span style="font-weight:400;color:#8A94A2;">(comma separated)</span></label>' +
-        '<input type="text" id="s-lead-types" value="' + escAttr(purchasedLeadTypes().join(', ')) + '" placeholder="MIA, CIA" style="font-size:14px;">' +
-        '<div style="font-size:10px;color:#8A94A2;margin-top:3px;">These are the only options offered when you log a lead charge. Enter whatever you actually buy - CIA, MIA, CIG, Lighthouse.</div>' +
-      '</div>' +
-      '<button onclick="saveProfileSettings()" style="width:100%;background:#1D3557;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;">Save profile</button>' +
-    '</div>' +
+      '<div style="font-size:10px;color:#8A94A2;margin:-6px 0 8px;">Two separate prompts. Marking one done leaves the other.</div>' +
+      saveBtn('saveProfileSettings()', 'Save')) +
 
-    '<div style="background:#f0f4f8;border-radius:10px;padding:12px;margin-bottom:12px;">' +
-      '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Google Calendar</div>' +
-      '<div id="cal-status" style="font-size:12px;color:#5f7a99;margin-bottom:8px;">Checking...</div>' +
-      '<div id="cal-actions"></div>' +
-    '</div>' +
+      card('<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+          '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;">Carriers &amp; products</div>' +
+          '<div style="font-size:10px;color:#5f7a99;">' + enabledCount + ' of ' + carrierList.length + ' enabled</div>' +
+        '</div>' +
+        '<div style="font-size:11px;color:#8fa8c0;margin-bottom:8px;">Enable only the carriers you write. Products from enabled carriers show in app entry.</div>' +
+        '<button onclick="openCarrierManager()" style="width:100%;background:#138181;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:6px;">Manage carriers &amp; products</button>' +
+        '<button onclick="openAddCustomCarrier()" style="width:100%;background:#f0f4f8;color:#5f7a99;border:1px solid #d0dcea;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;">+ Add custom carrier</button>');
+  }
 
-    '<div style="background:#f0f4f8;border-radius:10px;padding:12px;margin-bottom:12px;">' +
-      '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Dormancy</div>' +
-      '<div style="font-size:10px;color:#8fa8c0;margin-bottom:6px;">A lead goes dormant at either gate: heavily worked, or moderately worked but aged. Never deleted.</div>' +
+  else if (t === 'cadence') {
+    body = card(head('Appointments') +
+      '<div class="field"><label>Default length (minutes)</label><input type="number" step="5" id="s-appt-mins" value="' + (settings.defaultApptMins || 40) + '" style="font-size:16px;"></div>' +
+      head('Dormancy') +
+      '<div style="font-size:10px;color:#8fa8c0;margin:-4px 0 6px;">A lead goes dormant at either gate: heavily worked, or moderately worked but aged. Never deleted.</div>' +
       '<div style="display:flex;gap:8px;margin-bottom:6px;">' +
-        '<div class="field" style="flex:1;"><label>Gate 1 &mdash; attempts</label><input type="number" id="s-dorm-att" value="' + dormantRules().attempts + '"></div>' +
-        '<div class="field" style="flex:1;"><label>Gate 1 &mdash; days</label><input type="number" id="s-dorm-days" value="' + dormantRules().days + '"></div>' +
+        '<div class="field" style="flex:1;"><label>Gate 1 - attempts</label><input type="number" id="s-dorm-att" value="' + dormantRules().attempts + '"></div>' +
+        '<div class="field" style="flex:1;"><label>Gate 1 - days</label><input type="number" id="s-dorm-days" value="' + dormantRules().days + '"></div>' +
       '</div>' +
       '<div style="display:flex;gap:8px;margin-bottom:6px;">' +
-        '<div class="field" style="flex:1;"><label>Gate 2 &mdash; attempts</label><input type="number" id="s-dorm-att2" value="' + dormantRules().attempts2 + '"></div>' +
-        '<div class="field" style="flex:1;"><label>Gate 2 &mdash; days</label><input type="number" id="s-dorm-days2" value="' + dormantRules().days2 + '"></div>' +
+        '<div class="field" style="flex:1;"><label>Gate 2 - attempts</label><input type="number" id="s-dorm-att2" value="' + dormantRules().attempts2 + '"></div>' +
+        '<div class="field" style="flex:1;"><label>Gate 2 - days</label><input type="number" id="s-dorm-days2" value="' + dormantRules().days2 + '"></div>' +
       '</div>' +
       '<div style="display:flex;gap:8px;margin-bottom:6px;">' +
         '<div class="field" style="flex:1;"><label>No-show rebook tries</label><input type="number" id="s-noshow-tries" value="' + dormantRules().noShowTries + '"></div>' +
         '<div class="field" style="flex:1;"><label>Dormant kill-count</label><input type="number" id="s-dorm-kill" value="' + dormantRules().killCount + '"></div>' +
         '<div class="field" style="flex:1;"><label>Push-off rest (days)</label><input type="number" id="s-pushoff" value="' + dodgeDays() + '"></div>' +
       '</div>' +
-      '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin:12px 0 6px 0;">Attempt pace (per lead, by stage)</div>' +
+      head('Attempt pace (per lead, by stage)') +
       '<div style="display:flex;gap:8px;">' +
         '<div class="field" style="flex:1;"><label>Fresh (day 0-3)</label><input type="number" id="s-pace-1" value="' + paceRules().fresh + '"></div>' +
         '<div class="field" style="flex:1;"><label>Warm (day 4-9)</label><input type="number" id="s-pace-2" value="' + paceRules().warm + '"></div>' +
         '<div class="field" style="flex:1;"><label>Cooling (day 10-16)</label><input type="number" id="s-pace-3" value="' + paceRules().cooling + '"></div>' +
       '</div>' +
-      '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin:12px 0 6px 0;">Your runner</div>' +
-      '<div style="display:flex;gap:8px;align-items:flex-end;">' +
-        '<div style="font-size:30px;line-height:1;padding-bottom:4px;" id="s-runner-preview">' + runnerEmoji() + '</div>' +
-        '<div class="field" style="flex:1;"><label>Person</label><select id="s-runner-person" onchange="previewRunner()">' +
-          RUNNER_PEOPLE.map(p => '<option value="' + p.v + '"' + (runnerPrefs().person===p.v?' selected':'') + '>' + p.n + '</option>').join('') +
-        '</select></div>' +
-        '<div class="field" style="flex:1;"><label>Tone</label><select id="s-runner-tone" onchange="previewRunner()">' +
-          RUNNER_TONES.map(t => '<option value="' + t.v + '"' + (runnerPrefs().tone===t.v?' selected':'') + '>' + t.n + '</option>').join('') +
-        '</select></div>' +
-      '</div>' +
-      '<button onclick="saveProfileSettings()" style="width:100%;background:#1D3557;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;margin-top:12px;">Save</button>' +
-      '<button onclick="restoreDefaultSettings()" style="width:100%;background:none;border:1px solid #d0dcea;border-radius:8px;padding:8px;font-size:12px;color:#5f7a99;cursor:pointer;margin-top:6px;">\u21BA Restore defaults</button>' +
-    '</div>' +
+      saveBtn('saveProfileSettings()', 'Save') +
+      '<button onclick="restoreDefaultSettings()" style="width:100%;background:none;border:1px solid #d0dcea;border-radius:8px;padding:8px;font-size:12px;color:#5f7a99;cursor:pointer;margin-top:6px;">\u21BA Restore defaults</button>');
+  }
 
-    '<div style="background:#f0f4f8;border-radius:10px;padding:12px;margin-bottom:12px;">' +
-      '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Data</div>' +
-      '<button onclick="recheckComp()" style="width:100%;background:#138181;color:#fff;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;">Recheck comp on all apps</button>' +
-      '<div style="font-size:10px;color:#8fa8c0;margin-top:4px;">Recalculates commission on every application using current rates.</div>' +
-    '</div>' +
+  else if (t === 'reports') {
+    body = card(head('Reports') +
+      '<button class="save-btn" style="margin-bottom:4px;" onclick="openReportBuilder()">Build a report</button>' +
+      '<div style="font-size:11px;color:#5f7a99;">Any periods side by side - July 26 vs July 25, or Q1 vs Q2. Pick the calendar, pick the metrics, export CSV or print.</div>' +
+      // h210: source comparison is deliberately hidden. A new agent studying lead
+      // quality learns to blame the leads; they need to learn to work them first.
+      // An upline turns it on per agent when it will help rather than excuse.
+      (settings.showSourceComparison
+        ? '<button class="save-btn" style="margin:10px 0 4px;" onclick="openReports()">Lead source comparison</button>' +
+          '<div style="font-size:11px;color:#5f7a99;">Performance by source and combined, referral-only numbers, spend and ROI, recruits.</div>'
+        : ''));
+  }
 
-    '<div style="background:#f0f4f8;border-radius:10px;padding:12px;">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
-        '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;">Carriers & products</div>' +
-        '<div style="font-size:10px;color:#5f7a99;">' + enabledCount + ' of ' + carrierList.length + ' enabled</div>' +
+  else {
+    body = '<div style="background:#E1F5EE;border-radius:10px;padding:12px;margin-bottom:12px;">' +
+        head('Help', '#0E6363') +
+        '<button class="save-btn" style="margin-bottom:4px;background:#138181;" onclick="openGuide()">How to work your day</button>' +
+        '<div style="font-size:11px;color:#5f7a99;">Step by step, with the answers to whatever has you stuck. Search it. Opens in a new tab.</div>' +
       '</div>' +
-      '<div style="font-size:11px;color:#8fa8c0;margin-bottom:8px;">Enable only the carriers you write. Products from enabled carriers show in app entry.</div>' +
-      '<button onclick="openCarrierManager()" style="width:100%;background:#138181;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:6px;">Manage carriers & products →</button>' +
-    '<button onclick="openAddCustomCarrier()" style="width:100%;background:#f0f4f8;color:#5f7a99;border:1px solid #d0dcea;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;">+ Add custom carrier</button>' +
-    '</div>'
+
+      '<div style="background:' + (nRepair ? '#FFF5F5' : '#f0f4f8') + ';border-radius:10px;padding:12px;margin-bottom:12px;' +
+        (nRepair ? 'border:1px solid #F5A0A0;' : '') + '">' +
+        head('Repair' + (nRepair ? ' &middot; ' + nRepair : ''), nRepair ? '#A32D2D' : '#5f7a99') +
+        '<button class="save-btn" style="margin-bottom:4px;" onclick="openRepairPanel()">' +
+          (nRepair ? 'Review ' + nRepair + ' contradiction' + (nRepair === 1 ? '' : 's') : 'Check for contradictions') + '</button>' +
+        '<div style="font-size:11px;color:#5f7a99;">Leads holding an appointment they should not - a booking left on someone who already said no, or a pending step on a closed case.</div>' +
+      '</div>' +
+
+      card(head('History') +
+        '<button class="save-btn" style="margin-bottom:4px;" onclick="openActionHistory()">What changed, and when</button>' +
+        '<div style="font-size:11px;color:#5f7a99;">Pick a date and an hour range. Undo anything, however long ago.</div>') +
+
+      card(head('Data') +
+        '<button onclick="recheckComp()" style="width:100%;background:#138181;color:#fff;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;">Recheck comp on all apps</button>' +
+        '<div style="font-size:10px;color:#8fa8c0;margin-top:4px;">Compares every application against the current comp grid and offers to fix any that drifted.</div>');
+  }
+
+  showModal(
+    '<button class="close-x" onclick="closeToLead()">x</button>' +
+    '<div class="modal-title">Settings</div>' +
+    '<div style="display:flex;gap:4px;margin:10px 0 14px;flex-wrap:wrap;">' +
+      TABS.map(x => '<button onclick="openSettings(\'' + x.k + '\')" style="flex:1;min-width:64px;border:1px solid ' +
+        (t === x.k ? '#138181' : '#dde7f0') + ';background:' + (t === x.k ? '#138181' : '#fff') +
+        ';color:' + (t === x.k ? '#fff' : '#5f7a99') + ';border-radius:999px;padding:7px 4px;font-size:11px;font-weight:600;cursor:pointer;">' +
+        x.l + (x.k === 'help' && nRepair ? ' <span style="color:' + (t === x.k ? '#fff' : '#A32D2D') + ';">' + nRepair + '</span>' : '') +
+        '</button>').join('') +
+    '</div>' + body
   );
 
   // Populate the Google Calendar section (async, after the modal is on screen)
@@ -14893,12 +14913,19 @@ function openSettings() {
 
 function saveProfileSettings() {
   const settings = getAgentSettings();
-  settings.agentName = document.getElementById('s-name').value.trim();
+  // h210: Settings is tabbed now, so a field may simply not be on screen. Every
+  // read is guarded - an absent field must leave its stored value alone, not
+  // wipe it because the tab it lives on was not open.
+  { const _nm = document.getElementById('s-name');
+    if (_nm) settings.agentName = _nm.value.trim(); }
   { const _ag = document.getElementById('s-agency');
-    if (_ag) settings.agencyName = _ag.value.trim() || 'Banks Advantage - CWC'; }
+    if (_ag) settings.agencyName = _ag.value.trim() || 'CWC'; }
   const _wasLevel = settings.contractLevel || 105;
-  settings.contractLevel = parseInt(document.getElementById('s-level').value);
-  if (_wasLevel !== settings.contractLevel) setTimeout(() => onContractLevelChanged(_wasLevel, settings.contractLevel), 250);
+  { const _lv = document.getElementById('s-level');
+    if (_lv) {
+      settings.contractLevel = parseInt(_lv.value);
+      if (_wasLevel !== settings.contractLevel) setTimeout(() => onContractLevelChanged(_wasLevel, settings.contractLevel), 250);
+    } }
   const dm = document.getElementById('s-appt-mins');
   if (dm) settings.defaultApptMins = parseInt(dm.value) || 40;
   const da = document.getElementById('s-dorm-att'), dd = document.getElementById('s-dorm-days');
