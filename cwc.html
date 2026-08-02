@@ -2055,12 +2055,12 @@ html,body{ overflow-x:hidden !important; }
    ========================================================================== */
 
 /* ---- 1. EVERY INLINE FILL INSIDE A LEAD CARD GOES NEUTRAL ---- */
-.modal [style*="background:#"]:not(.save-btn):not([class*="on-"]):not(.dial-cnt-btn):not(.outcome-btn){
+.modal [style*="background:#"]:not(.save-btn):not([class*="on-"]):not(.dial-cnt-btn):not(.outcome-btn):not(.swatch){
   background:#F4F7FA !important;
   border-color:#D5DEE8 !important;
   color:#16202E !important;
 }
-.modal [style*="background:#"] *{ color:#16202E !important; }
+.modal [style*="background:#"]:not(.swatch) *{ color:#16202E !important; }
 
 /* ---- 2. ONE FILLED BUTTON. Save & next is the primary action and nothing else
    may look like it. ---- */
@@ -2614,10 +2614,13 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
    neutralises every inline background inside a modal - which is right for the
    stray light-mode fills it was written for, and exactly wrong for ten buttons
    whose entire job is to BE a colour. Excluded by class, stated last. */
+/* h284: this said background:inherit, which took the modal's WHITE - so every
+   swatch was a white circle. The colour is on the element's own inline style and
+   must simply be left alone. */
 .modal button.swatch, button.swatch{
-  background:inherit;
-  border:2px solid rgb(0 0 0 / .12) !important;
+  border:2px solid rgb(0 0 0 / .18) !important;
   box-shadow:none !important;
+  padding:0 !important;
 }
 .modal button.swatch.swatch-on, button.swatch.swatch-on{
   border:3px solid #fff !important;
@@ -2666,6 +2669,64 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
   background:var(--red-hot); border:2px solid var(--bg);
   box-shadow:0 0 8px rgb(229 72 77 / .8);
 }
+
+/* h284 closes out the accent swatch work - the colour lives on the element and
+   nothing in the stylesheet may repaint it. */
+.modal button.swatch, button.swatch{ padding:0 !important; }
+
+/* ============================================================================
+   h285 - THE GRID, STATED ONCE AND COMPLETELY
+   The previous strip removed the selector lines that sat ABOVE the twelfths
+   declaration, so only #mp-panel and #ret-panel kept a column count - every other
+   row fell back to a single column. This is the whole rule, every selector, every
+   breakpoint, in one place at the end of the stylesheet.
+   ========================================================================== */
+.stat-row:not(.hero-row):not(.money-row), .stat-row2,
+#mp-panel .stat-row, #ret-panel .stat-row,
+#mp-panel .stat-row2, #ret-panel .stat-row2{
+  display:grid !important;
+  grid-template-columns:repeat(12, minmax(0,1fr)) !important;
+  gap:0 !important;
+}
+.stat-row:not(.hero-row):not(.money-row) > .stat, .stat-row2 > .stat{
+  grid-column:span 2 !important;
+}
+.stat-row:not(.hero-row):not(.money-row) > .stat.span-2, .stat-row2 > .stat.span-2{
+  grid-column:span 3 !important;
+}
+
+@media(max-width:1400px){
+  .stat-row:not(.hero-row):not(.money-row), .stat-row2,
+  #mp-panel .stat-row, #ret-panel .stat-row,
+  #mp-panel .stat-row2, #ret-panel .stat-row2{
+    grid-template-columns:repeat(10, minmax(0,1fr)) !important;
+  }
+}
+@media(max-width:1280px){          /* preferred view - four across */
+  .stat-row:not(.hero-row):not(.money-row), .stat-row2,
+  #mp-panel .stat-row, #ret-panel .stat-row,
+  #mp-panel .stat-row2, #ret-panel .stat-row2{
+    grid-template-columns:repeat(8, minmax(0,1fr)) !important;
+  }
+}
+@media(max-width:900px){
+  .stat-row:not(.hero-row):not(.money-row), .stat-row2,
+  #mp-panel .stat-row, #ret-panel .stat-row,
+  #mp-panel .stat-row2, #ret-panel .stat-row2{
+    grid-template-columns:repeat(6, minmax(0,1fr)) !important;
+  }
+}
+@media(max-width:640px){
+  .stat-row:not(.hero-row):not(.money-row), .stat-row2,
+  #mp-panel .stat-row, #ret-panel .stat-row,
+  #mp-panel .stat-row2, #ret-panel .stat-row2{
+    grid-template-columns:repeat(2, minmax(0,1fr)) !important;
+  }
+  .stat-row:not(.hero-row):not(.money-row) > .stat, .stat-row2 > .stat,
+  .stat-row:not(.hero-row):not(.money-row) > .stat.span-2{
+    grid-column:span 1 !important;
+  }
+}
 </style>
 </head>
 <body>
@@ -2692,7 +2753,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h283</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h285</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -17014,8 +17075,23 @@ async function getCalendarStatus() {
   } catch (e) { return null; }
 }
 
+// h284: switching accounts used to mean disconnecting and reconnecting, which you
+// only knew to do if you already knew. This does both, and says what it will do
+// first - the appointments already on the old calendar stay there.
+async function switchGoogleCalendar() {
+  const ok = confirm(
+    'Connect a different Google account?\n\n' +
+    'Appointments already on the current calendar stay where they are - they are ' +
+    'not moved or deleted. New ones go to the account you pick next, and you can ' +
+    'push existing appointments across with "Sync existing appointments".'
+  );
+  if (!ok) return;
+  try { await disconnectGoogleCalendar(true); } catch (e) {}
+  try { connectGoogleCalendar(); } catch (e) {}
+}
+
 async function disconnectGoogleCalendar() {
-  if (!confirm('Disconnect Google Calendar? Appointments will stop syncing.')) return;
+  if (!arguments[0] && !confirm('Disconnect Google Calendar? Appointments will stop syncing.')) return;
   try {
     await fetch(SB_FN_BASE + '/calendar-sync', {
       method: 'POST',
@@ -18189,8 +18265,11 @@ function openSettings(tab) {
     if (!st || !ac) return;
     if (email) {
       st.innerHTML = '<span style="color:var(--accent);font-weight:600;">Connected</span> - ' + email + '<br><span style="font-size:11px;">Appointments you set will appear on this calendar.</span>';
-      ac.innerHTML = '<button onclick="syncExistingAppts()" style="width:100%;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:6px;">Sync existing appointments</button>' +
-        '<button onclick="disconnectGoogleCalendar()" style="width:100%;background:none;border:1px solid #E0A0A0;color:#A32D2D;border-radius:8px;padding:8px;font-size:12px;cursor:pointer;">Disconnect</button>';
+      // h284: there was no way to move to a different Google account without
+      // knowing to disconnect first and then reconnect. One button does both.
+      ac.innerHTML = '<button class="set-save" onclick="syncExistingAppts()">Sync existing appointments</button>' +
+        '<button onclick="switchGoogleCalendar()" style="width:100%;background:none;border:1px solid #C9D6E2;color:#16202E;border-radius:8px;padding:9px;font-size:12.5px;font-weight:600;cursor:pointer;margin-top:6px;font-family:inherit;">Use a different account</button>' +
+        '<button onclick="disconnectGoogleCalendar()" style="width:100%;background:none;border:1px solid #E0A0A0;color:#A32D2D;border-radius:8px;padding:9px;font-size:12.5px;font-weight:600;cursor:pointer;margin-top:6px;font-family:inherit;">Disconnect</button>';
     } else {
       st.textContent = 'Not connected. Connect once and your CWC appointments will show up on your Google Calendar.';
       ac.innerHTML = '<button onclick="connectGoogleCalendar()" style="width:100%;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;">Connect Google Calendar</button>';
