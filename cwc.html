@@ -1646,6 +1646,61 @@ html,body{ overflow-x:hidden !important; }
 .stat-val{ align-self:start !important; }
 .stat-sub{ align-self:start !important; line-height:1.4 !important; }
 .stat .goal-slot{ align-self:start !important; }
+
+/* ============================================================================
+   h242 - THE HERO CARDS
+   One spacing rule for all four, and a foot you can actually read. The sub text
+   was 11-12px at a grey barely above the card - dials per hour and lead
+   resolution are numbers she is meant to act on, not fine print.
+   ========================================================================== */
+.stat.hero{
+  display:flex !important; flex-direction:column !important;
+  padding:22px !important; min-height:0 !important;
+}
+.stat.hero .stat-lbl{
+  font-size:11px !important; font-weight:600 !important; letter-spacing:.12em !important;
+  color:#9aa5a3 !important; margin:0 !important;
+}
+.stat.hero .stat-val{
+  font-size:clamp(2.5rem,3.8vw,3.2rem) !important; font-weight:800 !important;
+  line-height:1 !important; letter-spacing:-.02em !important;
+  color:#fff !important; margin:14px 0 0 !important;
+}
+/* the foot always sits the same distance below the number, goal or no goal */
+.stat.hero .stat-sub, .stat.hero .goal-slot{
+  margin:18px 0 0 !important; padding:0 !important;
+  font-size:13px !important; font-weight:500 !important; color:#a8b3b1 !important;
+  line-height:1.45 !important; min-height:0 !important;
+}
+.stat.hero .stat-sub b, .stat.hero .goal-slot b{ color:#d6dedd !important; font-weight:600 !important; }
+
+/* the meter, and the goal line beneath it with room to breathe */
+.hero-meter{
+  height:4px; border-radius:4px; background:rgba(255,255,255,.10); overflow:hidden;
+}
+.hero-meter-fill{
+  height:100%; border-radius:4px; background:var(--accent-lift);
+  transition:width .4s ease;
+}
+.hero-goal{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  margin-top:11px;                     /* was hugging the bar */
+  font-size:13px; color:#a8b3b1;
+}
+.hero-goal b{ color:#d6dedd; font-weight:600; }
+.hero-hit{ color:var(--accent-lift); font-weight:700; font-size:15px; line-height:1; }
+
+/* "+ set a goal" is a prompt, and it needs the same gap as a real goal line */
+.stat.hero .goal-slot span[style*="set a goal"],
+.stat.hero .stat-sub span[style*="set a goal"]{
+  font-size:13px !important; color:var(--accent-lift) !important; font-weight:600 !important;
+}
+
+/* the sub data on a hero card is readable, not fine print */
+.stat.hero #s-dialtime-perhr, .stat.hero #s-resolved-pct, .stat.hero #s-resolved-fresh{
+  font-size:13px !important; color:#a8b3b1 !important; font-weight:500 !important;
+}
+.stat.hero #s-resolved-fresh:empty{ display:none !important; }
 </style>
 </head>
 <body>
@@ -1664,7 +1719,7 @@ html,body{ overflow-x:hidden !important; }
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h241</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h242</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -3427,11 +3482,12 @@ function renderScore() {
   // that happened to resolve during it. Recent periods read low because those
   // leads haven't had time yet - "so far" says that out loud.
   const coh = cohortResolution(aStart, aEnd);
-  document.getElementById('s-resolved-pct').textContent =
-    coh.assigned > 0 ? pct(coh.resolved, coh.assigned) + ' lead resolution' : '- lead resolution';
-  document.getElementById('s-resolved-fresh').textContent = coh.assigned > 0
-    ? coh.resolved + ' of ' + coh.assigned + ' so far'
-    : '-';
+  // h242: these were two stacked lines on one card. They are one sentence -
+  // "69% lead resolution - 128 of 185 so far" - and they sit on one line now.
+  document.getElementById('s-resolved-pct').textContent = coh.assigned > 0
+    ? pct(coh.resolved, coh.assigned) + ' lead resolution \u00b7 ' + coh.resolved + ' of ' + coh.assigned + ' so far'
+    : '- lead resolution';
+  document.getElementById('s-resolved-fresh').textContent = '';
 
   // Board ONE is life only. Resets spin up advanced_market / sme_handoff cases
   // on the lead; those must not land in the life production numbers (they were
@@ -15994,12 +16050,15 @@ function renderGoalZones(vals){
       const pace = st.hit ? 'goal met' : (actual >= expected ? 'on pace' : 'behind');
       const paceCol = (st.hit || actual >= expected) ? 'var(--accent-lift)' : 'var(--goal-red)';
       if (isHero) {
+        // h242: no pace word. "Behind" told her something she already knew from
+        // the number and the bar, and it was the only place a second colour crept
+        // onto the card. A tick appears when the goal is actually met - that is
+        // worth marking; being mid-way through a Tuesday is not.
         slot.innerHTML =
-          '<div style="height:4px;border-radius:4px;background:'+barTrack+';overflow:hidden;">' +
-            '<div style="height:100%;width:'+fillPct+'%;background:'+barFill+';border-radius:4px;transition:width .4s ease;"></div></div>' +
-          '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:var(--faint);">' +
-            '<span>' + (st.hit ? 'goal was ' : 'of ') + '<b style="color:var(--muted);font-weight:600;">'+tStr+'</b>' + (st.hit ? '' : ' goal') + '</span>' +
-            '<span style="color:'+paceCol+';font-weight:700;font-size:11px;">' + (st.hit ? '\u2713 ' : '') + pace + '</span>' +
+          '<div class="hero-meter"><div class="hero-meter-fill" style="width:'+fillPct+'%;"></div></div>' +
+          '<div class="hero-goal">' +
+            '<span>' + (st.hit ? 'goal was ' : 'of ') + '<b>'+tStr+'</b>' + (st.hit ? '' : ' goal') + '</span>' +
+            (st.hit ? '<span class="hero-hit">\u2713</span>' : '') +
           '</div>';
       } else {
         slot.innerHTML = wrap(
