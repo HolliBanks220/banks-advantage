@@ -29,19 +29,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .hdr-sub{font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;}
 .nav-row{display:flex;align-items:center;gap:4px;}
 .pill{font-size:10px;padding:4px 9px;border-radius:20px;border:1px solid rgba(255,255,255,0.3);background:transparent;color:rgba(255,255,255,0.7);cursor:pointer;font-weight:500;}
-.pill.on{background:#138181;border-color:#138181;color:#fff;}
+.pill.on{background:var(--accent);border-color:var(--accent);color:#fff;}
 .arrow-btn{background:rgba(255,255,255,0.15);border:none;border-radius:6px;color:#fff;font-size:14px;padding:3px 7px;cursor:pointer;}
 .period-label{font-size:10px;color:rgba(255,255,255,0.8);text-align:center;min-width:80px;}
 .tab-bar{display:flex;border-bottom:1px solid #e2eaf2;margin-bottom:12px;background:#fff;border-radius:10px 10px 0 0;padding:0 4px;}
 .tab{flex:1;padding:10px 2px;font-size:11px;font-weight:500;border:none;background:transparent;color:#5f7a99;cursor:pointer;border-bottom:2px solid transparent;}
-.tab.on{color:#1D3557;border-bottom-color:#138181;}
+.tab.on{color:#1D3557;border-bottom-color:var(--accent);}
 .section-lbl{font-size:10px;font-weight:500;color:#1D3557;text-transform:uppercase;letter-spacing:0.07em;margin:12px 0 6px;}
 .stat-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:6px;}
 .stat-row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-bottom:6px;}
 .stat{border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:3px;}
-.stat-navy{background:#1D3557;} .stat-teal{background:#138181;}
+.stat-navy{background:#1D3557;} .stat-teal{background:var(--accent);}
 .stat-navy-lt{background:#E6F1FB;border:1px solid #B5D4F4;}
-.stat-teal-lt{background:#E1F5EE;border:1px solid #9FE1CB;}
+.stat-teal-lt{background:var(--accent-pale);border:1px solid var(--accent-line);}
 .stat-amber{background:#FAEEDA;border:1px solid #FAC775;}
 .stat-red{background:#FCEBEB;border:1px solid #F7C1C1;}
 .stat-green{background:#EAF3DE;border:1px solid #97C459;}
@@ -50,7 +50,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .lbl-white{color:rgba(255,255,255,0.75);} .lbl-navy{color:#0C447C;} .lbl-teal{color:#085041;}
 .lbl-amber{color:#633806;} .lbl-red{color:#791F1F;} .lbl-green{color:#27500A;} .lbl-purple{color:#3C3489;}
 .stat-val{font-size:22px;font-weight:500;line-height:1;cursor:pointer;}
-.val-white{color:#fff;} .val-navy{color:#1D3557;} .val-teal{color:#138181;}
+.val-white{color:#fff;} .val-navy{color:#1D3557;} .val-teal{color:var(--accent);}
 .val-amber{color:#BA7517;} .val-red{color:#A32D2D;} .val-green{color:#3B6D11;} .val-purple{color:#3C3489;}
 .stat-sub{font-size:10px;line-height:1.4;}
 .sub-white{color:rgba(255,255,255,0.55);} .sub-navy{color:#185FA5;} .sub-teal{color:#0F6E56;}
@@ -58,20 +58,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .stat-btns{display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;}
 .tap-btn{border:none;border-radius:20px;padding:3px 8px;font-size:11px;font-weight:500;cursor:pointer;}
 .tap-navy{background:rgba(255,255,255,0.2);color:#fff;} .tap-teal{background:rgba(255,255,255,0.2);color:#fff;}
-.tap-lt-navy{background:#1D3557;color:#fff;} .tap-lt-teal{background:#138181;color:#fff;}
+.tap-lt-navy{background:#1D3557;color:#fff;} .tap-lt-teal{background:var(--accent);color:#fff;}
 .tap-amber{background:#BA7517;color:#fff;} .tap-red{background:#A32D2D;color:#fff;}
 .hint{font-size:9px;color:rgba(255,255,255,0.4);} .hint-lt{font-size:9px;color:#b0c8dc;}
 .divider{height:1px;background:#e2eaf2;margin:10px 0;}
 .leads-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
-.add-btn{background:#138181;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:500;cursor:pointer;}
+.add-btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:500;cursor:pointer;}
 .search{width:100%;border:1px solid #d0dcea;border-radius:8px;padding:8px 12px;font-size:14px;background:#f7fafd;color:#1a2e44;margin-bottom:8px;font-family:inherit;}
 .client-card{background:#fff;border:1px solid #e2eaf2;border-radius:10px;padding:12px 14px;margin-bottom:7px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
 .client-card:active{background:#f7fafd;}
 .client-name{font-size:14px;font-weight:500;color:#1D3557;}
 .client-meta{font-size:11px;color:#5f7a99;margin-top:1px;}
 .badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:500;}
-.b-CIA{background:#E6F1FB;color:#0C447C;} .b-MIA{background:#E1F5EE;color:#085041;}
-.b-New{background:#E1F5EE;color:#085041;} .b-Working{background:#E6F1FB;color:#0C447C;}
+.b-CIA{background:#E6F1FB;color:#0C447C;} .b-MIA{background:var(--accent-pale);color:#085041;}
+.b-New{background:var(--accent-pale);color:#085041;} .b-Working{background:#E6F1FB;color:#0C447C;}
 .b-Followup{background:#F3EEFF;color:#534AB7;}
 .b-Appt{background:#FAEEDA;color:#633806;} .b-Closed{background:#EAF3DE;color:#27500A;}
 .b-Dead{background:#FCEBEB;color:#501313;}
@@ -80,7 +80,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .fresh-tag{display:inline-block;font-size:9px;padding:1px 6px;border-radius:8px;background:#1D3557;color:#fff;font-weight:500;margin-left:4px;vertical-align:middle;}
 .call-btns{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;}
 .call-btn{border:none;border-radius:20px;padding:6px 11px;font-size:11px;font-weight:500;cursor:pointer;}
-.cb-navy{background:#1D3557;color:#fff;} .cb-teal{background:#138181;color:#fff;}
+.cb-navy{background:#1D3557;color:#fff;} .cb-teal{background:var(--accent);color:#fff;}
 .cb-green{background:#EAF3DE;color:#27500A;border:1px solid #97C459;}
 .cb-amber{background:#FAEEDA;color:#633806;border:1px solid #FAC775;}
 .cb-red{background:#FCEBEB;color:#791F1F;border:1px solid #F7C1C1;}
@@ -97,11 +97,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .field textarea{min-height:52px;resize:vertical;}
 .row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
 .save-btn{background:#1D3557;color:#fff;border:none;border-radius:8px;padding:11px;font-size:13px;font-weight:500;cursor:pointer;width:100%;margin-top:4px;}
-.sec-btn{background:#138181;color:#fff;border:none;border-radius:8px;padding:9px;font-size:12px;font-weight:500;cursor:pointer;width:100%;margin-top:6px;}
+.sec-btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px;font-size:12px;font-weight:500;cursor:pointer;width:100%;margin-top:6px;}
 .empty{font-size:13px;color:#a0b8cc;text-align:center;padding:2rem 0;}
 .loading{font-size:13px;color:#5f7a99;text-align:center;padding:1rem 0;}
 .flag-btn{border:1px solid #d0dcea;border-radius:20px;padding:5px 11px;font-size:11px;font-weight:500;cursor:pointer;background:#fff;color:#5f7a99;margin:2px;}
-.flag-btn.on-teal{background:#138181;color:#fff;border-color:#138181;}
+.flag-btn.on-teal{background:var(--accent);color:#fff;border-color:var(--accent);}
 .flag-btn.on-navy{background:#1D3557;color:#fff;border-color:#1D3557;}
 .flag-btn.on-purple{background:#534AB7;color:#fff;border-color:#534AB7;}
 .app-card{background:#f7fafd;border:1px solid #e2eaf2;border-radius:8px;padding:8px 10px;margin-bottom:6px;}
@@ -111,7 +111,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .case-card{border-radius:10px;margin-bottom:10px;overflow:hidden;}
 .case-hdr{padding:10px 12px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;}
 .case-hdr-mp{background:#1D3557;color:#fff;}
-.case-hdr-ret{background:#138181;color:#fff;}
+.case-hdr-ret{background:var(--accent);color:#fff;}
 .case-hdr-dfl{background:#534AB7;color:#fff;}
 .case-hdr-ib{background:#BA7517;color:#fff;}
 .case-body{border:1px solid #e2eaf2;border-top:none;border-radius:0 0 10px 10px;padding:10px 12px;}
@@ -122,7 +122,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tp-outcome-pending{border-left:3px solid #d0dcea;}
 .journey-row{display:flex;gap:4px;align-items:center;margin-top:6px;flex-wrap:wrap;}
 .journey-dot{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;flex-shrink:0;}
-.jd-showed{background:#138181;} .jd-noshow{background:#E24B4A;} .jd-cancel{background:#BA7517;} .jd-pending{background:#c0cdd8;}
+.jd-showed{background:var(--accent);} .jd-noshow{background:#E24B4A;} .jd-cancel{background:#BA7517;} .jd-pending{background:#c0cdd8;}
 .filter-row{display:flex;gap:5px;overflow-x:auto;padding-bottom:2px;margin-bottom:8px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
 .filter-row::-webkit-scrollbar{display:none;}
 .filter-btn{font-size:10px;padding:4px 9px;border-radius:20px;border:1px solid #e2eaf2;background:#fff;color:#8fa8c0;cursor:pointer;font-weight:500;white-space:nowrap;flex:0 0 auto;}
@@ -172,7 +172,13 @@ html,body{overflow-x:hidden;}                   /* no sideways scrollbar, ever *
   --goal-red:#C64A46;  --goal-red-text:#ffffff;
   --goal-amber:#E7B93E; --goal-amber-text:#20242B;
   --goal-green:#4C9A5E; --goal-green-text:#ffffff;
-  --dk-bg:#1A1D23; --dk-card:#E9EDF2; --dk-ink:#1D2733; --dk-dim:#5E6A78; --dk-line:rgba(0,0,0,0.10); --teal:#138181;
+  --dk-bg:#1A1D23; --dk-card:#E9EDF2; --dk-ink:#1D2733; --dk-dim:#5E6A78; --dk-line:rgba(0,0,0,0.10);
+  /* h212: ONE accent, three derivatives. Every teal in the app is a variable now,
+     so changing this one setting retints buttons, pills, links and goal fills
+     together. Defaults to the teal the app has always been. */
+  --accent:#138181; --accent-dark:#0E6363; --accent-line:#9FE1CB; --accent-pale:#E1F5EE;
+  --accent-ink:#ffffff;
+  --teal:var(--accent);
 }
 .tile-base{background:var(--tile-base) !important;border:1px solid rgba(255,255,255,0.06) !important;}
 .tile-base2{background:var(--tile-base2) !important;border:1px solid rgba(255,255,255,0.05) !important;}
@@ -275,7 +281,7 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
       clicking 1x/2x/3x DID set the count but the button never changed - it read as
       unresponsive. Same for two flag states. Restated here with !important. */
 .dial-cnt-btn.on{background:var(--teal) !important;color:#fff !important;border-color:var(--teal) !important;}
-.flag-btn.on-teal{background:#138181 !important;color:#fff !important;border-color:#138181 !important;}
+.flag-btn.on-teal{background:var(--accent) !important;color:#fff !important;border-color:var(--accent) !important;}
 .flag-btn.on-purple{background:#534AB7 !important;color:#fff !important;border-color:#534AB7 !important;}
 /* make the selected dial count unmistakable at a glance mid-session */
 .dial-cnt-btn{transition:none !important;}
@@ -373,8 +379,8 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
 .stat.goal-able.tile-goal-green,.stat.goal-able.tile-alert{box-shadow:none !important;}
 
 /* ---- h148: sidebar stripe = case type, red fill = due ---- */
-.appt-sidebar-item.ap-phone{border-left-color:#138181 !important;}      /* MP / General Life - phone */
-.appt-sidebar-item.ap-phone .ap-time{color:#0E6363 !important;}
+.appt-sidebar-item.ap-phone{border-left-color:var(--accent) !important;}      /* MP / General Life - phone */
+.appt-sidebar-item.ap-phone .ap-time{color:var(--accent-dark) !important;}
 /* h149: blue sat too close to teal. Advanced market takes the purple; reminders
    move to gold, which is the furthest hue from both. */
 .appt-sidebar-item.ap-advanced{border-left-color:#6C5CE0 !important;}   /* Retirement / DFL / IBC / resets - Zoom */
@@ -496,6 +502,104 @@ html,body{overflow-x:hidden !important;}
    dark ink on a dark panel, effectively invisible. The chrome is deliberately not
    theme-driven (see applyTheme), so a single light value is safe here. */
 #client-count{color:#9FB2C4;}
+
+/* ============================================================================
+   h212 - DEPTH AND TYPE
+   The board was flat: every tile the same grey rectangle, all three text sizes
+   within a few pixels of each other, everything on one plane. Nothing here moves
+   a single element - it is contrast, shadow and type scale only.
+   ========================================================================== */
+
+/* Numbers are the point of this app, so they get the treatment. Tabular figures
+   stop a 3 becoming narrower than an 8 and the column jittering as it updates. */
+.stat-val, .stat-sub, .money, input[type=number]{
+  font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1;
+}
+
+/* TYPE SCALE. The label was 9px/500 and the number 22px/500 - too close in
+   weight to read as a hierarchy. Now: small tracked-out label, big tight
+   number, quiet sub. */
+.stat-lbl{
+  font-size:9px !important; font-weight:600 !important;
+  letter-spacing:0.09em !important; opacity:.72;
+}
+.stat-val{
+  font-size:25px !important; font-weight:600 !important;
+  letter-spacing:-0.02em !important; line-height:1.02 !important;
+}
+.stat-sub{ font-size:10px !important; opacity:.66; letter-spacing:0.005em; }
+
+/* DEPTH. A hairline of light along the top edge reads as a lit surface; the
+   shadow underneath separates the tile from the field behind it. Both are
+   barely visible on their own and do all the work together. */
+.stat{
+  position:relative;
+  box-shadow:0 1px 2px rgba(0,0,0,.16), 0 2px 8px -2px rgba(0,0,0,.20);
+  transition:transform .12s ease, box-shadow .12s ease;
+}
+.stat::before{
+  content:''; position:absolute; inset:0 0 auto 0; height:1px; border-radius:10px 10px 0 0;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.55) 22%, rgba(255,255,255,.55) 78%, transparent);
+  pointer-events:none;
+}
+/* a tappable tile should say so before you tap it */
+.stat:has(.stat-val[onclick]):hover{
+  transform:translateY(-1px);
+  box-shadow:0 2px 4px rgba(0,0,0,.18), 0 8px 18px -6px rgba(0,0,0,.28);
+}
+
+/* CARDS lift off the field the same way. */
+.client-card{
+  box-shadow:0 1px 2px rgba(0,0,0,.05), 0 3px 10px -4px rgba(0,0,0,.10);
+  transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+.client-card:hover{
+  transform:translateY(-1px); border-color:#cfdcea;
+  box-shadow:0 2px 4px rgba(0,0,0,.06), 0 10px 22px -8px rgba(0,0,0,.16);
+}
+
+/* MODALS were a border on a flat panel. A real shadow makes the field behind
+   recede instead of competing. */
+.modal{
+  box-shadow:0 18px 50px -12px rgba(0,0,0,.45), 0 4px 14px rgba(0,0,0,.18) !important;
+  border:none !important;
+}
+.modal-overlay{ backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px); }
+.modal-title{ letter-spacing:-0.015em; }
+
+/* The chrome should sit BEHIND the content, not beside it. */
+.hdr{ box-shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 6px 20px -12px rgba(0,0,0,.6) !important; }
+#task-sidebar, .appt-sidebar{
+  box-shadow:0 1px 2px rgba(0,0,0,.05), 0 6px 18px -8px rgba(0,0,0,.14);
+}
+
+/* Buttons: a hairline highlight and a shadow that collapses when pressed. */
+.save-btn, .call-btn, .add-btn{
+  box-shadow:0 1px 2px rgba(0,0,0,.14), inset 0 1px 0 rgba(255,255,255,.14);
+  transition:transform .08s ease, box-shadow .12s ease, filter .12s ease;
+}
+.save-btn:hover, .call-btn:hover, .add-btn:hover{ filter:brightness(1.06); }
+.save-btn:active, .call-btn:active, .add-btn:active{
+  transform:translateY(1px); box-shadow:0 0 0 rgba(0,0,0,0);
+}
+
+/* CONSISTENT RADII. There were four in here. Two: 10px for surfaces, 8px for
+   controls, and the pills stay round. */
+.stat, .client-card, .case-body, .modal{ border-radius:10px; }
+.save-btn, .call-btn, .add-btn, .search, input, select, textarea{ border-radius:8px; }
+
+/* The section labels were the same weight as body text. */
+.section-lbl{ font-weight:600 !important; letter-spacing:0.11em !important; opacity:.75; }
+
+/* Focus you can actually see, in whatever accent is chosen. */
+input:focus, select:focus, textarea:focus{
+  outline:2px solid var(--accent); outline-offset:1px; border-color:transparent !important;
+}
+
+@media (prefers-reduced-motion: reduce){
+  .stat, .client-card, .save-btn, .call-btn, .add-btn{ transition:none !important; }
+  .stat:hover, .client-card:hover{ transform:none !important; }
+}
 </style>
 </head>
 <body>
@@ -510,7 +614,7 @@ html,body{overflow-x:hidden !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h211</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h213</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="gear-btn" id="undo-btn" onclick="undoLastAction()" style="display:none;" title="Undo the last action">&#8634;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
@@ -571,9 +675,9 @@ html,body{overflow-x:hidden !important;}
       </div>
     </div>
     <div class="stat-row">
-      <div class="stat" style="background:#F0FBF7;border:1px solid #9FE1CB;">
-        <div class="stat-lbl" style="color:#138181;">Texts sent</div>
-        <div class="stat-val" id="s-texts" style="color:#138181;">0</div>
+      <div class="stat" style="background:#F0FBF7;border:1px solid var(--accent-line);">
+        <div class="stat-lbl" style="color:var(--accent);">Texts sent</div>
+        <div class="stat-val" id="s-texts" style="color:var(--accent);">0</div>
         <div class="stat-btns">
         </div>
       </div>
@@ -598,9 +702,9 @@ html,body{overflow-x:hidden !important;}
         <div class="stat-val" id="s-time-dial" style="color:#1D3557;font-size:18px;cursor:pointer;" onclick="editTimerTime('dial')" title="Tap to correct">0:00</div>
         <div class="stat-sub" id="s-dialtime-perhr" style="color:#1D3557;font-size:10px;"></div>
       </div>
-      <div class="stat" style="background:#F0FBF7;border:1px solid #9FE1CB;">
-        <div class="stat-lbl" style="color:#138181;">Appt time</div>
-        <div class="stat-val" id="s-time-appt" style="color:#138181;font-size:18px;cursor:pointer;" onclick="editTimerTime('appt')" title="Tap to correct">0:00</div>
+      <div class="stat" style="background:#F0FBF7;border:1px solid var(--accent-line);">
+        <div class="stat-lbl" style="color:var(--accent);">Appt time</div>
+        <div class="stat-val" id="s-time-appt" style="color:var(--accent);font-size:18px;cursor:pointer;" onclick="editTimerTime('appt')" title="Tap to correct">0:00</div>
       </div>
     </div>
     <div class="section-lbl">Production</div>
@@ -744,7 +848,7 @@ html,body{overflow-x:hidden !important;}
   <div style="margin-top:4px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 6px;">
       <div class="section-lbl" style="margin:0;">ROI</div>
-      <div id="src-compare-link" onclick="openReports()" style="font-size:9px;color:#138181;text-decoration:underline;cursor:pointer;display:none;">compare sources &rarr;</div>
+      <div id="src-compare-link" onclick="openReports()" style="font-size:9px;color:var(--accent);text-decoration:underline;cursor:pointer;display:none;">compare sources &rarr;</div>
     </div>
     <!-- h169: only what is NOT already on the board. Appt set, show, close and APV
          all live in Dialing Activity and Production, so they are not repeated here.
@@ -791,7 +895,7 @@ html,body{overflow-x:hidden !important;}
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">Net $ per lead</div>
         <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="mia-per-lead">-</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">Net $ per lead w/ referrals</div>
-        <div style="font-size:15px;font-weight:600;color:#9FE1CB;margin-bottom:4px;" id="mia-per-lead-ref">-</div>
+        <div style="font-size:15px;font-weight:600;color:var(--accent-line);margin-bottom:4px;" id="mia-per-lead-ref">-</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">Never resolved</div>
         <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:6px;" id="mia-never">-</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">To appointment</div>
@@ -801,7 +905,7 @@ html,body{overflow-x:hidden !important;}
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">To sale</div>
         <div style="font-size:13px;font-weight:500;color:#fff;" id="mia-tosale">-</div>
       </div>
-      <div style="background:#138181;border-radius:10px;padding:10px 12px;">
+      <div style="background:var(--accent);border-radius:10px;padding:10px 12px;">
         <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;">CIA</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">Leads assigned</div>
         <div style="font-size:18px;font-weight:500;color:#fff;margin-bottom:4px;" id="cia-leads">-</div>
@@ -820,7 +924,7 @@ html,body{overflow-x:hidden !important;}
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">Net $ per lead</div>
         <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:4px;" id="cia-per-lead">-</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">Net $ per lead w/ referrals</div>
-        <div style="font-size:15px;font-weight:600;color:#9FE1CB;margin-bottom:4px;" id="cia-per-lead-ref">-</div>
+        <div style="font-size:15px;font-weight:600;color:var(--accent-line);margin-bottom:4px;" id="cia-per-lead-ref">-</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">Never resolved</div>
         <div style="font-size:15px;font-weight:500;color:#fff;margin-bottom:6px;" id="cia-never">-</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.5);">To appointment</div>
@@ -894,7 +998,7 @@ html,body{overflow-x:hidden !important;}
     <div id="task-list" style="margin-bottom:8px;"><div style="font-size:11px;color:#a0b8cc;">Loading...</div></div>
     <div style="display:flex;gap:6px;">
       <input id="task-input" type="text" placeholder="Add a task..." style="flex:1;border:1px solid #d0dcea;border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit;background:#f7fafd;color:#1a2e44;" onkeydown="if(event.key==='Enter')addTask()">
-      <button onclick="addTask()" style="background:#138181;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-weight:500;">+</button>
+      <button onclick="addTask()" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-weight:500;">+</button>
     </div>
   </div>
   <div class="appt-sidebar" id="appt-sidebar" style="display:block!important;">
@@ -1678,7 +1782,7 @@ function renderSlingshot() {
           : '<div style="font-size:10px;color:#8fa8c0;">' + now.toLocaleDateString('en-US',{month:'long'}) + '</div>') +
       '</div>' +
       '<div style="font-size:12px;color:#1D3557;">Net placed: <strong>' + fmt(thisNet) + '</strong> of ' + fmt(req) + (netOk ? ' \u2713' : ' (' + fmt(req - thisNet) + ' to go)') + '</div>' +
-      pctBar(thisNet, req, netOk ? '#3B6D11' : '#138181') +
+      pctBar(thisNet, req, netOk ? '#3B6D11' : 'var(--accent)') +
       '<div style="font-size:11px;color:' + (weeksOk ? '#3B6D11' : '#BA7517') + ';margin-top:6px;">Writing weeks: ' + weeks + '/2 minimum' + (weeksOk ? ' \u2713' : '') + '</div>';
     return;
   }
@@ -1696,7 +1800,7 @@ function renderSlingshot() {
   el.innerHTML =
     '<div style="font-size:11px;font-weight:700;color:#1D3557;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Slingshot: ' + level + ' \u2192 ' + rung.next + '</div>' +
     '<div style="font-size:12px;color:#1D3557;">One-month path: <strong>' + fmt(thisNet) + '</strong> of ' + fmt(onePathTarget) + ' net placed' + (thisNet >= onePathTarget ? ' \u2014 PROMOTED \uD83C\uDF89' : ' (' + fmt(onePathTarget - thisNet) + ' to go)') + '</div>' +
-    pctBar(thisNet, onePathTarget, '#138181') +
+    pctBar(thisNet, onePathTarget, 'var(--accent)') +
     '<div style="font-size:11px;color:#5f7a99;margin-top:6px;">' + twoPathLine + '</div>' +
     (lastHit ? pctBar(thisNet, rung.req, '#534AB7') : '');
 }
@@ -1804,7 +1908,7 @@ function renderProduction() {
   const total = owed.reduce((s, o) => s + (o.amount || 30), 0);
   const needsBtn = needsN ? '<div style="margin-top:' + (owed.length ? '10px' : '0') + ';display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
       '<button onclick="drillDown(\'needsoutcome\')" style="font-size:11px;font-weight:600;background:#FFF6E8;border:1px solid #F0C888;color:#854F0B;border-radius:6px;padding:4px 10px;cursor:pointer;">' + needsN + ' need an outcome</button>' +
-      (fixableN ? '<span onclick="reviewUnloggedSits()" style="font-size:11px;color:#138181;text-decoration:underline;cursor:pointer;">' + fixableN + ' resolved elsewhere \u2014 fix</span>' : '') +
+      (fixableN ? '<span onclick="reviewUnloggedSits()" style="font-size:11px;color:var(--accent);text-decoration:underline;cursor:pointer;">' + fixableN + ' resolved elsewhere \u2014 fix</span>' : '') +
     '</div>' : '';
   el.innerHTML =
     (owed.length ? `
@@ -1812,7 +1916,7 @@ function renderProduction() {
     ${owed.map(o => `
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0;border-top:1px solid #eef2f7;">
         <div style="font-size:12px;color:#1D3557;">$${o.amount||30} to <strong onclick="openClient('${o.referrerId}')" style="cursor:pointer;text-decoration:underline;">${o.referrerName}</strong> <span style="color:#8fa8c0;">(ref: ${o.refName})</span></div>
-        <button onclick="markReferralPaid('${o.referrerId}','${o.refId}')" style="font-size:11px;background:#138181;color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-weight:500;flex-shrink:0;">Mark paid</button>
+        <button onclick="markReferralPaid('${o.referrerId}','${o.refId}')" style="font-size:11px;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-weight:500;flex-shrink:0;">Mark paid</button>
       </div>`).join('')}` : '') + needsBtn;
 }
 
@@ -2877,7 +2981,7 @@ function timerUpdateStatusLabel() {
   const t = window._timer;
   const totals = timerGetTotals();
   const labels = {dial:'⏱ Dialing', appt:'📅 In appointment', admin:'📋 Admin'};
-  const colors = {dial:'#1D3557', appt:'#138181', admin:'#534AB7'};
+  const colors = {dial:'#1D3557', appt:'var(--accent)', admin:'#534AB7'};
   if (t.activity) {
     el.textContent = labels[t.activity] + ' — Today: D ' + timerFormat(totals.dial) + ' | A ' + timerFormat(totals.appt) + ' | Admin ' + timerFormat(totals.admin);
     el.style.color = colors[t.activity];
@@ -2904,7 +3008,7 @@ function openTimeSummary() {
     const start = new Date(s.start).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
     const end = new Date(s.end).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
     const labels = {dial:'Dialing', appt:'Appointment', admin:'Admin'};
-    const colors = {dial:'#1D3557', appt:'#138181', admin:'#534AB7'};
+    const colors = {dial:'#1D3557', appt:'var(--accent)', admin:'#534AB7'};
     const realIdx = sessions.length - 1 - i;
     return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid #f0f4f8;">' +
       '<div>' +
@@ -2926,8 +3030,8 @@ function openTimeSummary() {
         '<div style="font-size:16px;font-weight:700;color:#1D3557;">' + timerFormat(totals.dial) + '</div>' +
       '</div>' +
       '<div style="background:#F0FBF7;border-radius:8px;padding:8px;text-align:center;">' +
-        '<div style="font-size:9px;color:#138181;font-weight:600;">APPT</div>' +
-        '<div style="font-size:16px;font-weight:700;color:#138181;">' + timerFormat(totals.appt) + '</div>' +
+        '<div style="font-size:9px;color:var(--accent);font-weight:600;">APPT</div>' +
+        '<div style="font-size:16px;font-weight:700;color:var(--accent);">' + timerFormat(totals.appt) + '</div>' +
       '</div>' +
       '<div style="background:#F5F3FF;border-radius:8px;padding:8px;text-align:center;">' +
         '<div style="font-size:9px;color:#534AB7;font-weight:600;">ADMIN</div>' +
@@ -3165,7 +3269,7 @@ function drillDown(type) {
         '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">' +
           '<div><div class="client-name">' + esc(a.c.name||'Unknown') + '</div>' +
           '<div class="client-meta">' + esc(a.cs.type||'') + (a.tp.type ? ' \u00b7 ' + esc(a.tp.type) : '') + '</div>' +
-          '<div style="font-size:11px;color:#138181;font-weight:500;">' + a.d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + a.d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + '</div>' +
+          '<div style="font-size:11px;color:var(--accent);font-weight:500;">' + a.d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + a.d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + '</div>' +
           rebook + '</div>' +
           '<span style="font-size:11px;font-weight:700;color:' + col + ';white-space:nowrap;">' + lbl + '</span>' +
         '</div></div>';
@@ -3234,7 +3338,7 @@ function drillDown(type) {
         '<div style="display:flex;justify-content:space-between;gap:8px;">' +
           '<div><div class="client-name">' + esc(r.c.name||'') + '</div>' +
           '<div class="client-meta">' + esc(r.cs.type||'') + (r.tp.type ? ' \u00b7 ' + esc(r.tp.type) : '') + '</div>' +
-          '<div style="font-size:11px;color:#138181;font-weight:500;">' + r.d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + '</div></div>' +
+          '<div style="font-size:11px;color:var(--accent);font-weight:500;">' + r.d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + '</div></div>' +
           '<span style="font-size:11px;font-weight:700;color:#3B6D11;white-space:nowrap;">' + (LBL[r.tp.outcome]||r.tp.outcome) + '</span>' +
         '</div></div>').join('');
       showModal('<button class="close-x" onclick="closeToLead()">x</button>' +
@@ -3308,7 +3412,7 @@ function drillDown(type) {
       const col = COL[a.fate] || '#5f7a99';
       const apptDt = (a.nxt && a.nxt.datetime) ? new Date(a.nxt.datetime) : null;
       const dateLine = apptDt
-        ? '<div style="font-size:11px;color:#138181;font-weight:500;">' + apptDt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + apptDt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + '</div>'
+        ? '<div style="font-size:11px;color:var(--accent);font-weight:500;">' + apptDt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + apptDt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + '</div>'
         : '<div style="font-size:11px;color:#A32D2D;font-weight:600;">No date set</div>';
       const bookedLine = '<div style="font-size:10px;color:#8fa8c0;">Booked ' + a.contDt.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + '</div>';
       // Stalled = needs an outcome or ghosted (no-show, never recovered). Only
@@ -3382,7 +3486,7 @@ function drillDown(type) {
 
   const rows = leads.map(c => {
     const apptStr = apptOf(c) ? 
-      `<div style="font-size:11px;color:#138181;font-weight:500;">${new Date(apptOf(c)).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(apptOf(c)).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>` : '';
+      `<div style="font-size:11px;color:var(--accent);font-weight:500;">${new Date(apptOf(c)).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(apptOf(c)).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>` : '';
     return `<div class="client-card" onclick="closeModal();setTimeout(()=>openClient('${c.id}'),100)">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
         <div>
@@ -3654,11 +3758,11 @@ function setAppsView(v) {
   const pl = document.getElementById('apps-view-placed');
   const cm = document.getElementById('apps-view-commissions');
   if (sub) { sub.style.background = v==='submitted'?'#1D3557':'#fff'; sub.style.color = v==='submitted'?'#fff':'#5f7a99'; sub.style.border = v==='submitted'?'none':'2px solid #e2eaf2'; }
-  if (pl)  { pl.style.background  = v==='placed'?'#138181':'#fff';   pl.style.color  = v==='placed'?'#fff':'#5f7a99';  pl.style.border  = v==='placed'?'none':'2px solid #e2eaf2'; }
+  if (pl)  { pl.style.background  = v==='placed'?'var(--accent)':'#fff';   pl.style.color  = v==='placed'?'#fff':'#5f7a99';  pl.style.border  = v==='placed'?'none':'2px solid #e2eaf2'; }
   const wr = document.getElementById('apps-view-written');
   if (wr)  { wr.style.background  = v==='written'?'#1D3557':'#fff';  wr.style.color  = v==='written'?'#fff':'#5f7a99'; wr.style.border  = v==='written'?'none':'2px solid #e2eaf2'; }
   const rp = document.getElementById('apps-view-report');
-  if (rp)  { rp.style.background  = v==='report'?'#138181':'#fff';   rp.style.color  = v==='report'?'#fff':'#5f7a99';  rp.style.border  = v==='report'?'none':'2px solid #e2eaf2'; }
+  if (rp)  { rp.style.background  = v==='report'?'var(--accent)':'#fff';   rp.style.color  = v==='report'?'#fff':'#5f7a99';  rp.style.border  = v==='report'?'none':'2px solid #e2eaf2'; }
   if (cm)  { cm.style.background  = v==='commissions'?'#3B6D11':'#fff'; cm.style.color = v==='commissions'?'#fff':'#5f7a99'; cm.style.border = v==='commissions'?'none':'2px solid #e2eaf2'; }
   renderAppsTab();
 }
@@ -3846,7 +3950,7 @@ function renderAppsTab() {
   const STATUS_ORDER = ['Written','Submitted','Approved','Issued','Paid','Not taken','Declined','Cancel','Lapse'];
   const STATUS_COLOR = {
     'Written':'#1D3557','Submitted':'#BA7517','Approved':'#534AB7',
-    'Issued':'#138181','Placed':'#138181','Paid':'#3B6D11',
+    'Issued':'var(--accent)','Placed':'var(--accent)','Paid':'#3B6D11',
     'Not taken':'#BA7517','Free Look':'#BA7517','Cancel':'#A32D2D','Lapse':'#A32D2D'
   };
 
@@ -3898,8 +4002,8 @@ function renderAppsTab() {
         '<button onclick="_optReportUnuploadedOnly=false;renderAppsTab()" style="padding:5px 10px;font-size:11px;font-weight:600;border-radius:7px;cursor:pointer;border:' + (!_optReportUnuploadedOnly?'none':'2px solid #e2eaf2') + ';background:' + (!_optReportUnuploadedOnly?'#1D3557':'#fff') + ';color:' + (!_optReportUnuploadedOnly?'#fff':'#5f7a99') + ';">All</button>' +
         '<button onclick="_optReportUnuploadedOnly=true;renderAppsTab()" style="padding:5px 10px;font-size:11px;font-weight:600;border-radius:7px;cursor:pointer;border:' + (_optReportUnuploadedOnly?'none':'2px solid #e2eaf2') + ';background:' + (_optReportUnuploadedOnly?'#BA7517':'#fff') + ';color:' + (_optReportUnuploadedOnly?'#fff':'#5f7a99') + ';">Not yet in OPT' + (pending?' ('+pending+')':'') + '</button>' +
         '<div style="margin-left:auto;display:flex;gap:6px;">' +
-          '<button onclick="copyOPTReport()" style="padding:5px 10px;font-size:11px;font-weight:600;border-radius:7px;border:1px solid #138181;background:#fff;color:#138181;cursor:pointer;">Copy</button>' +
-          '<button onclick="downloadOPTReport()" style="padding:5px 10px;font-size:11px;font-weight:600;border-radius:7px;border:none;background:#138181;color:#fff;cursor:pointer;">CSV</button>' +
+          '<button onclick="copyOPTReport()" style="padding:5px 10px;font-size:11px;font-weight:600;border-radius:7px;border:1px solid var(--accent);background:#fff;color:var(--accent);cursor:pointer;">Copy</button>' +
+          '<button onclick="downloadOPTReport()" style="padding:5px 10px;font-size:11px;font-weight:600;border-radius:7px;border:none;background:var(--accent);color:#fff;cursor:pointer;">CSV</button>' +
         '</div>' +
       '</div>' +
       (_optReportRows.length
@@ -3959,9 +4063,9 @@ function renderAppsTab() {
     if (summaryBar) summaryBar.innerHTML = `
       <div style="color:rgba(255,255,255,0.6);font-size:10px;">${label}<br><strong style="font-size:16px;color:#fff;">${totalApps} apps</strong></div>
       <div style="color:rgba(255,255,255,0.6);font-size:10px;">APV<br><strong style="font-size:16px;color:#fff;">${fmt(totalAPV)}</strong></div>
-      <div style="color:rgba(255,255,255,0.6);font-size:10px;">Full comp<br><strong style="font-size:16px;color:#9FE1CB;">${fmt(periodGrossComp)}</strong></div>
-      <div style="color:rgba(255,255,255,0.6);font-size:10px;">Upfront $<br><strong style="font-size:16px;color:#9FE1CB;">${fmt(periodUpfront)}</strong></div>
-      ${notOPT > 0 ? `<div style="color:#FAC775;font-size:10px;margin-left:auto;background:rgba(255,255,255,0.1);padding:4px 8px;border-radius:6px;">⚠️ ${notOPT} not in OPT</div>` : '<div style="color:#9FE1CB;font-size:10px;margin-left:auto;">✓ All in OPT</div>'}
+      <div style="color:rgba(255,255,255,0.6);font-size:10px;">Full comp<br><strong style="font-size:16px;color:var(--accent-line);">${fmt(periodGrossComp)}</strong></div>
+      <div style="color:rgba(255,255,255,0.6);font-size:10px;">Upfront $<br><strong style="font-size:16px;color:var(--accent-line);">${fmt(periodUpfront)}</strong></div>
+      ${notOPT > 0 ? `<div style="color:#FAC775;font-size:10px;margin-left:auto;background:rgba(255,255,255,0.1);padding:4px 8px;border-radius:6px;">⚠️ ${notOPT} not in OPT</div>` : '<div style="color:var(--accent-line);font-size:10px;margin-left:auto;">✓ All in OPT</div>'}
     `;
 
     if (!submittedApps.length) {
@@ -4081,7 +4185,7 @@ function renderAppsTab() {
       return d.getFullYear() === targetDate.getFullYear() && d.getMonth() === targetDate.getMonth();
     }).reduce((a,ap) => a+(ap.premium||0), 0);
     const placementRate = totalSubmitted > 0 ? Math.round(curNet/totalSubmitted*100) : null;
-    const rateColor = placementRate === null ? '#5f7a99' : placementRate >= 90 ? '#3B6D11' : placementRate >= 85 ? '#138181' : placementRate >= 75 ? '#BA7517' : placementRate >= 65 ? '#BA7517' : '#A32D2D';
+    const rateColor = placementRate === null ? '#5f7a99' : placementRate >= 90 ? '#3B6D11' : placementRate >= 85 ? 'var(--accent)' : placementRate >= 75 ? '#BA7517' : placementRate >= 65 ? '#BA7517' : '#A32D2D';
     const rateLabel = placementRate === null ? '--' : placementRate >= 90 ? '🏆 Excellent' : placementRate >= 85 ? '✓ Great' : placementRate >= 75 ? 'Good' : placementRate >= 65 ? 'Acceptable' : '⚠️ Low';
 
     placementBar.innerHTML = `
@@ -4090,7 +4194,7 @@ function renderAppsTab() {
         ${placementRate!==null?`<div style="font-size:13px;font-weight:700;color:${rateColor};">${placementRate}% ${rateLabel}</div>`:''}
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px;">
-        <div style="text-align:center;"><div style="font-size:10px;color:#8fa8c0;">Placed APV</div><div style="font-size:16px;font-weight:600;color:#138181;">${fmt(curGross)}</div></div>
+        <div style="text-align:center;"><div style="font-size:10px;color:#8fa8c0;">Placed APV</div><div style="font-size:16px;font-weight:600;color:var(--accent);">${fmt(curGross)}</div></div>
         <div style="text-align:center;"><div style="font-size:10px;color:#8fa8c0;">Chargebacks</div><div style="font-size:16px;font-weight:600;color:#A32D2D;">-${fmt(curLapsedAPV)}</div></div>
         <div style="text-align:center;"><div style="font-size:10px;color:#8fa8c0;">Net Placed</div><div style="font-size:16px;font-weight:600;color:#1D3557;">${fmt(curNet)}</div></div>
       </div>
@@ -4135,13 +4239,13 @@ function renderAppsTab() {
       return `
         <div style="margin-bottom:16px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-            <div style="font-size:12px;font-weight:600;color:#1D3557;">${monthLabel}${isCurrentMonth?' <span style="font-size:9px;background:#138181;color:#fff;padding:1px 6px;border-radius:8px;">Current</span>':''}</div>
-            <div style="font-size:12px;color:#138181;font-weight:600;">${fmt(monthAPV)}</div>
+            <div style="font-size:12px;font-weight:600;color:#1D3557;">${monthLabel}${isCurrentMonth?' <span style="font-size:9px;background:var(--accent);color:#fff;padding:1px 6px;border-radius:8px;">Current</span>':''}</div>
+            <div style="font-size:12px;color:var(--accent);font-weight:600;">${fmt(monthAPV)}</div>
           </div>
           ${apps.map(ap => {
             const STATUS_OPTS = APP_STATUSES;   // one shared list - card and business always match
             const currentStatus = ap.status || 'Written';   // h155: was defaulting to a status not in APP_STATUSES
-            const statusColor = STATUS_COLOR[currentStatus] || '#138181';
+            const statusColor = STATUS_COLOR[currentStatus] || 'var(--accent)';
             return `<div style="border:1px solid #e2eaf2;border-radius:10px;padding:10px 12px;margin-bottom:6px;background:#fff;">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
                 <div style="flex:1;min-width:0;cursor:pointer;" onclick="openClient('${ap.clientId}')">
@@ -4151,7 +4255,7 @@ function renderAppsTab() {
                     if (!comp) return '';
                     const up = comp.isAsEarned ? (comp.grossComp||0)/12 : (comp.advance||0);
                     return ' · <strong style="color:#3B6D11;">$' + up.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' upfront</strong>' + (comp.isAsEarned ? ' (mo-1)' : '');
-                  })()} · <span onclick="event.stopPropagation();openEditApp('${ap.clientId}',${ap.ci},${ap.ti},${ap.ai})" style="color:#138181;text-decoration:underline;cursor:pointer;">Edit app</span></div>
+                  })()} · <span onclick="event.stopPropagation();openEditApp('${ap.clientId}',${ap.ci},${ap.ti},${ap.ai})" style="color:var(--accent);text-decoration:underline;cursor:pointer;">Edit app</span></div>
                 </div>
                 <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
                   <select onchange="setAppStatus('${ap.clientId}',${ap.ci},${ap.ti},${ap.ai},this.value)" style="font-size:10px;font-weight:600;color:${statusColor};background:${statusColor}18;border:1px solid ${statusColor}44;border-radius:8px;padding:2px 5px;cursor:pointer;outline:none;">
@@ -4193,7 +4297,7 @@ function renderAppts() {
     const dateStr = dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
     const timeStr = dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
     const isPast = dt < now;
-    const typeColor = a.caseType === 'Retirement' ? '#138181' : (a.caseType === 'Debt Free Life' || a.caseType === 'IBC/DFL') ? '#534AB7' : '#1D3557';
+    const typeColor = a.caseType === 'Retirement' ? 'var(--accent)' : (a.caseType === 'Debt Free Life' || a.caseType === 'IBC/DFL') ? '#534AB7' : '#1D3557';
     return `<div class="client-card" onclick="openClient('${a.clientId}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
         <div>
@@ -4203,7 +4307,7 @@ function renderAppts() {
           ${a.caseType?`<div style="font-size:10px;font-weight:500;color:${typeColor};margin-top:2px;">${a.caseType}${a.tpType?' - '+a.tpType:''}</div>`:''}
         </div>
         <div style="text-align:right;">
-          <div style="font-size:13px;font-weight:600;color:${isPast?'#A32D2D':'#138181'};">${timeStr}</div>
+          <div style="font-size:13px;font-weight:600;color:${isPast?'#A32D2D':'var(--accent)'};">${timeStr}</div>
           <div style="font-size:10px;color:#5f7a99;">${dateStr}</div>
           <span class="${statusBadge(a.clientStatus)}" style="margin-top:3px;display:inline-block;">${a.clientStatus}</span>
         </div>
@@ -4248,7 +4352,7 @@ function setFilterAlert(f) {
           <div>
             <div class="client-name">${c.name||'Unknown'}${fresh?'<span class="fresh-tag">fresh</span>':''}</div>
             <div class="client-meta">${c.phone||''} - ${c.state||''} - ${Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24))}d - ${attemptCount(c)} att${getNoShowBadge(c)}</div>
-            <div style="font-size:9px;font-weight:600;color:#138181;background:#F0FBF7;border-radius:4px;padding:2px 6px;margin-top:3px;display:inline-block;">Ready for text</div>
+            <div style="font-size:9px;font-weight:600;color:var(--accent);background:#F0FBF7;border-radius:4px;padding:2px 6px;margin-top:3px;display:inline-block;">Ready for text</div>
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
             <span class="${badgeClass(c.source)}">${c.source||''}</span>
@@ -4933,7 +5037,7 @@ function openCallbackWorklist() {
   const body = rows.map(r => {
     const overdue = r.dt && r.dt.getTime() < now;
     const when = r.dt
-      ? '<span style="font-size:11px;font-weight:600;color:' + (overdue ? '#A32D2D' : '#138181') + ';">' + (overdue ? 'Overdue \u00b7 ' : '') + r.dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + r.dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + '</span>'
+      ? '<span style="font-size:11px;font-weight:600;color:' + (overdue ? '#A32D2D' : 'var(--accent)') + ';">' + (overdue ? 'Overdue \u00b7 ' : '') + r.dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + r.dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + '</span>'
       : '<span style="font-size:11px;color:#8fa8c0;">No time set</span>';
     const note = (r.cb && (r.cb.callback_note || r.cb.note)) ? '<div style="font-size:10px;color:#8fa8c0;font-style:italic;">' + esc(r.cb.callback_note || r.cb.note) + '</div>' : '';
     return '<div class="client-card" onclick="closeModal();setTimeout(()=>openClient(\'' + r.c.id + '\'),100)">' +
@@ -5295,7 +5399,7 @@ function getUrgencyBadge(c) {
   const score = getUrgencyScore(c);
 
   if (score <= -1000) return {label:'\uD83D\uDD25 APPT NOW', color:'#A32D2D', bg:'#FFE9E9', fire:true};
-  if (status === 'Appointment set') return {label:'Appt set', color:'#138181', bg:'#E1F5EE', fire:false};
+  if (status === 'Appointment set') return {label:'Appt set', color:'var(--accent)', bg:'var(--accent-pale)', fire:false};
 
   // Parked until a scheduled time - say when, so it's obvious why it isn't
   // in today's call list rather than looking like it was skipped.
@@ -5327,7 +5431,7 @@ function getUrgencyBadge(c) {
   // Actionable band: in window, not resting. A badge here would say nothing the
   // position in the list doesn't - except a text that's actually owed.
   if (score < 120) {
-    if (isReadyForText(c)) return {label:'\uD83D\uDCAC Text needed', color:'#138181', bg:'#F0FBF7', fire:false};
+    if (isReadyForText(c)) return {label:'\uD83D\uDCAC Text needed', color:'var(--accent)', bg:'#F0FBF7', fire:false};
     return freshMark(c);
   }
 
@@ -5356,12 +5460,12 @@ function replacementBar(c) {
   if (c.uninsurable) {
     return '<div style="background:#f0f4f8;border-radius:8px;padding:9px 11px;margin-bottom:8px;font-size:11px;color:#5f7a99;">' +
       'Uninsurable - no carrier would take them. The sale stands. ' +
-      '<span onclick="undoUninsurable(\'' + c.id + '\')" style="color:#138181;text-decoration:underline;cursor:pointer;">Undo</span></div>';
+      '<span onclick="undoUninsurable(\'' + c.id + '\')" style="color:var(--accent);text-decoration:underline;cursor:pointer;">Undo</span></div>';
   }
   if (c.replacement_ack) {
     return '<div style="background:#f0f4f8;border-radius:8px;padding:9px 11px;margin-bottom:8px;font-size:11px;color:#5f7a99;">' +
       'Rewrite handled - reminder cleared. The declined app is unchanged. ' +
-      '<span onclick="undoRewriteDone(\'' + c.id + '\')" style="color:#138181;text-decoration:underline;cursor:pointer;">Undo</span></div>';
+      '<span onclick="undoRewriteDone(\'' + c.id + '\')" style="color:var(--accent);text-decoration:underline;cursor:pointer;">Undo</span></div>';
   }
   if (!needsReplacement(c)) return '';
   const apps = allAppsOf(c);
@@ -5374,9 +5478,9 @@ function replacementBar(c) {
     '<div style="font-size:12px;font-weight:600;color:#854F0B;margin-bottom:2px;">Needs a replacement policy</div>' +
     '<div style="font-size:11px;color:#854F0B;margin-bottom:8px;">' + esc(dec.carrier||'') + ' declined. They still want coverage - stays in your dial queue until this is resolved.</div>' +
     '<div style="display:flex;flex-direction:column;gap:6px;">' +
-      '<button onclick="rewriteApp(\'' + c.id + '\',' + loc.ci + ',' + loc.ti + ',' + loc.ai + ')" style="background:#138181;color:#fff;border:none;border-radius:6px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;">Log the rewrite</button>' +
+      '<button onclick="rewriteApp(\'' + c.id + '\',' + loc.ci + ',' + loc.ti + ',' + loc.ai + ')" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;">Log the rewrite</button>' +
       '<div style="display:flex;gap:6px;">' +
-        '<button onclick="rewriteDone(\'' + c.id + '\')" style="flex:1;background:#fff;border:1px solid #138181;color:#138181;border-radius:6px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;">Rewrite done</button>' +
+        '<button onclick="rewriteDone(\'' + c.id + '\')" style="flex:1;background:#fff;border:1px solid var(--accent);color:var(--accent);border-radius:6px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;">Rewrite done</button>' +
         '<button onclick="markUninsurable(\'' + c.id + '\')" style="flex:1;background:none;border:1px solid #BA7517;color:#BA7517;border-radius:6px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;">Out of options</button>' +
       '</div>' +
     '</div></div>';
@@ -5553,7 +5657,7 @@ function renderAlerts() {
     if (earliestUpcomingLabel) msg += ' &middot; next leads at ' + earliestUpcomingLabel;
     if (caughtUpDays >= 4) msg += ' &middot; consider increasing lead flow';
     msg += ' &middot; ' + apptPart + apptFire;
-    html = '<div onclick="setFilterAlert(\'active\')" style="background:#EAF3DE;border:1px solid #9FE1CB;border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:600;color:#3B6D11;">' + msg + '</div>';
+    html = '<div onclick="setFilterAlert(\'active\')" style="background:#EAF3DE;border:1px solid var(--accent-line);border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:600;color:#3B6D11;">' + msg + '</div>';
   } else {
     let parts = [];
     // Board = scoreboard: one number, only when there's something to act on.
@@ -5834,12 +5938,12 @@ function renderPaceLine() {
   const done = s.doneThisBlock
     ? '<div style="font-size:10px;color:#8fa8c0;font-weight:500;">\u2713 ' + s.doneThisBlock + ' done this block</div>' : '';
   if (!s.behind) {
-    el.style.color = '#138181';
+    el.style.color = 'var(--accent)';
     el.innerHTML = '\u2713 Caught up' + done;
     return;
   }
   if (!s.now) {
-    el.style.color = '#138181';
+    el.style.color = 'var(--accent)';
     el.innerHTML = '\u2713 Caught up \u2014 back ' + nextBlockLabel() + ' (' + s.later + ' waiting)' + done;
     return;
   }
@@ -6138,7 +6242,7 @@ function openRepairPanel() {
     '<div class="modal-title">Repair</div>' +
     '<div class="modal-sub">Leads that are two things at once</div>';
   if (!rows.length) {
-    html += '<div style="font-size:12px;color:#138181;background:#E1F5EE;border-radius:8px;padding:12px;margin-top:8px;">Nothing to repair - no lead is holding an appointment it should not.</div>';
+    html += '<div style="font-size:12px;color:var(--accent);background:var(--accent-pale);border-radius:8px;padding:12px;margin-top:8px;">Nothing to repair - no lead is holding an appointment it should not.</div>';
   } else {
     html += '<div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:8px 10px;margin:8px 0;">' +
       'Clearing removes the appointment and marks any leftover pending step cancelled. Sales, sits and logged outcomes are never touched.</div>' +
@@ -6156,9 +6260,9 @@ function openRepairPanel() {
     html += rows.map(r =>
       '<div style="border:1px solid #e2eaf2;border-radius:8px;padding:9px 10px;margin-bottom:6px;">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
-          '<div onclick="closeModal();openClient(\'' + r.c.id + '\')" style="font-size:12px;font-weight:600;color:#138181;cursor:pointer;">' + esc(r.c.name || '(no name)') + '</div>' +
+          '<div onclick="closeModal();openClient(\'' + r.c.id + '\')" style="font-size:12px;font-weight:600;color:var(--accent);cursor:pointer;">' + esc(r.c.name || '(no name)') + '</div>' +
           (r.issues.some(i => i.kind === 'clear')
-            ? '<button onclick="repairContradiction(\'' + r.c.id + '\')" style="background:#138181;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">Clear</button>'
+            ? '<button onclick="repairContradiction(\'' + r.c.id + '\')" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">Clear</button>'
             : '') +
         '</div>' +
         '<div style="font-size:10px;color:#8fa8c0;">' + esc(r.c.status || '') +
@@ -6174,7 +6278,7 @@ function openRepairPanel() {
                 '</div>'
               : '') +
             (i.kind === 'reopen'
-              ? '<button onclick="reopenCancelledCase(\'' + r.c.id + '\',' + i.ci + ')" style="width:100%;margin-top:4px;background:none;border:1px solid #9FE1CB;color:#138181;border-radius:6px;padding:5px;font-size:11px;font-weight:600;cursor:pointer;">Reopen - they only cancelled</button>'
+              ? '<button onclick="reopenCancelledCase(\'' + r.c.id + '\',' + i.ci + ')" style="width:100%;margin-top:4px;background:none;border:1px solid var(--accent-line);color:var(--accent);border-radius:6px;padding:5px;font-size:11px;font-weight:600;cursor:pointer;">Reopen - they only cancelled</button>'
               : '') +
           '</div>').join('') +
       '</div>').join('');
@@ -6240,7 +6344,7 @@ function openRetMoneyDetail(which) {
   html += rows.map(r =>
     '<div style="border:1px solid #e2eaf2;border-radius:8px;padding:8px 10px;margin-bottom:6px;">' +
       '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">' +
-        '<div onclick="closeModal();openClient(\'' + r.clientId + '\')" style="font-size:12px;font-weight:600;color:#138181;cursor:pointer;">' + esc(r.name) + '</div>' +
+        '<div onclick="closeModal();openClient(\'' + r.clientId + '\')" style="font-size:12px;font-weight:600;color:var(--accent);cursor:pointer;">' + esc(r.name) + '</div>' +
         '<div style="font-size:12px;font-weight:700;color:#1D3557;white-space:nowrap;">' + money(val(r)) + '</div>' +
       '</div>' +
       '<div style="font-size:10px;color:#8fa8c0;margin-top:2px;">' +
@@ -6517,7 +6621,7 @@ const NO_OFFER_REASONS = [
 function openNoOfferReason(id, ci) {
   const c = clients.find(x => x.id === id); if (!c) return;
   showSubModal(id, '<button class="close-x" onclick="closeToLead()">x</button>' +
-    '<div class="modal-title">Sat - no offer made</div>' +
+    '<div class="modal-title">Sat - didn\'t show numbers</div>' +
     '<div class="modal-sub">' + esc(c.name || '') + '</div>' +
     '<div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:7px 10px;margin-bottom:10px;">Counts as a sit. Stays out of your close ratio - you cannot fail to close an offer you never made.</div>' +
     '<div style="display:grid;gap:6px;">' +
@@ -6608,7 +6712,7 @@ async function _cancelApptLive(id, ci) {
     '<div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:8px 10px;margin-bottom:12px;">Case stays open, appointment cleared. Want to lock in when you will try them again?</div>' +
     '<div style="display:grid;gap:8px;">' +
       '<button class="call-btn" style="background:#BA7517;color:#fff;padding:12px;" onclick="openCallbackPicker(\'' + id + '\')">Set a callback to reschedule</button>' +
-      '<button class="call-btn" style="background:#138181;color:#fff;padding:12px;" onclick="openApptSet(\'' + id + '\')">Rebook now</button>' +
+      '<button class="call-btn" style="background:var(--accent);color:#fff;padding:12px;" onclick="openApptSet(\'' + id + '\')">Rebook now</button>' +
       '<button class="call-btn" style="background:none;border:1px solid #b9c6d4;color:#5f7a99;padding:10px;" onclick="closeModal()">Just leave them in the queue</button>' +
     '</div>');
 }
@@ -6789,7 +6893,7 @@ function renderClients(q='') {
           '<div style="font-size:34px;margin-bottom:6px;">&#127881;</div>' +
           '<div style="font-size:16px;font-weight:600;color:#1D3557;margin-bottom:4px;">You are caught up.</div>' +
           '<div style="font-size:13px;color:#5f7a99;margin-bottom:18px;">Every workable lead has been called. Nothing is due.</div>' +
-          '<button onclick="setFilter(\'dormant\')" style="background:#138181;color:#fff;border:none;border-radius:8px;padding:11px 18px;font-size:13px;font-weight:600;cursor:pointer;">Work the dormant pile (' + nDormant + ')</button>' +
+          '<button onclick="setFilter(\'dormant\')" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:11px 18px;font-size:13px;font-weight:600;cursor:pointer;">Work the dormant pile (' + nDormant + ')</button>' +
           '<div style="font-size:11px;color:#8fa8c0;margin-top:9px;">Heavily worked and aged out, never resolved. Best signal first.</div>' +
         '</div>';
       return;
@@ -6807,7 +6911,7 @@ function renderClients(q='') {
     return;
   }
   if (activeFilter === 'dormant') {
-    const TIER = {1:['Spoke to them','#138181'], 2:['Reached once','#534AB7'], 3:['Never answered','#BA7517'], 4:['Exhausted','#8fa8c0']};
+    const TIER = {1:['Spoke to them','var(--accent)'], 2:['Reached once','#534AB7'], 3:['Never answered','#BA7517'], 4:['Exhausted','#8fa8c0']};
     const dr = dormantRules();
     el.innerHTML =
       '<div style="background:#f0f4f8;border-radius:8px;padding:9px 12px;margin-bottom:8px;font-size:11px;color:#5f7a99;">' +
@@ -6971,17 +7075,17 @@ function openClient(id, keepDialCount) {
     const tpRef = findTpForLog(c, cl);   // sit outcome -> its touchpoint, else null
     return `
     <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:5px;">
-      <div style="width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0;background:${cl.outcome==='Appt set'?'#138181':cl.outcome==='No show'?'#E24B4A':cl.outcome==='Not interested'?'#E24B4A':cl.outcome==='Cancelled'?'#E24B4A':cl.outcome==='Pushed off'?'#8fa8c0':cl.outcome==='Callback'?'#BA7517':'#1D3557'};"></div>
+      <div style="width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0;background:${cl.outcome==='Appt set'?'var(--accent)':cl.outcome==='No show'?'#E24B4A':cl.outcome==='Not interested'?'#E24B4A':cl.outcome==='Cancelled'?'#E24B4A':cl.outcome==='Pushed off'?'#8fa8c0':cl.outcome==='Callback'?'#BA7517':'#1D3557'};"></div>
       <div style="flex:1;">
-        <div style="font-size:12px;color:#1a2e44;font-weight:500;">${Number(cl.dials)>0?`<span style="font-size:11px;font-weight:700;color:#0E6363;">${cl.dials}x</span> `:''}${cl.outcome}</div>
-        ${apptOf(cl)?`<div style="font-size:11px;font-weight:600;color:#138181;">${new Date(apptOf(cl)).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(apptOf(cl)).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>`:''}
+        <div style="font-size:12px;color:#1a2e44;font-weight:500;">${Number(cl.dials)>0?`<span style="font-size:11px;font-weight:700;color:var(--accent-dark);">${cl.dials}x</span> `:''}${cl.outcome}</div>
+        ${apptOf(cl)?`<div style="font-size:11px;font-weight:600;color:var(--accent);">${new Date(apptOf(cl)).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(apptOf(cl)).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>`:''}
         ${apptNotesOf(cl)?`<div style="font-size:10px;color:#5f7a99;font-style:italic;">${esc(apptNotesOf(cl))}</div>`:''}
         ${detail?`<div style="font-size:11px;color:#1D3557;">${esc(detail)}</div>`:''}
         <div style="display:flex;gap:6px;align-items:center;">
           <div style="font-size:10px;color:#a0b8cc;">${new Date(cl.ts).toLocaleDateString('en-US',{month:'short',day:'numeric'})} ${new Date(cl.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
-          <span onclick="openLogEntryEditor('${id}',${realIdx})" style="font-size:10px;color:#0E6363;text-decoration:underline;cursor:pointer;">Edit</span>
+          <span onclick="openLogEntryEditor('${id}',${realIdx})" style="font-size:10px;color:var(--accent-dark);text-decoration:underline;cursor:pointer;">Edit</span>
           <span onclick="editLogNote('${id}',${realIdx})" style="font-size:10px;color:#8fa8c0;text-decoration:underline;cursor:pointer;">${(cl.note||cl.callback_note||cl.followup_note)?'edit note':'+ note'}</span>
-          ${tpRef?`<span onclick="openEditTouchpoint('${id}',${tpRef.ci},${tpRef.ti})" style="font-size:10px;color:#138181;text-decoration:underline;cursor:pointer;">Edit / fix</span>`:''}
+          ${tpRef?`<span onclick="openEditTouchpoint('${id}',${tpRef.ci},${tpRef.ti})" style="font-size:10px;color:var(--accent);text-decoration:underline;cursor:pointer;">Edit / fix</span>`:''}
         </div>
       </div>
       <button onclick="deleteCallLogEntry('${id}',${realIdx})" style="background:none;border:none;color:#d0dcea;font-size:14px;cursor:pointer;padding:0 2px;flex-shrink:0;" title="Delete this entry">x</button>
@@ -6999,19 +7103,19 @@ function openClient(id, keepDialCount) {
         </div>
       </div>`).join('');
     const flags = [s.ppu?'PPU':'',s.selfReset?'Reset->self':'',s.sme?'Reset->SME':'',s.recruitAsk?'Recruiting ask':''].filter(Boolean).join(' - ');
-    const ol = s.outcome==='showed'?{t:'Showed',c:'#138181'}:s.outcome==='noshow'?{t:'No show',c:'#E24B4A'}:s.outcome==='canceled'?{t:'Canceled',c:'#BA7517'}:{t:'Pending',c:'#8fa8c0'};
+    const ol = s.outcome==='showed'?{t:'Showed',c:'var(--accent)'}:s.outcome==='noshow'?{t:'No show',c:'#E24B4A'}:s.outcome==='canceled'?{t:'Canceled',c:'#BA7517'}:{t:'Pending',c:'#8fa8c0'};
     return `<div class="sit-card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
         <div>
           <div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;">Sit ${si+1}</div>
           <div style="font-size:13px;font-weight:500;color:#1D3557;">${new Date(s.datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'})}</div>
-          <div style="font-size:11px;color:#138181;">${reason.label}${flags?' - '+flags:''}</div>
+          <div style="font-size:11px;color:var(--accent);">${reason.label}${flags?' - '+flags:''}</div>
         </div>
         <span style="font-size:12px;font-weight:500;color:${ol.c};">${ol.t}</span>
       </div>
       ${appsList}
       <div style="display:flex;gap:5px;margin-top:6px;">
-        <button style="flex:1;background:#E1F5EE;border:none;border-radius:6px;padding:6px;font-size:11px;color:#085041;cursor:pointer;font-weight:500;" onclick="openAddApp('${id}',${si})">+ App</button>
+        <button style="flex:1;background:var(--accent-pale);border:none;border-radius:6px;padding:6px;font-size:11px;color:#085041;cursor:pointer;font-weight:500;" onclick="openAddApp('${id}',${si})">+ App</button>
         <button style="flex:1;background:#f0f4f8;border:none;border-radius:6px;padding:6px;font-size:11px;color:#1D3557;cursor:pointer;font-weight:500;" onclick="openEditSit('${id}',${si})">Edit sit</button>
       </div>
     </div>`;
@@ -7022,13 +7126,13 @@ function openClient(id, keepDialCount) {
   ${isResting(c) ? `<div style="background:#f0f4f8;border-radius:8px;padding:9px 11px;margin-bottom:8px;font-size:11px;color:#5f7a99;">Resting - returns to your queue on ${restReturnsOn(c).toLocaleDateString('en-US',{month:'short',day:'numeric'})}. Someone dodging you last week is still dodging you; three weeks later they've forgotten they were avoiding you.</div>` : ''}
   <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:2px;">
     <div style="flex:1;">
-      <input id="edit-name" value="${escAttr(c.name)}" style="font-size:16px;font-weight:500;color:#1D3557;border:none;border-bottom:2px solid transparent;outline:none;background:transparent;width:100%;font-family:inherit;padding:0;" onfocus="this.style.borderBottomColor='#138181'" onblur="this.style.borderBottomColor='transparent'">
+      <input id="edit-name" value="${escAttr(c.name)}" style="font-size:16px;font-weight:500;color:#1D3557;border:none;border-bottom:2px solid transparent;outline:none;background:transparent;width:100%;font-family:inherit;padding:0;" onfocus="this.style.borderBottomColor='var(--accent)'" onblur="this.style.borderBottomColor='transparent'">
     </div>
-    <button onclick="saveNamePhone('${id}')" style="font-size:10px;background:#138181;color:#fff;border:none;border-radius:6px;padding:3px 8px;cursor:pointer;margin-left:6px;white-space:nowrap;">Save</button>
+    <button onclick="saveNamePhone('${id}')" style="font-size:10px;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:3px 8px;cursor:pointer;margin-left:6px;white-space:nowrap;">Save</button>
   </div>
   <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
-    <a href="tel:${(c.phone||'').replace(/[^0-9+]/g,'')}" onclick="autoIncrementDial();setTimeout(()=>window.focus(),3000)" style="font-size:13px;color:#138181;font-weight:500;text-decoration:none;margin-right:4px;"> ${c.phone||''}</a>
-    <input id="edit-phone" value="${escAttr(c.phone)}" style="font-size:11px;color:#5f7a99;border:none;border-bottom:1px solid transparent;outline:none;background:transparent;font-family:inherit;width:120px;padding:0;" onfocus="this.style.borderBottomColor='#138181'" onblur="this.style.borderBottomColor='transparent'" placeholder="edit number">
+    <a href="tel:${(c.phone||'').replace(/[^0-9+]/g,'')}" onclick="autoIncrementDial();setTimeout(()=>window.focus(),3000)" style="font-size:13px;color:var(--accent);font-weight:500;text-decoration:none;margin-right:4px;"> ${c.phone||''}</a>
+    <input id="edit-phone" value="${escAttr(c.phone)}" style="font-size:11px;color:#5f7a99;border:none;border-bottom:1px solid transparent;outline:none;background:transparent;font-family:inherit;width:120px;padding:0;" onfocus="this.style.borderBottomColor='var(--accent)'" onblur="this.style.borderBottomColor='transparent'" placeholder="edit number">
     <span style="color:#5f7a99;font-size:13px;">${(c.state && !(c.address||'').includes(c.state)) ? '- ' + c.state + ' ' : ''}- <span class="${badgeClass(c.source)}">${c.source||''}</span></span>
   </div>
   ${c.address?`<div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">${c.address}</div>`:''}
@@ -7036,13 +7140,13 @@ function openClient(id, keepDialCount) {
     let h='';
     if (c.referred_by) {
       const r = clients.find(x=>x.id===c.referred_by);
-      if (r) h += `<div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">Referred by: <strong onclick="closeModal();openClient('${r.id}')" style="color:#138181;cursor:pointer;text-decoration:underline;">${r.name}</strong></div>`;
+      if (r) h += `<div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">Referred by: <strong onclick="closeModal();openClient('${r.id}')" style="color:var(--accent);cursor:pointer;text-decoration:underline;">${r.name}</strong></div>`;
     }
     if ((c.referrals||[]).length) {
       h += `<div style="font-size:11px;color:#5f7a99;margin-bottom:2px;">Referrals given:</div>`;
       h += (c.referrals||[]).map(rf=>{
         const nm = rf.name || 'referral';
-        const paid = rf.paid ? `<span style="color:#138181;">paid $${rf.amount||30}</span>` : `<span style="color:#A32D2D;">owe $${rf.amount||30}</span> <button onclick="markReferralPaid('${c.id}','${rf.id}')" style="font-size:9px;background:#138181;color:#fff;border:none;border-radius:5px;padding:2px 7px;cursor:pointer;">Mark paid</button>`;
+        const paid = rf.paid ? `<span style="color:var(--accent);">paid $${rf.amount||30}</span>` : `<span style="color:#A32D2D;">owe $${rf.amount||30}</span> <button onclick="markReferralPaid('${c.id}','${rf.id}')" style="font-size:9px;background:var(--accent);color:#fff;border:none;border-radius:5px;padding:2px 7px;cursor:pointer;">Mark paid</button>`;
         return `<div style="font-size:11px;color:#1D3557;margin-bottom:3px;padding-left:8px;"><strong onclick="closeModal();openClient('${rf.id}')" style="cursor:pointer;text-decoration:underline;">${nm}</strong> - ${paid}</div>`;
       }).join('');
     }
@@ -7107,7 +7211,7 @@ function openClient(id, keepDialCount) {
           rebookNote = '<div style="font-size:10px;font-weight:600;color:#BA7517;margin-bottom:4px;">Rebooked after a no-show' + (ns>1 ? ' \u00b7 ' + ns + ' no-shows so far' : '') + '</div>';
         }
       } catch(e) {}
-      return '<div style="margin-bottom:8px;">' + rebookNote + '<div onclick="openSitOutcome(\'' + id + '\')" style="font-size:12px;font-weight:600;color:#138181;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:6px;padding:5px 10px;margin-bottom:4px;cursor:pointer;display:block;">' + apptLabel + ' <span style="font-size:10px;opacity:0.6;">tap to log outcome</span></div><button onclick="openMoveAppt(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit or delete</button></div>';
+      return '<div style="margin-bottom:8px;">' + rebookNote + '<div onclick="openSitOutcome(\'' + id + '\')" style="font-size:12px;font-weight:600;color:var(--accent);background:var(--accent-pale);border:1px solid var(--accent-line);border-radius:6px;padding:5px 10px;margin-bottom:4px;cursor:pointer;display:block;">' + apptLabel + ' <span style="font-size:10px;opacity:0.6;">tap to log outcome</span></div><button onclick="openMoveAppt(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit or delete</button></div>';
     }
   })():''}
   <div class="dial-row">
@@ -7123,13 +7227,13 @@ function openClient(id, keepDialCount) {
     <button class="call-btn cb-red" onclick="quickLog('${id}','Not interested','dead')">Not interested</button>
   </div>
   <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">
-    ${isReadyForText(c)?`<button class="call-btn" style="background:#1D3557;color:#fff;border:2px solid #138181;" onclick="quickLogAndText('${id}')">No answer + &#128241;</button>`:''}
-    <button onclick="openTextModal('${id}')" style="font-size:10px;background:none;border:1px solid #9FE1CB;border-radius:6px;padding:3px 10px;color:#138181;cursor:pointer;">&#128241; Text templates</button>
+    ${isReadyForText(c)?`<button class="call-btn" style="background:#1D3557;color:#fff;border:2px solid var(--accent);" onclick="quickLogAndText('${id}')">No answer + &#128241;</button>`:''}
+    <button onclick="openTextModal('${id}')" style="font-size:10px;background:none;border:1px solid var(--accent-line);border-radius:6px;padding:3px 10px;color:var(--accent);cursor:pointer;">&#128241; Text templates</button>
     <button onclick="openTextModal('${id}', null, 'vm')" title="Same scripts, worded to be read aloud - logs a dial" style="font-size:10px;background:none;border:1px solid #E3C489;border-radius:6px;padding:3px 10px;color:#BA7517;cursor:pointer;">&#9742; Voicemail</button>
   </div>
   <button class="save-btn" onclick="updateClient('${id}')" style="margin-bottom:12px;">Save & next</button>
   <div class="section-lbl">Call log</div>
-  <div style="padding-left:4px;margin-bottom:12px;">${callHistory||'<div style="font-size:12px;color:#a0b8cc;">No calls yet.</div>'}${_logRows.length>6?`<div onclick="toggleLogShowAll('${id}')" style="font-size:10px;color:#0E6363;text-decoration:underline;cursor:pointer;margin-top:4px;">${_showAllLog?'Show fewer':'Show all '+_logRows.length+' entries'}</div>`:''}${deletedLogHtml(c,id)}</div>
+  <div style="padding-left:4px;margin-bottom:12px;">${callHistory||'<div style="font-size:12px;color:#a0b8cc;">No calls yet.</div>'}${_logRows.length>6?`<div onclick="toggleLogShowAll('${id}')" style="font-size:10px;color:var(--accent-dark);text-decoration:underline;cursor:pointer;margin-top:4px;">${_showAllLog?'Show fewer':'Show all '+_logRows.length+' entries'}</div>`:''}${deletedLogHtml(c,id)}</div>
   <div class="section-lbl">Notes</div>
   <div class="field"><label>Property address</label><input type="text" id="cn-address" value="${escAttr(c.address)}" placeholder="123 Main St, City, ST 00000" onchange="autoSaveField('${id}','address',this.value)"></div>
   <div class="field"><label>Age</label><input type="number" id="cn-age" value="${c.age||''}" placeholder="Age" min="18" max="99" onchange="autoSaveField('${id}','age',this.value?parseInt(this.value):null)" style="width:90px;"></div>
@@ -7152,7 +7256,7 @@ function openClient(id, keepDialCount) {
   <button onclick="removeBadLead('${id}')" style="width:100%;font-size:12px;background:none;border:1px solid #E0A0A0;border-radius:8px;padding:8px;color:#A32D2D;cursor:pointer;margin-top:18px;">Not valid — remove lead</button>
   <div style="display:flex;gap:8px;margin-bottom:12px;">
     <button class="sec-btn" style="flex:1;" onclick="openNewCase('${id}')">+ New case</button>
-    <button class="sec-btn" style="flex:1;background:#E8F7F5;color:#138181;border-color:#138181;" onclick="openASREntry('${id}')">⭐ + ASR</button>
+    <button class="sec-btn" style="flex:1;background:#E8F7F5;color:var(--accent);border-color:var(--accent);" onclick="openASREntry('${id}')">⭐ + ASR</button>
   </div>
 `);
 }
@@ -7172,7 +7276,7 @@ function openSitOutcome(id) {
     // Multiple open cases - ask which one
     const caseButtons = openCases.map((cs, i) => {
       const realIdx = (c.cases||[]).findIndex(x=>x===cs);
-      const color = cs.type==='Retirement'?'#138181':cs.type==='Debt Free Life'||cs.type==='Infinite Banking'?'#534AB7':'#1D3557';
+      const color = cs.type==='Retirement'?'var(--accent)':cs.type==='Debt Free Life'||cs.type==='Infinite Banking'?'#534AB7':'#1D3557';
       // Distinguisher so two same-type cases aren't identical buttons: show the
       // case's pending appointment time (or its latest touchpoint if none pending).
       const pend = (cs.touchpoints||[]).filter(tp=>tp&&tp.outcome==='pending'&&tp.datetime).sort((a,b)=>new Date(a.datetime)-new Date(b.datetime))[0];
@@ -7230,8 +7334,8 @@ function showSitOutcomeModal(id, ci) {
       // They cancelled but they are still a prospect: no verdict, case stays
       // open, straight back into the call queue.
       // Sat and nothing was presented. Not a no sale - see confirmSitOutcome.
-      '<button onclick="openNoOfferReason(\''+_id+'\','+_ci+')" style="grid-column:1/-1;background:#5F7A99;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">Sat - no offer made</button>' +
-      '<button onclick="cancelApptLive(\''+_id+'\','+_ci+')" style="background:#138181;color:#fff;border:none;border-radius:8px;padding:14px;font-size:13px;font-weight:600;cursor:pointer;">Cancelled - still live</button>' +
+      '<button onclick="openNoOfferReason(\''+_id+'\','+_ci+')" style="grid-column:1/-1;background:#5F7A99;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">Sat - didn\'t show numbers</button>' +
+      '<button onclick="cancelApptLive(\''+_id+'\','+_ci+')" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:14px;font-size:13px;font-weight:600;cursor:pointer;">Cancelled - still live</button>' +
       // The other half of a cancellation: they rang to say they are done.
       '<button onclick="cancelApptDead(\''+_id+'\','+_ci+')" style="background:#A32D2D;color:#fff;border:none;border-radius:8px;padding:14px;font-size:13px;font-weight:600;cursor:pointer;">Cancelled - not interested</button>' +
     '</div>' +
@@ -7504,7 +7608,7 @@ function showResetPromptAfterOutcome(id, outcomeLabel) {
     (isSale ? '<div style="font-size:13px;color:#3B6D11;font-weight:600;margin-bottom:12px;">🎉 Great work!</div>' : '') +
     '<div style="font-size:13px;color:#1D3557;margin-bottom:16px;">Did you get a referral?</div>' +
     '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
-      '<button onclick="closeModal();openASREntry(\''+id+'\')" style="flex:1;background:#138181;color:#fff;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:500;cursor:pointer;">⭐ Yes — log ASR</button>' +
+      '<button onclick="closeModal();openASREntry(\''+id+'\')" style="flex:1;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:500;cursor:pointer;">⭐ Yes — log ASR</button>' +
       '<button onclick="showResetOnly(\''+id+'\',\''+outcomeLabel+'\')" style="flex:1;background:#f0f4f8;color:#1D3557;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:500;cursor:pointer;">No referral</button>' +
     '</div>');
 }
@@ -7530,7 +7634,7 @@ function openASREntry(referrerId) {
     <div class="field"><label>Phone number *</label><input type="tel" id="asr-phone" placeholder="Phone number" style="width:100%;padding:8px;border:1px solid #d0dcea;border-radius:6px;font-size:13px;"></div>
     <div class="field"><label>Relationship to ${c.name}</label><input type="text" id="asr-relationship" placeholder="e.g. neighbor, coworker, sibling" style="width:100%;padding:8px;border:1px solid #d0dcea;border-radius:6px;font-size:13px;"></div>
     <div class="field"><label>Why did they think of them?</label><textarea id="asr-notes" placeholder="e.g. Just bought a house, mentioned they need coverage" style="width:100%;padding:8px;border:1px solid #d0dcea;border-radius:6px;font-size:13px;height:70px;"></textarea></div>
-    <button class="save-btn" style="background:#138181;" onclick="saveASR('${referrerId}')">Save & Create Lead</button>`);
+    <button class="save-btn" style="background:var(--accent);" onclick="saveASR('${referrerId}')">Save & Create Lead</button>`);
 }
 
 async function saveASR(referrerId) {
@@ -7620,13 +7724,13 @@ function renderWeekGrid(excludeId, weekOffset, containerId) {
   const cols = days.map(d => {
     const dayBooked = booked.filter(a => a.dt.toDateString() === d.toDateString()).sort((a,b) => a.dt - b.dt);
     const isToday = d.toDateString() === now.toDateString();
-    const dateLabel = '<div style="font-size:9px;font-weight:600;color:' + (isToday?'#138181':'#1D3557') + ';text-align:center;margin-bottom:4px;">' + dayNames[d.getDay()] + '<br>' + (d.getMonth()+1) + '/' + d.getDate() + '</div>';
+    const dateLabel = '<div style="font-size:9px;font-weight:600;color:' + (isToday?'var(--accent)':'#1D3557') + ';text-align:center;margin-bottom:4px;">' + dayNames[d.getDay()] + '<br>' + (d.getMonth()+1) + '/' + d.getDate() + '</div>';
     const slots = dayBooked.length
       ? dayBooked.map(a => {
           const t = a.dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
           return '<div style="background:#FAEEDA;border:1px solid #FAC775;border-radius:4px;padding:2px 4px;margin-bottom:2px;font-size:9px;color:#633806;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + a.name + ' - ' + t + '">' + t + '<br><span style="opacity:0.8;">' + a.name.split(' ')[0] + '</span></div>';
         }).join('')
-      : '<div style="font-size:9px;color:#9FE1CB;text-align:center;padding:4px 0;">free</div>';
+      : '<div style="font-size:9px;color:var(--accent-line);text-align:center;padding:4px 0;">free</div>';
     return '<div style="flex:1;min-width:0;border-right:1px solid #f0f4f8;padding:0 3px;' + (isToday?'background:#f0fbf7;border-radius:6px;':'') + '">' + dateLabel + slots + '</div>';
   }).join('');
   const weekLabel = weekOffset === 0 ? 'This week' : weekOffset === 1 ? 'Next week' : '+' + weekOffset + ' weeks';
@@ -7662,13 +7766,13 @@ function buildWeekGrid_OLD(excludeId) {
   const cols = days.map(d => {
     const dayBooked = booked.filter(a => a.dt.toDateString() === d.toDateString()).sort((a,b) => a.dt - b.dt);
     const isToday = d.toDateString() === now.toDateString();
-    const dateLabel = `<div style="font-size:9px;font-weight:600;color:${isToday?'#138181':'#1D3557'};text-align:center;margin-bottom:4px;">${dayNames[d.getDay()]}<br>${d.getMonth()+1}/${d.getDate()}</div>`;
+    const dateLabel = `<div style="font-size:9px;font-weight:600;color:${isToday?'var(--accent)':'#1D3557'};text-align:center;margin-bottom:4px;">${dayNames[d.getDay()]}<br>${d.getMonth()+1}/${d.getDate()}</div>`;
     const slots = dayBooked.length
       ? dayBooked.map(a => {
           const t = a.dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
           return `<div style="background:#FAEEDA;border:1px solid #FAC775;border-radius:4px;padding:2px 4px;margin-bottom:2px;font-size:9px;color:#633806;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${a.name} - ${t}">${t}<br><span style="opacity:0.8;">${a.name.split(' ')[0]}</span></div>`;
         }).join('')
-      : `<div style="font-size:9px;color:#9FE1CB;text-align:center;padding:4px 0;">free</div>`;
+      : `<div style="font-size:9px;color:var(--accent-line);text-align:center;padding:4px 0;">free</div>`;
     return `<div style="flex:1;min-width:0;border-right:1px solid #f0f4f8;padding:0 3px;${isToday?'background:#f0fbf7;border-radius:6px;':''}">${dateLabel}${slots}</div>`;
   }).join('');
   return `<div style="margin-bottom:12px;">
@@ -7688,7 +7792,7 @@ function openMoveAppt(id) {
   ${buildWeekGrid(id)}
   <div class="field"><label>New date & time</label><input type="datetime-local" id="move-dt" value="${dtVal}" style="font-size:16px;"></div>
   <div class="field"><label>Notes (optional)</label><input type="text" id="move-notes" value="${escAttr(apptNotesOf(c))}" placeholder="Notes..."></div>
-  <button class="save-btn" style="background:#138181;" onclick="confirmMoveAppt('${id}')">Save correction</button>
+  <button class="save-btn" style="background:var(--accent);" onclick="confirmMoveAppt('${id}')">Save correction</button>
   <div style="border-top:1px solid #e6ecf3;margin:14px 0 10px;"></div>
   <div style="font-size:11px;color:#8fa0b3;margin-bottom:8px;">Or delete this appointment:</div>
   <div style="display:flex;gap:8px;">
@@ -7807,7 +7911,7 @@ function doneFollowUp(id) {
   <div class="modal-sub">${c.name}</div>
   <div style="font-size:12px;color:#5f7a99;margin-bottom:12px;">Is there another follow-up needed, or is this client all set?</div>
   <button class="save-btn" style="background:#534AB7;margin-bottom:8px;" onclick="completeAndScheduleNext('${id}')">Done, schedule next follow-up</button>
-  <button class="save-btn" style="background:#138181;" onclick="finishFollowUp('${id}')">Done, all set</button>`);
+  <button class="save-btn" style="background:var(--accent);" onclick="finishFollowUp('${id}')">Done, all set</button>`);
 }
 
 async function completeAndScheduleNext(id) {
@@ -8146,7 +8250,7 @@ function renderFunnelHTML(f, kind) {
   }
   const chips = parts.filter(Boolean).join('<span style="color:#c3d2e0;"> \u00b7 </span>');
   return '<div style="background:#fff;border:1px solid #dde7f0;border-radius:12px;padding:12px 14px;margin-bottom:10px;">' +
-    '<div style="font-size:11px;font-weight:700;color:#138181;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">' + kind + ' funnel</div>' +
+    '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">' + kind + ' funnel</div>' +
     '<div style="display:flex;gap:6px;align-items:stretch;">' +
       stage('Booked', f.booked, 'needed ' + kind) + arrow +
       stage('Showed', f.showed, showPct + ' show') + arrow +
@@ -8361,10 +8465,10 @@ function openApptSet(id) {
     <button class="save-btn" style="background:#BA7517;" onclick="openResetToPicker('${id}')">↺ Reset — new product<div style="font-size:11px;opacity:.85;font-weight:400;">Re-engaging to a different product. Tracks reset → type.</div></button>
     <button class="save-btn" style="background:#534AB7;" onclick="openReschedulePicker('${id}')">Reschedule<div style="font-size:11px;opacity:.85;font-weight:400;">Same appointment, new time. Pick a reason.</div></button>
     ${hasOpen
-      ? `<button class="save-btn" style="background:#138181;" onclick="showContModal('${id}',${ci})">Continuation<div style="font-size:11px;opacity:.85;font-weight:400;">They sat — next meeting on the same case.</div></button>`
+      ? `<button class="save-btn" style="background:var(--accent);" onclick="showContModal('${id}',${ci})">Continuation<div style="font-size:11px;opacity:.85;font-weight:400;">They sat — next meeting on the same case.</div></button>`
       : ''}
     ${!hasOpen && closedCount
-      ? `<button class="save-btn" style="background:#138181;" onclick="openReopenCasePicker('${id}')">Reopen a case<div style="font-size:11px;opacity:.85;font-weight:400;">Every case is closed. Pick which one this appointment belongs to.</div></button>`
+      ? `<button class="save-btn" style="background:var(--accent);" onclick="openReopenCasePicker('${id}')">Reopen a case<div style="font-size:11px;opacity:.85;font-weight:400;">Every case is closed. Pick which one this appointment belongs to.</div></button>`
       : ''}
     <button class="save-btn" style="background:#1D3557;" onclick="openFollowUpPicker('${id}')">Follow-up<div style="font-size:11px;opacity:.85;font-weight:400;">Post-appointment: policy pickup, ASRs, reset check.</div></button>
   </div>`);
@@ -8391,7 +8495,7 @@ function openReopenCasePicker(id) {
     rows.map(r => {
       const apps = (r.cs.touchpoints||[]).reduce((a, tp) => a + ((tp.apps||[]).length), 0);
       const when = r.cs.created ? new Date(r.cs.created).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
-      return '<button class="save-btn" style="background:#138181;text-align:left;margin-bottom:6px;" onclick="reopenCaseAndBook(\'' + id + '\',' + r.i + ')">' +
+      return '<button class="save-btn" style="background:var(--accent);text-align:left;margin-bottom:6px;" onclick="reopenCaseAndBook(\'' + id + '\',' + r.i + ')">' +
         esc(r.cs.type || 'Case') +
         '<div style="font-size:11px;opacity:.85;font-weight:400;">' + esc(r.cs.status) +
           (when ? ' &middot; opened ' + when : '') +
@@ -8841,7 +8945,7 @@ function openActionHistory(dateStr, fromH, toH) {
     const when = new Date(a.at);
     return '<div style="border:1px solid #e2eaf2;border-radius:8px;padding:8px 10px;margin-bottom:6px;">' +
       '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">' +
-        '<div onclick="closeModal();openClient(\'' + a.id + '\')" style="font-size:12px;font-weight:600;color:#138181;cursor:pointer;">' + esc(a.name || '(no name)') + '</div>' +
+        '<div onclick="closeModal();openClient(\'' + a.id + '\')" style="font-size:12px;font-weight:600;color:var(--accent);cursor:pointer;">' + esc(a.name || '(no name)') + '</div>' +
         '<div style="font-size:10px;color:#8fa8c0;white-space:nowrap;">' +
           when.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'}) + '</div>' +
       '</div>' +
@@ -8878,7 +8982,7 @@ function openRecentlyChanged() {
   html += rows.map(r =>
     '<div onclick="closeModal();openClient(\'' + r.c.id + '\')" style="border:1px solid #e2eaf2;border-radius:8px;padding:8px 10px;margin-bottom:6px;cursor:pointer;">' +
       '<div style="display:flex;justify-content:space-between;gap:8px;">' +
-        '<div style="font-size:12px;font-weight:600;color:#138181;">' + esc(r.c.name || '(no name)') + '</div>' +
+        '<div style="font-size:12px;font-weight:600;color:var(--accent);">' + esc(r.c.name || '(no name)') + '</div>' +
         '<div style="font-size:10px;color:#8fa8c0;white-space:nowrap;">' +
           new Date(r.when).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + '</div>' +
       '</div>' +
@@ -9087,7 +9191,7 @@ function deletedLogHtml(c, id) {
           esc(rec.entry.outcome) + (rec.entry.dials ? ' (' + rec.entry.dials + 'x)' : '') +
           ' \u00b7 ' + new Date(rec.entry.ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
         '</div>' +
-        '<button onclick="restoreLogEntry(\'' + id + '\',' + ti + ')" style="font-size:10px;background:none;border:1px solid #9FE1CB;border-radius:6px;padding:2px 9px;color:#0E6363;cursor:pointer;">Put back</button>' +
+        '<button onclick="restoreLogEntry(\'' + id + '\',' + ti + ')" style="font-size:10px;background:none;border:1px solid var(--accent-line);border-radius:6px;padding:2px 9px;color:var(--accent-dark);cursor:pointer;">Put back</button>' +
       '</div>'
     ).join('') +
   '</div>';
@@ -9415,8 +9519,13 @@ function draftCheckDue(c) {
 const CARE_STEPS = [
   { key: 'd90',   afterDays: 90,  label: '90 day check-in',
     script: (fn) => 'Hi ' + fn + ', Holli here. Everything still good with the policy? And if anyone came to mind since we talked, I always have room for one more.' },
-  { key: 'm11',   afterDays: 335, label: '11 month review',
-    script: (fn) => 'Hi ' + fn + ', Holli. Coming up on a year - I want to make sure the payments have all gone through clean and nothing has slipped. Quick call?' },
+  // h213: was an 11 month REVIEW. Wrong call - reviewing coverage inside the
+  // chargeback window invites you to replace your own business and hand the
+  // commission back. This is a CHECK-IN at 8 months instead, just ahead of the
+  // advance completing at 9, and its job is to set the expectation that a real
+  // review is coming. The review itself stays at 13 months, outside the year.
+  { key: 'm8',    afterDays: 240, label: '8 month check-in',
+    script: (fn) => 'Hi ' + fn + ", it's your agent here. Everything still running smoothly with the policy? Nothing needed today - I just like to check in. I'll reach out in about six months to look at whether it all still fits." },
   { key: 'm13',   afterDays: 395, label: '13 month policy review',
     script: (fn) => "Hi " + fn + ", it's Holli. It's been a year since we put your coverage in place - worth a quick look to make sure it still fits where things are now." },
 ];
@@ -9661,9 +9770,9 @@ function renderCareButton() {
   const el = document.getElementById('care-btn'); if (!el) return;
   const n = clientCareDue().length;
   el.textContent = n ? 'Client care ' + n : 'Client care';
-  el.style.background = n ? '#138181' : '#fff';
+  el.style.background = n ? 'var(--accent)' : '#fff';
   el.style.color = n ? '#fff' : '#8fa8c0';
-  el.style.borderColor = n ? '#138181' : '#d0dcea';
+  el.style.borderColor = n ? 'var(--accent)' : '#d0dcea';
 }
 
 function openClientCare() {
@@ -9672,30 +9781,30 @@ function openClientCare() {
     '<div class="modal-title">Client care</div>' +
     '<div class="modal-sub">' + rows.length + ' due</div>';
   if (!rows.length) {
-    html += '<div style="font-size:12px;color:#138181;background:#E1F5EE;border-radius:8px;padding:12px;margin-top:8px;">Nothing due. Every policy is where it should be.</div>';
+    html += '<div style="font-size:12px;color:var(--accent);background:var(--accent-pale);border-radius:8px;padding:12px;margin-top:8px;">Nothing due. Every policy is where it should be.</div>';
   }
   html += rows.map(r => {
-    const tone = r.kind === 'portal' ? '#3C3489' : r.kind === 'delivery' ? '#138181'
+    const tone = r.kind === 'portal' ? '#3C3489' : r.kind === 'delivery' ? 'var(--accent)'
                : r.kind === 'card' ? '#7A4A0F' : '#BA7517';
     let actions;
     if (r.kind === 'portal') {
       actions = '<button onclick="markPlacedFromPortal(\'' + r.c.id + '\')" style="flex:1.2;background:#3B6D11;color:#fff;border:none;border-radius:6px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;">It drafted - mark placed</button>' +
                 '<button onclick="carePush(\'' + r.c.id + '\',\'portal\',3)" style="flex:1;background:none;border:1px solid #b9c6d4;color:#5f7a99;border-radius:6px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;">Not yet - 3 days</button>';
     } else if (r.kind === 'delivery') {
-      actions = '<button onclick="confirmDelivery(\'' + r.c.id + '\')" style="flex:1.2;background:#138181;color:#fff;border:none;border-radius:6px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;">Confirmed - go to the ask</button>' +
+      actions = '<button onclick="confirmDelivery(\'' + r.c.id + '\')" style="flex:1.2;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;">Confirmed - go to the ask</button>' +
                 '<button onclick="carePush(\'' + r.c.id + '\',\'delivery\',7)" style="flex:1;background:none;border:1px solid #b9c6d4;color:#5f7a99;border-radius:6px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;">Not yet - a week</button>';
     } else {
-      actions = '<button onclick="careDoneMark(\'' + r.c.id + '\',\'' + r.key + '\')" style="flex:1.2;background:' + (r.kind === 'card' ? '#7A4A0F' : '#138181') + ';color:#fff;border:none;border-radius:6px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;">' + (r.kind === 'card' ? 'Card sent' : 'Done') + '</button>' +
+      actions = '<button onclick="careDoneMark(\'' + r.c.id + '\',\'' + r.key + '\')" style="flex:1.2;background:' + (r.kind === 'card' ? '#7A4A0F' : 'var(--accent)') + ';color:#fff;border:none;border-radius:6px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;">' + (r.kind === 'card' ? 'Card sent' : 'Done') + '</button>' +
                 '<button onclick="carePush(\'' + r.c.id + '\',\'' + r.key + '\',7)" style="flex:1;background:none;border:1px solid #b9c6d4;color:#5f7a99;border-radius:6px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;">Push a week</button>';
     }
     return '<div style="border:1px solid #e2eaf2;border-left:3px solid ' + tone + ';border-radius:8px;padding:10px;margin-bottom:6px;">' +
       '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">' +
-        '<div onclick="closeModal();openClient(\'' + r.c.id + '\')" style="font-size:13px;font-weight:600;color:#138181;cursor:pointer;">' + esc(r.c.name || '') + '</div>' +
+        '<div onclick="closeModal();openClient(\'' + r.c.id + '\')" style="font-size:13px;font-weight:600;color:var(--accent);cursor:pointer;">' + esc(r.c.name || '') + '</div>' +
         '<div style="font-size:10px;color:#8fa8c0;white-space:nowrap;">' +
           r.due.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + '</div>' +
       '</div>' +
       '<div style="font-size:10px;font-weight:700;color:' + tone + ';text-transform:uppercase;letter-spacing:0.04em;margin-top:2px;">' + esc(r.label) + '</div>' +
-      (r.c.phone && r.kind !== 'portal' && r.kind !== 'card' ? '<div style="font-size:12px;color:#138181;margin-top:2px;">' + esc(r.c.phone) + '</div>' : '') +
+      (r.c.phone && r.kind !== 'portal' && r.kind !== 'card' ? '<div style="font-size:12px;color:var(--accent);margin-top:2px;">' + esc(r.c.phone) + '</div>' : '') +
       (r.script ? '<div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:7px 9px;margin:6px 0;">' + esc(r.script) + '</div>' : '<div style="height:6px;"></div>') +
       '<div style="display:flex;gap:6px;">' + actions + '</div>' +
     '</div>';
@@ -9806,9 +9915,36 @@ function getTemplateText(t, c, mode) {
   const overrides = getAgentSettings().textTemplateOverrides || {};
   const firstName = (c.name||'').split(' ')[0];
   const key = (mode === 'vm') ? 'vm:' + t.id : t.id;
-  if (overrides[key]) return overrides[key].replace(/\{name\}/g, firstName);
+  if (overrides[key]) {
+    let out = overrides[key];
+    templateMergeMap(c).forEach(m => { out = out.split(m.token).join(m.value); });
+    // anything the lead cannot fill - no street on file, no appointment booked -
+    // is dropped rather than left showing a placeholder to the client
+    return out.replace(/\{name\}/g, firstName).replace(/\s*\{[a-z]+\}/g, '');
+  }
   if (mode === 'vm' && typeof t.vm === 'function') return t.vm(c);
   return t.text(c);
+}
+
+// h213: this only ever tokenised the first NAME. Edit the initial outreach and
+// the street address stopped filling in - it saved whichever client happened to
+// be open at the time, and every send after that named their road. Every merge
+// value the template can produce gets tokenised now, longest first so a value
+// that contains another is not half-replaced.
+function templateMergeMap(c) {
+  const first = (c && c.name ? String(c.name).split(' ')[0] : '');
+  const street = ((c && c.address) || '').split(',')[0].replace(/^\d+\s+/, '').trim();
+  const dt = (c && apptOf(c)) ? new Date(apptOf(c)) : null;
+  const when = dt ? dt.toLocaleDateString('en-US',{weekday:'long'}) + ' at ' + dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : '';
+  const time = dt ? dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : '';
+  const day  = (typeof draftDayOf === 'function' && c) ? draftDayOf(c) : null;
+  return [
+    { token: '{when}',   value: when },
+    { token: '{street}', value: street },
+    { token: '{time}',   value: time },
+    { token: '{name}',   value: first },
+    { token: '{draft}',  value: day ? ordinal(day) : '' },
+  ].filter(x => x.value && String(x.value).length > 1);
 }
 
 function saveTemplateDefault(tplId, clientId, mode) {
@@ -9816,8 +9952,9 @@ function saveTemplateDefault(tplId, clientId, mode) {
   const txtEl = document.getElementById('tpl-txt-' + tplId);
   if (!txtEl) return;
   let text = txtEl.value;
-  const firstName = (c && c.name ? (c.name||'').split(' ')[0] : '');
-  if (firstName) text = text.split(firstName).join('{name}');
+  templateMergeMap(c)
+    .sort((a, b) => String(b.value).length - String(a.value).length)
+    .forEach(m => { text = text.split(m.value).join(m.token); });
   const settings = getAgentSettings();
   if (!settings.textTemplateOverrides) settings.textTemplateOverrides = {};
   // keyed per mode so editing a text never rewrites the spoken script
@@ -9864,8 +10001,8 @@ function openTextModal(id, focusTplId, mode) {
         '<div style="font-size:11px;font-weight:600;color:#1D3557;margin-bottom:4px;">' + t.label + (overrides[(isVM?'vm:':'')+t.id] ? ' <span style="font-size:9px;color:#534AB7;background:#F3EEFF;border-radius:4px;padding:1px 5px;">customized</span>' : '') + '</div>' +
         '<div style="font-size:11px;color:#5f7a99;">' + getTemplateText(t, c, mode) + '</div>' +
         '<div id="tpl-edit-' + t.id + '" style="display:none;margin-top:8px;">' +
-          '<textarea id="tpl-txt-' + t.id + '" onclick="event.stopPropagation()" style="width:100%;min-height:80px;font-size:12px;border:1px solid #9FE1CB;border-radius:6px;padding:6px;font-family:inherit;box-sizing:border-box;">' + getTemplateText(t, c, mode) + '</textarea>' +
-          '<button onclick="event.stopPropagation();' + (isVM ? 'logVoicemail' : 'copyAndLogText') + '(\''+id+'\',\''+t.id+'\')" style="width:100%;background:' + (isVM ? '#BA7517' : '#138181') + ';color:#fff;border:none;border-radius:8px;padding:10px;font-size:12px;font-weight:600;cursor:pointer;margin-top:6px;">' + (isVM ? 'Log voicemail' : 'Copy & Log') + '</button>' +
+          '<textarea id="tpl-txt-' + t.id + '" onclick="event.stopPropagation()" style="width:100%;min-height:80px;font-size:12px;border:1px solid var(--accent-line);border-radius:6px;padding:6px;font-family:inherit;box-sizing:border-box;">' + getTemplateText(t, c, mode) + '</textarea>' +
+          '<button onclick="event.stopPropagation();' + (isVM ? 'logVoicemail' : 'copyAndLogText') + '(\''+id+'\',\''+t.id+'\')" style="width:100%;background:' + (isVM ? '#BA7517' : 'var(--accent)') + ';color:#fff;border:none;border-radius:8px;padding:10px;font-size:12px;font-weight:600;cursor:pointer;margin-top:6px;">' + (isVM ? 'Log voicemail' : 'Copy & Log') + '</button>' +
           '<div style="display:flex;gap:6px;margin-top:6px;">' +
             '<button onclick="event.stopPropagation();saveTemplateDefault(\''+t.id+'\',\''+id+'\',\''+(mode||'')+'\')" style="flex:1;background:none;border:1px solid #C4AAFF;border-radius:6px;padding:6px;font-size:10px;color:#534AB7;cursor:pointer;">Save as my default</button>' +
             (overrides[(isVM?'vm:':'')+t.id] ? '<button onclick="event.stopPropagation();restoreTemplateDefault(\''+t.id+'\',\''+id+'\',\''+(mode||'')+'\')" style="flex:1;background:none;border:1px solid #d0dcea;border-radius:6px;padding:6px;font-size:10px;color:#5f7a99;cursor:pointer;">Restore default</button>' : '') +
@@ -9908,7 +10045,7 @@ function expandTemplate(id, tplId, mode) {
   if (el) {
     const isOpen = el.style.display !== 'none';
     el.style.display = isOpen ? 'none' : 'block';
-    if (card) card.style.borderColor = isOpen ? '#e2eaf2' : '#138181';
+    if (card) card.style.borderColor = isOpen ? '#e2eaf2' : 'var(--accent)';
   }
 }
 
@@ -10175,7 +10312,7 @@ function openAddLeads() {
       '<button onclick="closeModal();openAddClient()" style="text-align:left;background:#fff;border:1px solid #d0dcea;border-radius:10px;padding:12px 14px;cursor:pointer;">' +
         '<div style="font-size:13px;font-weight:600;color:#1D3557;">Type one in</div>' +
         '<div style="font-size:11px;color:#8fa8c0;margin-top:1px;">Name and phone, the rest optional</div></button>' +
-      '<button onclick="closeModal();openLeadImport()" style="text-align:left;background:#138181;border:none;border-radius:10px;padding:12px 14px;cursor:pointer;">' +
+      '<button onclick="closeModal();openLeadImport()" style="text-align:left;background:var(--accent);border:none;border-radius:10px;padding:12px 14px;cursor:pointer;">' +
         '<div style="font-size:13px;font-weight:600;color:#fff;">Upload a PDF</div>' +
         '<div style="font-size:11px;color:#cfeee6;margin-top:1px;">One lead or a whole batch \u2014 scanned cards too</div></button>' +
     '</div>');
@@ -10185,7 +10322,7 @@ function openLeadImport() {
   showModal(`<button class="close-x" onclick="closeToLead()">x</button>
     <div class="modal-title">Import leads from PDF</div>
     <div class="modal-sub">Drop an SFG lead PDF. It reads the leads, guesses CIA vs MIA, and lets you review before saving.</div>
-    <div id="li-drop" style="border:2px dashed #9FE1CB;border-radius:10px;padding:26px;text-align:center;color:#138181;cursor:pointer;margin-bottom:12px;">
+    <div id="li-drop" style="border:2px dashed var(--accent-line);border-radius:10px;padding:26px;text-align:center;color:var(--accent);cursor:pointer;margin-bottom:12px;">
       <div style="font-size:14px;font-weight:600;">Tap to choose a PDF, or drop it here</div>
       <div style="font-size:11px;color:#5f7a99;margin-top:4px;">Typed sheets auto-fill. Handwritten cards come up blank for you to type.</div>
       <input type="file" id="li-file" accept="application/pdf" style="display:none;">
@@ -10195,7 +10332,7 @@ function openLeadImport() {
   const drop = document.getElementById('li-drop');
   const file = document.getElementById('li-file');
   drop.onclick = () => file.click();
-  drop.ondragover = (e) => { e.preventDefault(); drop.style.background = '#E1F5EE'; };
+  drop.ondragover = (e) => { e.preventDefault(); drop.style.background = 'var(--accent-pale)'; };
   drop.ondragleave = () => { drop.style.background = 'none'; };
   drop.ondrop = (e) => { e.preventDefault(); drop.style.background = 'none'; if (e.dataTransfer.files[0]) handleImportFile(e.dataTransfer.files[0]); };
   file.onchange = () => { if (file.files[0]) handleImportFile(file.files[0]); };
@@ -10948,7 +11085,7 @@ function renderImportPreview() {
       </div>
     </div>`;
   }).join('') + `<div style="display:flex;gap:8px;margin:6px 0 4px;">
-    <button onclick="setAllImportRows(true)" style="flex:1;font-size:11px;background:none;border:1px solid #9FE1CB;border-radius:6px;padding:5px;color:#0E6363;cursor:pointer;">Select all</button>
+    <button onclick="setAllImportRows(true)" style="flex:1;font-size:11px;background:none;border:1px solid var(--accent-line);border-radius:6px;padding:5px;color:var(--accent-dark);cursor:pointer;">Select all</button>
     <button onclick="setAllImportRows(false)" style="flex:1;font-size:11px;background:none;border:1px solid rgba(0,0,0,0.15);border-radius:6px;padding:5px;color:#5E6A78;cursor:pointer;">Select none</button>
   </div><button class="save-btn" id="li-import-btn" onclick="confirmLeadImport()">Import ${_importRows.filter(r=>r.include).length} lead(s)</button>`;
 }
@@ -11260,8 +11397,8 @@ function renderCasesHtml(c) {
     // Only show resolved touchpoints in history (not pending)
     const resolvedTps = (cs.touchpoints||[]).filter(tp => tp.outcome && tp.outcome.toLowerCase() !== 'pending');
     const actualSits = resolvedTps.filter(tp => tp.outcome==='sale'||tp.outcome==='nosale').length;
-    const statusColors = {'Closed Won':'#3B6D11','Closed Lost':'#A32D2D','Reset':'#534AB7','Open':'#138181'};
-    const hdrColor = cls==='ret'?'#138181':(cls==='dfl'||cls==='ib')?'#534AB7':'#1D3557';
+    const statusColors = {'Closed Won':'#3B6D11','Closed Lost':'#A32D2D','Reset':'#534AB7','Open':'var(--accent)'};
+    const hdrColor = cls==='ret'?'var(--accent)':(cls==='dfl'||cls==='ib')?'#534AB7':'#1D3557';
 
     // History log (carry original index so no-shows can be revived)
     const resolvedWithIdx = (cs.touchpoints||[]).map((tp,ti)=>({tp,ti})).filter(x => x.tp && x.tp.outcome && x.tp.outcome.toLowerCase() !== 'pending');
@@ -11318,7 +11455,7 @@ function renderCasesHtml(c) {
         (historyHtml||'<div style="font-size:11px;color:#a0b8cc;padding:4px 0;">No sits logged yet.</div>') +
         appsHtml +
         '<div style="display:flex;gap:6px;margin-top:8px;">' +
-          ((cs.status==='Open' || (cs.touchpoints||[]).some(tp=>tp && tp.outcome==='pending'))?'<button onclick="openSitOutcomeForCase(\''+c.id+'\','+ci+')" style="flex:1;background:#138181;color:#fff;border:none;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;font-weight:500;">+ Log outcome</button>':'') +
+          ((cs.status==='Open' || (cs.touchpoints||[]).some(tp=>tp && tp.outcome==='pending'))?'<button onclick="openSitOutcomeForCase(\''+c.id+'\','+ci+')" style="flex:1;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;font-weight:500;">+ Log outcome</button>':'') +
           (resolvedTps.some(tp=>tp.outcome==='sale')?'<button onclick="openAddAppsForCase(\''+c.id+'\','+ci+')" style="flex:1;background:#1D3557;color:#fff;border:none;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;font-weight:500;">+ Add apps</button>':'') +
           '<button onclick="openEditCase(\''+c.id+'\','+ci+')" style="background:#f0f4f8;border:none;border-radius:6px;padding:6px 10px;font-size:11px;color:#5f7a99;cursor:pointer;">Edit</button>' +
         '</div>' +
@@ -11334,7 +11471,7 @@ function openNewCase(id) {
   <div class="field"><label>Case type</label><select id="nc-type">${CASE_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></div>
   <div class="field"><label>Notes (optional)</label><input type="text" id="nc-notes" placeholder="e.g. Referred by spouse, existing MP client..."></div>
   <button class="save-btn" onclick="saveNewCase('${id}')">Create case</button>
-  <button class="save-btn" style="background:#138181;margin-top:6px;" onclick="saveNewCaseWithTouchpoint('${id}')">Create & add first touchpoint</button>`);
+  <button class="save-btn" style="background:var(--accent);margin-top:6px;" onclick="saveNewCaseWithTouchpoint('${id}')">Create & add first touchpoint</button>`);
 }
 
 async function saveNewCase(id) {
@@ -11596,7 +11733,7 @@ function openEditTouchpoint(id, ci, ti) {
   <div class="field"><label>Notes</label><textarea id="etp-notes">${tp.notes||''}</textarea></div>
   <button class="save-btn" onclick="saveEditTouchpoint('${id}',${ci},${ti})">Save</button>
   <button style="width:100%;margin-top:8px;background:none;border:1px solid #E8B4B4;border-radius:8px;padding:9px;font-size:12px;color:#A32D2D;cursor:pointer;" onclick="deleteTouchpoint('${id}',${ci},${ti})">Delete this touchpoint</button>
-  ${tp.outcome==='sale'?'<button class="save-btn" style="background:#138181;margin-top:6px;" onclick="closeModal();openAddAppToTouchpoint(\''+ id +'\','+ ci +','+ ti +')">+ Add applications</button>':''}
+  ${tp.outcome==='sale'?'<button class="save-btn" style="background:var(--accent);margin-top:6px;" onclick="closeModal();openAddAppToTouchpoint(\''+ id +'\','+ ci +','+ ti +')">+ Add applications</button>':''}
   <button onclick="deleteTouchpoint('${id}',${ci},${ti})" style="width:100%;margin-top:6px;background:none;border:1px solid #F7C1C1;border-radius:8px;padding:10px;font-size:12px;color:#A32D2D;cursor:pointer;">Delete this touchpoint</button>`);
 }
 
@@ -11691,8 +11828,8 @@ const DRAFT_DAYS = Array.from({length: 28}, (_, i) => i + 1);
 const LEGACY_APP_STATUS = { 'Free Look': 'Not taken' };
 function normalizeAppStatus(st) { return LEGACY_APP_STATUS[st] || st || ''; }
 const APP_STATUS_COLORS = {
-  'Written':'#1D3557','Submitted':'#BA7517','Approved':'#534AB7','Issued':'#138181',
-  'Paid':'#3B6D11','Placed':'#138181','Not taken':'#BA7517','Free Look':'#BA7517',
+  'Written':'#1D3557','Submitted':'#BA7517','Approved':'#534AB7','Issued':'var(--accent)',
+  'Paid':'#3B6D11','Placed':'var(--accent)','Not taken':'#BA7517','Free Look':'#BA7517',
   'Declined':'#A32D2D','Lapse':'#A32D2D','Cancel':'#A32D2D'
 };
 function appStatusColor(s) { return APP_STATUS_COLORS[s] || '#1D3557'; }
@@ -11808,13 +11945,13 @@ function openAddAppToTouchpoint(id, ci, ti, label) {
   <div class="modal-sub">${c.name} - ${label || 'Sale!'}</div>
   <div id="app-entries">
     <div class="app-entry" id="app-entry-0">
-      <div style="font-size:11px;font-weight:600;color:#138181;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;">Application 1</div>
+      <div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;">Application 1</div>
       <div class="field"><label>Carrier</label><select id="app-carrier-0" onchange="updateProductDropdown(0);updateAppCompDisplay(0)">${carrierOptions(defaultCarrier)}</select></div>
       <div class="field"><label>Product</label><select id="app-product-0" onchange="updateAppCompDisplay(0)">${productOptions(defaultCarrier,'')}</select></div>
       <div class="field">
         <label>Premium</label>
         <div style="display:flex;gap:6px;margin-bottom:6px;">
-          <button id="app-freq-btn-monthly-0" onclick="setAppFreq(0,'monthly')" style="flex:1;padding:6px;font-size:11px;font-weight:600;border-radius:6px;border:2px solid #138181;background:#138181;color:#fff;cursor:pointer;">Monthly</button>
+          <button id="app-freq-btn-monthly-0" onclick="setAppFreq(0,'monthly')" style="flex:1;padding:6px;font-size:11px;font-weight:600;border-radius:6px;border:2px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer;">Monthly</button>
           <button id="app-freq-btn-quarterly-0" onclick="setAppFreq(0,'quarterly')" style="flex:1;padding:6px;font-size:11px;font-weight:600;border-radius:6px;border:2px solid #e2eaf2;background:#fff;color:#5f7a99;cursor:pointer;">Quarterly</button>
           <button id="app-freq-btn-annual-0" onclick="setAppFreq(0,'annual')" style="flex:1;padding:6px;font-size:11px;font-weight:600;border-radius:6px;border:2px solid #e2eaf2;background:#fff;color:#5f7a99;cursor:pointer;">Annual APV</button>
           <button id="app-freq-btn-account-0" onclick="setAppFreq(0,'account')" style="flex:1;padding:6px;font-size:11px;font-weight:600;border-radius:6px;border:2px solid #e2eaf2;background:#fff;color:#5f7a99;cursor:pointer;">Acct (5%)</button>
@@ -11832,7 +11969,7 @@ function openAddAppToTouchpoint(id, ci, ti, label) {
       </div>
     </div>
   </div>
-  <button onclick="addAnotherApp()" style="width:100%;background:none;border:1px solid #138181;border-radius:8px;padding:8px;font-size:12px;color:#138181;cursor:pointer;margin-bottom:10px;">+ Add another application</button>
+  <button onclick="addAnotherApp()" style="width:100%;background:none;border:1px solid var(--accent);border-radius:8px;padding:8px;font-size:12px;color:var(--accent);cursor:pointer;margin-bottom:10px;">+ Add another application</button>
   <button class="save-btn" onclick="saveAppsToTouchpoint('${id}',${ci},${ti})">Save applications</button>
   <button onclick="if(window._capReturnAfterApps){window._capReturnAfterApps=false;if(window._cap){window._cap.phase='post';}showCaptureScreen();}else{closeModal();openClient('${id}')}" style="width:100%;background:none;border:none;padding:8px;font-size:12px;color:#8fa8c0;cursor:pointer;">Skip - no applications</button>`);
 }
@@ -11849,7 +11986,7 @@ function addAnotherApp() {
   div.style.cssText = 'border-top:1px solid #e2eaf2;padding-top:10px;margin-top:10px;';
   div.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-      <div style="font-size:11px;font-weight:600;color:#138181;text-transform:uppercase;letter-spacing:0.05em;">Application ${i+1}</div>
+      <div style="font-size:11px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;">Application ${i+1}</div>
       <button onclick="this.parentElement.parentElement.remove()" style="background:none;border:none;color:#d0dcea;font-size:14px;cursor:pointer;">x</button>
     </div>
     <div class="field"><label>Carrier</label><select id="app-carrier-${i}" onchange="updateProductDropdown(${i});updateAppCompDisplay(${i})">${carrierOptions(defaultCarrier)}</select></div>
@@ -11857,7 +11994,7 @@ function addAnotherApp() {
     <div class="field">
       <label>Premium</label>
       <div style="display:flex;gap:6px;margin-bottom:6px;">
-        <button id="app-freq-btn-monthly-${i}" onclick="setAppFreq(${i},'monthly')" style="flex:1;padding:6px;font-size:11px;font-weight:600;border-radius:6px;border:2px solid #138181;background:#138181;color:#fff;cursor:pointer;">Monthly</button>
+        <button id="app-freq-btn-monthly-${i}" onclick="setAppFreq(${i},'monthly')" style="flex:1;padding:6px;font-size:11px;font-weight:600;border-radius:6px;border:2px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer;">Monthly</button>
         <button id="app-freq-btn-quarterly-${i}" onclick="setAppFreq(${i},'quarterly')" style="flex:1;padding:6px;font-size:11px;font-weight:600;border-radius:6px;border:2px solid #e2eaf2;background:#fff;color:#5f7a99;cursor:pointer;">Quarterly</button>
         <button id="app-freq-btn-annual-${i}" onclick="setAppFreq(${i},'annual')" style="flex:1;padding:6px;font-size:11px;font-weight:600;border-radius:6px;border:2px solid #e2eaf2;background:#fff;color:#5f7a99;cursor:pointer;">Annual APV</button>
         <button id="app-freq-btn-account-${i}" onclick="setAppFreq(${i},'account')" style="flex:1;padding:6px;font-size:11px;font-weight:600;border-radius:6px;border:2px solid #e2eaf2;background:#fff;color:#5f7a99;cursor:pointer;">Acct (5%)</button>
@@ -11886,7 +12023,7 @@ function setAppFreq(i, freq) {
     const btn = document.getElementById('app-freq-btn-' + f + '-' + i);
     if (!btn) return;
     if (f === freq) {
-      btn.style.background = '#138181'; btn.style.color = '#fff'; btn.style.border = '2px solid #138181';
+      btn.style.background = 'var(--accent)'; btn.style.color = '#fff'; btn.style.border = '2px solid var(--accent)';
     } else {
       btn.style.background = '#fff'; btn.style.color = '#5f7a99'; btn.style.border = '2px solid #e2eaf2';
     }
@@ -11949,9 +12086,9 @@ function updateAppCompDisplay(i) {
   
   if (comp) {
     const advStr = comp.isAsEarned ? 'As earned' : '$' + Math.round(comp.advance).toLocaleString() + ' adv';
-    compEl.innerHTML = '<div style="background:#F0FBF7;border:1px solid #9FE1CB;border-radius:8px;padding:6px 10px;margin-bottom:8px;display:flex;justify-content:space-between;">' +
+    compEl.innerHTML = '<div style="background:#F0FBF7;border:1px solid var(--accent-line);border-radius:8px;padding:6px 10px;margin-bottom:8px;display:flex;justify-content:space-between;">' +
       '<span style="font-size:11px;color:#5f7a99;">' + comp.rate + '% comp</span>' +
-      '<span style="font-size:11px;font-weight:600;color:#138181;">$' + Math.round(comp.grossComp).toLocaleString() + ' gross</span>' +
+      '<span style="font-size:11px;font-weight:600;color:var(--accent);">$' + Math.round(comp.grossComp).toLocaleString() + ' gross</span>' +
       '<span style="font-size:11px;color:#534AB7;">' + advStr + '</span>' +
     '</div>';
   } else {
@@ -12050,7 +12187,7 @@ function renderAppsSection(c) {
   );
   if (!allApps.length) return '<div style="font-size:12px;color:#a0b8cc;margin-bottom:8px;">No applications yet.</div>';
   return allApps.map(ap => {
-    const statusColors = {'Paid':'#3B6D11','Placed':'#138181','Approved':'#534AB7','Submitted':'#BA7517','Written':'#1D3557'};
+    const statusColors = {'Paid':'#3B6D11','Placed':'var(--accent)','Approved':'#534AB7','Submitted':'#BA7517','Written':'#1D3557'};
     const statusBgs = {'Paid':'#EAF3DE','Placed':'#E6F9F3','Approved':'#EDE9FB','Submitted':'#FEF3E2','Written':'#EEF1F6'};
     const statusColor = statusColors[ap.status]||'#1D3557';
     const statusBg = statusBgs[ap.status]||'#EEF1F6';
@@ -12271,7 +12408,7 @@ function openResetPrompt(id) {
   <div class="modal-sub">${c.name}</div>
   <div style="margin-bottom:16px;font-size:13px;color:#1D3557;">Schedule a reset appointment?</div>
   <div style="display:flex;gap:8px;">
-    <button class="save-btn" style="background:#138181;" onclick="openResetPicker('${id}')">Yes - schedule reset</button>
+    <button class="save-btn" style="background:var(--accent);" onclick="openResetPicker('${id}')">Yes - schedule reset</button>
     <button class="save-btn" style="background:#5f7a99;" onclick="closeModal();openClient('${id}')">No - done</button>
   </div>`);
 }
@@ -12424,11 +12561,11 @@ function renderTasks() {
       const hidden = tasks.length - shown.length;
       el.innerHTML = shown.map(t => `
         <div class="task-item">
-          <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask('${t.id}')" style="margin-top:2px;cursor:pointer;accent-color:#138181;flex-shrink:0;">
+          <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask('${t.id}')" style="margin-top:2px;cursor:pointer;accent-color:var(--accent);flex-shrink:0;">
           <span style="flex:1;font-size:12px;color:#1D3557;${t.done?'text-decoration:line-through;color:#a0b8cc;':''}">${t.text}</span>
           <button onclick="dismissTask('${t.id}')" style="background:none;border:none;color:#d0dcea;font-size:14px;cursor:pointer;padding:0;line-height:1;flex-shrink:0;" title="Dismiss">x</button>
         </div>`).join('') + (hidden > 0
-        ? `<div onclick="openTaskModal()" style="font-size:10px;color:#138181;text-decoration:underline;cursor:pointer;padding:4px 0 0;">+${hidden} more \u2014 open to reorder</div>`
+        ? `<div onclick="openTaskModal()" style="font-size:10px;color:var(--accent);text-decoration:underline;cursor:pointer;padding:4px 0 0;">+${hidden} more \u2014 open to reorder</div>`
         : '');
     }
   }
@@ -12448,7 +12585,7 @@ function openTaskModal() {
   <div id="modal-task-list" style="margin-bottom:12px;">${renderTaskListHtml()}</div>
   <div style="display:flex;gap:6px;">
     <input id="modal-task-input" type="text" placeholder="Add a task..." style="flex:1;border:1px solid #d0dcea;border-radius:6px;padding:8px 10px;font-size:14px;font-family:inherit;" onkeydown="if(event.key==='Enter'){addTaskFromModal();}">
-    <button onclick="addTaskFromModal()" style="background:#138181;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:14px;cursor:pointer;font-weight:500;">+</button>
+    <button onclick="addTaskFromModal()" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:14px;cursor:pointer;font-weight:500;">+</button>
   </div>`);
 }
 
@@ -12476,7 +12613,7 @@ function renderTaskListHtml() {
     <div draggable="true" ondragstart="taskDragStart(${i})" ondragover="taskDragOver(event)" ondrop="taskDrop(event,${i})"
          style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid #f0f4f8;cursor:grab;${i<4?'background:rgba(19,129,129,0.06);':''}">
       <span style="color:#b8c6d4;font-size:13px;line-height:1.4;flex-shrink:0;">&#8942;&#8942;</span>
-      <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask('${t.id}');refreshModalTaskList()" style="margin-top:2px;cursor:pointer;accent-color:#138181;">
+      <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask('${t.id}');refreshModalTaskList()" style="margin-top:2px;cursor:pointer;accent-color:var(--accent);">
       <span style="flex:1;font-size:13px;color:#1D3557;${t.done?'text-decoration:line-through;color:#a0b8cc;':''}">${t.text}</span>
       <button onclick="dismissTask('${t.id}');refreshModalTaskList()" style="background:none;border:none;color:#d0dcea;font-size:16px;cursor:pointer;padding:0;">x</button>
     </div>`).join('');
@@ -12639,7 +12776,7 @@ function sitStepDetail(k) {
     '</div>';
   return '<div id="q-' + k + '-detail" style="display:none;margin:0 0 10px 0;">' +
     '<div id="' + k + '-people"></div>' +
-    '<button onclick="addPerson(\'' + k + '\')" style="background:none;border:1px dashed #138181;color:#138181;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;">+ Add person</button>' +
+    '<button onclick="addPerson(\'' + k + '\')" style="background:none;border:1px dashed var(--accent);color:var(--accent);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;">+ Add person</button>' +
     '</div>';
 }
 
@@ -12684,7 +12821,7 @@ function answerSit(k, val) {
   window._q[k] = val;
   const yes = document.getElementById('q-' + k + '-yes');
   const no  = document.getElementById('q-' + k + '-no');
-  if (yes) { yes.style.background = val ? '#138181' : '#fff'; yes.style.color = val ? '#fff' : '#5f7a99'; yes.style.borderColor = val ? '#138181' : '#e2eaf2'; }
+  if (yes) { yes.style.background = val ? 'var(--accent)' : '#fff'; yes.style.color = val ? '#fff' : '#5f7a99'; yes.style.borderColor = val ? 'var(--accent)' : '#e2eaf2'; }
   if (no)  { no.style.background  = !val ? '#1D3557' : '#fff'; no.style.color  = !val ? '#fff' : '#5f7a99'; no.style.borderColor  = !val ? '#1D3557' : '#e2eaf2'; }
   const d = document.getElementById('q-' + k + '-detail');
   if (d) d.style.display = val ? 'block' : 'none';
@@ -12724,7 +12861,7 @@ function nextSitStep() {
 
 function sitProgress() {
   const ctx = window._sitCtx; if (!ctx) return;
-  SIT_STEPS.forEach((s,i) => { const el = document.getElementById('sit-prog-' + i); if (el) el.style.background = i <= ctx.step ? '#138181' : '#e2eaf2'; });
+  SIT_STEPS.forEach((s,i) => { const el = document.getElementById('sit-prog-' + i); if (el) el.style.background = i <= ctx.step ? 'var(--accent)' : '#e2eaf2'; });
 }
 
 // Name / phone / why. Same shape for both, because a referral and a recruit
@@ -12810,14 +12947,14 @@ function renderRecruitRows(q) {
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
         '<div style="flex:1;">' +
           '<div style="font-size:14px;font-weight:600;color:#1D3557;">' + esc(r.pp.name) + '</div>' +
-          (r.pp.phone ? '<div style="font-size:12px;color:#138181;">' + esc(r.pp.phone) + '</div>' : '') +
+          (r.pp.phone ? '<div style="font-size:12px;color:var(--accent);">' + esc(r.pp.phone) + '</div>' : '') +
           (r.pp.relationship ? '<div style="font-size:11px;color:#5f7a99;margin-top:2px;">' + esc(r.pp.relationship) + '</div>' : '') +
           (r.pp.why ? '<div style="font-size:12px;color:#5f7a99;margin-top:2px;">' + esc(r.pp.why) + '</div>' : '') +
           '<div style="font-size:10px;color:#8fa8c0;margin-top:3px;">via ' + esc(r.pp.from_name||'') + '</div>' +
         '</div>' +
         '<div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end;">' +
           (r.pp.phone
-            ? '<a href="tel:' + escAttr(String(r.pp.phone).replace(/[^0-9+]/g,'')) + '" style="background:#138181;color:#fff;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap;">Call</a>'
+            ? '<a href="tel:' + escAttr(String(r.pp.phone).replace(/[^0-9+]/g,'')) + '" style="background:var(--accent);color:#fff;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap;">Call</a>'
             : '') +
           '<label style="display:flex;align-items:center;gap:5px;font-size:11px;color:#1D3557;cursor:pointer;white-space:nowrap;">' +
             '<input type="checkbox" ' + (r.pp.stp_sent?'checked':'') + ' onchange="toggleProspectSTP(\'' + r.cid + '\',' + r.ci + ',' + r.ti + ',' + r.pi + ',this.checked)" style="width:16px;height:16px;"> STP sent' +
@@ -12839,7 +12976,7 @@ function openRecruitProspects() {
     '<div class="modal-title">Recruits</div>' +
     '<div class="modal-sub">' + sent + ' of ' + rows.length + ' sent the plan</div>' +
     '<input type="text" id="recruit-search" placeholder="Search recruits — name, phone, relationship..." oninput="filterRecruits(this.value)" style="width:100%;padding:9px 10px;border:1px solid #d0dcea;border-radius:8px;font-size:13px;margin:8px 0 12px;box-sizing:border-box;">' +
-    '<button onclick="downloadRecruitCsv()" style="width:100%;background:none;border:1px solid #9FE1CB;border-radius:8px;padding:8px;font-size:12px;font-weight:600;color:#138181;cursor:pointer;margin-bottom:10px;">Export for GHL (CSV)</button>' +
+    '<button onclick="downloadRecruitCsv()" style="width:100%;background:none;border:1px solid var(--accent-line);border-radius:8px;padding:8px;font-size:12px;font-weight:600;color:var(--accent);cursor:pointer;margin-bottom:10px;">Export for GHL (CSV)</button>' +
     '<div id="recruit-list">' + renderRecruitRows('') + '</div>');
 }
 async function toggleProspectSTP(cid, ci, ti, pi, val) {
@@ -12889,14 +13026,14 @@ function renderReferralRows(q) {
   return filtered.map(r => {
     const nameClick = r.leadId ? ' style="cursor:pointer;text-decoration:underline;" onclick="closeModal();openClient(\'' + r.leadId + '\')"' : '';
     const tag = r.source === 'ASR'
-      ? (r.paid ? '<span style="font-size:10px;color:#138181;">paid $' + r.amount + '</span>'
+      ? (r.paid ? '<span style="font-size:10px;color:var(--accent);">paid $' + r.amount + '</span>'
                 : '<span style="font-size:10px;color:#A32D2D;">owe $' + r.amount + '</span>')
       : '<span style="font-size:10px;color:#8fa8c0;">captured at sit</span>';
     return '<div style="border:1px solid #e2eaf2;border-radius:8px;padding:10px;margin-bottom:6px;">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
         '<div style="flex:1;">' +
           '<div style="font-size:14px;font-weight:600;color:#1D3557;"' + nameClick + '>' + esc(r.name||'(no name)') + '</div>' +
-          (r.phone ? '<div style="font-size:12px;color:#138181;">' + esc(r.phone) + '</div>' : '') +
+          (r.phone ? '<div style="font-size:12px;color:var(--accent);">' + esc(r.phone) + '</div>' : '') +
           (r.why ? '<div style="font-size:12px;color:#5f7a99;margin-top:2px;">' + esc(r.why) + '</div>' : '') +
           '<div style="font-size:10px;color:#8fa8c0;margin-top:3px;">via ' + esc(r.from||'') + '</div>' +
         '</div>' +
@@ -13072,7 +13209,7 @@ function openLeadSpend(showAll) {
            : esc(label) + ' runs ' + pStart.toLocaleDateString('en-US',{month:'short',day:'numeric'}) +
              ' to ' + pEnd.toLocaleDateString('en-US',{month:'short',day:'numeric'}) +
              ' - production months run Saturday to Friday, not 1st to 31st.') + '</div>' +
-    '<button onclick="openLeadSpend(' + (all ? 'false' : 'true') + ')" style="width:100%;background:none;border:1px solid #9FE1CB;border-radius:8px;padding:7px;font-size:11px;font-weight:600;color:#138181;cursor:pointer;margin-bottom:8px;">' +
+    '<button onclick="openLeadSpend(' + (all ? 'false' : 'true') + ')" style="width:100%;background:none;border:1px solid var(--accent-line);border-radius:8px;padding:7px;font-size:11px;font-weight:600;color:var(--accent);cursor:pointer;margin-bottom:8px;">' +
       (all ? 'Show only ' + esc(label) : 'Show all charges') + '</button>' +
 
     '<div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 12px;">' +
@@ -13111,7 +13248,7 @@ function openLeadSpend(showAll) {
             '<div style="font-size:11px;color:#5E6A78;width:64px;flex-shrink:0;">' +
               new Date(ch.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
               (all ? '<div style="font-size:9px;color:#8fa8c0;">counts in ' + esc(productionMonthLabelFor(ch.date)) + '</div>' : '') + '</div>' +
-            '<div style="font-size:10px;font-weight:700;color:#0E6363;width:34px;flex-shrink:0;">' + esc(ch.source) + '</div>' +
+            '<div style="font-size:10px;font-weight:700;color:var(--accent-dark);width:34px;flex-shrink:0;">' + esc(ch.source) + '</div>' +
             '<div style="flex:1;font-size:11px;color:#5E6A78;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(ch.note || '') + '</div>' +
             '<div style="font-size:12px;font-weight:600;">$' + Number(ch.amount).toLocaleString() + '</div>' +
             '<button onclick="removeLeadCharge(\'' + ch.id + '\')" style="background:none;border:none;color:#C0392B;font-size:13px;cursor:pointer;padding:0 2px;">&times;</button>' +
@@ -13634,8 +13771,8 @@ function openReportBuilder() {
     return Array.from({length: 53}, (_, i) => 'Wk ' + (i + 1));
   };
   const pill = (label, active, onclick) =>
-    '<button onclick="' + onclick + '" style="border:1px solid ' + (active ? '#138181' : '#d0dcea') +
-    ';background:' + (active ? '#138181' : '#fff') + ';color:' + (active ? '#fff' : '#5f7a99') +
+    '<button onclick="' + onclick + '" style="border:1px solid ' + (active ? 'var(--accent)' : '#d0dcea') +
+    ';background:' + (active ? 'var(--accent)' : '#fff') + ';color:' + (active ? '#fff' : '#5f7a99') +
     ';border-radius:999px;padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;">' + label + '</button>';
 
   let html = '<button class="close-x" onclick="closeModal()">x</button>' +
@@ -13673,7 +13810,7 @@ function openReportBuilder() {
           ? '<button onclick="rptRemovePeriod(' + i + ')" style="background:none;border:none;color:#A32D2D;font-size:16px;cursor:pointer;padding:0 4px;">&times;</button>'
           : '<span style="width:16px;"></span>') +
       '</div>').join('') +
-    '<button onclick="rptAddPeriod()" style="width:100%;background:none;border:1px dashed #9FE1CB;border-radius:8px;padding:7px;font-size:11px;font-weight:600;color:#138181;cursor:pointer;margin-bottom:10px;">+ Add a column</button>' +
+    '<button onclick="rptAddPeriod()" style="width:100%;background:none;border:1px dashed var(--accent-line);border-radius:8px;padding:7px;font-size:11px;font-weight:600;color:var(--accent);cursor:pointer;margin-bottom:10px;">+ Add a column</button>' +
 
     '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">' +
       pill('Total', c.showTotal, "rptToggle('showTotal')") +
@@ -13683,8 +13820,8 @@ function openReportBuilder() {
     '</div>' +
 
     '<div style="display:flex;gap:6px;margin-bottom:12px;">' +
-      '<button onclick="downloadReportCsv()" style="flex:1;background:#138181;color:#fff;border:none;border-radius:8px;padding:9px;font-size:12px;font-weight:600;cursor:pointer;">Export CSV</button>' +
-      '<button onclick="printReport()" style="flex:1;background:none;border:1px solid #9FE1CB;color:#138181;border-radius:8px;padding:9px;font-size:12px;font-weight:600;cursor:pointer;">Print / PDF</button>' +
+      '<button onclick="downloadReportCsv()" style="flex:1;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px;font-size:12px;font-weight:600;cursor:pointer;">Export CSV</button>' +
+      '<button onclick="printReport()" style="flex:1;background:none;border:1px solid var(--accent-line);color:var(--accent);border-radius:8px;padding:9px;font-size:12px;font-weight:600;cursor:pointer;">Print / PDF</button>' +
       '<button onclick="saveReportConfig()" style="flex:1;background:none;border:1px solid #b9c6d4;color:#5f7a99;border-radius:8px;padding:9px;font-size:12px;font-weight:600;cursor:pointer;">Save</button>' +
     '</div>' +
     reportSavedList() +
@@ -13701,8 +13838,8 @@ function reportTableHtml(cols, rows, total, avg) {
     '<div style="' + grid + 'padding:6px 0;border-bottom:2px solid #1D3557;">' +
       '<div style="font-size:10px;font-weight:700;color:#5f7a99;">METRIC</div>' +
       cols.map(x => '<div style="font-size:10px;font-weight:700;color:#1D3557;text-align:right;">' + esc(x.label) + '</div>').join('') +
-      (total ? '<div style="font-size:10px;font-weight:700;color:#0E6363;text-align:right;">TOTAL</div>' : '') +
-      (avg ? '<div style="font-size:10px;font-weight:700;color:#0E6363;text-align:right;">AVG</div>' : '') +
+      (total ? '<div style="font-size:10px;font-weight:700;color:var(--accent-dark);text-align:right;">TOTAL</div>' : '') +
+      (avg ? '<div style="font-size:10px;font-weight:700;color:var(--accent-dark);text-align:right;">AVG</div>' : '') +
       (c.showChange && cols.length > 1 ? '<div style="font-size:10px;font-weight:700;color:#7A4A0F;text-align:right;">CHANGE</div>' : '') +
     '</div>';
 
@@ -13726,8 +13863,8 @@ function reportTableHtml(cols, rows, total, avg) {
     out += '<div style="' + grid + 'padding:3px 0;border-bottom:1px solid rgba(0,0,0,.05);">' +
       '<div style="font-size:11px;color:#5E6A78;">' + esc(m.l) + '</div>' +
       cells.map(v => '<div style="font-size:11px;font-weight:600;text-align:right;color:' + (v === 'N/A' ? '#c3ccd6' : '#1D3557') + ';">' + v + '</div>').join('') +
-      (total ? '<div style="font-size:11px;font-weight:700;text-align:right;color:#0E6363;">' + reportFmt(m, reportValue(m, total)) + '</div>' : '') +
-      (avg ? '<div style="font-size:11px;font-weight:700;text-align:right;color:#0E6363;">' + reportFmt(m, reportValue(m, avg)) + '</div>' : '') +
+      (total ? '<div style="font-size:11px;font-weight:700;text-align:right;color:var(--accent-dark);">' + reportFmt(m, reportValue(m, total)) + '</div>' : '') +
+      (avg ? '<div style="font-size:11px;font-weight:700;text-align:right;color:var(--accent-dark);">' + reportFmt(m, reportValue(m, avg)) + '</div>' : '') +
       (c.showChange && cols.length > 1 ? '<div style="font-size:11px;font-weight:700;text-align:right;color:' + (/^\+/.test(change) ? '#3B6D11' : change === 'N/A' ? '#c3ccd6' : '#A32D2D') + ';">' + change + '</div>' : '') +
     '</div>';
   });
@@ -13841,7 +13978,7 @@ function reportSavedList() {
     '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;">' +
     saved.map(r =>
       '<span style="display:inline-flex;align-items:center;gap:4px;border:1px solid #d0dcea;border-radius:999px;padding:3px 6px 3px 11px;">' +
-        '<span onclick="loadReportConfig(\'' + escAttr(r.name) + '\')" style="font-size:11px;color:#138181;cursor:pointer;font-weight:600;">' + esc(r.name) + '</span>' +
+        '<span onclick="loadReportConfig(\'' + escAttr(r.name) + '\')" style="font-size:11px;color:var(--accent);cursor:pointer;font-weight:600;">' + esc(r.name) + '</span>' +
         '<button onclick="deleteReportConfig(\'' + escAttr(r.name) + '\')" style="background:none;border:none;color:#c3ccd6;font-size:13px;cursor:pointer;padding:0 2px;">&times;</button>' +
       '</span>').join('') + '</div>';
 }
@@ -13854,7 +13991,7 @@ function _rptAvg(total, n) { return n > 0 ? '$' + Math.round(total / n).toLocale
 function _rptRowTap(label, a, b, c, keys) {
   const cell = (v, k, bold) => '<div onclick="openCommissionDetail(\'' + k + '\')" style="font-size:12px;font-weight:' +
     (bold ? '700' : '600') + ';text-align:right;cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;color:' +
-    (bold ? '#0E6363' : '#138181') + ';">' + v + '</div>';
+    (bold ? 'var(--accent-dark)' : 'var(--accent)') + ';">' + v + '</div>';
   return '<div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:4px;padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.06);">' +
     '<div style="font-size:11px;color:#5E6A78;">' + label + '</div>' +
     cell(a, keys[0]) + cell(b, keys[1]) + cell(c, keys[2], true) +
@@ -13899,7 +14036,7 @@ function openCommissionDetail(which) {
   html += people.map(({ c, d }) =>
     '<div style="border:1px solid #e2eaf2;border-radius:8px;padding:8px 10px;margin-bottom:6px;">' +
       '<div style="display:flex;justify-content:space-between;align-items:baseline;">' +
-        '<div onclick="closeModal();openClient(\'' + c.id + '\')" style="font-size:12px;font-weight:600;color:#138181;cursor:pointer;">' + esc(c.name || '(no name)') + '</div>' +
+        '<div onclick="closeModal();openClient(\'' + c.id + '\')" style="font-size:12px;font-weight:600;color:var(--accent);cursor:pointer;">' + esc(c.name || '(no name)') + '</div>' +
         '<div style="font-size:12px;font-weight:700;color:#1D3557;">' + money(d.total) + '</div>' +
       '</div>' +
       '<div style="font-size:10px;color:#8fa8c0;margin-bottom:4px;">' + esc(c.source || 'no source') + '</div>' +
@@ -13908,7 +14045,7 @@ function openCommissionDetail(which) {
           (r.dupe ? 'background:#FFF5F5;' : '') + '">' +
           '<div style="color:#5f7a99;">' +
             '<span style="display:inline-block;font-size:9px;font-weight:700;text-transform:uppercase;border-radius:3px;padding:1px 4px;margin-right:5px;' +
-              (r.from === 'sit' ? 'background:#FFF1DC;color:#7A4A0F;' : 'background:#E1F5EE;color:#0E6363;') + '">' +
+              (r.from === 'sit' ? 'background:#FFF1DC;color:#7A4A0F;' : 'background:var(--accent-pale);color:var(--accent-dark);') + '">' +
               (r.from === 'sit' ? 'legacy sit' : 'case') + '</span>' +
             esc(r.carrier || 'no carrier') + (r.product ? ' &middot; ' + esc(r.product) : '') +
             ' &middot; ' + esc(r.status || 'no status') +
@@ -13919,7 +14056,7 @@ function openCommissionDetail(which) {
         '</div>').join('') +
     '</div>').join('');
 
-  html += '<button onclick="openReports()" style="width:100%;background:#138181;color:#fff;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;margin-top:8px;">Back to Reports</button>';
+  html += '<button onclick="openReports()" style="width:100%;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;margin-top:8px;">Back to Reports</button>';
   showModal(html);
 }
 
@@ -13930,7 +14067,7 @@ function _rptRow(label, a, b, c) {
     '<div style="font-size:11px;color:#5E6A78;">' + label + '</div>' +
     '<div style="font-size:12px;font-weight:600;text-align:right;">' + a + '</div>' +
     '<div style="font-size:12px;font-weight:600;text-align:right;">' + b + '</div>' +
-    '<div style="font-size:12px;font-weight:700;text-align:right;color:#0E6363;">' + c + '</div>' +
+    '<div style="font-size:12px;font-weight:700;text-align:right;color:var(--accent-dark);">' + c + '</div>' +
   '</div>';
 }
 
@@ -13961,11 +14098,11 @@ function openReports() {
     '<div class="modal-title">Reports</div>' +
     '<div class="modal-sub">' + esc(label) + '</div>' +
 
-    '<div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:4px;margin-top:10px;padding-bottom:4px;border-bottom:2px solid #138181;">' +
+    '<div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:4px;margin-top:10px;padding-bottom:4px;border-bottom:2px solid var(--accent);">' +
       '<div></div>' +
       '<div style="font-size:10px;font-weight:700;text-align:right;color:#5E6A78;">MIA</div>' +
       '<div style="font-size:10px;font-weight:700;text-align:right;color:#5E6A78;">CIA</div>' +
-      '<div style="font-size:10px;font-weight:700;text-align:right;color:#0E6363;">ALL</div>' +
+      '<div style="font-size:10px;font-weight:700;text-align:right;color:var(--accent-dark);">ALL</div>' +
     '</div>' +
 
     _rptRow('Leads assigned', mia.assigned, cia.assigned, all.assigned) +
@@ -13989,13 +14126,13 @@ function openReports() {
       return _rptRow('ROI', roi(mia.totalComm, spendMia), roi(cia.totalComm, spendCia), roi(all.totalComm, spendAll + add)) +
         (gifts > 0
           ? '<div onclick="toggleRoiGifts()" style="display:flex;align-items:center;gap:6px;font-size:10px;color:#5E6A78;cursor:pointer;padding:5px 0;">' +
-              '<span style="width:13px;height:13px;border-radius:3px;border:1px solid ' + (on ? '#138181' : '#b9c6d4') + ';background:' +
-                (on ? '#138181' : '#fff') + ';color:#fff;font-size:9px;line-height:13px;text-align:center;">' + (on ? 'x' : '') + '</span>' +
+              '<span style="width:13px;height:13px;border-radius:3px;border:1px solid ' + (on ? 'var(--accent)' : '#b9c6d4') + ';background:' +
+                (on ? 'var(--accent)' : '#fff') + ';color:#fff;font-size:9px;line-height:13px;text-align:center;">' + (on ? 'x' : '') + '</span>' +
               'Include thank-you gifts in ROI ($' + Math.round(gifts).toLocaleString() + ')</div>'
           : '');
     })() +
 
-    '<button onclick="openLeadSpend()" style="width:100%;margin-top:10px;background:none;border:1px dashed #9FE1CB;border-radius:8px;padding:9px;font-size:12px;font-weight:600;color:#138181;cursor:pointer;">+ Add or edit charges</button>' +
+    '<button onclick="openLeadSpend()" style="width:100%;margin-top:10px;background:none;border:1px dashed var(--accent-line);border-radius:8px;padding:9px;font-size:12px;font-weight:600;color:var(--accent);cursor:pointer;">+ Add or edit charges</button>' +
     '<div style="font-size:10px;color:#8B97A6;margin-top:4px;">Every charge carries its own date, so it counts in the month you spent it.</div>' +
 
     '<div style="font-size:10px;font-weight:700;color:#5E6A78;text-transform:uppercase;letter-spacing:0.06em;margin:18px 0 4px;">Referrals only</div>' +
@@ -14008,7 +14145,7 @@ function openReports() {
 
     '<div style="margin-top:18px;display:flex;gap:8px;">' +
       '<button class="save-btn" style="flex:1;" onclick="openRecruitProspects()">Recruits</button>' +
-      '<button class="save-btn" style="flex:1;background:none;border:1px solid #9FE1CB;color:#0E6363;" onclick="openReferralList()">Referral list</button>' +
+      '<button class="save-btn" style="flex:1;background:none;border:1px solid var(--accent-line);color:var(--accent-dark);" onclick="openReferralList()">Referral list</button>' +
     '</div>'
   );
 }
@@ -14291,7 +14428,59 @@ function applyBoardName(){
   const el = document.getElementById('hdr-title');
   if (el) el.textContent = getAgentSettings().agencyName || 'Banks Advantage - CWC';
 }
+// TEN ACCENTS. Not a paint shop - enough to feel like yours without producing
+// something unreadable. Gold and orange carry dark text; white on either fails
+// contrast and reads cheap.
+const ACCENTS = [
+  { k:'teal',    n:'Teal',       c:'#138181', ink:'#ffffff' },
+  { k:'royal',   n:'Royal blue', c:'#2B4FB8', ink:'#ffffff' },
+  { k:'purple',  n:'Purple',     c:'#6B3FA0', ink:'#ffffff' },
+  { k:'fuchsia', n:'Fuchsia',    c:'#B32C7D', ink:'#ffffff' },
+  { k:'crimson', n:'Crimson',    c:'#A32D3F', ink:'#ffffff' },
+  { k:'orange',  n:'Autumn',     c:'#D97A28', ink:'#20242B' },
+  { k:'gold',    n:'Gold',       c:'#D6A32B', ink:'#20242B' },
+  { k:'forest',  n:'Forest',     c:'#2E6B45', ink:'#ffffff' },
+  { k:'copper',  n:'Copper',     c:'#A75A3C', ink:'#ffffff' },
+  { k:'graphite',n:'Graphite',   c:'#465768', ink:'#ffffff' },
+];
+
+function accentKey() { return (getAgentSettings() || {}).accent || 'teal'; }
+function accentDef()  { return ACCENTS.find(a => a.k === accentKey()) || ACCENTS[0]; }
+
+// Derive the darker, line and pale tones from the one chosen colour so a new
+// accent never needs three more decisions.
+function _mixHex(hex, target, amt) {
+  const h = String(hex).replace('#','');
+  const n = parseInt(h, 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  const t = String(target).replace('#','');
+  const tn = parseInt(t, 16);
+  const tr = (tn >> 16) & 255, tg = (tn >> 8) & 255, tb = tn & 255;
+  const mix = (a, bb) => Math.round(a + (bb - a) * amt);
+  return '#' + [mix(r,tr), mix(g,tg), mix(b,tb)].map(x => x.toString(16).padStart(2,'0')).join('');
+}
+
+function applyAccent() {
+  const a = accentDef();
+  const r = document.documentElement.style;
+  r.setProperty('--accent', a.c);
+  r.setProperty('--accent-dark', _mixHex(a.c, '#000000', 0.28));
+  r.setProperty('--accent-line', _mixHex(a.c, '#ffffff', 0.62));
+  r.setProperty('--accent-pale', _mixHex(a.c, '#ffffff', 0.90));
+  r.setProperty('--accent-ink', a.ink);
+}
+
+async function setAccent(k) {
+  const s = getAgentSettings();
+  s.accent = k;
+  await saveAgentSettings(s);
+  applyAccent();
+  render();
+  openSettings('profile');
+}
+
 function applyTheme(){
+  applyAccent();
   migrateThemeH135();
   applyBoardName();
   const t = getTheme(); const r = document.documentElement.style;
@@ -14319,7 +14508,7 @@ function openThemeSettings(){
   const sw = (label,key,val) => '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid #eef2f7;">' +
     '<span style="font-size:13px;color:#1D3557;">'+label+'</span>' +
     '<input type="color" value="'+val+'" oninput="setThemeColor(\''+key+'\',this.value)" style="width:46px;height:30px;border:none;background:none;cursor:pointer;padding:0;"></div>';
-  const preset = (name,label) => '<button onclick="setThemePreset(\''+name+'\')" style="font-size:12px;font-weight:600;border:1px solid '+(t.preset===name?'#138181':'#dde7f0')+';background:'+(t.preset===name?'#E1F5EE':'#fff')+';color:#1D3557;border-radius:8px;padding:6px 11px;cursor:pointer;">'+label+'</button>';
+  const preset = (name,label) => '<button onclick="setThemePreset(\''+name+'\')" style="font-size:12px;font-weight:600;border:1px solid '+(t.preset===name?'var(--accent)':'#dde7f0')+';background:'+(t.preset===name?'var(--accent-pale)':'#fff')+';color:#1D3557;border-radius:8px;padding:6px 11px;cursor:pointer;">'+label+'</button>';
   showModal(
     '<button class="close-x" onclick="closeToLead()">x</button>' +
     '<div class="modal-title">Board theme</div>' +
@@ -14426,7 +14615,7 @@ function openGoalSetter(metric){
     '<div class="modal-title">'+m.label+' goal</div>' +
     '<div class="modal-sub">Target for '+periodWord(P)+(money?' (in $)':'')+'</div>' +
     '<input id="goal-input" type="number" min="1" inputmode="numeric" value="'+cur+'" placeholder="'+(money?'e.g. 60000':'e.g. 500')+'" ' +
-      'style="width:100%;box-sizing:border-box;font-size:22px;font-weight:700;text-align:center;padding:12px;margin:12px 0;border:2px solid #138181;border-radius:10px;color:#1D3557;">' +
+      'style="width:100%;box-sizing:border-box;font-size:22px;font-weight:700;text-align:center;padding:12px;margin:12px 0;border:2px solid var(--accent);border-radius:10px;color:#1D3557;">' +
     '<button class="save-btn" onclick="commitGoal(\''+metric+'\')">'+(existing?'Update goal':'Set goal')+'</button>' +
     (existing ? '<button class="save-btn" style="background:#fff;color:#A32D2D;border:1px solid #F0C4C4;margin-top:8px;" onclick="removeGoal(\''+metric+'\')">Remove goal</button>' : '')
   );
@@ -14858,6 +15047,13 @@ function openSettings(tab) {
           RUNNER_TONES.map(x => '<option value="' + x.v + '"' + (runnerPrefs().tone === x.v ? ' selected' : '') + '>' + x.n + '</option>').join('') +
         '</select></div>' +
       '</div>' +
+      head('Accent colour') +
+      '<div style="font-size:10px;color:#8A94A2;margin:-4px 0 6px;">Retints buttons, pills, links and goal fills.</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:7px;">' +
+        ACCENTS.map(a => '<button onclick="setAccent(\'' + a.k + '\')" title="' + a.n + '" style="width:30px;height:30px;border-radius:999px;cursor:pointer;background:' + a.c +
+          ';border:' + (accentKey() === a.k ? '3px solid #fff;box-shadow:0 0 0 2px ' + a.c : '2px solid rgba(0,0,0,.08)') + ';"></button>').join('') +
+      '</div>' +
+      '<div style="font-size:10px;color:#8A94A2;margin:6px 0 0;">' + esc(accentDef().n) + '</div>' +
       saveBtn('saveProfileSettings()', 'Save profile')) +
 
       card(head('Google Calendar') +
@@ -14900,7 +15096,7 @@ function openSettings(tab) {
           '<div style="font-size:10px;color:#5f7a99;">' + enabledCount + ' of ' + carrierList.length + ' enabled</div>' +
         '</div>' +
         '<div style="font-size:11px;color:#8fa8c0;margin-bottom:8px;">Enable only the carriers you write. Products from enabled carriers show in app entry.</div>' +
-        '<button onclick="openCarrierManager()" style="width:100%;background:#138181;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:6px;">Manage carriers &amp; products</button>' +
+        '<button onclick="openCarrierManager()" style="width:100%;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:6px;">Manage carriers &amp; products</button>' +
         '<button onclick="openAddCustomCarrier()" style="width:100%;background:#f0f4f8;color:#5f7a99;border:1px solid #d0dcea;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;">+ Add custom carrier</button>');
   }
 
@@ -14946,9 +15142,9 @@ function openSettings(tab) {
   }
 
   else {
-    body = '<div style="background:#E1F5EE;border-radius:10px;padding:12px;margin-bottom:12px;">' +
-        head('Help', '#0E6363') +
-        '<button class="save-btn" style="margin-bottom:4px;background:#138181;" onclick="openGuide()">How to work your day</button>' +
+    body = '<div style="background:var(--accent-pale);border-radius:10px;padding:12px;margin-bottom:12px;">' +
+        head('Help', 'var(--accent-dark)') +
+        '<button class="save-btn" style="margin-bottom:4px;background:var(--accent);" onclick="openGuide()">How to work your day</button>' +
         '<div style="font-size:11px;color:#5f7a99;">Step by step, with the answers to whatever has you stuck. Search it. Opens in a new tab.</div>' +
       '</div>' +
 
@@ -14964,9 +15160,6 @@ function openSettings(tab) {
         '<button class="save-btn" style="margin-bottom:4px;" onclick="openActionHistory()">What changed, and when</button>' +
         '<div style="font-size:11px;color:#5f7a99;">Pick a date and an hour range. Undo anything, however long ago.</div>') +
 
-      card(head('Data') +
-        '<button onclick="recheckComp()" style="width:100%;background:#138181;color:#fff;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;">Recheck comp on all apps</button>' +
-        '<div style="font-size:10px;color:#8fa8c0;margin-top:4px;">Compares every application against the current comp grid and offers to fix any that drifted.</div>') +
 
       // h211: the build tag used to sit in the header, where it was useful while
       // deploying several times a day and clutter the rest of the time. Here it is
@@ -14980,7 +15173,7 @@ function openSettings(tab) {
     '<div class="modal-title">Settings</div>' +
     '<div style="display:flex;gap:4px;margin:10px 0 14px;flex-wrap:wrap;">' +
       TABS.map(x => '<button onclick="openSettings(\'' + x.k + '\')" style="flex:1;min-width:64px;border:1px solid ' +
-        (t === x.k ? '#138181' : '#dde7f0') + ';background:' + (t === x.k ? '#138181' : '#fff') +
+        (t === x.k ? 'var(--accent)' : '#dde7f0') + ';background:' + (t === x.k ? 'var(--accent)' : '#fff') +
         ';color:' + (t === x.k ? '#fff' : '#5f7a99') + ';border-radius:999px;padding:7px 4px;font-size:11px;font-weight:600;cursor:pointer;">' +
         x.l + (x.k === 'help' && nRepair ? ' <span style="color:' + (t === x.k ? '#fff' : '#A32D2D') + ';">' + nRepair + '</span>' : '') +
         '</button>').join('') +
@@ -14993,12 +15186,12 @@ function openSettings(tab) {
     const ac = document.getElementById('cal-actions');
     if (!st || !ac) return;
     if (email) {
-      st.innerHTML = '<span style="color:#138181;font-weight:600;">Connected</span> - ' + email + '<br><span style="font-size:11px;">Appointments you set will appear on this calendar.</span>';
-      ac.innerHTML = '<button onclick="syncExistingAppts()" style="width:100%;background:#138181;color:#fff;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:6px;">Sync existing appointments</button>' +
+      st.innerHTML = '<span style="color:var(--accent);font-weight:600;">Connected</span> - ' + email + '<br><span style="font-size:11px;">Appointments you set will appear on this calendar.</span>';
+      ac.innerHTML = '<button onclick="syncExistingAppts()" style="width:100%;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:6px;">Sync existing appointments</button>' +
         '<button onclick="disconnectGoogleCalendar()" style="width:100%;background:none;border:1px solid #E0A0A0;color:#A32D2D;border-radius:8px;padding:8px;font-size:12px;cursor:pointer;">Disconnect</button>';
     } else {
       st.textContent = 'Not connected. Connect once and your CWC appointments will show up on your Google Calendar.';
-      ac.innerHTML = '<button onclick="connectGoogleCalendar()" style="width:100%;background:#138181;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;">Connect Google Calendar</button>';
+      ac.innerHTML = '<button onclick="connectGoogleCalendar()" style="width:100%;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;">Connect Google Calendar</button>';
     }
   });
 
@@ -15094,8 +15287,8 @@ function openCarrierManager() {
     const container = document.getElementById('carrier-list-container');
     if (!container) return;
     const div = document.createElement('div');
-    div.style.cssText = 'background:'+(isEnabled?'#F0FBF7':'#fff')+';border:1px solid '+(isEnabled?'#9FE1CB':'#e2eaf2')+';border-radius:8px;padding:8px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;';
-    div.innerHTML = '<div style="flex:1;cursor:pointer;"><div style="font-size:12px;font-weight:600;color:#1D3557;">'+name+'</div><div style="font-size:10px;color:#8fa8c0;">'+( isEnabled ? enabledProducts+' products enabled' : totalProducts+' products available')+'</div></div><input type="checkbox" '+( isEnabled?'checked':'')+' style="width:18px;height:18px;accent-color:#138181;margin-left:8px;">';
+    div.style.cssText = 'background:'+(isEnabled?'#F0FBF7':'#fff')+';border:1px solid '+(isEnabled?'var(--accent-line)':'#e2eaf2')+';border-radius:8px;padding:8px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;';
+    div.innerHTML = '<div style="flex:1;cursor:pointer;"><div style="font-size:12px;font-weight:600;color:#1D3557;">'+name+'</div><div style="font-size:10px;color:#8fa8c0;">'+( isEnabled ? enabledProducts+' products enabled' : totalProducts+' products available')+'</div></div><input type="checkbox" '+( isEnabled?'checked':'')+' style="width:18px;height:18px;accent-color:var(--accent);margin-left:8px;">';
     div.querySelector('[style*="cursor"]').addEventListener('click', function(){ openProductManager(name); });
     div.querySelector('input').addEventListener('change', function(){ toggleCarrier(name, this.checked); });
     container.appendChild(div);
@@ -15134,13 +15327,13 @@ function openProductManager(carrierName) {
   const html = '<button class="close-x" id="pm-back-btn">←</button>' +
     '<div class="modal-title">' + carrierName + '</div>' +
     '<div style="font-size:11px;color:#8fa8c0;margin-bottom:8px;">Toggle products to show/hide in app entry.</div>' +
-    '<div style="background:' + (backdateOn?'#F0FBF7':'#f7fafc') + ';border:1px solid ' + (backdateOn?'#9FE1CB':'#e2eaf2') + ';border-radius:8px;padding:8px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
+    '<div style="background:' + (backdateOn?'#F0FBF7':'#f7fafc') + ';border:1px solid ' + (backdateOn?'var(--accent-line)':'#e2eaf2') + ';border-radius:8px;padding:8px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
       '<div style="flex:1;"><div style="font-size:12px;font-weight:600;color:#1D3557;">End of month backdating</div>' +
       '<div style="font-size:10px;color:#8fa8c0;">On: apps written the 29th-31st are backdated to the 28th and place in the same month. Off: they place on the 1st of the next month.</div></div>' +
-      '<input type="checkbox" id="pm-backdate-toggle" ' + (backdateOn?'checked':'') + ' style="width:18px;height:18px;accent-color:#138181;flex-shrink:0;">' +
+      '<input type="checkbox" id="pm-backdate-toggle" ' + (backdateOn?'checked':'') + ' style="width:18px;height:18px;accent-color:var(--accent);flex-shrink:0;">' +
     '</div>' +
     '<div style="display:flex;gap:6px;margin-bottom:10px;">' +
-      '<button id="pm-enable-all" style="flex:1;background:#138181;color:#fff;border:none;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;">Enable all</button>' +
+      '<button id="pm-enable-all" style="flex:1;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;">Enable all</button>' +
       '<button id="pm-disable-all" style="flex:1;background:#f0f4f8;color:#5f7a99;border:none;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;">Disable all</button>' +
     '</div>' +
     '<div id="pm-product-list"></div>';
@@ -15162,12 +15355,12 @@ function openProductManager(carrierName) {
                        bonusRate === 2.5 ? ' <span style="font-size:9px;background:#FEF3E2;color:#854F0B;padding:1px 5px;border-radius:4px;">2.5% bonus</span>' : '';
 
     const row = document.createElement('div');
-    row.style.cssText = 'border:1px solid ' + (isEnabled?'#9FE1CB':'#e2eaf2') + ';border-radius:6px;padding:6px 10px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;background:' + (isEnabled?'#F0FBF7':'#fff') + ';';
+    row.style.cssText = 'border:1px solid ' + (isEnabled?'var(--accent-line)':'#e2eaf2') + ';border-radius:6px;padding:6px 10px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;background:' + (isEnabled?'#F0FBF7':'#fff') + ';';
     row.innerHTML = '<div style="flex:1;">' +
       '<div style="font-size:11px;font-weight:500;color:#1D3557;">' + p.name + (p.range?' <span style="color:#8fa8c0;font-weight:400;">'+p.range+'</span>':'') + bonusBadge + '</div>' +
       '<div style="font-size:10px;color:#8fa8c0;">' + (p.type||'') + (compRate ? ' · ' + compRate + '% at ' + (settings.contractLevel||105) + '%' : '') + '</div>' +
     '</div>' +
-    '<input type="checkbox" ' + (isEnabled?'checked':'') + ' style="width:16px;height:16px;accent-color:#138181;margin-left:8px;">';
+    '<input type="checkbox" ' + (isEnabled?'checked':'') + ' style="width:16px;height:16px;accent-color:var(--accent);margin-left:8px;">';
     row.querySelector('input').addEventListener('change', function(){ toggleProduct(carrierName, key, this.checked); });
     listEl.appendChild(row);
   });
@@ -15257,7 +15450,7 @@ function openAddCustomCarrier() {
         '<option value="as_earned">As earned</option>' +
       '</select>' +
     '</div>' +
-    '<button onclick="saveCustomCarrier()" style="width:100%;background:#138181;color:#fff;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;margin-top:8px;">Add carrier</button>'
+    '<button onclick="saveCustomCarrier()" style="width:100%;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;margin-top:8px;">Add carrier</button>'
   );
 }
 
@@ -15357,19 +15550,19 @@ function capSectionHtml(s, tp){
   let h = '<div style="border:1px solid #e2eaf2;border-radius:10px;padding:12px;margin-bottom:12px;">';
   h += '<div style="font-size:14px;font-weight:600;color:#1D3557;margin-bottom:8px;">'+s.title+'</div>';
   h += '<div style="display:flex;gap:8px;margin-bottom:8px;">'
-    + '<button id="cap-'+s.k+'-yes" onclick="capToggle(\''+s.k+'\',true)" style="flex:1;background:'+(asked?'#138181':'#fff')+';color:'+(asked?'#fff':'#5f7a99')+';border:1px solid '+(asked?'#138181':'#e2eaf2')+';border-radius:8px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;">Did ask</button>'
+    + '<button id="cap-'+s.k+'-yes" onclick="capToggle(\''+s.k+'\',true)" style="flex:1;background:'+(asked?'var(--accent)':'#fff')+';color:'+(asked?'#fff':'#5f7a99')+';border:1px solid '+(asked?'var(--accent)':'#e2eaf2')+';border-radius:8px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;">Did ask</button>'
     + '<button id="cap-'+s.k+'-no" onclick="capToggle(\''+s.k+'\',false)" style="flex:1;background:'+(notAsked?'#5f7a99':'#fff')+';color:'+(notAsked?'#fff':'#5f7a99')+';border:1px solid '+(notAsked?'#5f7a99':'#e2eaf2')+';border-radius:8px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;">Didn\'t ask</button>'
     + '</div>';
-  h += '<button onclick="capToggleScript(\''+s.k+'\')" style="background:none;border:none;color:#138181;font-size:12px;cursor:pointer;padding:2px 0;margin-bottom:2px;">\u25b8 Script'+(capScriptEdited(s.k)?' (edited)':'')+'</button>';
+  h += '<button onclick="capToggleScript(\''+s.k+'\')" style="background:none;border:none;color:var(--accent);font-size:12px;cursor:pointer;padding:2px 0;margin-bottom:2px;">\u25b8 Script'+(capScriptEdited(s.k)?' (edited)':'')+'</button>';
   h += '<div id="cap-script-'+s.k+'" style="display:none;margin-bottom:8px;">'
     + '<textarea id="cap-scripttext-'+s.k+'" style="width:100%;font-size:12px;padding:8px;border:1px solid #e2eaf2;border-radius:6px;min-height:120px;line-height:1.45;color:#33475b;">'+esc(capGetScript(s.k))+'</textarea>'
     + '<div style="display:flex;gap:6px;margin-top:4px;">'
-    + '<button onclick="capSaveScript(\''+s.k+'\')" style="flex:1;background:#138181;color:#fff;border:none;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;">Save script</button>'
+    + '<button onclick="capSaveScript(\''+s.k+'\')" style="flex:1;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;">Save script</button>'
     + '<button onclick="capRevertScript(\''+s.k+'\')" style="flex:1;background:#f0f4f8;color:#5f7a99;border:none;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;">Revert to default</button>'
     + '</div></div>';
   if (s.people){
     h += '<div id="cap-people-'+s.k+'"></div>';
-    h += '<button onclick="capAddPerson(\''+s.k+'\')" style="background:none;border:1px dashed #138181;color:#138181;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;margin-top:2px;">+ Add another</button>';
+    h += '<button onclick="capAddPerson(\''+s.k+'\')" style="background:none;border:1px dashed var(--accent);color:var(--accent);border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;margin-top:2px;">+ Add another</button>';
   } else {
     h += '<div id="cap-reset-detail" style="display:'+(asked?'block':'none')+';">'
       + '<input type="text" id="cap-reset-to" value="'+escAttr(tp.reset_to||'')+'" oninput="capResetField()" placeholder="Reset to whom / what? (e.g. Holli for retirement)" style="width:100%;font-size:12px;padding:7px;border:1px solid #e2eaf2;border-radius:6px;margin-bottom:6px;">'
@@ -15389,7 +15582,7 @@ function capToggle(k, val){
   const s = CAP_SECTIONS.find(x=>x.k===k); const tp=capTp(); if(!tp) return;
   tp[s.ask]=val;
   const yes=document.getElementById('cap-'+k+'-yes'), no=document.getElementById('cap-'+k+'-no');
-  if(yes){ yes.style.background=val?'#138181':'#fff'; yes.style.color=val?'#fff':'#5f7a99'; yes.style.borderColor=val?'#138181':'#e2eaf2'; }
+  if(yes){ yes.style.background=val?'var(--accent)':'#fff'; yes.style.color=val?'#fff':'#5f7a99'; yes.style.borderColor=val?'var(--accent)':'#e2eaf2'; }
   if(no){ no.style.background=!val?'#5f7a99':'#fff'; no.style.color=!val?'#fff':'#5f7a99'; no.style.borderColor=!val?'#5f7a99':'#e2eaf2'; }
   if(val && s.people){ tp[s.people]=tp[s.people]||[]; if(!tp[s.people].length){ tp[s.people].push({name:'',phone:'',why:''}); } capRenderPeople(k); }
   if(k==='reset'){ const d=document.getElementById('cap-reset-detail'); if(d) d.style.display=val?'block':'none'; }
@@ -15406,11 +15599,11 @@ function capRenderPeople(k){
     + '<input type="text" value="'+escAttr(pp.name||'')+'" oninput="capSyncPerson(\''+k+'\','+i+',\'name\',this.value)" placeholder="Name" style="flex:1.1;font-size:12px;padding:6px;border:1px solid #e2eaf2;border-radius:6px;">'
     + '<input type="tel" value="'+escAttr(pp.phone||'')+'" oninput="capSyncPerson(\''+k+'\','+i+',\'phone\',this.value)" onblur="capMaybeCreateASR(\''+k+'\','+i+')" placeholder="Phone" style="flex:1;font-size:12px;padding:6px;border:1px solid #e2eaf2;border-radius:6px;">'
     + '<input type="text" value="'+escAttr(pp.why||'')+'" oninput="capSyncPerson(\''+k+'\','+i+',\'why\',this.value)" placeholder="Why them?" style="flex:1.3;font-size:12px;padding:6px;border:1px solid #e2eaf2;border-radius:6px;">'
-    + (pp._asrId?'<span title="Lead created" style="color:#138181;font-size:14px;">\u2713</span>':'')
+    + (pp._asrId?'<span title="Lead created" style="color:var(--accent);font-size:14px;">\u2713</span>':'')
     + '<button onclick="capRemovePerson(\''+k+'\','+i+')" style="background:none;border:none;color:#c0392b;font-size:16px;cursor:pointer;padding:0 4px;">&times;</button>'
     + '</div>').join('');
 }
-function capReflectYes(k){ const yes=document.getElementById('cap-'+k+'-yes'),no=document.getElementById('cap-'+k+'-no'); if(yes){yes.style.background='#138181';yes.style.color='#fff';yes.style.borderColor='#138181';} if(no){no.style.background='#fff';no.style.color='#5f7a99';no.style.borderColor='#e2eaf2';} }
+function capReflectYes(k){ const yes=document.getElementById('cap-'+k+'-yes'),no=document.getElementById('cap-'+k+'-no'); if(yes){yes.style.background='var(--accent)';yes.style.color='#fff';yes.style.borderColor='var(--accent)';} if(no){no.style.background='#fff';no.style.color='#5f7a99';no.style.borderColor='#e2eaf2';} }
 function capAddPerson(k){ const s=CAP_SECTIONS.find(x=>x.k===k); const tp=capTp(); if(!tp||!s.people) return; tp[s.people]=tp[s.people]||[]; tp[s.people].push({name:'',phone:'',why:''}); if(tp[s.ask]!==true){ tp[s.ask]=true; capReflectYes(k); } capRenderPeople(k); capPersistSoon(); }
 function capRemovePerson(k,i){ const s=CAP_SECTIONS.find(x=>x.k===k); const tp=capTp(); if(!tp||!tp[s.people]) return; tp[s.people].splice(i,1); capRenderPeople(k); capPersistSoon(); }
 function capSyncPerson(k,i,f,v){ const s=CAP_SECTIONS.find(x=>x.k===k); const tp=capTp(); if(!tp||!tp[s.people]||!tp[s.people][i]) return; tp[s.people][i][f]=v; capPersistSoon(); }
