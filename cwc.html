@@ -568,7 +568,7 @@ body{
 }
 .stat{
   background:var(--surface) !important; border:none !important; border-radius:0 !important;
-  padding:15px 16px 16px !important; min-height:88px !important;
+  padding:16px 18px 18px !important; min-height:104px !important;
   display:flex !important; flex-direction:column !important; gap:7px !important;
   transition:background .15s ease !important; box-shadow:none !important;
 }
@@ -593,7 +593,8 @@ body{
 .stat.hero{
   position:relative; background:var(--surface) !important;
   border:1px solid var(--line) !important; border-radius:var(--r) !important;
-  padding:22px !important; overflow:hidden !important; min-height:0 !important;
+  padding:22px !important; overflow:hidden !important; min-height:150px !important;
+  justify-content:flex-start !important;
   transition:border-color .18s, transform .18s, background .18s !important;
 }
 .stat.hero::before{
@@ -736,6 +737,32 @@ input:focus, select:focus, textarea:focus{ outline:2px solid var(--accent); outl
 .hdr .nav-row{ justify-content:flex-end !important; flex-wrap:wrap !important; }
 .hdr .pill{ flex:0 0 auto !important; padding:6px 14px !important; }
 
+/* h222: THE GHOSTING. `.stat.stat-navy .stat-lbl` etc set #1D2733 - near-black
+   text - at HIGHER specificity (0,2,0) than my `.lbl-white` rule (0,1,0), so on
+   the dark board those tiles rendered black-on-black and looked faded out. Every
+   legacy tile class has to be beaten at its own specificity, not below it. */
+.stat.stat-navy .stat-lbl, .stat.stat-navy .stat-val, .stat.stat-navy .stat-sub,
+.stat.stat-teal .stat-lbl, .stat.stat-teal .stat-val, .stat.stat-teal .stat-sub,
+.stat.stat-navy-lt .stat-lbl, .stat.stat-navy-lt .stat-val, .stat.stat-navy-lt .stat-sub,
+.stat.stat-teal-lt .stat-lbl, .stat.stat-teal-lt .stat-val, .stat.stat-teal-lt .stat-sub,
+.stat.stat-amber .stat-lbl, .stat.stat-amber .stat-val, .stat.stat-amber .stat-sub,
+.stat.stat-red .stat-lbl, .stat.stat-red .stat-val, .stat.stat-red .stat-sub,
+.stat.stat-green .stat-lbl, .stat.stat-green .stat-val, .stat.stat-green .stat-sub,
+.stat.stat-purple .stat-lbl, .stat.stat-purple .stat-val, .stat.stat-purple .stat-sub,
+.stat.tile-base .stat-lbl, .stat.tile-base .stat-val, .stat.tile-base .stat-sub,
+.stat.tile-base2 .stat-lbl, .stat.tile-base2 .stat-val, .stat.tile-base2 .stat-sub{
+  color:inherit !important;
+}
+.stat.stat-navy, .stat.stat-teal, .stat.stat-navy-lt, .stat.stat-teal-lt,
+.stat.stat-amber, .stat.stat-red, .stat.stat-green, .stat.stat-purple,
+.stat.tile-base, .stat.tile-base2{
+  background:var(--surface) !important; border:none !important; color:var(--ink) !important;
+}
+.stat .stat-lbl{ color:var(--muted) !important; }
+.stat .stat-val{ color:var(--ink) !important; }
+.stat .stat-sub{ color:var(--faint) !important; }
+.stat.hero .stat-val{ color:var(--ink) !important; }
+
 /* ============================================================================
    h221 - THE TOPBAR, THE STATUS LINE, AND THE HERO METERS
    The three structural pieces of v0's design my first pass approximated instead
@@ -756,7 +783,10 @@ input:focus, select:focus, textarea:focus{ outline:2px solid var(--accent); outl
 }
 .hdr-left > div:last-child{ display:flex !important; align-items:baseline !important; gap:12px !important; }
 .hdr-sub{ font-size:13px !important; font-weight:500 !important; color:var(--faint) !important; }
-.hdr-right{ display:flex !important; align-items:center !important; gap:14px !important; flex-wrap:wrap !important; }
+.hdr-right{
+  display:flex !important; align-items:center !important; gap:14px !important;
+  flex-wrap:wrap !important; justify-content:flex-end !important; margin-left:auto !important;
+}
 .hdr-right .nav-row{ margin:0 !important; display:flex !important; align-items:center !important; gap:6px !important; }
 .period-label{ font-size:12.5px !important; color:var(--muted) !important; font-weight:600 !important; white-space:nowrap; }
 .gear-btn, .arrow-btn{
@@ -845,7 +875,7 @@ input:focus, select:focus, textarea:focus{ outline:2px solid var(--accent); outl
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h221</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h222</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
