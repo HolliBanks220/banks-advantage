@@ -490,23 +490,31 @@ input[style*="flex:"],select[style*="flex:"],textarea[style*="flex:"]{
      2. `display:none` on the Schedule below 720px (the vanishing)
    Slack now goes to the OUTSIDE margins, which is just a centred page, not a hole
    between the columns. */
+/* h219: the board was pinned to 420px because `.stat-row` divides the BOARD three
+   or four ways - widen the board and every tile doubles. The fix is not a wider
+   board with the same rows; it is rows that REFLOW. `.stat-row` becomes an
+   auto-fill grid further down, so tiles keep their size and simply wrap into more
+   columns as the board grows. That is what makes a real desktop layout possible. */
 .page-layout{
   display:grid !important;
-  grid-template-columns:420px minmax(250px,320px) !important;
+  grid-template-columns:minmax(0,1fr) 360px !important;
   justify-content:center !important;
-  gap:14px !important;align-items:start !important;
-  max-width:100% !important;margin:0 auto !important;
-  padding:0 12px !important;box-sizing:border-box !important;width:100% !important;
+  gap:26px !important;align-items:start !important;
+  max-width:1680px !important;margin:0 auto !important;
+  padding:0 34px !important;box-sizing:border-box !important;width:100% !important;
 }
 .page-layout > *{min-width:0 !important;}
 .right-sidebar-col{min-width:0 !important;}
-.app-main{width:420px !important;max-width:100% !important;min-width:0 !important;}
+.app-main{width:100% !important;max-width:100% !important;min-width:0 !important;}
 .appt-sidebar,#task-sidebar{width:100% !important;box-sizing:border-box !important;}
 
 /* Not enough room for 420 + a sidebar -> one column, and the board becomes fluid
    so it still fills a phone. The Schedule MOVES, it never disappears. */
+@media(max-width:1180px){
+  .page-layout{grid-template-columns:minmax(0,1fr) 320px !important;gap:20px !important;padding:0 22px !important;}
+}
 @media(max-width:800px){
-  .page-layout{grid-template-columns:minmax(0,1fr) !important;max-width:460px !important;}
+  .page-layout{grid-template-columns:minmax(0,1fr) !important;max-width:460px !important;padding:0 12px !important;}
   .app-main{width:100% !important;}
   .right-sidebar-col{position:static !important;width:100% !important;}
   #appt-sidebar{max-height:55vh !important;overflow-y:auto !important;}
@@ -519,137 +527,194 @@ html,body{overflow-x:hidden !important;}
 #client-count{color:#9FB2C4;}
 
 /* ============================================================================
-   h216 - LIGHT FIELD, WHITE CARDS, COLOUR ON THE DATA
-   Two things were making this read amateur, and neither was the shadows:
-     1. Mid-grey tiles on near-black. No contrast at the card edge, so nothing
-        looked cut out. Light field + white cards gets a crisp edge for free.
-     2. A goal tile flooded ENTIRELY with colour - a whole lime rectangle. Good
-        dashboards colour the DATA, not the container: a thin bar and a number.
-   Colour now means two separate things that never fight: a gradient marks the
-   four headline numbers, and bar colour says how the day is going.
+   h219 - THE WIDE BOARD
+   Designed in v0 against a screenshot, implemented here against the real code.
+   Two things make it work where four earlier passes failed:
+     1. DARK cards on a near-black field. The h216 pass put light-grey cards on
+        near-black - no contrast at the card edge, so nothing looked cut out.
+        Dark-on-darker with a hairline is what reads crisp.
+     2. Tiles REFLOW instead of stretching. `.stat-row` was repeat(3,1fr), so a
+        wider board meant wider tiles. auto-fill keeps the tile and adds columns.
+   Modals stay light: hundreds of inline text colours live inside them and would
+   be unreadable inverted. A light sheet over a dark page is the normal pattern.
    ========================================================================== */
+:root{
+  /* base channels - the only place raw colour numbers live */
+  --c-white:255 255 255; --c-black:0 0 0;
+  --bg:#0d1112; --surface:#151b1c; --surface-2:#1b2325;
+  --ink:#eef3f2; --muted:#8b9694; --faint:#5b6462;
+  --line:rgb(var(--c-white) / .07); --line-2:rgb(var(--c-white) / .12);
+  --track:rgb(var(--c-white) / .08); --pill-bg:rgb(var(--c-white) / .06);
+  --subtle-bg:rgb(var(--c-white) / .04); --vignette:rgb(var(--c-white) / .035);
+  --r:14px;
+}
 
-body{ background:var(--field) !important; color:var(--ink) !important; }
+body{
+  background:
+    radial-gradient(900px 420px at 34% -8%, var(--vignette), transparent 70%),
+    var(--bg) !important;
+  color:var(--ink) !important;
+  font-feature-settings:"cv02","cv03","cv04","ss01";
+}
+.page-outer{ padding-top:26px !important; }
 
-/* ---- CARDS. One hairline, one soft shadow. That is the whole recipe. ---- */
-.stat, .client-card, .sit-card, .modal, #task-sidebar, .appt-sidebar{
-  background:#fff !important;
-  border:1px solid var(--hair) !important;
-  box-shadow:0 1px 2px rgba(22,32,46,.05), 0 2px 8px -4px rgba(22,32,46,.08);
+/* ---- TILES REFLOW. This is the change that lets the board be any width. ---- */
+.stat-row, .stat-row2{
+  display:grid !important;
+  grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)) !important;
+  gap:1px !important; margin-bottom:22px !important;
+  background:var(--line) !important; border:1px solid var(--line) !important;
+  border-radius:var(--r) !important; overflow:hidden !important;
 }
 .stat{
-  border-radius:12px !important;
-  transition:transform .13s ease, box-shadow .13s ease, border-color .13s ease;
-  padding:11px 12px !important;
+  background:var(--surface) !important; border:none !important; border-radius:0 !important;
+  padding:15px 16px 16px !important; min-height:88px !important;
+  display:flex !important; flex-direction:column !important; gap:7px !important;
+  transition:background .15s ease !important; box-shadow:none !important;
 }
-.stat:has(.stat-val[onclick]):hover, .client-card:hover{
-  transform:translateY(-1px); border-color:#C6D3E1 !important;
-  box-shadow:0 2px 4px rgba(22,32,46,.06), 0 10px 22px -8px rgba(22,32,46,.16);
-}
-.stat-row, .stat-row2{ gap:10px !important; margin-bottom:10px !important; }
-
-/* ---- TYPE. Small tracked label, big tight number, quiet sub. ---- */
+.stat:hover{ background:var(--surface-2) !important; transform:none !important; }
 .stat-lbl{
-  font-size:9px !important; font-weight:700 !important;
-  letter-spacing:0.10em !important; color:var(--ink-faint) !important;
+  font-size:10.5px !important; font-weight:600 !important; letter-spacing:.1em !important;
+  text-transform:uppercase !important; color:var(--muted) !important;
 }
 .stat-val{
-  font-size:29px !important; font-weight:650 !important;
-  letter-spacing:-0.03em !important; line-height:1 !important;
-  color:var(--ink) !important; margin:2px 0 0 !important;
+  font-size:26px !important; font-weight:700 !important; line-height:1 !important;
+  letter-spacing:-.02em !important; color:var(--ink) !important; margin-top:auto !important;
 }
-.stat-sub{ font-size:10px !important; color:var(--ink-dim) !important; }
-.stat-val, .stat-sub, .money, input[type=number]{
-  font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1;
-}
-.section-lbl{
-  font-size:9px !important; font-weight:700 !important;
-  letter-spacing:0.14em !important; color:var(--ink-faint) !important;
-  margin:18px 0 8px !important;
-}
+.stat-sub{ font-size:11px !important; color:var(--faint) !important; }
+.stat-val, .stat-sub, .money{ font-variant-numeric:tabular-nums; }
 
-/* ---- THE FOUR HEADLINE NUMBERS. A permanent gradient in the agent's accent.
-   They look different because they ARE different, not because of how today is
-   going - which is the bar's job, below. ---- */
-.stat.hero, .stat.stat-navy.hero, .stat.stat-teal.hero, .stat.stat-navy-lt.hero{
-  background:linear-gradient(145deg, var(--accent) 0%, var(--accent-dark) 100%) !important;
-  border-color:transparent !important;
-  box-shadow:0 1px 2px rgba(22,32,46,.14), 0 10px 22px -10px rgba(22,32,46,.40);
+/* ---- THE FOUR THAT MATTER. Their own row, standing apart from the grid. ---- */
+.stat-row.hero-row{
+  grid-template-columns:repeat(4, 1fr) !important;
+  gap:16px !important; background:transparent !important; border:none !important;
+  border-radius:0 !important; overflow:visible !important; margin-bottom:30px !important;
 }
-.stat.hero .stat-lbl, .stat.hero .lbl-white{ color:rgba(255,255,255,.68) !important; }
-.stat.hero .stat-val, .stat.hero .val-white, .stat.hero .val-navy{ color:var(--accent-ink) !important; font-size:32px !important; }
-.stat.hero .stat-sub{ color:rgba(255,255,255,.72) !important; }
-.stat.hero:hover{ box-shadow:0 2px 4px rgba(22,32,46,.16), 0 18px 34px -12px rgba(22,32,46,.45); }
+.stat.hero{
+  position:relative; background:var(--surface) !important;
+  border:1px solid var(--line) !important; border-radius:var(--r) !important;
+  padding:22px !important; overflow:hidden !important; min-height:0 !important;
+  transition:border-color .18s, transform .18s, background .18s !important;
+}
+.stat.hero::before{
+  content:""; position:absolute; inset:0 0 auto 0; height:2px;
+  background:linear-gradient(90deg, var(--accent-lift, var(--accent)), transparent 78%);
+  opacity:.55;
+}
+.stat.hero:hover{
+  border-color:var(--line-2) !important; background:var(--surface-2) !important;
+  transform:translateY(-2px) !important;
+}
+.stat.hero .stat-lbl, .stat.hero .lbl-white, .stat.hero .lbl-navy, .stat.hero .lbl-amber{
+  font-size:11px !important; letter-spacing:.12em !important; color:var(--muted) !important;
+}
+.stat.hero .stat-val, .stat.hero .val-white, .stat.hero .val-navy{
+  font-size:clamp(2.4rem,3.6vw,3.2rem) !important; font-weight:800 !important;
+  margin-top:14px !important; color:var(--ink) !important;
+}
+/* hit its goal -> a teal rim and a full-strength top edge. Nothing floods. */
+.stat.hero.tile-goal-green{ border-color:var(--accent) !important; box-shadow:none !important; }
+.stat.hero.tile-goal-green::before{ opacity:1; }
 
-/* ---- GOAL STATE. The card NEVER floods. A bar at the bottom carries it, and
-   the number goes green only when the goal is actually hit. ---- */
-/* h217: :not(.hero) throughout. A hero tile is already coloured, so the goal
-   rules must not repaint it white - that put hero's WHITE text on a WHITE card
-   the moment a goal was set, and the tile faded into the page. */
+/* ---- GOAL STATE. The card NEVER floods - h216's lesson, kept. A meter under the
+   number carries it, and only a HIT changes the number's colour. :not(.hero)
+   throughout: a hero is already styled, and repainting it lost its text. ---- */
 .stat.tile-goal-red:not(.hero), .stat.tile-goal-yellow:not(.hero), .stat.tile-goal-green:not(.hero){
-  background:#fff !important; border-color:var(--hair) !important;
+  background:var(--surface) !important; border:none !important;
 }
-.stat.tile-goal-red:not(.hero) .stat-lbl, .stat.tile-goal-yellow:not(.hero) .stat-lbl, .stat.tile-goal-green:not(.hero) .stat-lbl{
-  color:var(--ink-faint) !important;
-}
+.stat.tile-goal-red:not(.hero) .stat-lbl, .stat.tile-goal-yellow:not(.hero) .stat-lbl,
+.stat.tile-goal-green:not(.hero) .stat-lbl{ color:var(--muted) !important; }
 .stat.tile-goal-red:not(.hero) .stat-val, .stat.tile-goal-yellow:not(.hero) .stat-val{ color:var(--ink) !important; }
-.stat.tile-goal-green:not(.hero) .stat-val{ color:var(--goal-green) !important; }
-.stat.tile-goal-red:not(.hero) .stat-sub, .stat.tile-goal-yellow:not(.hero) .stat-sub, .stat.tile-goal-green:not(.hero) .stat-sub{
-  color:var(--ink-dim) !important; font-weight:500 !important;
+.stat.tile-goal-green:not(.hero) .stat-val{ color:var(--accent-lift, var(--accent)) !important; }
+.stat.tile-goal-red:not(.hero) .stat-sub, .stat.tile-goal-yellow:not(.hero) .stat-sub,
+.stat.tile-goal-green:not(.hero) .stat-sub{ color:var(--faint) !important; }
+
+/* The 'Tap to work' hint sat BETWEEN the label and the number and pushed Callbacks
+   off the baseline every tile beside it sits on. Out of the flow. */
+.stat .hint-lt{
+  font-size:9px !important; color:var(--faint) !important; line-height:1.2 !important;
+  margin:0 !important; height:0 !important; overflow:visible !important;
+  position:relative; top:-1px;
 }
-/* A hero that has HIT its goal gets a green rim - the gradient already carries
-   the "this is a headline" job, so it needs nothing louder. */
-.stat.tile-goal-green.hero{ box-shadow:0 0 0 2px var(--goal-green), 0 10px 22px -10px rgba(22,32,46,.40) !important; }
-/* the goal-settable marker was a teal strip down the right edge - unnecessary
-   now that an unset tile simply says "+ set a goal" */
-.stat.goal-able{ border-right-width:1px !important; }
+
+/* ---- SECTION HEADS: a label and a rule that runs to the edge ---- */
+.section-lbl{
+  font-size:11px !important; font-weight:700 !important; letter-spacing:.18em !important;
+  text-transform:uppercase !important; color:var(--faint) !important;
+  margin:30px 0 14px !important; display:flex !important; align-items:center !important; gap:14px !important;
+}
+.section-lbl::after{ content:""; flex:1; height:1px; background:var(--line); }
+
+/* ---- THE RIGHT RAIL ---- */
+.right-sidebar-col{ position:sticky !important; top:22px !important; }
+#task-sidebar, .appt-sidebar{
+  background:var(--surface) !important; border:1px solid var(--line) !important;
+  border-radius:var(--r) !important; color:var(--ink) !important; box-shadow:none !important;
+}
+.appt-sidebar-title{
+  font-size:12px !important; letter-spacing:.14em !important; text-transform:uppercase !important;
+  color:var(--ink) !important; font-weight:700 !important;
+}
+.appt-sidebar-divider{
+  font-size:10.5px !important; letter-spacing:.14em !important; text-transform:uppercase !important;
+  color:var(--faint) !important; font-weight:700 !important;
+}
+.appt-sidebar-item{
+  background:transparent !important; border:none !important;
+  border-left:2px solid transparent !important; border-radius:10px !important;
+  transition:background .15s !important;
+}
+.appt-sidebar-item:hover{ background:var(--surface-2) !important; }
+.task-item{ border-bottom-color:var(--line) !important; color:var(--ink) !important; }
+.task-item:hover{ background:var(--surface-2) !important; }
 
 /* ---- CHROME ---- */
-.hdr{
-  background:linear-gradient(180deg,#20242B 0%,#1A1D23 100%) !important;
-  border-radius:12px; box-shadow:0 6px 18px -10px rgba(22,32,46,.45) !important;
+.hdr{ background:transparent !important; box-shadow:none !important; border-bottom:1px solid var(--line) !important; border-radius:0 !important; }
+.tab-bar{ background:transparent !important; border:none !important; border-bottom:1px solid var(--line) !important; border-radius:0 !important; }
+.tab{ color:var(--muted) !important; }
+.tab.on{ color:var(--ink) !important; border-bottom:2px solid var(--accent-lift, var(--accent)) !important; }
+.pill{ background:var(--surface) !important; border:1px solid var(--line) !important; color:var(--muted) !important; }
+.pill.on{ background:var(--accent) !important; border-color:var(--accent) !important; color:#fff !important; }
+.client-card, .sit-card{
+  background:var(--surface) !important; border:1px solid var(--line) !important;
+  color:var(--ink) !important; box-shadow:none !important;
 }
-.tab-bar{ background:#fff !important; border:1px solid var(--hair) !important; border-radius:10px; }
-.tab{ color:var(--ink-dim) !important; }
-.tab.on{ color:#fff !important; }
-.modal{ box-shadow:0 24px 60px -16px rgba(22,32,46,.35), 0 4px 12px rgba(22,32,46,.10) !important; }
-.modal-overlay{
-  background:rgba(22,32,46,.38) !important;
-  backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
-}
-.modal-title{ letter-spacing:-0.02em; font-weight:650; color:var(--ink) !important; }
-.search, input, select, textarea{ background:#fff !important; border-color:var(--hair) !important; color:var(--ink) !important; }
-.pill{ background:#fff !important; border-color:var(--hair) !important; color:var(--ink-dim) !important; }
-.pill.on{ background:var(--accent) !important; border-color:var(--accent) !important; color:var(--accent-ink) !important; }
+.client-card:hover{ background:var(--surface-2) !important; border-color:var(--line-2) !important; }
+.client-name{ color:var(--ink) !important; } .client-meta{ color:var(--muted) !important; }
+.search{ background:var(--surface) !important; border:1px solid var(--line) !important; color:var(--ink) !important; }
+.search::placeholder{ color:var(--faint) !important; }
+#client-count{ color:var(--muted) !important; }
 
-/* Buttons press. */
-.save-btn, .call-btn, .add-btn{
-  box-shadow:0 1px 2px rgba(22,32,46,.12);
-  transition:transform .08s ease, box-shadow .12s ease, filter .12s ease;
+/* Modals stay LIGHT - see the note at the top of this block. */
+.modal{
+  background:#fff !important; color:#16202E !important; border:none !important;
+  box-shadow:0 30px 70px -18px rgb(var(--c-black) / .7) !important;
 }
-.save-btn:hover, .call-btn:hover, .add-btn:hover{ filter:brightness(1.06); }
-.save-btn:active, .call-btn:active, .add-btn:active{ transform:translateY(1px); box-shadow:none; }
+.modal-overlay{ background:rgb(var(--c-black) / .55) !important; backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); }
+.modal .stat, .modal .stat-row, .modal .stat-row2{
+  background:#fff !important; border-color:#DDE4EC !important;
+}
+.modal .stat-lbl{ color:#93A7BC !important; } .modal .stat-val{ color:#16202E !important; }
+.modal .stat-sub{ color:#5F7A99 !important; }
+.modal input, .modal select, .modal textarea{ background:#fff !important; border-color:#DDE4EC !important; color:#16202E !important; }
 
-.save-btn, .call-btn, .add-btn, .search, input, select, textarea{ border-radius:8px; }
-input:focus, select:focus, textarea:focus{
-  outline:2px solid var(--accent); outline-offset:1px; border-color:transparent !important;
-}
+input:focus, select:focus, textarea:focus{ outline:2px solid var(--accent); outline-offset:1px; border-color:transparent !important; }
 
-/* ---- the trend strip under Dialing activity ---- */
-#trend-strip{
-  background:#fff; border:1px solid var(--hair); border-radius:12px;
-  padding:12px 14px 8px; margin-bottom:10px;
-  box-shadow:0 1px 2px rgba(22,32,46,.05), 0 2px 8px -4px rgba(22,32,46,.08);
+/* one alert red, and it stays legible on this field */
+#pace-banner, .pace-banner{
+  background:rgb(var(--c-red, 229 72 77) / .13) !important;
+  border:1px solid var(--goal-red) !important; color:#f3a3a5 !important;
+  border-radius:9px !important; padding:7px 13px !important; font-size:12.5px !important;
 }
-#trend-strip .t-lbl{
-  font-size:9px; font-weight:700; letter-spacing:.10em;
-  color:var(--ink-faint); text-transform:uppercase; margin-bottom:6px;
-}
+#pace-banner *, .pace-banner *{ color:#f3a3a5 !important; }
 
-@media (prefers-reduced-motion: reduce){
-  .stat, .client-card, .save-btn, .call-btn, .add-btn{ transition:none !important; }
-  .stat:hover, .client-card:hover{ transform:none !important; }
+@media(max-width:1280px){ .stat-row.hero-row{ grid-template-columns:repeat(2,1fr) !important; } }
+@media(max-width:800px){
+  .page-outer{ padding-top:12px !important; }
+  .stat-row, .stat-row2{ grid-template-columns:repeat(auto-fill,minmax(140px,1fr)) !important; }
+  .stat-row.hero-row{ grid-template-columns:repeat(2,1fr) !important; gap:12px !important; }
 }
+@media (prefers-reduced-motion: reduce){ .stat, .stat.hero, .client-card{ transition:none !important; transform:none !important; } }
 </style>
 </head>
 <body>
@@ -664,9 +729,14 @@ input:focus, select:focus, textarea:focus{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h217</span>
-        <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
-        <button class="gear-btn" id="undo-btn" onclick="undoLastAction()" style="display:none;" title="Undo the last action">&#8634;</button>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h219</span>
+        <!-- h218: the gear and undo are one pair - both "act on the app" rather
+             than "move through time" - so they sit together with a gap before
+             the period arrows instead of drifting apart across the row. -->
+        <span style="display:inline-flex;gap:4px;align-items:center;margin-right:10px;">
+          <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
+          <button class="gear-btn" id="undo-btn" onclick="undoLastAction()" style="display:none;" title="Undo the last action">&#8634;</button>
+        </span>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
         <div class="period-label" id="period-label">This week</div>
         <button class="arrow-btn" onclick="shiftPeriod(1)">&#8594;</button>
@@ -699,8 +769,11 @@ input:focus, select:focus, textarea:focus{
 
   <div id="tab-score">
     <div id="alerts-section" style="margin-bottom:4px;"></div>
-    <div class="section-lbl">Dialing activity</div>
-    <div class="stat-row">
+    <!-- h219: THE FOUR THAT MATTER, in their own row above everything else.
+         All four are activity-calendar or production headline numbers and they
+         are what the day is judged on - so they get the size, and the other
+         twenty recede into the hairline grids below. -->
+    <div class="stat-row hero-row">
       <div class="stat stat-navy hero">
         <div class="stat-lbl lbl-white">Dials</div>
         <div class="stat-val val-white" id="s-dials">0</div>
@@ -716,6 +789,22 @@ input:focus, select:focus, textarea:focus{
         <div class="stat-btns">
         </div>
       </div>
+      <div class="stat stat-teal hero">
+        <div class="stat-lbl lbl-white">Sales</div>
+        <div class="stat-val val-white" id="p-sales" style="cursor:pointer;" onclick="drillDown('sales')">0</div>
+        <div class="stat-sub sub-white" id="p-sales-sub">- close rate</div>
+      </div>
+      <div class="stat stat-teal hero">
+        <div class="stat-lbl lbl-white">Submitted APV</div>
+        <div class="stat-val val-white" id="p-apv" style="font-size:20px;">$0</div>
+        <div class="stat-sub sub-white" id="p-apv-goalsub"></div>
+      </div>
+    </div>
+
+    <div class="section-lbl">Dialing activity</div>
+    <div class="stat-row">
+      
+      
       <div class="stat stat-red">
         <div class="stat-lbl lbl-red">Not interested</div>
         <div class="stat-val val-red" id="s-dead">0</div>
@@ -761,7 +850,7 @@ input:focus, select:focus, textarea:focus{
          going. Hand-rolled SVG so there is no library to load and nothing to
          break offline. Hidden on Day view - one bar is not a trend. -->
     <div id="trend-strip" style="display:none;">
-      <div class="t-lbl" id="trend-lbl">Dials</div>
+      <div class="t-lbl" id="trend-lbl" onclick="cycleTrendMetric()" style="cursor:pointer;" title="Tap to change what this shows">Dials</div>
       <div id="trend-svg"></div>
     </div>
 
@@ -795,11 +884,7 @@ input:focus, select:focus, textarea:focus{
       </div>
     </div>
     <div class="stat-row" style="grid-template-columns:repeat(4,minmax(0,1fr));">
-      <div class="stat stat-teal hero">
-        <div class="stat-lbl lbl-white">Sales</div>
-        <div class="stat-val val-white" id="p-sales" style="cursor:pointer;" onclick="drillDown('sales')">0</div>
-        <div class="stat-sub sub-white" id="p-sales-sub">- close rate</div>
-      </div>
+      
       <div class="stat stat-red">
         <div class="stat-lbl lbl-red">No Sales</div>
         <div class="stat-val val-red" id="p-nosales" style="cursor:pointer;" onclick="drillDown('nosales')">0</div>
@@ -859,11 +944,7 @@ input:focus, select:focus, textarea:focus{
     </div>
     <!-- APV summary row - compact -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
-      <div class="stat stat-teal hero">
-        <div class="stat-lbl lbl-white">Submitted APV</div>
-        <div class="stat-val val-white" id="p-apv" style="font-size:20px;">$0</div>
-        <div class="stat-sub sub-white" id="p-apv-goalsub"></div>
-      </div>
+      
       <div class="stat stat-navy-lt">
         <div class="stat-lbl lbl-navy">APV / Sale</div>
         <div class="stat-val val-navy" id="p-apv-hh" style="font-size:20px;">$0</div>
@@ -14630,6 +14711,37 @@ function applyNeutralPalette(){
 // A small column chart of dials across the period. Deliberately plain: no axes,
 // no legend, no library - the shape is the point, and the numbers are already on
 // the tiles above it.
+// h218: the chart showed dials because dials were easiest to compute, not because
+// dials are what you want to see. Four things worth watching over a period, and
+// she picks - the choice is remembered, and it is one tap on the label.
+const TREND_METRICS = {
+  dials:  { label: 'Dials',          get: (a, b) => sumStat('dials', a, b) },
+  appts:  { label: 'Appointments',   get: (a, b) => sumStat('appts', a, b) },
+  sales:  { label: 'Sales',          get: (a, b) => (clients||[]).reduce((n, c) =>
+             n + (c.cases||[]).reduce((m, cs) => m + (cs.touchpoints||[]).filter(tp => {
+               if (!tp || tp.outcome !== 'sale') return false;
+               const d = new Date(tp.datetime); return d >= a && d <= b;
+             }).length, 0), 0) },
+  apv:    { label: 'Submitted APV',  money: true, get: (a, b) => (clients||[]).reduce((n, c) =>
+             n + (c.cases||[]).reduce((m, cs) => m + (cs.touchpoints||[]).reduce((k, tp) => {
+               if (!tp || tp.outcome !== 'sale') return k;
+               const d = new Date(tp.datetime);
+               if (!(d >= a && d <= b)) return k;
+               return k + (tp.apps||[]).reduce((x, ap) => x + (Number(ap.premium) || 0), 0);
+             }, 0), 0), 0) },
+};
+function trendMetric() {
+  const k = (getAgentSettings() || {}).trendMetric;
+  return TREND_METRICS[k] ? k : 'dials';
+}
+async function cycleTrendMetric() {
+  const keys = Object.keys(TREND_METRICS);
+  const next = keys[(keys.indexOf(trendMetric()) + 1) % keys.length];
+  const s2 = getAgentSettings(); s2.trendMetric = next;
+  await saveAgentSettings(s2);
+  renderTrendStrip();
+}
+
 function renderTrendStrip() {
   const wrap = document.getElementById('trend-strip');
   const host = document.getElementById('trend-svg');
@@ -14644,7 +14756,7 @@ function renderTrendStrip() {
   const step = span > 62 ? 7 : 1;                                 // weeks for a quarter or a year
   for (let t = start.getTime(); t <= end.getTime(); t += step * oneDay) {
     const a = new Date(t), b = new Date(Math.min(end.getTime(), t + step * oneDay - 1));
-    buckets.push({ a, b, v: sumStat('dials', a, b) });
+    buckets.push({ a, b, v: TREND_METRICS[trendMetric()].get(a, b) });
   }
   if (!buckets.length) { wrap.style.display = 'none'; return; }
   const max = Math.max(1, ...buckets.map(x => x.v));
@@ -14662,7 +14774,8 @@ function renderTrendStrip() {
       'opacity="' + (x.v ? 0.85 : 0.10) + '"><title>' + t + ': ' + x.v + ' dials</title></rect>';
   }).join('');
 
-  lbl.textContent = 'Dials \u00b7 ' + total.toLocaleString() + ' this ' + (view === 'week' ? 'week' : view);
+  lbl.textContent = TREND_METRICS[trendMetric()].label + ' \u00b7 ' + total.toLocaleString() +
+    ' this ' + (view === 'week' ? 'week' : view);
   host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" ' +
     'style="width:100%;height:38px;display:block;overflow:visible;">' + bars + '</svg>' +
     '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--ink-faint);margin-top:4px;">' +
