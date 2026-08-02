@@ -2581,6 +2581,44 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
   #boot-quote, #boot-attr{ animation:none; }
   #boot-curtain.boot-out{ transition:none; }
 }
+
+/* h277: the last production row is Submitted APV, APV / Sale, Appt time - the two
+   money numbers at one and a half widths, the time tile at one. A four-column
+   grid cannot express 1.5, so the grid counts in EIGHTHS: an ordinary tile takes
+   two, a money tile three, and 3 + 3 + 2 fills the row exactly. Four ordinary
+   tiles still make a row of eight. */
+.stat-row:not(.hero-row), .stat-row2,
+#mp-panel .stat-row, #ret-panel .stat-row, #mp-panel .stat-row2, #ret-panel .stat-row2{
+  grid-template-columns:repeat(12, minmax(0,1fr)) !important;
+}
+.stat-row:not(.hero-row) > .stat, .stat-row2 > .stat{ grid-column:span 2 !important; }
+.stat-row:not(.hero-row) > .stat.span-2, .stat-row2 > .stat.span-2{ grid-column:span 3 !important; }
+
+@media(max-width:1400px){
+  .stat-row:not(.hero-row), .stat-row2,
+  #mp-panel .stat-row, #ret-panel .stat-row{ grid-template-columns:repeat(10, minmax(0,1fr)) !important; }
+  .stat-row:not(.hero-row) > .stat, .stat-row2 > .stat{ grid-column:span 2 !important; }
+  .stat-row:not(.hero-row) > .stat.span-2{ grid-column:span 3 !important; }
+}
+@media(max-width:1280px){
+  /* preferred view: four across, and the last row reads 1.5 / 1.5 / 1 */
+  .stat-row:not(.hero-row), .stat-row2,
+  #mp-panel .stat-row, #ret-panel .stat-row{ grid-template-columns:repeat(8, minmax(0,1fr)) !important; }
+  .stat-row:not(.hero-row) > .stat, .stat-row2 > .stat{ grid-column:span 2 !important; }
+  .stat-row:not(.hero-row) > .stat.span-2{ grid-column:span 3 !important; }
+}
+@media(max-width:900px){
+  .stat-row:not(.hero-row), .stat-row2,
+  #mp-panel .stat-row, #ret-panel .stat-row{ grid-template-columns:repeat(6, minmax(0,1fr)) !important; }
+  .stat-row:not(.hero-row) > .stat, .stat-row2 > .stat{ grid-column:span 2 !important; }
+  .stat-row:not(.hero-row) > .stat.span-2{ grid-column:span 3 !important; }
+}
+@media(max-width:640px){
+  .stat-row:not(.hero-row), .stat-row2,
+  #mp-panel .stat-row, #ret-panel .stat-row{ grid-template-columns:repeat(2, minmax(0,1fr)) !important; }
+  .stat-row:not(.hero-row) > .stat, .stat-row2 > .stat,
+  .stat-row:not(.hero-row) > .stat.span-2{ grid-column:span 1 !important; }
+}
 </style>
 </head>
 <body>
@@ -2607,7 +2645,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h276</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h277</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -4175,7 +4213,8 @@ const SECTION_ORDER = {
   'production':       ['p-first','p-showed','p-noshow','p-upcoming',
                        'p-sales','p-nosales','p-closed','p-needsoutcome',
                        'p-tai','p-ppu','p-dropped','p-resets',
-                       'p-resetask','p-refask','p-recask','p-stp','s-time-appt'],
+                       'p-resetask','p-refask','p-recask','p-stp',
+                       'p-apv','p-apv-hh','s-time-appt'],
   'roi':              ['lp-apv','lp-comm','lp-profit','lp-spend','lp-roi'],
 };
 
@@ -4363,9 +4402,19 @@ function reflowBoard() {
                  (document.getElementById('p-first') || {}).closest &&
                  document.getElementById('p-first').closest('.stat-row');
     if (!grid) return;
+    // h277: these used to be appended, which put them AFTER the ordering pass had
+    // already placed Appt time - so the last row read Appt time, Submitted APV,
+    // APV / Sale. They go in front of the time tile, which closes the row.
     t1.classList.add('span-2'); t2.classList.add('span-2');
-    grid.appendChild(t1);
-    grid.appendChild(t2);
+    const timeTile = (document.getElementById('s-time-appt') || {}).closest
+      ? document.getElementById('s-time-appt').closest('.stat') : null;
+    if (timeTile && timeTile.parentNode === grid) {
+      grid.insertBefore(t1, timeTile);
+      grid.insertBefore(t2, timeTile);
+    } else {
+      grid.appendChild(t1);
+      grid.appendChild(t2);
+    }
     document.querySelectorAll('.money-row').forEach(r => { if (!r.children.length) r.remove(); });
   })();
 
