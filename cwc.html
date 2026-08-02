@@ -1793,6 +1793,14 @@ html,body{ overflow-x:hidden !important; }
 .hdr-left{ padding:2px 0 !important; }
 .hdr{ padding:22px 0 4px !important; }
 #alerts-section{ margin:14px 0 18px !important; }
+
+/* h247: a hairline across the full width above the status line. It closes the
+   header band and ties the two columns to it, so the page reads as one object
+   rather than a name floating over two unrelated stacks. */
+#alerts-section{
+  border-top:1px solid rgb(255 255 255 / .10) !important;
+  padding-top:16px !important; margin:16px 0 18px !important;
+}
 </style>
 </head>
 <body>
@@ -1811,7 +1819,7 @@ html,body{ overflow-x:hidden !important; }
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h246</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h247</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
