@@ -1343,6 +1343,23 @@ html,body{ overflow-x:hidden !important; }
 #pace-line{ margin:12px 0 16px !important; }
 .page-layout{ padding-top:0 !important; }
 .page-outer{ padding-top:0 !important; }
+
+/* ============================================================================
+   h233 - PREFERRED VIEW IS 1280px
+   That is the width where the hero row steps from four across to 2x2, and it is
+   now the reference the board is designed at. At preferred view every other grid
+   is FOUR across, so the hero's two-by-two and the tiles beneath it share a
+   rhythm instead of one being six-wide while the other is two.
+   ========================================================================== */
+@media(max-width:1280px){
+  .stat-row:not(.hero-row):not(.money-row), .stat-row2,
+  #mp-panel .stat-row, #ret-panel .stat-row,
+  #mp-panel .stat-row2, #ret-panel .stat-row2{
+    grid-template-columns:repeat(4, minmax(0,1fr)) !important;
+  }
+  .stat-row.hero-row{ grid-template-columns:repeat(2, minmax(0,1fr)) !important; }
+  .stat-row.money-row{ grid-template-columns:repeat(2, minmax(0,1fr)) !important; }
+}
 </style>
 </head>
 <body>
@@ -1361,7 +1378,7 @@ html,body{ overflow-x:hidden !important; }
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h232</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h233</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
