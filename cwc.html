@@ -1498,6 +1498,18 @@ html,body{ overflow-x:hidden !important; }
 .tab-bar, .hdr-right .nav-row:last-child{ padding:4px !important; }
 .tab.on::after{ left:16px !important; right:16px !important; bottom:-10px !important; }
 .period-label{ font-size:12.5px !important; min-width:72px !important; }
+
+/* h237: the status line. Act-now on the left in the red glow, the waiting queue
+   in amber beside it, and the next thing on the clock pushed hard right next to
+   the gear - because that one is about WHEN, not about what to do now. */
+.pace-warm{ color:#E0A44A !important; font-weight:600 !important; }
+.pace-next{ margin-left:auto !important; color:var(--muted) !important; white-space:nowrap; }
+#pace-line .pace-banner{
+  display:flex !important; align-items:center !important; gap:14px !important;
+  flex:1 1 auto !important; width:100% !important;
+}
+#pace-line .pace-banner > *{ flex:0 0 auto !important; }
+#pace-line{ margin:10px 0 12px !important; }
 </style>
 </head>
 <body>
@@ -1516,7 +1528,7 @@ html,body{ overflow-x:hidden !important; }
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h236</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h237</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -6808,16 +6820,30 @@ function renderAlerts() {
     // h228: the glow belongs on the thing that needs doing, not on the overdue
     // count beside it. Wrapped so the CSS can light this one span and leave the
     // rest of the line plain white.
+    // h237: the line reads left to right as ACT NOW, then the shape of what is
+    // waiting, then - pushed to the far right - the next thing on the clock.
+    // The overdue count is gone: it duplicated what "behind pace" already says.
     if (behindNow > 0) parts.push('<span class="pace-hot">Behind pace \u2014 call ' + behindNow + ' now</span>');
-    else if (dueNow > 0) parts.push(dueNow + ' lead' + (dueNow>1?'s':'') + ' due now');
-    if (overdue > 0) parts.push('<span onclick="event.stopPropagation();setFilterAlert(\'overdue\')" style="text-decoration:underline;cursor:pointer;">' + overdue + ' overdue</span>');
-    if (earliestUpcomingLabel && dueNow === 0 && behindNow === 0) parts.push('next at ' + earliestUpcomingLabel);
-    parts.push(apptPart + apptFire);
+    else if (dueNow > 0) parts.push('<span class="pace-hot">' + dueNow + ' lead' + (dueNow>1?'s':'') + ' due now</span>');
+
+    // the breakdown of who is waiting, in amber - a warning, not an alarm
+    let ps = null;
+    try { ps = paceStats(); } catch (e) {}
+    if (ps) {
+      const bits = [];
+      if (ps.now > 0)     bits.push(ps.now + ' call now');
+      if (ps.warm > 0)    bits.push(ps.warm + ' warm');
+      if (ps.cooling > 0) bits.push(ps.cooling + ' cooling');
+      if (bits.length) parts.push('<span class="pace-warm">' + bits.join(' &middot; ') + '</span>');
+    }
+
+    // and the next thing on the schedule, hard right, beside the gear
+    parts.push('<span class="pace-next">' + apptPart + apptFire + '</span>');
     // h228: the inline light-mode fill is gone. The line is plain white text on
     // the board; only the "behind pace" span carries a colour, and it carries it
     // from the stylesheet where the glow lives.
-    const alert = overdue > 0 || behindNow > 0;
-    html = '<div class="pace-banner' + (alert ? ' pace-alert' : '') + '" onclick="setFilterAlert(\'active\')">' + parts.join(' &middot; ') + '</div>';
+    const alert = behindNow > 0 || dueNow > 0;
+    html = '<div class="pace-banner' + (alert ? ' pace-alert' : '') + '" onclick="setFilterAlert(\'active\')">' + parts.join('') + '</div>';
   }
 
   el.innerHTML = html;
