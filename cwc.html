@@ -27,17 +27,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .right-sidebar-col{display:block!important;}
 }
 .right-sidebar-col{display:none;}
-.hdr{background:#1D3557;border-radius:12px;padding:14px 16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
-.hdr-title{font-size:16px;font-weight:500;color:#fff;}
-.hdr-sub{font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;}
 .nav-row{display:flex;align-items:center;gap:4px;}
 .pill{font-size:10px;padding:4px 9px;border-radius:20px;border:1px solid rgba(255,255,255,0.3);background:transparent;color:rgba(255,255,255,0.7);cursor:pointer;font-weight:500;}
 .pill.on{background:var(--accent);border-color:var(--accent);color:#fff;}
 .arrow-btn{background:rgba(255,255,255,0.15);border:none;border-radius:6px;color:#fff;font-size:14px;padding:3px 7px;cursor:pointer;}
-.period-label{font-size:10px;color:rgba(255,255,255,0.8);text-align:center;min-width:80px;}
-.tab-bar{display:flex;border-bottom:1px solid #e2eaf2;margin-bottom:12px;background:#fff;border-radius:10px 10px 0 0;padding:0 4px;}
-.tab{flex:1;padding:10px 2px;font-size:11px;font-weight:500;border:none;background:transparent;color:#5f7a99;cursor:pointer;border-bottom:2px solid transparent;}
-.tab.on{color:#1D3557;border-bottom-color:var(--accent);}
 .tap-btn{border:none;border-radius:20px;padding:3px 8px;font-size:11px;font-weight:500;cursor:pointer;}
 .tap-navy{background:rgba(255,255,255,0.2);color:#fff;} .tap-teal{background:rgba(255,255,255,0.2);color:#fff;}
 .tap-lt-navy{background:#1D3557;color:#fff;} .tap-lt-teal{background:var(--accent);color:#fff;}
@@ -173,10 +166,6 @@ html,body{overflow-x:hidden;}                   /* no sideways scrollbar, ever *
 }
 /* ---- APP-WIDE (h134): light cards on a dark field ---- */
 body{background:var(--dk-bg) !important;color:#C3CDDA !important;}
-.hdr{background:#232830 !important;}
-.tab-bar{background:var(--dk-card) !important;border-bottom-color:var(--dk-line) !important;}
-.tab{color:var(--dk-dim) !important;}
-.tab.on{color:var(--dk-ink) !important;border-bottom-color:var(--teal) !important;}
 .pill{border-color:rgba(255,255,255,0.22) !important;color:rgba(255,255,255,0.72) !important;}
 .pill.on{background:var(--teal) !important;border-color:var(--teal) !important;color:#fff !important;}
 .appt-banner{background:var(--teal) !important;color:#fff !important;}
@@ -278,18 +267,11 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
    full-width period row that stretches edge to edge. */
 .hdr{display:flex !important;flex-direction:column !important;align-items:stretch !important;
   gap:8px !important;padding:12px 16px !important;}
-.hdr-left{min-width:0;display:flex;align-items:baseline;justify-content:space-between;gap:12px;}
-.hdr-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;}
-.hdr-sub{white-space:nowrap !important;}
-.hdr-right{display:flex;flex-direction:column;align-items:stretch;gap:6px;}
-.hdr-right .nav-row:first-child{display:flex;align-items:center;gap:8px;justify-content:flex-end;}
 /* h145: gear leads on the left, version parks over on the right. The version tag
    is a dev artifact - it moves into Settings once the layout settles. */
 .hdr-right .nav-row:first-child .gear-btn{order:-1;margin-right:auto;}
-.hdr-right .nav-row:first-child .build-tag{order:99;margin-left:8px;}
 /* period pills stretch across the full width */
 .hdr-right .nav-row:last-child{display:flex;gap:6px;width:100%;}
-.hdr-right .nav-row:last-child .pill{flex:1;text-align:center;}
 .build-tag{font-size:8px;color:rgba(255,255,255,0.35);letter-spacing:0.5px;font-family:monospace;}
 .gear-btn{font-size:16px;line-height:1;background:rgba(255,255,255,0.15);border:none;border-radius:8px;
   padding:6px 11px;color:rgba(255,255,255,0.9);cursor:pointer;}
@@ -297,9 +279,6 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
 
 /* TABS: the one you're on is a filled teal pill, not a hairline underline. */
 .tab-bar{gap:4px !important;padding:4px !important;border-bottom:none !important;}
-.tab{border-radius:8px !important;padding:7px 14px !important;border-bottom:none !important;font-weight:600 !important;}
-.tab.on{background:var(--teal) !important;color:#fff !important;border-bottom:none !important;}
-.tab:not(.on):hover{background:rgba(0,0,0,0.05) !important;}
 
 /* BEHIND PACE: an alert should read as one. White on solid red. */
 /* h215: the banner and the behind-goal tile were two different reds, close
@@ -454,9 +433,6 @@ body{
 
 /* ---- CHROME ---- */
 .hdr{ background:transparent !important; box-shadow:none !important; border-bottom:1px solid var(--line) !important; border-radius:0 !important; }
-.tab-bar{ background:transparent !important; border:none !important; border-bottom:1px solid var(--line) !important; border-radius:0 !important; }
-.tab{ color:var(--muted) !important; }
-.tab.on{ color:var(--ink) !important; border-bottom:2px solid var(--accent-lift) !important; }
 .pill{ background:var(--surface) !important; border:1px solid var(--line) !important; color:var(--muted) !important; }
 .pill.on{ background:var(--accent) !important; border-color:var(--accent) !important; color:#fff !important; }
 .client-card, .sit-card{
@@ -500,7 +476,6 @@ input:focus, select:focus, textarea:focus{ outline:2px solid var(--accent); outl
 
 /* The period pills were stretching the full width of a now-much-wider header. */
 .hdr .nav-row{ justify-content:flex-end !important; flex-wrap:wrap !important; }
-.hdr .pill{ flex:0 0 auto !important; padding:6px 14px !important; }
 
 
 /* ============================================================================
@@ -571,18 +546,6 @@ body{
   border-bottom:1px solid var(--line) !important; border-radius:0 !important;
   box-shadow:none !important;
 }
-.hdr-left{ display:flex !important; flex-direction:column !important; gap:2px !important; margin-right:auto !important; min-width:0; }
-.hdr-title{
-  font-size:11px !important; font-weight:600 !important; letter-spacing:.22em !important;
-  text-transform:uppercase !important; color:var(--accent-lift) !important;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-}
-.hdr-left > div:last-child{ display:flex !important; align-items:baseline !important; gap:12px !important; }
-.hdr-sub{ font-size:13px !important; font-weight:500 !important; color:var(--faint) !important; white-space:nowrap !important; }
-.hdr-right{ display:flex !important; align-items:center !important; gap:14px !important; flex-wrap:wrap !important; margin-left:auto !important; }
-.hdr-right .nav-row{ display:flex !important; align-items:center !important; gap:6px !important; margin:0 !important; }
-.hdr-actions{ display:inline-flex !important; gap:4px !important; align-items:center !important; }
-.period-label{ font-size:12.5px !important; font-weight:600 !important; color:var(--muted) !important; white-space:nowrap !important; }
 .gear-btn, .arrow-btn{
   background:var(--surface) !important; border:1px solid var(--line) !important;
   color:var(--muted) !important; border-radius:8px !important; cursor:pointer;
@@ -596,32 +559,12 @@ body{
   background:var(--surface) !important; border:1px solid var(--line) !important;
   border-radius:10px !important; padding:3px !important; gap:0 !important;
 }
-.hdr-right .nav-row:last-child .pill{
-  background:none !important; border:none !important; border-radius:7px !important;
-  padding:6px 13px !important; font-size:12.5px !important; font-weight:600 !important;
-  color:var(--muted) !important; flex:0 0 auto !important; cursor:pointer;
-  transition:color .15s, background .15s;
-}
-.hdr-right .nav-row:last-child .pill:hover{ color:var(--ink) !important; }
-.hdr-right .nav-row:last-child .pill.on{ background:var(--teal) !important; color:#fff !important; }
 
 /* ---- MAIN TABS: underlined, not a filled bar. ---- */
 .tab-bar{
   display:flex !important; gap:22px !important; padding:0 !important; margin:22px 0 0 !important;
   background:transparent !important; border:none !important;
   border-bottom:1px solid var(--line) !important; border-radius:0 !important;
-}
-.tab{
-  background:none !important; border:none !important; flex:0 0 auto !important;
-  padding:7px 2px !important; font-size:13.5px !important; font-weight:600 !important;
-  color:var(--muted) !important; position:relative !important; cursor:pointer;
-  transition:color .15s;
-}
-.tab:hover{ color:var(--ink) !important; }
-.tab.on{ color:var(--ink) !important; }
-.tab.on::after{
-  content:""; position:absolute; left:0; right:0; bottom:-1px; height:2px;
-  background:var(--accent-lift); border-radius:2px;
 }
 
 /* ---- STATUS LINE: one small chip and quiet text. Never a full-width slab. ---- */
@@ -826,17 +769,12 @@ html,body{ overflow-x:hidden !important; }
    one line; the tab row below it answers "what am I looking at". The tasks panel
    drops below that line so the two never compete. ---- */
 .hdr{ padding:0 0 16px !important; gap:18px !important; }
-.hdr-title{
-  font-size:19px !important; font-weight:300 !important; letter-spacing:.02em !important;
-  text-transform:none !important; color:var(--accent-lift) !important;
-}
 /* the WHITE text says WHO you are looking at - you today, a team or a base shop
    once that exists. It is the loudest thing in the header for that reason. */
 .hdr-who{
   font-size:19px !important; font-weight:600 !important; color:#fff !important;
   letter-spacing:-.01em !important; margin-left:10px;
 }
-.hdr-sub{ font-size:12.5px !important; color:var(--faint) !important; }
 .right-sidebar-col{ padding-top:0 !important; }
 
 /* ---- STATUS LINE. Behind pace is the one thing on this board that should
@@ -914,14 +852,6 @@ html,body{ overflow-x:hidden !important; }
   display:flex !important; align-items:center !important;
   gap:20px !important; padding:0 0 14px !important; flex-wrap:nowrap !important;
 }
-.hdr-left{ flex:0 1 auto !important; }
-.hdr-right{
-  display:flex !important; align-items:center !important; gap:10px !important;
-  flex-wrap:nowrap !important; margin-left:auto !important;
-}
-.hdr-right .nav-row{ margin:0 !important; flex:0 0 auto !important; }
-.hdr-right .nav-row:last-child{ margin-left:6px !important; }
-.period-label{ min-width:88px; text-align:center; }
 
 /* ---- TAB ROW then the status line, both full width. ---- */
 .tab-bar{ margin:0 0 0 !important; }
@@ -987,23 +917,12 @@ html,body{ overflow-x:hidden !important; }
   padding:22px 0 0 !important; margin:0 !important; flex-wrap:nowrap !important;
   border:none !important; min-height:0 !important;
 }
-.hdr-left{ flex:0 0 auto !important; gap:1px !important; }
-.hdr-title{ font-size:11px !important; font-weight:600 !important; letter-spacing:.22em !important;
-  text-transform:uppercase !important; }
-.hdr-who{ font-size:21px !important; font-weight:700 !important; margin:0 !important;
-  letter-spacing:-.015em !important; }
-.hdr-left > div:first-child{ display:block !important; }
-.hdr-sub{ font-size:13px !important; margin-top:1px !important; }
-.hdr-right{ gap:8px !important; }
-.hdr-right .nav-row{ gap:4px !important; }
 
 /* the tab row rides in the middle of the header band */
 .tab-bar{
   border:none !important; margin:0 !important; padding:0 !important;
   gap:26px !important; flex:0 0 auto !important; align-self:center !important;
 }
-.tab{ padding:4px 2px !important; }
-.tab.on::after{ bottom:-8px !important; }
 
 /* one rule under the whole band */
 .page-layout{ position:relative; }
@@ -1070,51 +989,12 @@ html,body{ overflow-x:hidden !important; }
   border:none !important; border-bottom:1px solid var(--line) !important;
   min-height:0 !important; background:transparent !important;
 }
-.hdr-left{
-  display:flex !important; flex-direction:column !important; gap:2px !important;
-  margin-right:auto !important; flex:0 0 auto !important;
-}
-.hdr-title{
-  font-size:11px !important; font-weight:600 !important; letter-spacing:.22em !important;
-  text-transform:uppercase !important; color:var(--accent-lift) !important;
-  line-height:1.4 !important; margin:0 !important;
-}
 /* title and date share a baseline, 12px apart */
 .hdr-left > div:nth-child(2){
   display:flex !important; align-items:baseline !important; gap:12px !important;
 }
-.hdr-who{
-  font-size:20px !important; font-weight:700 !important; color:#fff !important;
-  letter-spacing:-.01em !important; margin:0 !important; line-height:1.2 !important;
-}
-.hdr-sub{
-  font-size:13px !important; font-weight:500 !important; color:var(--faint) !important;
-  letter-spacing:0 !important; margin:0 !important;
-}
 /* the WHO and the date sit on one line under the eyebrow */
 .hdr-left{ position:relative; }
-
-.tab-bar{
-  display:flex !important; gap:18px !important; margin:0 !important; padding:0 !important;
-  border:none !important; background:transparent !important; flex:0 0 auto !important;
-  align-self:center !important;
-}
-.tab{
-  padding:7px 4px !important; font-size:13.5px !important; font-weight:600 !important;
-  background:none !important; border:none !important; flex:0 0 auto !important;
-}
-.tab.on::after{ bottom:-21px !important; height:2px !important; }
-
-.hdr-right{
-  display:flex !important; align-items:center !important; gap:10px !important;
-  margin-left:0 !important; flex:0 0 auto !important; flex-wrap:nowrap !important;
-}
-.hdr-right .nav-row{ gap:4px !important; margin:0 !important; }
-.hdr-right .nav-row:last-child{
-  background:var(--surface) !important; border:1px solid var(--line) !important;
-  border-radius:10px !important; padding:3px !important; gap:0 !important;
-}
-.period-label{ min-width:74px; font-size:12.5px !important; }
 
 /* ---- THE STATUS LINE. Only "Behind pace" glows; the rest is plain white. ---- */
 #pace-banner, .pace-banner{
@@ -1174,24 +1054,6 @@ html,body{ overflow-x:hidden !important; }
   display:flex !important; flex-direction:column !important; gap:2px !important;
   margin-right:auto !important; flex:0 1 auto !important; min-width:0 !important;
 }
-.hdr-title{
-  font-size:11px !important; font-weight:600 !important; letter-spacing:.22em !important;
-  text-transform:uppercase !important; color:var(--accent-lift) !important;
-  line-height:1.4 !important; margin:0 !important; white-space:nowrap !important;
-}
-.hdr-name-row{
-  display:flex !important; align-items:baseline !important; gap:12px !important;
-  flex-wrap:nowrap !important;
-}
-.hdr-who{
-  font-size:20px !important; font-weight:700 !important; color:#fff !important;
-  letter-spacing:-.01em !important; line-height:1.2 !important; margin:0 !important;
-  white-space:nowrap !important;
-}
-.hdr-sub{
-  font-size:13px !important; font-weight:500 !important; color:var(--faint) !important;
-  letter-spacing:0 !important; margin:0 !important; white-space:nowrap !important;
-}
 
 /* MIDDLE: the tab row */
 .tab-bar{
@@ -1199,33 +1061,16 @@ html,body{ overflow-x:hidden !important; }
   margin:0 !important; padding:0 !important; border:none !important;
   background:transparent !important; flex:0 0 auto !important; flex-wrap:nowrap !important;
 }
-.tab{
-  padding:7px 4px !important; font-size:13.5px !important; font-weight:600 !important;
-  background:none !important; border:none !important; border-radius:0 !important;
-  flex:0 0 auto !important; white-space:nowrap !important;
-}
-.tab.on{ background:none !important; }
-.tab.on::after{ bottom:-21px !important; }
 
 /* RIGHT: the two control groups sit SIDE BY SIDE, never stacked */
 .hdr-right{
   display:flex !important; align-items:center !important; gap:10px !important;
   flex:0 0 auto !important; flex-wrap:nowrap !important; margin-left:0 !important;
 }
-.hdr-right .nav-row{
-  display:flex !important; align-items:center !important; gap:4px !important;
-  margin:0 !important; flex:0 0 auto !important; flex-wrap:nowrap !important;
-}
-.period-label{
-  font-size:12.5px !important; font-weight:600 !important; color:var(--muted) !important;
-  min-width:78px !important; text-align:center !important; white-space:nowrap !important;
-}
 
 /* below 1100px the tab row steps out of the band rather than squashing it */
 @media(max-width:1100px){
   .hdr{ flex-wrap:wrap !important; }
-  .tab-bar{ order:3; width:100%; margin-top:14px !important; }
-  .tab.on::after{ bottom:-6px !important; }
 }
 
 /* ============================================================================
@@ -1235,8 +1080,6 @@ html,body{ overflow-x:hidden !important; }
    move you around line up with each other.
    ========================================================================== */
 .hdr{ align-items:flex-start !important; padding:26px 0 0 !important; border:none !important; }
-.hdr-left{ padding-top:2px !important; }
-.tab-bar{ align-self:flex-start !important; padding-top:4px !important; }
 
 /* right side becomes a column: filter on top, arrows beneath it */
 .hdr-right{
@@ -1250,7 +1093,6 @@ html,body{ overflow-x:hidden !important; }
 
 /* the rule runs under the whole band, level with the tab underline */
 .hdr::after{ content:none; }
-.tab.on::after{ bottom:-14px !important; }
 #pace-line{
   border-top:1px solid var(--line) !important;
   padding-top:22px !important; margin:14px 0 26px !important;
@@ -1258,8 +1100,222 @@ html,body{ overflow-x:hidden !important; }
 
 @media(max-width:1100px){
   .hdr{ flex-wrap:wrap !important; }
-  .tab-bar{ order:3; width:100%; margin-top:16px !important; padding-top:0 !important; }
-  .hdr-right{ order:2; }
+}
+
+/* ============================================================================
+   h231 - THE HEADER. ONE BLOCK.
+   Eighty-four rules had accumulated across nine attempts, and one of the oldest
+   set flex-direction:column. Every later rule set display:flex without resetting
+   the direction, so the band stacked no matter what else was written. All of
+   them are removed; this is the only place the header is styled.
+   One line, left to right:
+       name and date | page tabs | period arrows and the day-to-year selector
+   ========================================================================== */
+.hdr{
+  display:flex; flex-direction:row; align-items:center;
+  flex-wrap:nowrap; gap:28px;
+  width:100%; margin:0; padding:24px 0 18px;
+  background:transparent; border:none; border-bottom:1px solid var(--line);
+  border-radius:0; box-shadow:none; min-height:0;
+}
+
+/* LEFT: eyebrow above, then name and date on one baseline */
+.hdr-left{
+  display:flex; flex-direction:column; align-items:flex-start; gap:2px;
+  flex:0 1 auto; min-width:0; margin:0 auto 0 0;
+}
+.hdr-title{
+  font-size:11px; font-weight:600; letter-spacing:.22em; text-transform:uppercase;
+  color:var(--accent-lift); line-height:1.4; margin:0; white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis; max-width:100%;
+}
+.hdr-name-row{ display:flex; flex-direction:row; align-items:baseline; gap:12px; flex-wrap:nowrap; }
+.hdr-who{
+  font-size:20px; font-weight:700; color:#fff; letter-spacing:-.01em;
+  line-height:1.2; margin:0; white-space:nowrap;
+}
+.hdr-sub{
+  font-size:13px; font-weight:500; color:var(--faint);
+  letter-spacing:0; margin:0; white-space:nowrap;
+}
+
+/* MIDDLE: the page tabs */
+.tab-bar{
+  display:flex; flex-direction:row; align-items:center; gap:20px;
+  flex:0 0 auto; flex-wrap:nowrap;
+  margin:0; padding:0; background:transparent; border:none; border-radius:0;
+}
+.tab{
+  display:inline-block; flex:0 0 auto; white-space:nowrap; cursor:pointer;
+  margin:0; padding:6px 2px; border:none; border-radius:0; background:none;
+  font-size:13.5px; font-weight:600; color:var(--muted); position:relative;
+  transition:color .15s;
+}
+.tab:hover{ color:var(--ink); }
+.tab.on{ color:var(--ink); background:none; }
+.tab.on::after{
+  content:""; position:absolute; left:0; right:0; bottom:-19px; height:2px;
+  background:var(--accent-lift); border-radius:2px;
+}
+
+/* RIGHT: arrows, then the selector - all on the same line */
+.hdr-right{
+  display:flex; flex-direction:row; align-items:center; gap:10px;
+  flex:0 0 auto; flex-wrap:nowrap; margin:0;
+}
+.hdr-right .nav-row{
+  display:flex; flex-direction:row; align-items:center; gap:4px;
+  flex:0 0 auto; flex-wrap:nowrap; margin:0; padding:0;
+  background:transparent; border:none;
+}
+.hdr-right .nav-row:last-child{
+  background:var(--surface); border:1px solid var(--line);
+  border-radius:10px; padding:3px; gap:0; margin-left:4px;
+}
+.hdr-right .nav-row:last-child .pill{
+  flex:0 0 auto; margin:0; padding:6px 13px; border:none; border-radius:7px;
+  background:none; color:var(--muted); font-size:12.5px; font-weight:600;
+  cursor:pointer; white-space:nowrap; transition:color .15s, background .15s;
+}
+.hdr-right .nav-row:last-child .pill:hover{ color:var(--ink); }
+.hdr-right .nav-row:last-child .pill.on{ background:var(--teal); color:#fff; }
+.period-label{
+  font-size:12.5px; font-weight:600; color:var(--muted);
+  min-width:78px; text-align:center; white-space:nowrap;
+}
+.hdr-actions{ display:inline-flex; flex-direction:row; align-items:center; gap:4px; }
+.gear-btn, .arrow-btn{
+  background:var(--surface); border:1px solid var(--line); color:var(--muted);
+  border-radius:8px; cursor:pointer; transition:color .15s, border-color .15s;
+}
+.gear-btn:hover, .arrow-btn:hover{ color:var(--ink); border-color:var(--line-2); }
+
+/* the tabs step out of the band only when there is genuinely no room */
+@media(max-width:1150px){
+  .hdr{ flex-wrap:wrap; }
+  .tab-bar{ order:3; width:100%; margin-top:14px; }
+  .tab.on::after{ bottom:-6px; }
+}
+
+/* ============================================================================
+   h231 - THE HEADER. ONE BLOCK, NOTHING ELSE STYLES IT.
+   Eighty-four accumulated .hdr rules were removed to write this. One of them set
+   flex-direction:column, and because every later attempt set display:flex without
+   resetting direction, the band stacked no matter what else was written. That is
+   why nine passes at this failed.
+   The band, left to right: brand | page tabs | time filter, with the period
+   arrows tucked directly under the filter so they land on the same baseline as
+   the tab underline beside them.
+   ========================================================================== */
+.hdr{
+  display:flex !important;
+  flex-direction:row !important;          /* the line that was missing */
+  align-items:flex-start !important;
+  justify-content:space-between !important;
+  flex-wrap:nowrap !important;
+  gap:32px !important;
+  width:100% !important; margin:0 !important;
+  padding:22px 0 0 !important;
+  background:transparent !important; border:none !important;
+  border-radius:0 !important; box-shadow:none !important; min-height:0 !important;
+}
+
+/* LEFT: eyebrow, then name and date on one baseline */
+.hdr-left{
+  display:flex !important; flex-direction:column !important;
+  align-items:flex-start !important; gap:2px !important;
+  flex:0 1 auto !important; min-width:0 !important; margin:0 !important;
+}
+.hdr-title{
+  font-size:11px !important; font-weight:600 !important; letter-spacing:.22em !important;
+  text-transform:uppercase !important; color:var(--accent-lift) !important;
+  line-height:1.3 !important; margin:0 !important; white-space:nowrap !important;
+  overflow:visible !important; text-overflow:clip !important; flex:none !important;
+}
+.hdr-name-row{
+  display:flex !important; flex-direction:row !important;
+  align-items:baseline !important; gap:12px !important; flex-wrap:nowrap !important;
+}
+.hdr-who{
+  font-size:20px !important; font-weight:700 !important; color:#fff !important;
+  letter-spacing:-.01em !important; line-height:1.25 !important;
+  margin:0 !important; white-space:nowrap !important;
+}
+.hdr-sub{
+  font-size:13px !important; font-weight:500 !important; color:var(--faint) !important;
+  letter-spacing:0 !important; margin:0 !important; white-space:nowrap !important;
+}
+
+/* MIDDLE: the page tabs */
+.tab-bar{
+  display:flex !important; flex-direction:row !important; align-items:flex-start !important;
+  gap:20px !important; flex:0 0 auto !important; flex-wrap:nowrap !important;
+  margin:0 !important; padding:2px 0 0 !important;
+  background:transparent !important; border:none !important; border-radius:0 !important;
+}
+.tab{
+  position:relative !important; flex:0 0 auto !important;
+  background:none !important; border:none !important; border-radius:0 !important;
+  padding:6px 2px !important; margin:0 !important;
+  font-size:13.5px !important; font-weight:600 !important;
+  color:var(--muted) !important; white-space:nowrap !important; cursor:pointer;
+}
+.tab:hover{ color:var(--ink) !important; }
+.tab.on{ color:var(--ink) !important; background:none !important; }
+.tab.on::after{
+  content:""; position:absolute; left:0; right:0; bottom:-8px; height:2px;
+  background:var(--accent-lift); border-radius:2px;
+}
+
+/* RIGHT: filter on top, arrows tucked underneath it */
+.hdr-right{
+  display:flex !important; flex-direction:column !important;
+  align-items:flex-end !important; gap:8px !important;
+  flex:0 0 auto !important; margin:0 !important;
+}
+.hdr-right .nav-row{
+  display:flex !important; flex-direction:row !important; align-items:center !important;
+  flex-wrap:nowrap !important; margin:0 !important; flex:0 0 auto !important;
+}
+/* the time filter is one segmented control and comes first */
+.hdr-right .nav-row:last-child{
+  order:1 !important; gap:0 !important; padding:3px !important;
+  background:var(--surface) !important; border:1px solid var(--line) !important;
+  border-radius:10px !important;
+}
+.hdr-right .nav-row:last-child .pill{
+  flex:0 0 auto !important; background:none !important; border:none !important;
+  border-radius:7px !important; padding:5px 13px !important; margin:0 !important;
+  font-size:12.5px !important; font-weight:600 !important; color:var(--muted) !important;
+  white-space:nowrap !important; cursor:pointer;
+}
+.hdr-right .nav-row:last-child .pill:hover{ color:var(--ink) !important; }
+.hdr-right .nav-row:last-child .pill.on{ background:var(--teal) !important; color:#fff !important; }
+/* then the arrows, sitting on the tab underline's baseline */
+.hdr-right .nav-row:first-child{ order:2 !important; gap:8px !important; }
+.period-label{
+  font-size:12.5px !important; font-weight:600 !important; color:var(--muted) !important;
+  min-width:72px !important; text-align:center !important; white-space:nowrap !important;
+}
+.gear-btn, .arrow-btn{
+  background:var(--surface) !important; border:1px solid var(--line) !important;
+  color:var(--muted) !important; border-radius:8px !important;
+  padding:3px 9px !important; font-size:12px !important; cursor:pointer;
+}
+.gear-btn:hover, .arrow-btn:hover{ color:var(--ink) !important; border-color:var(--line-2) !important; }
+.hdr-actions{ display:inline-flex !important; gap:4px !important; align-items:center !important; }
+
+/* the status line follows straight on, no rule across the page */
+#pace-line{
+  display:flex !important; align-items:center !important; gap:16px !important;
+  width:100% !important; margin:16px 0 22px !important; padding:0 !important;
+  border:none !important;
+}
+
+@media(max-width:1180px){
+  .hdr{ flex-wrap:wrap !important; gap:16px !important; }
+  .tab-bar{ order:3 !important; width:100% !important; padding-top:0 !important; }
+  .hdr-right{ order:2 !important; }
   .tab.on::after{ bottom:-6px !important; }
 }
 </style>
@@ -1280,7 +1336,7 @@ html,body{ overflow-x:hidden !important; }
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h230</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h231</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
