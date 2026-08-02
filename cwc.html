@@ -1701,6 +1701,23 @@ html,body{ overflow-x:hidden !important; }
   font-size:13px !important; color:#a8b3b1 !important; font-weight:500 !important;
 }
 .stat.hero #s-resolved-fresh:empty{ display:none !important; }
+
+/* ============================================================================
+   h243 - SHORTER HERO CARDS
+   About a third of the height came out without losing any of the hierarchy: the
+   number is still four times the label, the foot still has air. More of the board
+   fits on screen, which is the point.
+   ========================================================================== */
+.stat.hero{ padding:16px 18px 17px !important; }
+.stat.hero .stat-val{
+  font-size:clamp(2rem,3vw,2.5rem) !important;
+  margin:9px 0 0 !important;
+}
+.stat.hero .stat-sub, .stat.hero .goal-slot{ margin:12px 0 0 !important; font-size:12.5px !important; }
+.hero-goal{ margin-top:8px; font-size:12.5px; }
+.stat-row.hero-row{ gap:14px !important; margin-bottom:20px !important; }
+/* the tiles below sit tight under them */
+.stat-row:not(.hero-row){ margin-top:0 !important; }
 </style>
 </head>
 <body>
@@ -1719,7 +1736,7 @@ html,body{ overflow-x:hidden !important; }
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h242</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h243</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -1809,11 +1826,11 @@ html,body{ overflow-x:hidden !important; }
         <div class="stat-sub" id="s-messages-sub" style="">-</div>
       </div>
       <div class="stat stat-amber">
+        <!-- h243: the hint used to sit BETWEEN the label and the number, which
+             pushed this tile's figure below every other number in the row. -->
         <div class="stat-lbl lbl-amber">Callbacks</div>
-        <div class="hint-lt">Tap to work</div>
         <div class="stat-val val-amber" id="s-callbacks" style="cursor:pointer" onclick="openCallbackWorklist()">0</div>
-        <div class="stat-btns">
-        </div>
+        <div class="stat-sub">Tap to work</div>
       </div>
     </div>
     <div class="stat-row">
@@ -3342,6 +3359,18 @@ function reflowBoard() {
     const rest = [...row.children].filter(t => !listed.includes(t));
     listed.concat(rest).forEach(t => row.appendChild(t));
   });
+
+  // ---- 3b. h243: the "Dialing activity" label is removed. It sat below the hero
+  //          cards, so it looked like it introduced only the four small tiles when
+  //          it covered all eight - and moving it above them would break the top
+  //          line the hero cards share with the tasks panel. Production and ROI
+  //          keep their labels because they are transitions into something else.
+  //          Nothing needs to announce the first thing on the page. ----
+  (function(){
+    const lbl = [...main.querySelectorAll('.section-lbl')]
+      .find(el => /dialing activity/i.test(el.textContent || ''));
+    if (lbl) lbl.remove();
+  })();
 
   // ---- 4. The two money numbers get a wide row of their own at the foot of
   //         Production. Squeezed into a six-across grid a dollar figure wraps
