@@ -2537,6 +2537,16 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
 .stat.span-2{ grid-column:span 3 !important; }
 @media(max-width:1280px){ .stat.span-2{ grid-column:span 2 !important; } }
 @media(max-width:640px){  .stat.span-2{ grid-column:span 1 !important; } }
+
+/* h275: the QUALIFIED chip was pale green on pale green, left over from the light
+   build - unreadable on the dark panel. Accent fill, dark text. */
+.bonus-qualified{
+  display:inline-block;
+  background:var(--accent-lift) !important;
+  color:#0d1112 !important;
+  font-size:11.5px !important; font-weight:800 !important;
+  letter-spacing:.04em; border-radius:999px !important; padding:3px 12px !important;
+}
 </style>
 </head>
 <body>
@@ -2555,7 +2565,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h274</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h275</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -3784,12 +3794,12 @@ function renderSlingshot() {
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
         '<div style="font-size:11px;font-weight:700;color:#1D3557;text-transform:uppercase;letter-spacing:0.5px;">Producer Bonus \u00B7 Level ' + level + '</div>' +
         (qualified
-          ? '<div style="font-size:11px;font-weight:700;color:#3B6D11;background:#EDF7E6;border-radius:12px;padding:2px 10px;">QUALIFIED \u2713</div>'
+          ? '<div class="bonus-qualified">QUALIFIED \u2713</div>'
           : '<div style="font-size:10px;color:#8fa8c0;">' + viewed.toLocaleDateString('en-US',{month:'long'}) + '</div>') +
       '</div>' +
       '<div style="font-size:12px;color:#1D3557;">Net placed: <strong>' + fmt(thisNet) + '</strong> of ' + fmt(req) + (netOk ? ' \u2713' : ' (' + fmt(req - thisNet) + ' to go)') + '</div>' +
-      pctBar(thisNet, req, netOk ? '#3B6D11' : 'var(--accent)') +
-      '<div style="font-size:11px;color:' + (weeksOk ? '#3B6D11' : '#BA7517') + ';margin-top:6px;">Writing weeks: ' + weeks + '/2 minimum' + (weeksOk ? ' \u2713' : '') + '</div>';
+      pctBar(thisNet, req, 'var(--accent-lift)') +
+      '<div style="font-size:11px;color:' + (weeksOk ? 'var(--accent-lift)' : '#a8b3b1') + ';margin-top:6px;">Writing weeks: ' + weeks + '/2 minimum' + (weeksOk ? ' \u2713' : '') + '</div>';
     return;
   }
 
