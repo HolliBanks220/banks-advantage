@@ -2637,7 +2637,64 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
 }
 .sidebar-appts::-webkit-scrollbar-thumb:hover{ background:rgb(255 255 255 / .40) !important; }
 /* the curtain holds a little longer, so give it a gentler exit */
-#boot-curtain{ animation:boot-fail-open 0s linear 8s forwards !important; }
+#boot-curtain{ animation:boot-fail-open 0s linear 9s forwards !important; }
+
+/* h281: the accent swatches were being painted pale grey. A blanket rule
+   neutralises every inline background inside a modal - which is right for the
+   stray light-mode fills it was written for, and exactly wrong for ten buttons
+   whose entire job is to BE a colour. Excluded by class, stated last. */
+.modal button.swatch, button.swatch{
+  background:inherit;
+  border:2px solid rgb(0 0 0 / .12) !important;
+  box-shadow:none !important;
+}
+.modal button.swatch.swatch-on, button.swatch.swatch-on{
+  border:3px solid #fff !important;
+  box-shadow:0 0 0 2px currentColor, 0 0 0 2px rgb(0 0 0 / .25) !important;
+}
+
+/* the settings tabs */
+.modal button.set-tab, button.set-tab{
+  flex:1; min-width:64px;
+  background:#fff !important; border:1px solid #dde7f0 !important;
+  color:#5f7a99 !important;
+  border-radius:999px !important; padding:8px 6px !important;
+  font-size:12px !important; font-weight:600 !important; font-family:inherit; cursor:pointer;
+}
+.modal button.set-tab:hover{ border-color:var(--accent) !important; color:#16202E !important; }
+.modal button.set-tab.set-tab-on, button.set-tab.set-tab-on{
+  background:var(--accent) !important; border-color:var(--accent) !important;
+  color:#ffffff !important; -webkit-text-fill-color:#ffffff !important;
+}
+.modal button.set-tab.set-tab-on .set-tab-n{ color:#fff !important; }
+.set-tab-n{ color:#A32D2D !important; font-weight:700; }
+
+/* h282: Save, everywhere in Settings */
+.modal button.set-save, button.set-save{
+  width:100%; background:var(--accent) !important;
+  color:#ffffff !important; -webkit-text-fill-color:#ffffff !important;
+  border:none !important; border-radius:8px !important;
+  padding:11px !important; margin-top:6px !important;
+  font-size:13.5px !important; font-weight:700 !important; font-family:inherit; cursor:pointer;
+}
+.modal button.set-save:hover{ filter:brightness(1.07); }
+
+/* anything accent-filled inside Settings carries white text, full stop */
+.modal [style*="background:var(--accent)"],
+.modal [style*="background: var(--accent)"],
+.modal .set-tab-on, .modal .set-save, .modal .chip-action{
+  color:#ffffff !important; -webkit-text-fill-color:#ffffff !important;
+}
+.modal [style*="background:var(--accent)"] *{ color:#ffffff !important; }
+
+/* the gear says something is waiting, before you open anything */
+.gear-btn.has-alert{ position:relative; }
+.gear-btn.has-alert::after{
+  content:""; position:absolute; top:-2px; right:-2px;
+  width:9px; height:9px; border-radius:50%;
+  background:var(--red-hot); border:2px solid var(--bg);
+  box-shadow:0 0 8px rgb(229 72 77 / .8);
+}
 </style>
 </head>
 <body>
@@ -2664,7 +2721,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h279</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h282</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -3243,7 +3300,7 @@ const BOOT_LINES = [
 // read. The curtain holds for a minimum so there is time to take it in - the
 // clock starts when it appears, so a slow load still costs nothing extra.
 let _bootShownAt = 0;
-const BOOT_MIN_MS = 2200;
+const BOOT_MIN_MS = 3000;   // h280: long enough to land
 
 function showBootCurtain() {
   _bootShownAt = Date.now();
@@ -4318,6 +4375,7 @@ function reflowBoard() {
   try { placeHeaderWho(); } catch (e) {}
   try { liftHeaderFullWidth(); } catch (e) {}
   try { liftPaceLine(); } catch (e) {}
+  try { refreshSettingsAlert(); } catch (e) {}
 
   const main = document.getElementById('app') || document;
 
@@ -17954,6 +18012,21 @@ function getBonusRate(carrierName, productName) {
   return 0; // qualifier only
 }
 
+// h282: the repair count sat inside Settings, which you only see once you have
+// opened Settings. A lead in a contradictory state is worth knowing about at a
+// glance, so the gear carries a dot until it is dealt with. It is her own data -
+// every agent sees only their own.
+function refreshSettingsAlert() {
+  const gear = document.querySelector('.hdr-name-row .gear-btn, .hdr-actions .gear-btn');
+  if (!gear) return;
+  let n = 0;
+  try { n = findContradictions().length; } catch (e) {}
+  gear.classList.toggle('has-alert', n > 0);
+  gear.title = n > 0
+    ? n + (n === 1 ? ' lead needs' : ' leads need') + ' a look - Settings > Help > Repair'
+    : 'Settings';
+}
+
 function openSettings(tab) {
   const settings = getAgentSettings();
   const level = settings.contractLevel || 105;
@@ -17979,7 +18052,9 @@ function openSettings(tab) {
   const card = (inner) => '<div style="background:#f0f4f8;border-radius:10px;padding:12px;margin-bottom:12px;">' + inner + '</div>';
   const head = (txt, colour) => '<div style="font-size:10px;font-weight:600;color:' + (colour || '#5f7a99') +
     ';text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">' + txt + '</div>';
-  const saveBtn = (fn, label) => '<button onclick="' + fn + '" style="width:100%;background:#1D3557;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;margin-top:4px;">' + label + '</button>';
+  // h282: was navy. Every Save in Settings is the accent now, and the class means
+  // the "neutralise inline backgrounds" rule cannot reach it.
+  const saveBtn = (fn, label) => '<button class="set-save" onclick="' + fn + '">' + label + '</button>';
 
   let body = '';
 
@@ -18004,7 +18079,7 @@ function openSettings(tab) {
       // a five-across grid: ten swatches make two even rows instead of one long
       // wrap that leaves the last colour stranded on a line of its own
       '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;justify-items:center;">' +
-        ACCENTS.map(a => '<button onclick="setAccent(\'' + a.k + '\')" title="' + a.n + '" style="width:32px;height:32px;border-radius:999px;cursor:pointer;background:' + a.c +
+        ACCENTS.map(a => '<button class="swatch' + (accentKey() === a.k ? ' swatch-on' : '') + '" onclick="setAccent(\'' + a.k + '\')" title="' + a.n + '" style="width:32px;height:32px;border-radius:999px;cursor:pointer;background:' + a.c +
           ';border:' + (accentKey() === a.k ? '3px solid #fff;box-shadow:0 0 0 2px ' + a.c : '2px solid rgba(0,0,0,.10)') + ';"></button>').join('') +
       '</div>' +
       '<div style="font-size:10px;color:#8A94A2;margin:6px 0 0;">' + esc(accentDef().n) + '</div>' +
@@ -18126,10 +18201,12 @@ function openSettings(tab) {
     '<button class="close-x" onclick="closeToLead()">x</button>' +
     '<div class="modal-title">Settings</div>' +
     '<div style="display:flex;gap:4px;margin:10px 0 14px;flex-wrap:wrap;">' +
-      TABS.map(x => '<button onclick="openSettings(\'' + x.k + '\')" style="flex:1;min-width:64px;border:1px solid ' +
-        (t === x.k ? 'var(--accent)' : '#dde7f0') + ';background:' + (t === x.k ? 'var(--accent)' : '#fff') +
-        ';color:' + (t === x.k ? '#fff' : '#5f7a99') + ';border-radius:999px;padding:7px 4px;font-size:11px;font-weight:600;cursor:pointer;">' +
-        x.l + (x.k === 'help' && nRepair ? ' <span style="color:' + (t === x.k ? '#fff' : '#A32D2D') + ';">' + nRepair + '</span>' : '') +
+      // h281: the tab colours were inline, and the broad "neutralise every inline
+      // background in a modal" rule was flattening them. A class, so the
+      // stylesheet owns it and the selected tab keeps its white text.
+      TABS.map(x => '<button class="set-tab' + (t === x.k ? ' set-tab-on' : '') +
+        '" onclick="openSettings(\'' + x.k + '\')">' +
+        x.l + (x.k === 'help' && nRepair ? ' <span class="set-tab-n">' + nRepair + '</span>' : '') +
         '</button>').join('') +
     '</div>' + body
   );
