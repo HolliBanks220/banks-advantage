@@ -1943,6 +1943,90 @@ html,body{ overflow-x:hidden !important; }
   max-height:none !important; overflow:hidden !important;
 }
 #appt-sidebar > *:last-child{ flex:1 1 auto !important; overflow-y:auto !important; min-height:0 !important; }
+
+/* h252: every edge on a hero card follows the accent. The lit top edge was a
+   gradient into --accent-lift (fine), but the goal-hit rim, the "caught up"
+   glow and the next-up wash were all built from the fixed teal triplet. */
+:root{
+  --c-accent:35 183 183;
+  --accent-border:rgb(var(--c-accent) / .45);
+  --accent-glow:rgb(var(--c-accent) / .16);
+  --accent-wash:rgb(var(--c-accent) / .06);
+}
+.stat.hero::before{
+  background:linear-gradient(90deg, var(--accent-lift), transparent 78%) !important;
+}
+.stat.hero.tile-goal-green{ border-color:var(--accent-border) !important; }
+.stat.hero:hover{ border-color:var(--accent-border) !important; }
+.pace-good{
+  background:var(--accent-wash) !important;
+  border-color:var(--accent-border) !important;
+  box-shadow:0 0 20px -4px var(--accent-glow), inset 0 0 0 1px var(--accent-wash) !important;
+  text-shadow:0 0 14px var(--accent-glow) !important;
+}
+.pace-good::before{ background:var(--accent-lift) !important; }
+.appt-sidebar-item.ap-next, .appt-sidebar-item.next{
+  background:var(--accent-wash) !important; border-color:var(--accent-border) !important;
+}
+
+/* ============================================================================
+   h253 - THE SCHEDULE STOPS WHERE THE BOARD STOPS
+   Every earlier attempt failed for the same reason: a grid row is as tall as its
+   TALLEST child, so a long schedule set the row height and then obediently
+   filled it. height:0 takes the rail out of that calculation entirely - it
+   contributes nothing - and min-height:100% then stretches it to whatever height
+   the board decided. The schedule takes the remainder and scrolls inside itself.
+   ========================================================================== */
+.page-layout{ align-items:stretch !important; }
+.right-sidebar-col{
+  height:0 !important;              /* contribute nothing to the row height */
+  min-height:100% !important;       /* then match whatever the board set */
+  align-self:stretch !important;
+  display:flex !important; flex-direction:column !important;
+  gap:12px !important; overflow:hidden !important;
+}
+#task-sidebar{ flex:0 0 auto !important; }
+#appt-sidebar, .appt-sidebar{
+  flex:1 1 auto !important; min-height:0 !important; max-height:none !important;
+  display:flex !important; flex-direction:column !important; overflow:hidden !important;
+}
+.appt-sidebar-title{ flex:0 0 auto !important; }
+/* the list is the only thing that scrolls */
+.sidebar-appts{
+  flex:1 1 auto !important; min-height:0 !important;
+  overflow-y:auto !important; overflow-x:hidden !important;
+  direction:rtl !important;
+}
+.sidebar-appts > *{ direction:ltr !important; }
+.sidebar-appts::-webkit-scrollbar{ width:14px !important; }
+.sidebar-appts::-webkit-scrollbar-thumb{
+  background:rgb(255 255 255 / .22) !important; border-radius:10px !important;
+  border:4px solid var(--surface) !important; min-height:44px !important;
+}
+.sidebar-appts::-webkit-scrollbar-thumb:hover{ background:rgb(255 255 255 / .34) !important; }
+/* the outer panel no longer scrolls or reverses - the list does */
+#appt-sidebar, .appt-sidebar{ direction:ltr !important; }
+
+@media(max-width:800px){
+  .right-sidebar-col{ height:auto !important; min-height:0 !important; overflow:visible !important; }
+  .sidebar-appts{ max-height:55vh !important; }
+}
+
+/* h254: the accent edge on a hero card was a 2px hairline that faded out at 78%
+   - too thin to register as colour at all. Thicker, running further across, and
+   the border picks it up too so the card reads as accented rather than as a dark
+   box with a line on top. */
+.stat.hero{ border:1px solid var(--accent-border) !important; }
+.stat.hero::before{
+  height:4px !important;
+  background:linear-gradient(90deg, var(--accent-lift), var(--accent) 55%, transparent 100%) !important;
+  opacity:1 !important;
+}
+.stat.hero:hover{ border-color:var(--accent-lift) !important; }
+.stat.hero.tile-goal-green{ border-color:var(--accent-lift) !important; }
+
+/* the page-selector underline reads as a selection, not a hairline */
+.tab.on::after{ height:4px !important; bottom:-10px !important; border-radius:3px !important; }
 </style>
 </head>
 <body>
@@ -1961,7 +2045,7 @@ html,body{ overflow-x:hidden !important; }
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h251</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h254</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -2229,11 +2313,16 @@ html,body{ overflow-x:hidden !important; }
         <div class="stat-row">
       <div class="stat"><div class="stat-lbl">APV / lead</div><div class="stat-val" id="lp-apvlead" style="font-size:18px">-</div><div class="stat-sub">volume per lead</div></div>
       <div class="stat"><div class="stat-lbl">Comm / lead</div><div class="stat-val" id="lp-commlead" style="font-size:18px">-</div><div class="stat-sub">before cost</div></div>
-      <div class="stat"><div class="stat-lbl">Profit / lead</div><div class="stat-val" id="lp-profitlead" style="font-size:18px">-</div><div class="stat-sub" id="lp-profit-sub">after lead spend</div></div>
-    </div>
-    <div class="stat-row">
-      <div class="stat" style="cursor:pointer" onclick="openLeadSpend()"><div class="stat-lbl">Lead spend</div><div class="stat-val" id="lp-spend" style="font-size:20px">-</div><div class="stat-sub" style="font-weight:700">tap to add a charge</div></div>
-      <div class="stat"><div class="stat-lbl">Return on spend</div><div class="stat-val" id="lp-roi" style="font-size:20px">-</div><div class="stat-sub">for every $1 out</div></div>
+      <!-- h253: Profit / lead was Comm / lead minus your cost per lead - derivable,
+           and the one you would check least. Cost per sale replaces it: what you
+           actually pay to close someone, which is the number a decision about
+           buying more leads turns on. Return on spend folds into Lead spend's
+           sub-line, so ROI is four cards instead of five. -->
+      <div class="stat"><div class="stat-lbl">Cost / sale</div><div class="stat-val" id="lp-costsale" style="font-size:18px">-</div><div class="stat-sub" id="lp-costsale-sub">to close one</div></div>
+      <div class="stat" style="cursor:pointer" onclick="openLeadSpend()"><div class="stat-lbl">Lead spend</div><div class="stat-val" id="lp-spend" style="font-size:18px">-</div><div class="stat-sub" id="lp-spend-sub" style="font-weight:600">tap to add a charge</div></div>
+      <div class="stat-val" id="lp-profitlead" style="display:none">-</div>
+      <div class="stat-val" id="lp-profit-sub" style="display:none">-</div>
+      <div class="stat-val" id="lp-roi" style="display:none">-</div>
       <div class="stat-val" id="lp-avgapv" style="display:none">-</div>
     </div>
   </div>
@@ -4419,6 +4508,12 @@ function renderSourceComparison(pStart, pEnd, label) {
     // h217: the two wide tiles at the bottom - what you spent, and what each
     // dollar of it returned. A multiple reads faster than a percentage here.
     setEl('lp-roi', spend > 0 ? '$' + (A.comm / spend).toFixed(2) : '-');
+    // h253: what one sale costs, and what each dollar returned
+    setEl('lp-costsale', (spend > 0 && A.sales > 0) ? money(Math.round(spend / A.sales)) : '-');
+    setEl('lp-costsale-sub', A.sales > 0 ? A.sales + ' sale' + (A.sales === 1 ? '' : 's') : 'no sales yet');
+    setEl('lp-spend-sub', spend > 0
+      ? '$' + (A.comm / spend).toFixed(2) + ' back for every $1'
+      : 'tap to add a charge');
     const neverN = Math.round(((mia.m ? mia.m.neverPct : 0) * mia.assigned +
                                (cia.m ? cia.m.neverPct : 0) * cia.assigned) / (A.assigned || 1));
     setEl('lp-never', A.assigned ? neverN + '%' : '-');   // h211: no longer on the board; setEl no-ops when absent
@@ -7191,39 +7286,27 @@ function getNextSlotTime(c) {
 // back to "no appts today" even with an appointment tomorrow morning. It looks
 // forward across days now, and carries the client's name so the line can say who
 // the next thing is with.
+// h254: this rolled its own scan over appointments and callbacks and kept missing
+// things the schedule could plainly see - today's 3pm callback, for one. The
+// schedule builds from getAllAppts(), which already gathers appointments,
+// scheduled callbacks and follow-ups and dedupes them. One source of truth: the
+// status line now reads the top of the same list the schedule renders.
 function getNextApptInfo() {
   const now = new Date();
   const staleCutoff = new Date(now.getTime() - 15 * 60000);   // 15 min grace
-  let soonest = null, soonestType = null, soonestName = '';
-  const consider = (dt, type, name) => {
-    if (!dt || isNaN(dt) || dt < staleCutoff) return;
-    if (soonest && dt >= soonest) return;
-    soonest = dt; soonestType = type; soonestName = name || '';
-  };
-  clients.forEach(c => {
-    if (c.status === 'Appointment set') {
-      (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
-        if (tp && tp.outcome === 'pending' && tp.datetime) consider(new Date(tp.datetime), 'appt', c.name);
-      }));
-    }
-    const cb = getScheduledCallback(c);
-    if (cb && cb.callback_dt) consider(new Date(cb.callback_dt), 'callback', c.name);
-  });
-  if (!soonest) return null;
+  let all = [];
+  try { all = getAllAppts() || []; } catch (e) { return null; }
+  const next = all
+    .filter(a => a && a.datetime && new Date(a.datetime) >= staleCutoff)
+    .sort((x, y) => new Date(x.datetime) - new Date(y.datetime))[0];
+  if (!next) return null;
+  const dt = new Date(next.datetime);
   return {
-    dt: soonest, type: soonestType, clientName: soonestName,
-    minsUntil: Math.round((soonest - now) / 60000),
+    dt,
+    type: next.isCallback ? 'callback' : (next.isFollowUp ? 'follow-up' : 'appt'),
+    clientName: next.clientName || '',
+    minsUntil: Math.round((dt - now) / 60000),
   };
-}
-
-// h251: the banner's job is to remove a step. Filter to the live queue, then
-// open the card at the top of it - which is the lead she would have clicked.
-function startDialing() {
-  try { setFilterAlert('active'); } catch (e) {}
-  setTimeout(() => {
-    const first = document.querySelector('#clients-list .client-card');
-    if (first) first.click();
-  }, 60);
 }
 
 function renderAlerts() {
@@ -7271,7 +7354,7 @@ function renderAlerts() {
   // Appointment countdown
   const apptInfo = getNextApptInfo();
   let apptPart, apptFire = '';
-  const apptLabel = apptInfo && apptInfo.type === 'callback' ? 'callback' : 'appt';
+  const apptLabel = apptInfo ? apptInfo.type : 'appt';
   if (!apptInfo) {
     apptPart = 'no appts today';
   } else if (apptInfo.minsUntil <= 0) {
@@ -16143,6 +16226,15 @@ function applyAccent() {
   // schedule times and the tab underline stayed teal whatever swatch was chosen.
   // It is the accent lifted toward white - readable on the dark board.
   r.setProperty('--accent-lift', _mixHex(a.c, '#ffffff', 0.30));
+  // h252: the hero card's lit top edge and its goal-hit rim were built from the
+  // teal channel triplet, so they stayed teal on every other swatch. Both derive
+  // from the chosen accent now.
+  const _ch = (hex) => { const n = parseInt(String(hex).replace('#',''), 16);
+    return [(n>>16)&255, (n>>8)&255, n&255].join(' '); };
+  r.setProperty('--c-accent', _ch(a.c));
+  r.setProperty('--accent-border', 'rgb(' + _ch(a.c) + ' / .45)');
+  r.setProperty('--accent-glow',   'rgb(' + _ch(a.c) + ' / .16)');
+  r.setProperty('--accent-wash',   'rgb(' + _ch(a.c) + ' / .06)');
 }
 
 async function setAccent(k) {
