@@ -2549,7 +2549,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h271</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h272</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -6730,7 +6730,7 @@ function setFilterAlert(f) {
             <div style="font-size:9px;font-weight:600;color:var(--accent);background:#F0FBF7;border-radius:4px;padding:2px 6px;margin-top:3px;display:inline-block;">Ready for text</div>
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
-            <span class="${badgeClass(c.source)}">${c.source||''}</span>
+            <span class="${badgeClass(c.source)}">${leadSourceLabel(c.source)}</span>
             <span class="${statusBadge(c.status)}">${c.status||'New'}</span>
           </div>
         </div>
@@ -9447,7 +9447,7 @@ function renderClients(q='') {
             '<div class="client-name">' + esc(c.name) + '</div>' +
             '<div style="font-size:10px;font-weight:600;color:' + t[1] + ';">' + t[0] + '</div>' +
           '</div>' +
-          '<div class="client-meta">' + esc(c.phone||'') + ' - ' + esc(c.source||'') + ' - ' +
+          '<div class="client-meta">' + esc(c.phone||'') + ' - ' + esc(leadSourceLabel(c.source)) + ' - ' +
             attemptCount(c) + ' att - ' + getDaysSinceAssigned(c) + 'd' +
             (restLeft ? ' - <span style="color:#BA7517;font-weight:600;">resting ' + restLeft + 'd more</span>' : '') + '</div>' +
         '</div>';
@@ -9468,7 +9468,7 @@ function renderClients(q='') {
         <div style="min-width:0;">
           <div class="client-name">${c.name||'Unknown'}${fresh?'<span class="fresh-tag">fresh</span>':''}</div>
           <div class="lead-phone">${c.phone||''}</div>
-          <div class="client-meta">${[c.state, c.age ? c.age : null, c.source ? esc(c.source) : null].filter(Boolean).join(' \u00b7 ')}${getOutcomeBadge(c)}${getDodgeBadge(c)}${getReplaceBadge(c)}${getNoShowBadge(c)}${getCallTimeBadge(c)}</div>
+          <div class="client-meta">${[c.state, c.age ? c.age : null, c.source ? esc(leadSourceLabel(c.source)) : null].filter(Boolean).join(' \u00b7 ')}${getOutcomeBadge(c)}${getDodgeBadge(c)}${getReplaceBadge(c)}${getNoShowBadge(c)}${getCallTimeBadge(c)}</div>
           ${getUrgencyBadgeHtml(c)}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px;flex:0 0 auto;">
@@ -9660,7 +9660,7 @@ function openClient(id, keepDialCount) {
   <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
     <a href="tel:${(c.phone||'').replace(/[^0-9+]/g,'')}" onclick="autoIncrementDial();setTimeout(()=>window.focus(),3000)" style="font-size:13px;color:var(--accent);font-weight:500;text-decoration:none;margin-right:4px;"> ${c.phone||''}</a>
     <input id="edit-phone" value="${escAttr(c.phone)}" style="font-size:11px;color:#5f7a99;border:none;border-bottom:1px solid transparent;outline:none;background:transparent;font-family:inherit;width:120px;padding:0;" onfocus="this.style.borderBottomColor='var(--accent)'" onblur="this.style.borderBottomColor='transparent'" placeholder="edit number">
-    <span style="color:#5f7a99;font-size:13px;">${(c.state && !(c.address||'').includes(c.state)) ? '- ' + c.state + ' ' : ''}- <span class="${badgeClass(c.source)}">${c.source||''}</span></span>
+    <span style="color:#5f7a99;font-size:13px;">${(c.state && !(c.address||'').includes(c.state)) ? '- ' + c.state + ' ' : ''}- <span class="${badgeClass(c.source)}">${leadSourceLabel(c.source)}</span></span>
   </div>
   ${c.address?`<div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">${c.address}</div>`:''}
   ${(()=>{
@@ -13375,6 +13375,19 @@ function parseLeadPage(rawText) {
 function isCISource(src) { return /^ci/i.test(String(src || '').trim()); }
 function isMISource(src) { return /^mi/i.test(String(src || '').trim()); }
 
+// h272: the vendor codes carry a freshness letter - CIA, CIB, CIC, MIA, MIB -
+// and it is noise. A lead is a lead; the letter only ever invited someone to
+// decide which codes were the good ones. Displayed everywhere as CI or MI, and
+// nothing but display changes: the stored value is untouched, so old records and
+// the source-family grouping still work exactly as before.
+function leadSourceLabel(src) {
+  const t = String(src || '').trim();
+  if (!t) return '';
+  if (/^ci[a-d]?$/i.test(t)) return 'CI';
+  if (/^mi[a-d]?$/i.test(t)) return 'MI';
+  return t;                    // Lighthouse, Level Up, ASR and anything custom
+}
+
 function classifyLeadSource(text) {
   const t = (text || '').toLowerCase();
   if (t.includes('postcard')) return 'CIA';
@@ -15619,7 +15632,7 @@ function filterReferrals(q) {
 // from the leads and charges actually present, with the known ones seeded.
 // ============================================================================
 
-const SEED_LEAD_SOURCES = ['MIA', 'CIA'];
+const SEED_LEAD_SOURCES = ['MI', 'CI'];   // h272: no freshness letter
 
 // LEAD TYPES YOU BUY. h185: the charge dropdown used to scrape `source` off every
 // client, so it filled up with Existing client, Warm market and Referral - things
