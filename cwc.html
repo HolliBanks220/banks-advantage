@@ -1757,6 +1757,42 @@ html,body{ overflow-x:hidden !important; }
   color:var(--muted) !important; font-weight:500 !important;
   font-size:13px !important; white-space:nowrap;
 }
+
+/* ============================================================================
+   h246 - PIN THE COLUMNS TO A ROW
+   Setting grid-column alone was not enough. The board is placed in column 2 and
+   comes FIRST in the DOM, so by the time the rail asked for column 1 the
+   placement cursor had already passed it and the rail wrapped to the next row -
+   below the entire board, off the bottom of the screen. Explicit rows fix it.
+   ========================================================================== */
+.hdr{ grid-row:1 !important; grid-column:1 / -1 !important; }
+#alerts-section{ grid-row:2 !important; grid-column:1 / -1 !important; }
+.right-sidebar-col{ grid-row:3 !important; grid-column:1 !important; }
+.page-outer{ grid-row:3 !important; grid-column:2 !important; }
+@media(max-width:800px){
+  .hdr, #alerts-section{ grid-column:1 !important; }
+  .page-outer{ grid-row:3 !important; grid-column:1 !important; }
+  .right-sidebar-col{ grid-row:4 !important; grid-column:1 !important; }
+}
+
+/* ---- THE STATUS LINE: spread out, with dots holding it together ---- */
+#alerts-section .pace-banner{ gap:0 !important; }
+#alerts-section .pace-banner > span + span::before{
+  content:"\00b7";
+  margin:0 16px; color:var(--faint); font-weight:400;
+}
+.pace-next, .pace-count{ margin-left:0 !important; }
+
+/* ---- THE NAME BLOCK: bigger, with room around it ---- */
+.hdr-title{
+  font-size:12px !important; letter-spacing:.22em !important;
+  margin:0 0 4px !important; line-height:1.3 !important;
+}
+.hdr-who{ font-size:23px !important; line-height:1.2 !important; }
+.hdr-name-row{ gap:16px !important; }
+.hdr-left{ padding:2px 0 !important; }
+.hdr{ padding:22px 0 4px !important; }
+#alerts-section{ margin:14px 0 18px !important; }
 </style>
 </head>
 <body>
@@ -1775,7 +1811,7 @@ html,body{ overflow-x:hidden !important; }
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h245</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h246</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
