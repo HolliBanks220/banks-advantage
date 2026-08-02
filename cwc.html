@@ -2534,8 +2534,12 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
 }
 #boot-quote{
   font-family:'Inter',-apple-system,sans-serif;
-  font-size:clamp(1.15rem, 2.6vw, 1.75rem); font-weight:600; line-height:1.45;
-  color:#eef3f2; max-width:22ch; letter-spacing:-.01em;
+  font-size:clamp(1.2rem, 2.4vw, 1.7rem); font-weight:600; line-height:1.5;
+  color:#eef3f2; letter-spacing:-.01em;
+  /* capped at 22 characters before, which broke two-sentence lines in the middle
+     of a thought. Wider, and balanced so the lines even out. */
+  max-width:34ch;
+  text-wrap:balance;
   animation:boot-rise .5s ease both;
 }
 #boot-attr{
@@ -2741,6 +2745,10 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
   margin-left:auto; color:var(--accent-lift) !important;
   font-size:12px !important; font-weight:600 !important;
 }
+
+/* h287 closes the boot-quote typography: the line is wider and balanced, so a
+   two-sentence quote breaks between the sentences rather than inside one. */
+#boot-quote{ text-wrap:balance; max-width:34ch; }
 </style>
 </head>
 <body>
@@ -2767,7 +2775,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h286</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h287</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
