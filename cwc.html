@@ -1360,6 +1360,55 @@ html,body{ overflow-x:hidden !important; }
   .stat-row.hero-row{ grid-template-columns:repeat(2, minmax(0,1fr)) !important; }
   .stat-row.money-row{ grid-template-columns:repeat(2, minmax(0,1fr)) !important; }
 }
+
+/* ============================================================================
+   h234 - THE HEADER BAND, MEASURED TO THE BOARD BENEATH IT
+   Flex let the three groups sit wherever their content happened to end. A grid
+   ties them to the same columns the hero cards use: the brand occupies the left
+   half, the tabs start exactly on the half-line - so "Board" lands over the
+   Appointments Set card at preferred view - and the time filter closes the right.
+   All three sit on the same top line.
+   ========================================================================== */
+.hdr{
+  display:grid !important;
+  grid-template-columns:1fr 1fr auto !important;
+  align-items:start !important;
+  justify-content:initial !important;
+  gap:0 24px !important;
+  padding:20px 0 0 !important;
+}
+.hdr-left{
+  grid-column:1 !important; margin:0 !important; padding:0 !important;
+  align-self:start !important;
+}
+.tab-bar{
+  grid-column:2 !important; margin:0 !important; padding:0 !important;
+  align-self:start !important;
+  display:flex !important; justify-content:flex-start !important;
+  gap:0 !important;
+}
+/* the tabs spread across their half rather than huddling together */
+.tab{
+  flex:1 1 0 !important; text-align:left !important;
+  padding:2px 0 8px !important; font-size:13.5px !important;
+}
+.tab.on::after{ left:0 !important; right:14px !important; bottom:0 !important; }
+
+.hdr-right{
+  grid-column:3 !important; margin:0 !important; align-self:start !important;
+  align-items:flex-end !important; gap:8px !important;
+}
+/* the eyebrow and the tabs share a top line */
+.hdr-title{ line-height:1.25 !important; margin:0 0 2px !important; }
+
+@media(max-width:1180px){
+  .hdr{ grid-template-columns:1fr auto !important; row-gap:14px !important; }
+  .hdr-left{ grid-column:1 !important; }
+  .hdr-right{ grid-column:2 !important; }
+  .tab-bar{ grid-column:1 / -1 !important; }
+  .tab{ flex:0 0 auto !important; margin-right:22px !important; }
+  .tab.on::after{ right:22px !important; }
+}
 </style>
 </head>
 <body>
@@ -1378,7 +1427,7 @@ html,body{ overflow-x:hidden !important; }
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h233</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h234</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
