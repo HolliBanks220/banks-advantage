@@ -882,7 +882,8 @@ html,body{ overflow-x:hidden !important; }
 /* ---- MORE ACROSS. Five is the floor on a full-width board, and ROI's five
    tiles should never wrap onto a second line while there is room. ---- */
 .stat-row, .stat-row2{ grid-template-columns:repeat(auto-fill, minmax(140px,1fr)) !important; }
-#mp-panel .stat-row, #ret-panel .stat-row{ grid-template-columns:repeat(auto-fill, minmax(132px,1fr)) !important; }
+/* h227: this was ID-scoped and beat the six-column cap below, which is why
+   production still packed nine across. The cap is the only rule now. */
 
 /* ---- TASKS: it was grey on grey at the top of the panel. ---- */
 #task-sidebar, #task-sidebar *{ color:var(--ink) !important; }
@@ -974,6 +975,88 @@ html,body{ overflow-x:hidden !important; }
 .right-sidebar-col{ align-self:stretch !important; display:flex !important; flex-direction:column !important; }
 #appt-sidebar{ flex:1 1 auto !important; display:flex !important; flex-direction:column !important; min-height:0 !important; }
 #appt-sidebar > div:last-child{ flex:1 1 auto !important; overflow-y:auto !important; min-height:0 !important; }
+
+/* ============================================================================
+   h227 - HEADER ON ONE LINE, AND THE RAIL FINALLY DARK
+   ========================================================================== */
+
+/* ---- ONE BAND. The tab row belongs beside the brand, not on a line of its own
+   with dead space above it - that gap was the "black hole". ---- */
+.hdr{
+  display:flex !important; align-items:center !important; gap:28px !important;
+  padding:22px 0 0 !important; margin:0 !important; flex-wrap:nowrap !important;
+  border:none !important; min-height:0 !important;
+}
+.hdr-left{ flex:0 0 auto !important; gap:1px !important; }
+.hdr-title{ font-size:11px !important; font-weight:600 !important; letter-spacing:.22em !important;
+  text-transform:uppercase !important; }
+.hdr-who{ font-size:21px !important; font-weight:700 !important; margin:0 !important;
+  letter-spacing:-.015em !important; }
+.hdr-left > div:first-child{ display:block !important; }
+.hdr-sub{ font-size:13px !important; margin-top:1px !important; }
+.hdr-right{ gap:8px !important; }
+.hdr-right .nav-row{ gap:4px !important; }
+
+/* the tab row rides in the middle of the header band */
+.tab-bar{
+  border:none !important; margin:0 !important; padding:0 !important;
+  gap:26px !important; flex:0 0 auto !important; align-self:center !important;
+}
+.tab{ padding:4px 2px !important; }
+.tab.on::after{ bottom:-8px !important; }
+
+/* one rule under the whole band */
+.page-layout{ position:relative; }
+#pace-banner, .pace-banner{
+  margin:18px 0 24px !important; padding-top:18px !important;
+  border-top:1px solid var(--line) !important;
+}
+
+/* ---- SIX ACROSS. Nothing may outrank this. ---- */
+.stat-row:not(.hero-row), .stat-row2,
+#mp-panel .stat-row, #ret-panel .stat-row, #mp-panel .stat-row2, #ret-panel .stat-row2{
+  grid-template-columns:repeat(6, minmax(0,1fr)) !important;
+}
+@media(max-width:1400px){ .stat-row:not(.hero-row), .stat-row2,
+  #mp-panel .stat-row, #ret-panel .stat-row{ grid-template-columns:repeat(5,minmax(0,1fr)) !important; } }
+@media(max-width:1180px){ .stat-row:not(.hero-row), .stat-row2,
+  #mp-panel .stat-row, #ret-panel .stat-row{ grid-template-columns:repeat(4,minmax(0,1fr)) !important; } }
+@media(max-width:900px){  .stat-row:not(.hero-row), .stat-row2,
+  #mp-panel .stat-row, #ret-panel .stat-row{ grid-template-columns:repeat(3,minmax(0,1fr)) !important; } }
+@media(max-width:640px){  .stat-row:not(.hero-row), .stat-row2,
+  #mp-panel .stat-row, #ret-panel .stat-row{ grid-template-columns:repeat(2,minmax(0,1fr)) !important; } }
+
+/* ---- THE RAIL. No white anywhere, and no colour on the text except the time,
+   which carries the accent. The type colours belong on the left stripe. ---- */
+#task-sidebar, .appt-sidebar,
+#task-sidebar > div, .appt-sidebar > div{
+  background:var(--surface) !important;
+}
+.appt-sidebar-item{ background:transparent !important; }
+.appt-sidebar-item:hover{ background:var(--surface-2) !important; }
+.appt-sidebar-item *,
+.appt-sidebar-item .ap-name, .appt-sidebar-item b, .appt-sidebar-item strong{
+  color:var(--ink) !important;
+}
+.appt-sidebar-item .ap-meta, .appt-sidebar-item small,
+.appt-sidebar-item div:nth-child(n+3){ color:var(--faint) !important; }
+.appt-sidebar-item .ap-time,
+.appt-sidebar-item .ap-phone .ap-time, .appt-sidebar-item.ap-phone .ap-time,
+.appt-sidebar-item.ap-advanced .ap-time, .appt-sidebar-item.ap-reminder .ap-time{
+  color:var(--accent-lift) !important; font-weight:700 !important;
+}
+.appt-sidebar-item.ap-due{ background:var(--red-dim) !important; }
+.appt-sidebar-item.ap-due *{ color:#ff8a8e !important; }
+.task-item, .task-item *{ background:transparent !important; }
+
+/* ---- THE GOAL METER IS ALWAYS THE ACCENT. A meter that changes hue by status
+   competes with the one red on the page; the caption says how it is going. ---- */
+.stat .goal-bar-fill, .stat [style*="width:"][style*="background"]{ }
+
+/* the two money numbers sit two-across with room to breathe */
+.stat-row.money-row{ grid-template-columns:repeat(2, minmax(0,1fr)) !important; margin-top:8px !important; }
+.stat-row.money-row .stat-val{ font-size:30px !important; }
+@media(max-width:640px){ .stat-row.money-row{ grid-template-columns:minmax(0,1fr) !important; } }
 </style>
 </head>
 <body>
@@ -993,7 +1076,7 @@ html,body{ overflow-x:hidden !important; }
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h226</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h227</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -1197,8 +1280,9 @@ html,body{ overflow-x:hidden !important; }
         <div class="stat-sub" id="p-stp-sub">- prospects</div>
       </div>
     </div>
-    <!-- APV summary row - compact -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+    <!-- h227: this was a bare grid div, so the reflow could not see it and APV /
+         Sale sat outside every row. It is a stat-row like the rest now. -->
+    <div class="stat-row money-row">
       
       <div class="stat stat-navy-lt">
         <div class="stat-lbl lbl-navy">APV / Sale</div>
@@ -2524,7 +2608,7 @@ function reflowBoard() {
   //         in one grid and show both boards at once. Rows only merge into a
   //         sibling that shares their parent. ----
   const allRows = [...main.querySelectorAll('.stat-row, .stat-row2')]
-    .filter(r => !r.classList.contains('hero-row'));
+    .filter(r => !r.classList.contains('hero-row') && !r.classList.contains('money-row'));
   const byParent = new Map();
   allRows.forEach(r => {
     const key = r.parentNode;
@@ -2585,6 +2669,22 @@ function reflowBoard() {
     const rest = [...row.children].filter(t => !listed.includes(t));
     listed.concat(rest).forEach(t => row.appendChild(t));
   });
+
+  // ---- 4. The two money numbers get a wide row of their own at the foot of
+  //         Production. Squeezed into a six-across grid a dollar figure wraps
+  //         or truncates; on their own line they have room to grow. ----
+  ['p-apv','p-apv-hh'].forEach(() => {});
+  (function(){
+    const a = document.getElementById('p-apv');
+    const b = document.getElementById('p-apv-hh');
+    const t1 = a ? a.closest('.stat') : null;
+    const t2 = b ? b.closest('.stat') : null;
+    if (!t1 || !t2) return;
+    const row = t2.closest('.money-row') || t1.closest('.money-row');
+    if (!row) return;
+    row.appendChild(t1);          // Submitted APV joins APV / Sale
+    row.appendChild(t2);
+  })();
 
   // a row left empty by any of the above would show as a stray hairline box
   main.querySelectorAll('.stat-row, .stat-row2').forEach(r => {
@@ -15240,7 +15340,10 @@ function renderGoalZones(vals){
       // half the tiles rendered as faded-out text on the dark board.
       const txt   = 'var(--ink)';
       const soft  = 'var(--faint)';
-      const barFill  = isHero ? 'var(--accent-lift)' : gcVar;
+      // h227: the fill used to change hue with status - amber, red, green. Three
+      // more colours competing with the one alert red on the page. The meter is
+      // the accent, always; the caption beside it says how it is going.
+      const barFill  = 'var(--accent-lift)';
       const barTrack = 'rgba(255,255,255,.08)';
       const aStr = m.money ? goalMoney(actual) : Math.round(actual).toLocaleString();
       const tStr = m.money ? goalMoney(target) : Math.round(target).toLocaleString();
@@ -15249,8 +15352,13 @@ function renderGoalZones(vals){
       // h221: a hero tile reads like v0's meter - a bar, then "of 200 goal" on the
       // left and how you are doing on the right. A small tile keeps the compact
       // two-number form, since there is no room for a sentence.
-      const pace = st.hit ? 'goal met' : (st.state === 'red' ? 'behind' : 'on pace');
-      const paceCol = st.hit || st.state !== 'red' ? 'var(--accent-lift)' : 'var(--goal-red)';
+      // h227: this read the colour band, and 'yellow' meant only "not red and not
+      // hit" - so 65 of 72 at the END of a month reported "on pace". Compare
+      // against what should have been done by now instead. A finished period
+      // expects the whole target, so anything short of it reads as behind.
+      const expected = target * periodElapsedFraction();
+      const pace = st.hit ? 'goal met' : (actual >= expected ? 'on pace' : 'behind');
+      const paceCol = (st.hit || actual >= expected) ? 'var(--accent-lift)' : 'var(--goal-red)';
       if (isHero) {
         slot.innerHTML =
           '<div style="height:4px;border-radius:4px;background:'+barTrack+';overflow:hidden;">' +
