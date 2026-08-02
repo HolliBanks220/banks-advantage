@@ -2431,6 +2431,81 @@ button.chip-action:hover, .modal button.chip-action:hover{ filter:brightness(1.1
    mid-client. It matches the board, but never shrinks below what it needs. */
 .right-sidebar-col{ min-height:min(100%, 720px) !important; }
 .sidebar-appts{ min-height:220px !important; }
+
+/* ============================================================================
+   h268 - THE BUSINESS TAB: STATE, NOT DECORATION
+   Red means there is still something you can do. Grey means it is finished.
+   Nothing else on this tab carries colour for its own sake.
+   ========================================================================== */
+
+/* the sub-tabs, and the selected one filled in the accent */
+.apps-view-btn{
+  flex:1; background:var(--surface) !important; border:1px solid var(--line-2) !important;
+  color:#c3cdcb !important; border-radius:10px !important;
+  padding:9px 14px !important; font-size:13px !important; font-weight:600 !important;
+  font-family:inherit; cursor:pointer;
+}
+.apps-view-btn:hover{ color:#fff !important; border-color:var(--accent-lift) !important; }
+.apps-view-btn.apps-view-on{
+  background:var(--accent) !important; border-color:var(--accent) !important;
+  color:#fff !important;
+}
+
+/* the producer bonus panel */
+#slingshot-panel{
+  background:var(--surface) !important; border:1px solid var(--line) !important;
+  border-radius:var(--r) !important; padding:14px 16px !important;
+  margin-bottom:10px !important; color:#c3cdcb !important;
+}
+#slingshot-panel *{ color:#c3cdcb !important; }
+#slingshot-panel b, #slingshot-panel strong{ color:#fff !important; }
+.slingshot-track{
+  background:rgb(255 255 255 / .10); border-radius:6px; height:8px;
+  overflow:hidden; margin-top:5px;
+}
+.slingshot-fill{ height:100%; background:var(--accent-lift); }
+
+/* ---- APPLICATION ROWS ---- */
+.app-row{
+  background:var(--surface); border:1px solid var(--line);
+  border-left:3px solid transparent;
+  border-radius:12px; padding:14px 16px; margin-bottom:9px;
+}
+.app-row:hover{ background:var(--surface-2); }
+/* still workable: not taken, declined, lapsed, cancelled */
+.app-row.app-attention{
+  border-left-color:var(--red-hot);
+  background:linear-gradient(90deg, var(--red-dim), transparent 220px), var(--surface);
+}
+/* chased and finished - rewritten or dead */
+.app-row.app-closed{ opacity:.55; border-left-color:transparent; }
+.app-row.app-closed *{ color:#7d8a88 !important; }
+
+.app-close-row{ display:flex; gap:6px; margin-top:6px; }
+.app-close-btn{
+  background:none !important; border:1px solid var(--red-border) !important;
+  color:#ff8a8e !important; border-radius:6px !important;
+  padding:3px 10px !important; font-size:11.5px !important; font-weight:600 !important;
+  font-family:inherit; cursor:pointer;
+}
+.app-row.app-closed .app-close-btn{
+  border-color:var(--line-2) !important; color:#9aa5a3 !important;
+}
+
+/* ---- OPT: accent when it is done, red while it is not ---- */
+.opt-chip{
+  border-radius:7px !important; padding:4px 10px !important;
+  font-size:12px !important; font-weight:700 !important; font-family:inherit;
+  cursor:pointer; white-space:nowrap;
+}
+.opt-chip.opt-on{
+  background:var(--accent) !important; border:1px solid var(--accent) !important;
+  color:#fff !important;
+}
+.opt-chip.opt-off{
+  background:var(--red-dim) !important; border:1px solid var(--red-border) !important;
+  color:#ff8a8e !important;
+}
 </style>
 </head>
 <body>
@@ -2449,7 +2524,7 @@ button.chip-action:hover, .modal button.chip-action:hover{ filter:brightness(1.1
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h267</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h268</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -2832,16 +2907,16 @@ button.chip-action:hover, .modal button.chip-action:hover{ filter:brightness(1.1
     <div style="padding:8px 0 12px;">
       <!-- View toggle -->
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center;min-width:0;">
-        <button id="apps-view-submitted" onclick="setAppsView('submitted')" style="flex:1;padding:7px;font-size:12px;font-weight:600;border-radius:8px;border:none;background:#1D3557;color:#fff;cursor:pointer;">Submitted</button>
-        <button id="apps-view-placed" onclick="setAppsView('placed')" style="flex:1;padding:7px;font-size:12px;font-weight:600;border-radius:8px;border:2px solid #e2eaf2;background:#fff;color:#5f7a99;cursor:pointer;">Placed</button>
-        <button id="apps-view-written" onclick="setAppsView('written')" style="flex:1;padding:7px;font-size:12px;font-weight:600;border-radius:8px;border:2px solid #e2eaf2;background:#fff;color:#5f7a99;cursor:pointer;">Written</button>
-        <button id="apps-view-report" onclick="setAppsView('report')" style="flex:1;padding:7px;font-size:12px;font-weight:600;border-radius:8px;border:2px solid #e2eaf2;background:#fff;color:#5f7a99;cursor:pointer;">Report</button>
-        <button id="apps-view-commissions" onclick="setAppsView('commissions')" style="display:none;flex:1;padding:7px;font-size:12px;font-weight:600;border-radius:8px;border:2px solid #e2eaf2;background:#fff;color:#5f7a99;cursor:pointer;">Commissions</button>
+        <button class="apps-view-btn apps-view-on" id="apps-view-submitted" onclick="setAppsView('submitted')">Submitted</button>
+        <button class="apps-view-btn" id="apps-view-placed" onclick="setAppsView('placed')">Placed</button>
+        <button class="apps-view-btn" id="apps-view-written" onclick="setAppsView('written')">Written</button>
+        <button class="apps-view-btn" id="apps-view-report" onclick="setAppsView('report')">Report</button>
+        <button class="apps-view-btn" id="apps-view-commissions" onclick="setAppsView('commissions')" style="display:none;">Commissions</button>
         <input id="apps-search" oninput="renderAppsTab()" placeholder="Search by client, insured, carrier or status..." style="flex:1.5;padding:7px 10px;font-size:12px;border:1px solid #d0dcea;border-radius:8px;color:#1D3557;outline:none;">
       </div>
       <!-- Summary bar (shown in submitted view) -->
       <div id="apps-summary-bar" style="background:#1D3557;border-radius:10px;padding:10px 14px;margin-bottom:10px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;"></div>
-      <div id="slingshot-panel" style="display:none;background:#fff;border:1px solid #e2eaf2;border-radius:10px;padding:12px 14px;margin-bottom:10px;"></div>
+      <div id="slingshot-panel" style="display:none;"></div>
       <!-- Placement rate bar (shown in placed view) -->
       <div id="apps-placement-bar" style="display:none;background:#fff;border:1px solid #e2eaf2;border-radius:10px;padding:12px 14px;margin-bottom:10px;"></div>
       <div id="apps-tab-list"></div>
@@ -3655,7 +3730,7 @@ function renderSlingshot() {
   const fmt = (n) => '$' + Math.round(n).toLocaleString();
   const pctBar = (val, target, color) => {
     const pct = Math.min(100, Math.max(0, target > 0 ? val / target * 100 : 0));
-    return '<div style="background:#f0f4f8;border-radius:6px;height:8px;overflow:hidden;margin-top:3px;"><div style="width:' + pct.toFixed(0) + '%;height:100%;background:' + color + ';"></div></div>';
+    return '<div class="slingshot-track"><div class="slingshot-fill" style="width:' + pct.toFixed(0) + '%;"></div></div>';
   };
 
   if (level >= 95) {
@@ -6114,6 +6189,42 @@ function downloadOPTReport() {
   setTimeout(()=>URL.revokeObjectURL(url), 1000);
 }
 
+// h268: red means there is still something you can do - a rating to shop, a draft
+// to fix, a policy to rewrite. Without a way to finish one, every Not taken and
+// Declined stays red forever and the colour stops meaning anything. Two ways to
+// close one out, because they are different things: a REWRITE is replaced by new
+// business, DEAD is chased and over. Both go quiet; neither changes the money.
+async function closeOutApp(clientId, ci, ti, ai, how) {
+  const c = clients.find(x => x.id === clientId); if (!c) return;
+  const cases = JSON.parse(JSON.stringify(c.cases || []));
+  const ap = cases[ci] && cases[ci].touchpoints && cases[ci].touchpoints[ti]
+             && cases[ci].touchpoints[ti].apps && cases[ci].touchpoints[ti].apps[ai];
+  if (!ap) return;
+  ap.closed_out = how;                       // 'rewrite' | 'dead'
+  ap.closed_out_at = new Date().toISOString();
+  showSync('Saving...');
+  await sb.from('clients').update({ cases }).eq('id', clientId);
+  c.cases = cases;
+  hideSync(); render();
+}
+async function reopenClosedOutApp(clientId, ci, ti, ai) {
+  const c = clients.find(x => x.id === clientId); if (!c) return;
+  const cases = JSON.parse(JSON.stringify(c.cases || []));
+  const ap = cases[ci] && cases[ci].touchpoints && cases[ci].touchpoints[ti]
+             && cases[ci].touchpoints[ti].apps && cases[ci].touchpoints[ti].apps[ai];
+  if (!ap) return;
+  delete ap.closed_out; delete ap.closed_out_at;
+  showSync('Saving...');
+  await sb.from('clients').update({ cases }).eq('id', clientId);
+  c.cases = cases;
+  hideSync(); render();
+}
+// An app still worth chasing: a verdict went against you but nothing is final.
+const RECOVERABLE = ['Not taken','Declined','Lapse','Cancel'];
+function appNeedsAttention(ap) {
+  return !!ap && RECOVERABLE.includes(ap.status || '') && !ap.closed_out;
+}
+
 async function toggleAppOPT(clientId, ci, ti, ai) {  const c = clients.find(x=>x.id===clientId); if (!c) return;
   const ap = (((c.cases||[])[ci]||{}).touchpoints||[])[ti];
   if (!ap || !ap.apps || !ap.apps[ai]) return;
@@ -6200,7 +6311,7 @@ function renderAppsTab() {
         '<td style="padding:7px 8px;font-size:12px;color:#5f7a99;">' + esc(r.product) + '</td>' +
         '<td style="padding:7px 8px;font-size:12px;color:#1D3557;text-align:right;">$' + r.face.toLocaleString() + '</td>' +
         '<td style="padding:7px 8px;font-size:12px;color:#1D3557;text-align:right;font-weight:600;">$' + r.monthly.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</td>' +
-        '<td style="padding:7px 8px;text-align:right;"><button onclick="toggleAppOPT(\'' + ap.clientId + '\',' + ap.ci + ',' + ap.ti + ',' + ap.ai + ')" style="font-size:10px;border:1px solid ' + (ap.opted?'#3B6D11':'#d0dcea') + ';background:' + (ap.opted?'#EAF3DE':'#fff') + ';color:' + (ap.opted?'#3B6D11':'#5f7a99') + ';border-radius:6px;padding:3px 8px;cursor:pointer;white-space:nowrap;">' + (ap.opted?'\u2713 OPT':'+ OPT') + '</button></td>' +
+        '<td style="padding:7px 8px;text-align:right;"><button class="opt-chip ' + (ap.opted?'opt-on':'opt-off') + '" onclick="toggleAppOPT(\'' + ap.clientId + '\',' + ap.ci + ',' + ap.ti + ',' + ap.ai + ')">' + (ap.opted?'\u2713 OPT':'+ OPT') + '</button></td>' +
       '</tr>';
     }).join('');
 
@@ -6286,7 +6397,18 @@ function renderAppsTab() {
       const currentStatus = ap.status || 'Submitted';
       const statusColor = STATUS_COLOR[currentStatus] || '#1D3557';
       const dt = ap.tpDate ? new Date(ap.tpDate).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
-      return `<div style="border:1px solid #e2eaf2;border-radius:10px;padding:12px;margin-bottom:8px;background:#fff;">
+      // h268: red only where there is still something to do; grey once she has
+      // finished with it, either way.
+      const rowState = ap.closed_out ? ' app-closed' : (appNeedsAttention(ap) ? ' app-attention' : '');
+      const closeOut = ap.closed_out
+        ? `<button class="app-close-btn" onclick="event.stopPropagation();reopenClosedOutApp('${ap.clientId}',${ap.ci},${ap.ti},${ap.ai})">${ap.closed_out === 'rewrite' ? 'Rewritten' : 'Closed out'} - undo</button>`
+        : (appNeedsAttention(ap)
+            ? `<div class="app-close-row">
+                 <button class="app-close-btn" onclick="event.stopPropagation();closeOutApp('${ap.clientId}',${ap.ci},${ap.ti},${ap.ai},'rewrite')">Rewritten</button>
+                 <button class="app-close-btn" onclick="event.stopPropagation();closeOutApp('${ap.clientId}',${ap.ci},${ap.ti},${ap.ai},'dead')">Dead</button>
+               </div>`
+            : '');
+      return `<div class="app-row${rowState}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
           <div style="flex:1;cursor:pointer;min-width:0;" onclick="openClient('${ap.clientId}')">
             <div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;">
@@ -6309,13 +6431,14 @@ function renderAppsTab() {
               return `<div style="font-size:11px;color:${suspicious ? '#A32D2D' : '#3B6D11'};margin-top:1px;font-weight:500;">${comp.rate}% \u00B7 ${fmt(comp.grossComp)} comp \u00B7 ${fmt(upfront)} upfront${comp.isAsEarned ? ' (as-earned, 1st month)' : ''}${suspicious ? ' \u26A0\uFE0F comp exceeds premium \u00D7 rate ceiling \u2014 check this app' : ''}</div>`;
             })()}
             <button onclick="event.stopPropagation();openEditApp('${ap.clientId}',${ap.ci},${ap.ti},${ap.ai})" style="margin-top:4px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:2px 10px;font-size:10px;color:#5f7a99;cursor:pointer;">Edit app</button>
+            ${closeOut}
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
             <select onchange="setAppStatus('${ap.clientId}',${ap.ci},${ap.ti},${ap.ai},this.value)" style="font-size:11px;font-weight:600;color:${statusColor};background:${statusColor}18;border:1px solid ${statusColor}44;border-radius:8px;padding:3px 6px;cursor:pointer;outline:none;">
               ${STATUS_OPTS.map(s=>`<option value="${s}" ${s===currentStatus?'selected':''}>${s}</option>`).join('')}
             </select>
             <div style="display:flex;gap:4px;">
-              <button onclick="toggleAppOPT('${ap.clientId}',${ap.ci},${ap.ti},${ap.ai})" style="font-size:10px;border:1px solid ${ap.opted?'#3B6D11':'#d0dcea'};background:${ap.opted?'#EAF3DE':'#fff'};color:${ap.opted?'#3B6D11':'#5f7a99'};border-radius:6px;padding:3px 8px;cursor:pointer;white-space:nowrap;">${ap.opted?'✓ OPT':'+ OPT'}</button>
+              <button class="opt-chip ${ap.opted?'opt-on':'opt-off'}" onclick="toggleAppOPT('${ap.clientId}',${ap.ci},${ap.ti},${ap.ai})">${ap.opted?'✓ OPT':'+ OPT'}</button>
               <button onclick="deleteApp('${ap.clientId}',${ap.ci},${ap.ti},${ap.ai})" style="font-size:10px;border:1px solid #f0c0c0;background:#fff5f5;color:#A32D2D;border-radius:6px;padding:3px 8px;cursor:pointer;">✕</button>
             </div>
           </div>
@@ -11979,7 +12102,7 @@ function clientCareDue() {
   (clients || []).forEach(c => {
     // 1. did it draft? internal, no call
     const dc = draftCheckDue(c);
-    if (dc) push(c, 'portal', 'Check the portal - did it draft?', dc.getTime(), 'portal', null);
+    if (dc) push(c, 'portal', 'Did your deposit land and their draft go through?', dc.getTime(), 'portal', null);
 
     const issued = getIssuedAt(c);
     if (!issued) return;
@@ -12090,12 +12213,20 @@ async function carePush(id, key, days) {
 // The portal check is how a policy gets logged as placed in the first place.
 async function markPlacedFromPortal(id) {
   const c = clients.find(x => x.id === id); if (!c) return;
-  await recordAction(id, 'Placed from portal check', async () => {
+  await recordAction(id, 'Paid - deposit and draft confirmed', async () => {
     const cases = JSON.parse(JSON.stringify(c.cases || []));
-    cases.forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp => (tp.apps||[]).filter(Boolean).filter(Boolean).forEach(ap => {
-      if (ap && ['Submitted','Approved'].includes(ap.status || '')) {
-        ap.status = 'Issued';
-        stampIssuedDate(ap);   // starts the delivery clock
+    // h268: this used to set Issued - the CARRIER's action. The prompt asks
+    // whether the deposit landed and the draft went through, which is the
+    // CLIENT's money and hers. That is Paid. The delivery clock still starts at
+    // Issued, so an app that skips straight here gets both stamps.
+    cases.forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp => (tp.apps||[]).filter(Boolean).forEach(ap => {
+      if (ap && ['Submitted','Approved','Issued'].includes(ap.status || '')) {
+        // stampIssuedDate only fires when the status is already Issued, so an app
+        // going straight to Paid would never get a delivery date. Stamp it here.
+        const nowIso = new Date().toISOString();
+        if (!ap.issued_date) ap.issued_date = nowIso;   // starts the delivery clock
+        ap.status = 'Paid';
+        ap.paid_date = ap.paid_date || nowIso;
       }
     })));
     showSync('Saving...');
@@ -12152,7 +12283,7 @@ function openClientCare() {
                : r.kind === 'card' ? '#7A4A0F' : '#BA7517';
     let actions;
     if (r.kind === 'portal') {
-      actions = '<button onclick="markPlacedFromPortal(\'' + r.c.id + '\')" style="flex:1.2;background:#3B6D11;color:#fff;border:none;border-radius:6px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;">It drafted - mark placed</button>' +
+      actions = '<button onclick="markPlacedFromPortal(\'' + r.c.id + '\')" style="flex:1.2;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;">Both landed - mark paid</button>' +
                 '<button onclick="carePush(\'' + r.c.id + '\',\'portal\',3)" style="flex:1;background:none;border:1px solid #b9c6d4;color:#5f7a99;border-radius:6px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;">Not yet - 3 days</button>';
     } else if (r.kind === 'delivery') {
       actions = '<button onclick="confirmDelivery(\'' + r.c.id + '\')" style="flex:1.2;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;">Confirmed - go to the ask</button>' +
