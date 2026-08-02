@@ -1859,6 +1859,48 @@ html,body{ overflow-x:hidden !important; }
 }
 .appt-sidebar-item.ap-due .ap-name{ color:#fff !important; }
 .appt-sidebar-item.ap-due .ap-time{ color:#ff8a8e !important; }
+
+/* ============================================================================
+   h249 - THE STATUS LINE, THE METERS, AND A READABLE SCHEDULE
+   ========================================================================== */
+/* caught up is the other half of behind pace, and glows the same way */
+.pace-good{
+  display:inline-flex; align-items:center; gap:8px;
+  padding:6px 12px 6px 11px; border-radius:8px;
+  background:rgb(35 183 183 / .12) !important;
+  border:1px solid rgb(35 183 183 / .30) !important;
+  color:var(--accent-lift) !important; font-weight:600 !important; font-size:12.5px !important;
+  box-shadow:0 0 20px -4px rgb(35 183 183 / .5), inset 0 0 0 1px rgb(35 183 183 / .10);
+  text-shadow:0 0 14px rgb(35 183 183 / .6);
+}
+.pace-good::before{
+  content:""; width:6px; height:6px; border-radius:50%;
+  background:var(--accent-lift); flex:0 0 auto;
+}
+/* who the next thing is with, in white */
+.pace-next b{ color:#fff !important; font-weight:700 !important; }
+
+/* the small-tile goal line */
+.tile-goal{
+  margin-top:6px; font-size:11.5px; color:#a8b3b1; font-weight:500;
+}
+.tile-goal b{ color:#d6dedd; font-weight:600; }
+
+/* ---- THE SCHEDULE: readable, and a scrollbar you can grab ---- */
+.appt-sidebar-divider{ color:#9aa5a3 !important; font-size:11px !important; }
+.appt-sidebar-item .ap-meta,
+.appt-sidebar-item div:not(.ap-name):not(.ap-time){
+  color:#a8b3b1 !important;          /* was charcoal on charcoal */
+}
+#appt-sidebar::-webkit-scrollbar, .appt-sidebar::-webkit-scrollbar{ width:14px !important; }
+#appt-sidebar::-webkit-scrollbar-thumb, .appt-sidebar::-webkit-scrollbar-thumb{
+  background:rgb(255 255 255 / .22) !important; border-radius:10px !important;
+  border:4px solid var(--surface) !important; min-height:44px !important;
+}
+#appt-sidebar::-webkit-scrollbar-thumb:hover, .appt-sidebar::-webkit-scrollbar-thumb:hover{
+  background:rgb(255 255 255 / .34) !important;
+}
+#appt-sidebar, .appt-sidebar{ scrollbar-width:auto !important; scrollbar-color:rgb(255 255 255 / .22) transparent; }
 </style>
 </head>
 <body>
@@ -1877,7 +1919,7 @@ html,body{ overflow-x:hidden !important; }
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h248</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h249</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -5244,7 +5286,8 @@ function renderSidebar() {
         html += overdueList.map(renderItem).join('');
       }
       if (todayList.length) {
-        html += `<div class="appt-sidebar-divider">Today</div>`;
+        // h249: the day and date belong here now that they have left the header
+        html += `<div class="appt-sidebar-divider">Today &middot; ${new Date().toLocaleDateString('en-US',{weekday:'long', month:'short', day:'numeric'})}</div>`;
         html += todayList.map(renderItem).join('');
       }
       if (laterList.length) {
@@ -7087,32 +7130,33 @@ function getNextSlotTime(c) {
   return { agentHour: new Date().getHours() + hoursUntil, label: 'tomorrow ' + fmt(w.start) };
 }
 
+// h249: this looked at TODAY only, so once today's work was done the line fell
+// back to "no appts today" even with an appointment tomorrow morning. It looks
+// forward across days now, and carries the client's name so the line can say who
+// the next thing is with.
 function getNextApptInfo() {
   const now = new Date();
-  const todayStr = now.toDateString();
-  // 15 min grace: an appointment that just started still shows NOW,
-  // but anything older is stale and must not hijack the countdown all day
-  const staleCutoff = new Date(now.getTime() - 15*60000);
-  let soonest = null, soonestType = null;
+  const staleCutoff = new Date(now.getTime() - 15 * 60000);   // 15 min grace
+  let soonest = null, soonestType = null, soonestName = '';
+  const consider = (dt, type, name) => {
+    if (!dt || isNaN(dt) || dt < staleCutoff) return;
+    if (soonest && dt >= soonest) return;
+    soonest = dt; soonestType = type; soonestName = name || '';
+  };
   clients.forEach(c => {
     if (c.status === 'Appointment set') {
-      (c.cases||[]).forEach(cs => {
-        (cs.touchpoints||[]).forEach(tp => {
-          if (tp && tp.outcome === 'pending' && tp.datetime) {
-            const dt = new Date(tp.datetime);
-            if (dt.toDateString() === todayStr && dt >= staleCutoff && (!soonest || dt < soonest)) { soonest = dt; soonestType = 'appt'; }
-          }
-        });
-      });
+      (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+        if (tp && tp.outcome === 'pending' && tp.datetime) consider(new Date(tp.datetime), 'appt', c.name);
+      }));
     }
     const cb = getScheduledCallback(c);
-    if (cb && cb.callback_dt) {
-      const dt = new Date(cb.callback_dt);
-      if (dt.toDateString() === todayStr && dt >= staleCutoff && (!soonest || dt < soonest)) { soonest = dt; soonestType = 'callback'; }
-    }
+    if (cb && cb.callback_dt) consider(new Date(cb.callback_dt), 'callback', c.name);
   });
   if (!soonest) return null;
-  return { dt: soonest, type: soonestType, minsUntil: Math.round((soonest - now) / (1000 * 60)) };
+  return {
+    dt: soonest, type: soonestType, clientName: soonestName,
+    minsUntil: Math.round((soonest - now) / 60000),
+  };
 }
 
 function renderAlerts() {
@@ -7168,14 +7212,18 @@ function renderAlerts() {
   } else if (apptInfo.minsUntil <= 30) {
     apptPart = apptLabel + ' in ' + apptInfo.minsUntil + ' min'; apptFire = ' &#128293;';
   } else {
-    // h245: this used to switch to a clock time past two hours - "appt at 4:30".
-    // A countdown answers the question she is actually asking, which is how long
-    // she has, so it stays a countdown however far out the next thing is.
+    // h249: a countdown answers the question she is actually asking - how long
+    // have I got - so it stays a countdown however far out the next thing is,
+    // counting hours right across days rather than switching to a clock time.
     const h = Math.floor(apptInfo.minsUntil/60), m = apptInfo.minsUntil%60;
-    const parts = [];
-    if (h > 0) parts.push(h + ' hour' + (h === 1 ? '' : 's'));
-    if (m > 0) parts.push(m + ' min');
-    apptPart = apptLabel + ' in ' + parts.join(' ');
+    const bits = [];
+    if (h > 0) bits.push(h + ' hour' + (h === 1 ? '' : 's'));
+    if (m > 0) bits.push(m + ' min');
+    apptPart = apptLabel + ' in ' + bits.join(' ');
+  }
+  // and say WHO it is with - "callback in 2 hours 40 min with Dennis Rourke"
+  if (apptInfo && apptInfo.clientName) {
+    apptPart += ' with <b>' + esc(apptInfo.clientName) + '</b>';
   }
 
   let html = '';
@@ -7197,8 +7245,12 @@ function renderAlerts() {
     // h237: the line reads left to right as ACT NOW, then the shape of what is
     // waiting, then - pushed to the far right - the next thing on the clock.
     // The overdue count is gone: it duplicated what "behind pace" already says.
+    // h249: caught up earns the same treatment as behind pace - it is the other
+    // half of the same signal, and a board that only ever lights up to tell you
+    // off is a board you learn to dread.
     if (behindNow > 0) parts.push('<span class="pace-hot">Behind pace \u2014 call ' + behindNow + ' now</span>');
     else if (dueNow > 0) parts.push('<span class="pace-hot">' + dueNow + ' lead' + (dueNow>1?'s':'') + ' due now</span>');
+    else parts.push('<span class="pace-good">Caught up</span>');
 
     // h239: the warm/cooling breakdown is gone. It repeated what "behind pace"
     // already says and it was the only orange on the board.
@@ -7214,9 +7266,12 @@ function renderAlerts() {
         const d = new Date(dt); return d >= start && d <= end;
       }).length;
     } catch (e) {}
-    parts.push('<span class="pace-count">' +
-      (todayCount ? todayCount + ' appt' + (todayCount === 1 ? '' : 's') + ' today'
-                  : 'no appts today') + '</span>');
+    // h249: only show the count when there is one - "no appts today" straight
+    // after a line that already said there is nothing next says it twice.
+    if (todayCount) {
+      parts.push('<span class="pace-count">' + todayCount +
+        ' appt' + (todayCount === 1 ? '' : 's') + ' today</span>');
+    }
     // h228: the inline light-mode fill is gone. The line is plain white text on
     // the board; only the "behind pace" span carries a colour, and it carries it
     // from the stylesheet where the glow lives.
@@ -16247,11 +16302,11 @@ function renderGoalZones(vals){
             (st.hit ? '<span class="hero-hit">\u2713</span>' : '') +
           '</div>';
       } else {
+        // h249: the left number was the same figure already printed on the card.
+        // Bar, then the target - nothing repeated.
         slot.innerHTML = wrap(
-          '<div style="display:flex;justify-content:space-between;font-size:9px;color:'+txt+';font-weight:700;line-height:1.1;">' +
-            '<span>'+aStr+(st.hit?' \u2713':'')+'</span><span style="color:'+soft+';font-weight:500;">'+tStr+'</span></div>' +
-          '<div style="height:5px;border-radius:3px;background:'+barTrack+';overflow:hidden;margin-top:3px;">' +
-            '<div style="height:100%;width:'+fillPct+'%;background:'+barFill+';border-radius:3px;transition:width .4s ease;"></div></div>');
+          '<div class="hero-meter" style="height:5px;"><div class="hero-meter-fill" style="width:'+fillPct+'%;"></div></div>' +
+          '<div class="tile-goal">of <b>'+tStr+'</b> goal' + (st.hit ? ' <span class="hero-hit">\u2713</span>' : '') + '</div>');
       }
     } else {
       // No goal for THIS period instance. Always reset the slot so a goal set in
