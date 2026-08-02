@@ -166,6 +166,52 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
   .faq{page-break-inside:avoid}
   details{open:true}
 }
+
+/* ============================================================================
+   h293 - THE MOCK-UPS FOLLOW THE APP
+   These were drawn when the console was light: pale tiles, dark ink, a white
+   panel behind everything. The app is dark now, so every one of the 38 shots was
+   showing a screen that no longer exists. Retinting the tokens the shots are
+   built from updates all of them at once, rather than editing each by hand.
+   ========================================================================== */
+.shot{
+  background:#0d1112 !important;
+  border:1px solid rgb(255 255 255 / .10) !important;
+  padding:14px !important;
+}
+.shot-lbl{ color:#23b7b7 !important; }
+
+/* a tile face, and the panel a group of them sits in */
+.shot .tile{
+  background:#151b1c !important;
+  border:1px solid rgb(255 255 255 / .16) !important;
+  color:#e8eeed !important;
+}
+.shot .lite{
+  background:#151b1c !important;
+  border:1px solid rgb(255 255 255 / .16) !important;
+  color:#e8eeed !important;
+}
+.shot .lite .m, .shot .tile .m{ color:#9aa5a3 !important; }
+.shot .lite .n, .shot .tile .n{ color:#e8eeed !important; }
+.shot .v{ color:#8f9c9a !important; }
+.shot .l{ color:#ffffff !important; }
+
+/* buttons: the selected one fills with the accent, the rest are outlines */
+.shot .b{ background:#138181 !important; color:#fff !important; border:none !important; }
+.shot .b-teal{ background:#138181 !important; color:#fff !important; }
+.shot .b-out{
+  background:transparent !important; color:#c3cdcb !important;
+  border:1px solid rgb(255 255 255 / .16) !important;
+}
+.shot .hi{ box-shadow:0 0 0 2px rgb(35 183 183 / .35) !important; }
+
+/* a hero tile in a mock-up reads like a hero tile in the app */
+.shot .tile.hero{
+  background:#151b1c !important;
+  border:1px solid rgb(35 183 183 / .45) !important;
+  border-top:3px solid #23b7b7 !important;
+}
 </style>
 </head>
 <body>
@@ -207,6 +253,16 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
   <p class="sec-sub indent">Ten minutes, once. Settings has five tabs &mdash; work through them left to right and you will not have to come back.</p>
 
   <div class="step">
+          <button class="tick" aria-pressed="false" data-id="s0">&#10003;</button>
+          <div class="step-body">
+            <h3>Undo, and the dot on the gear</h3>
+            <p><b>Undo</b> sits beside your name and reverses the last outcome you logged &mdash; the stat, the status and the appointment all go back.</p><p>A <b>red dot on the gear</b> means a lead is in two states at once: an appointment on someone who said no, a step booked before the one under it happened, a label left over from an old booking. Open <kbd>Settings &rarr; Help &rarr; Repair</kbd> and each one tells you what it found and offers the fix.</p>
+            <div class="why"><b>Contradictions come from real work, not carelessness.</b> Rescheduling, reviving and resetting all leave traces, and the board quietly counts them wrong until someone looks. The dot means it is worth two minutes at your desk, not mid-dial.</div>
+          </div>
+          <div class="shot"><div class="shot-lbl">Repair</div><div class="lite"><div class="n">Anthony Keith Grant</div><div class="m">The card says &ldquo;Step 2 (revived)&rdquo; but the booked meeting is Step 1.</div><div class="btnrow"><span class="b b-out">Clear the stale label</span></div></div></div>
+        </div>
+
+        <div class="step">
     <button class="tick" aria-pressed="false" data-id="s1">✓</button>
     <div class="step-body">
       <h3>Profile &mdash; who you are</h3>
@@ -399,10 +455,10 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
       <div class="why"><b>One per period, not six on one.</b> A tile with a goal fills with colour as you close on it. Six goals in the same day is six things to feel behind on before lunch.</div>
     </div>
     <div class="shot">
-      <div class="shot-lbl">Board &rarr; Dialing activity</div>
+      <div class="shot-lbl">Board &rarr; the top of the page</div>
       <div class="row2">
         <div class="tile"><div class="l">Dials &middot; today</div><div class="v">12</div><div class="s hi" style="color:var(--teal);font-weight:600">of 60</div></div>
-        <div class="tile"><div class="l">Appts set</div><div class="v">1</div><div class="s" style="color:var(--teal)">+ set a goal</div></div>
+        <div class="tile"><div class="l">Appointments set</div><div class="v">1</div><div class="s" style="color:var(--teal)">+ set a goal</div></div>
       </div>
     </div>
   </div>
@@ -441,7 +497,8 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
       <div class="banner hi">Behind pace &mdash; call 24 now &middot; <u>15 overdue</u> &middot; appt in 10 min</div>
       <div class="row2">
         <div class="tile"><div class="l">Dials</div><div class="v">12</div><div class="s">of 60</div></div>
-        <div class="tile"><div class="l">Texts sent</div><div class="v">4</div></div>
+        <div class="tile"><div class="l">Texts</div><div class="v">4</div></div>
+        <div class="tile"><div class="l">Voicemails</div><div class="v">2</div></div>
       </div>
     </div>
   </div>
@@ -816,16 +873,16 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
   <div class="step">
     <button class="tick" aria-pressed="false" data-id="c2">✓</button>
     <div class="step-body">
-      <h3>Check the portal when it asks</h3>
-      <p>A few days after their draft date you get <kbd>Check the portal &mdash; did it draft?</kbd> Look it up in your agent portal. If it drafted, tap <kbd>It drafted &mdash; mark placed</kbd>.</p>
-      <div class="why"><b>This is how a policy gets marked placed.</b> Nothing else moves it, and marking it placed is what starts the delivery clock.</div>
+      <h3>Confirm the money moved</h3>
+      <p>A few days after their draft date you get <kbd>Did your deposit land and their draft go through?</kbd> Check both &mdash; their payment left, and yours arrived. If they both did, tap <kbd>Both landed &mdash; mark paid</kbd>.</p>
+      <div class="why"><b>Two things have to be true, not one.</b> A carrier issuing a policy is not the same as you being paid for it. This step is about your money, so it only counts when the deposit is actually in.</div>
     </div>
     <div class="shot">
       <div class="shot-lbl">Client care</div>
       <div class="lite" style="border-left:3px solid var(--plum)">
         <div class="n">Dennis &amp; Emily Rourke</div>
-        <div class="m" style="color:var(--plum);font-weight:600">CHECK THE PORTAL &mdash; DID IT DRAFT?</div>
-        <div class="btnrow"><span class="b" style="background:#3B6D11;color:#fff">It drafted &mdash; mark placed</span><span class="b b-out" style="border-color:#D5DEE8;color:var(--dim)">Not yet &mdash; 3 days</span></div>
+        <div class="m" style="color:var(--teal);font-weight:600">DID YOUR DEPOSIT LAND AND THEIR DRAFT GO THROUGH?</div>
+        <div class="btnrow"><span class="b" style="background:#3B6D11;color:#fff">Both landed &mdash; mark paid</span><span class="b b-out" style="border-color:#D5DEE8;color:var(--dim)">Not yet &mdash; 3 days</span></div>
       </div>
     </div>
   </div>
@@ -905,6 +962,59 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
   </div>
 
   <div class="step">
+          <button class="tick" aria-pressed="false" data-id="n0">&#10003;</button>
+          <div class="step-body">
+            <h3>The four ROI numbers</h3>
+            <p><b>APV / lead</b> is the volume a lead produces. <b>Comm / lead</b> is what a lead is worth to you when you buy it. <b>Profit / lead</b> is what is left after it cost you. <b>Return on spend</b> is what every dollar came back as.</p>
+            <p>Each one shows the totals behind it, so you can see what the average is averaged over. Tap <b>Return on spend</b> to log what you spent &mdash; nothing here works until you do.</p>
+            <div class="why"><b>Comm / lead is the one to know by heart.</b> It is the number you compare a lead price against. If a lead costs more than it returns, no amount of dialing fixes that.</div>
+          </div>
+          <div class="shot">
+            <div class="shot-lbl">Board &rarr; ROI</div>
+            <div class="row2">
+              <div class="tile"><div class="l">Comm / lead</div><div class="v">$191</div><div class="s">$25,021 total &middot; before lead cost</div></div>
+              <div class="tile"><div class="l">Return on spend</div><div class="v">$3.82</div><div class="s">$7,560 in &middot; $28,900 out</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <button class="tick" aria-pressed="false" data-id="b0">&#10003;</button>
+          <div class="step-body">
+            <h3>Upload it to OPT, then tick it here</h3>
+            <p>Every application has an <kbd>OPT</kbd> chip. Red means it has not been uploaded; tap it once it is in. The <b>Business</b> tab counts the red ones at the top &mdash; tap that count to see exactly which.</p><p>The list is oldest first, because the oldest is the one closest to being a problem.</p>
+            <div class="why"><b>An application that is not in OPT does not get paid.</b> This is the one piece of admin on the board that is purely about your own money, and it is the easiest one to forget on a good week.</div>
+          </div>
+          <div class="shot"><div class="shot-lbl">Business</div><div class="lite"><div class="n">41 apps &middot; $57,953 APV</div><div class="btnrow" style="margin-top:6px"><span class="b" style="background:#5c1f22;color:#ff8a8e">&#9888; 4 not in OPT</span></div></div><div class="lite"><div class="n">Peter Lastowski</div><div class="m">Transamerica &middot; Submitted &middot; 12d ago</div><div class="btnrow"><span class="b" style="background:#5c1f22;color:#ff8a8e">+ OPT</span></div></div></div>
+        </div>
+
+        
+
+        <div class="step">
+          <button class="tick" aria-pressed="false" data-id="q4">&#10003;</button>
+          <div class="step-body">
+            <h3>&ldquo;Not interested&rdquo; is not &ldquo;Dead&rdquo;</h3>
+            <p><b>Not interested</b> means they said no to this, today. They stay in the system, the app stops queueing them for a while, and they can be reset to something else entirely.</p><p><b>Dead</b> means there is no person to call &mdash; wrong number, deceased, asked never to be contacted again. It is the only one that takes them out for good.</p>
+            <div class="why"><b>Most agents mark people dead who are only annoyed.</b> A no to mortgage protection is not a no to everything, and a lead you killed in March is one you cannot reset in September.</div>
+          </div>
+          <div class="shot"><div class="shot-lbl">Outcome</div><div class="btnrow"><span class="b b-out">No answer</span><span class="b b-out">Appt set</span><span class="b b-out">Follow-up</span><span class="b b-teal">Not interested</span></div><div class="m" style="margin-top:8px">Then: <b>reset them</b> to Advanced Market, or leave them to cool.</div></div>
+        </div>
+
+        
+
+        <div class="step">
+          <button class="tick" aria-pressed="false" data-id="q3">&#10003;</button>
+          <div class="step-body">
+            <h3>When a lead disappears from the queue</h3>
+            <p>Two reasons, and neither is a bug. <b>Curfew</b>: it is too early or too late where they live, so they drop out until their window opens. <b>Dormant</b>: enough attempts have gone by with no contact that the app rests them rather than letting you keep burning dials.</p><p>Dormant leads are not gone. They come back on a slower clock, and you can see them any time from the <kbd>Dormant</kbd> filter.</p>
+            <div class="why"><b>The queue protects your hour.</b> A lead you cannot legally call yet, or one that has not answered in fifteen tries, does not belong in front of you at 10am. Everything still in the queue is worth the dial.</div>
+          </div>
+          <div class="shot"><div class="shot-lbl">Leads &rarr; filters</div><div class="btnrow"><span class="b b-teal hi">Active</span><span class="b b-out">Fresh</span><span class="b b-out">Warm</span><span class="b b-out">Cooling</span><span class="b b-out">Dormant</span></div><div class="lite"><div class="n">Too late &middot; 9:14pm their time</div><div class="m">back in the queue at 8am</div></div></div>
+        </div>
+
+        
+
+        <div class="step">
     <button class="tick" aria-pressed="false" data-id="n3">✓</button>
     <div class="step-body">
       <h3>Two things worth watching</h3>
@@ -1030,6 +1140,14 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
   var saved={};
   try{ saved=JSON.parse(localStorage.getItem(KEY)||'{}'); }catch(e){ saved={}; }
 
+  // h294: progress stays in the browser, where it started. Putting it in the
+  // database meant a file per agent to maintain, for the sake of ticks surviving
+  // a cache clear - which is not worth three files. One guide, everyone's
+  // progress their own.
+  function persist(){
+    try{ localStorage.setItem(KEY,JSON.stringify(saved)); }catch(e){}
+  }
+
   function render(){
     var done=0;
     ticks.forEach(function(t){
@@ -1043,7 +1161,7 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
   ticks.forEach(function(t){
     t.addEventListener('click',function(){
       saved[t.dataset.id]=!saved[t.dataset.id];
-      try{ localStorage.setItem(KEY,JSON.stringify(saved)); }catch(e){}
+      persist();
       render();
     });
   });
