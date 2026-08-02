@@ -2074,6 +2074,77 @@ html,body{ overflow-x:hidden !important; }
 .modal [style*="background:#F4F1FA"], .modal [style*="background:#EEF0FF"]{
   background:#F4F7FA !important; border-color:#D5DEE8 !important; color:#16202E !important;
 }
+
+/* ============================================================================
+   h257 - THE LEAD CARD, FOR SPEED
+   Eleven things were competing to be loudest: a gold Save, a gold dial count, a
+   gold referral chip, four saturated outcome buttons, a purple Done, a purple
+   strip, gold log dots. The h255 pass only caught inline `color:` - every one of
+   these sets an inline `background:`, which is why they survived.
+   Three stops now: the phone number, the outcome row, then Save.
+   ========================================================================== */
+
+/* ---- 1. EVERY INLINE FILL INSIDE A LEAD CARD GOES NEUTRAL ---- */
+.modal [style*="background:#"]:not(.save-btn):not([class*="on-"]):not(.dial-cnt-btn):not(.outcome-btn){
+  background:#F4F7FA !important;
+  border-color:#D5DEE8 !important;
+  color:#16202E !important;
+}
+.modal [style*="background:#"] *{ color:#16202E !important; }
+
+/* ---- 2. ONE FILLED BUTTON. Save & next is the primary action and nothing else
+   may look like it. ---- */
+.modal .save-btn{
+  background:var(--accent) !important; border:none !important; color:#fff !important;
+  font-size:14px !important; font-weight:700 !important; padding:12px !important;
+  border-radius:9px !important;
+  margin-top:18px !important;              /* room above, so Save is never a slip */
+}
+
+/* ---- 3. THE OUTCOME ROW keeps its identity as outlines. Colour floods only the
+   one you have chosen, so you keep "green is appt set" without four blocks
+   shouting at once. ---- */
+.modal .outcome-row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+.modal button[onclick*="quickLog"], .modal button[onclick*="setOutcome"]{
+  background:#fff !important; color:#16202E !important;
+  border:1.5px solid #D5DEE8 !important; border-radius:8px !important;
+  font-size:13px !important; font-weight:600 !important; padding:8px 14px !important;
+}
+.modal button[onclick*="quickLog"]:hover, .modal button[onclick*="setOutcome"]:hover{
+  border-color:#9FB2C4 !important;
+}
+/* each keeps a hint of its own colour on the edge only */
+.modal button[onclick*="'No answer'"], .modal button[onclick*="noanswer"]{ border-color:#B9C6D4 !important; }
+.modal button[onclick*="Appt set"]{ border-color:#7FBF95 !important; }
+.modal button[onclick*="Follow-up"]{ border-color:#B0A7E8 !important; }
+.modal button[onclick*="Not interested"]{ border-color:#E8A9A9 !important; }
+/* selected: filled, in the accent */
+.modal button.sel, .modal button[aria-pressed="true"]{
+  background:var(--accent) !important; border-color:var(--accent) !important; color:#fff !important;
+}
+
+/* ---- 4. THE PHONE NUMBER is what she is acting on ---- */
+.modal a[href^="tel"], .modal .lead-phone,
+.modal > div:nth-child(2) > span:first-child{
+  font-size:19px !important; font-weight:700 !important; color:#16202E !important;
+  letter-spacing:-.01em !important;
+}
+
+/* ---- 5. BIGGER BASE TYPE. It was 11-12px on a card read at speed. ---- */
+.modal, .modal div, .modal span, .modal label{ font-size:13.5px; }
+.modal [style*="font-size:11px"], .modal [style*="font-size:12px"]{ font-size:13px !important; }
+.modal [style*="font-size:9px"], .modal [style*="font-size:10px"]{ font-size:12px !important; }
+.modal .modal-title{ font-size:17px !important; }
+/* the call log breathes */
+.modal .log-row, .modal [class*="log"]{ line-height:1.55 !important; }
+#call-log-section > div, .modal .call-log-entry{ margin-bottom:10px !important; }
+
+/* ---- 6. SECTION HEADINGS recede so the content leads ---- */
+.modal [style*="letter-spacing"][style*="uppercase"],
+.modal .field-label{
+  font-size:11px !important; color:#8FA0B4 !important; font-weight:700 !important;
+  letter-spacing:.09em !important;
+}
 </style>
 </head>
 <body>
@@ -2092,7 +2163,7 @@ html,body{ overflow-x:hidden !important; }
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h256</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h257</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
