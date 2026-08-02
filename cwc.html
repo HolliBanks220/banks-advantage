@@ -2027,6 +2027,53 @@ html,body{ overflow-x:hidden !important; }
 
 /* the page-selector underline reads as a selection, not a hairline */
 .tab.on::after{ height:4px !important; bottom:-10px !important; border-radius:3px !important; }
+
+/* ============================================================================
+   h255 - THE LEAD CARD
+   Wider, and the colour comes off the text. Eight different inks on one panel -
+   gold, purple, teal, navy, amber - made the card hard to scan while dialing.
+   Text is ink and grey; colour lives on the buttons you can press.
+   ========================================================================== */
+.modal{ max-width:520px !important; }
+@media(max-width:600px){ .modal{ max-width:100% !important; } }
+
+/* every text colour inside a lead card resolves to ink or grey */
+.modal, .modal div, .modal span, .modal label, .modal p, .modal td, .modal li{
+  color:#16202E !important;
+}
+.modal .modal-sub, .modal small,
+.modal [style*="font-size:9px"], .modal [style*="font-size:10px"],
+.modal [style*="font-size:11px"]{
+  color:#5F7A99 !important;
+}
+.modal .modal-title{ color:#16202E !important; font-weight:700 !important; }
+.modal a, .modal u{ color:#16202E !important; }
+/* the phone number and address are content, not decoration */
+.modal [style*="color:#B8860B"], .modal [style*="color:#8B6914"],
+.modal [style*="color:#3C3489"], .modal [style*="color:#534AB7"],
+.modal [style*="color:#1D3557"], .modal [style*="color:#A32D2D"],
+.modal [style*="color:#854F0B"], .modal [style*="color:#3B6D11"]{
+  color:#16202E !important;
+}
+.modal .client-meta, .modal [style*="color:#8fa8c0"], .modal [style*="color:#a0b8cc"]{
+  color:#5F7A99 !important;
+}
+
+/* ---- COLOUR LIVES ON THE BUTTONS ---- */
+.modal button{ font-family:inherit; }
+/* the outcome row: only the one you press is filled */
+.modal .save-btn{ color:#fff !important; }
+.modal .dial-cnt-btn.on, .modal .flag-btn.on-teal,
+.modal .flag-btn.on-navy, .modal .flag-btn.on-purple{
+  background:var(--accent) !important; border-color:var(--accent) !important; color:#fff !important;
+}
+.modal .dial-cnt-btn, .modal .flag-btn, .modal .filter-btn{
+  background:#fff !important; border:1px solid #D5DEE8 !important; color:#16202E !important;
+}
+/* the scheduled-item strip reads as a card, not a purple block */
+.modal [style*="background:#F4F1FA"], .modal [style*="background:#EEF0FF"]{
+  background:#F4F7FA !important; border-color:#D5DEE8 !important; color:#16202E !important;
+}
 </style>
 </head>
 <body>
@@ -2045,7 +2092,7 @@ html,body{ overflow-x:hidden !important; }
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h254</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h255</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -8822,7 +8869,7 @@ function openClient(id, keepDialCount) {
   };
   const _showAllLog = !!(window._logShowAll && window._logShowAll[id]);
   const _logRows = callLog.slice().reverse();
-  const _shownLog = _showAllLog ? _logRows : _logRows.slice(0,6);
+  const _shownLog = _showAllLog ? _logRows : _logRows.slice(0,4);   // h255: fewer rows, more client info in view
   const callHistory = _shownLog.map((cl, ri) => {
     const realIdx = callLog.length - 1 - ri;
     const detail = logDetail(cl);
@@ -8987,7 +9034,7 @@ function openClient(id, keepDialCount) {
   </div>
   <button class="save-btn" onclick="updateClient('${id}')" style="margin-bottom:12px;">Save & next</button>
   <div class="section-lbl">Call log</div>
-  <div style="padding-left:4px;margin-bottom:12px;">${callHistory||'<div style="font-size:12px;color:#a0b8cc;">No calls yet.</div>'}${_logRows.length>6?`<div onclick="toggleLogShowAll('${id}')" style="font-size:10px;color:var(--accent-dark);text-decoration:underline;cursor:pointer;margin-top:4px;">${_showAllLog?'Show fewer':'Show all '+_logRows.length+' entries'}</div>`:''}${deletedLogHtml(c,id)}</div>
+  <div style="padding-left:4px;margin-bottom:12px;">${callHistory||'<div style="font-size:12px;color:#a0b8cc;">No calls yet.</div>'}${_logRows.length>4?`<div onclick="toggleLogShowAll('${id}')" style="font-size:10px;color:var(--accent-dark);text-decoration:underline;cursor:pointer;margin-top:4px;">${_showAllLog?'Show fewer':'Show all '+_logRows.length+' entries'}</div>`:''}${deletedLogHtml(c,id)}</div>
   <div class="section-lbl">Notes</div>
   <div class="field"><label>Property address</label><input type="text" id="cn-address" value="${escAttr(c.address)}" placeholder="123 Main St, City, ST 00000" onchange="autoSaveField('${id}','address',this.value)"></div>
   <div class="field"><label>Age</label><input type="number" id="cn-age" value="${c.age||''}" placeholder="Age" min="18" max="99" onchange="autoSaveField('${id}','age',this.value?parseInt(this.value):null)" style="width:90px;"></div>
