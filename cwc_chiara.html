@@ -2795,6 +2795,44 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
   font-size:12.5px !important; color:#5F7A99 !important;
   margin-top:3px !important; line-height:1.45;
 }
+
+/* ============================================================================
+   h292 - THE HAIRLINES, VISIBLE
+   They were drawn in --line, which is white at 7% - against a #151b1c card that
+   is very nearly nothing. The grid gets its own value, bright enough to read as
+   a line and still quiet enough not to become a cage.
+   ========================================================================== */
+:root{ --grid-line:rgb(255 255 255 / .16); }
+
+.stat-row:not(.hero-row):not(.money-row),
+.stat-row2{
+  background:var(--surface) !important;
+  border:1px solid var(--grid-line) !important;
+  border-radius:var(--r) !important;
+  overflow:hidden !important;
+}
+.stat-row:not(.hero-row):not(.money-row) > .stat,
+.stat-row2 > .stat{
+  background:transparent !important;
+  border:none !important;
+  border-radius:0 !important;
+  box-shadow:
+    inset -1px 0 0 var(--grid-line),
+    inset  0 -1px 0 var(--grid-line) !important;
+}
+.stat-row:not(.hero-row):not(.money-row) > .stat:last-child,
+.stat-row2 > .stat:last-child{
+  box-shadow:inset 0 -1px 0 var(--grid-line) !important;
+}
+
+/* the rail's panels get the same treatment so the page reads as one system */
+#task-sidebar, #appt-sidebar, .appt-sidebar{
+  border:1px solid var(--grid-line) !important;
+}
+.appt-sidebar-item{ border-color:var(--grid-line) !important; }
+
+/* and the section labels' rule */
+.section-lbl::after{ background:var(--grid-line) !important; }
 </style>
 </head>
 <body>
@@ -2821,7 +2859,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h291</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h292</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
