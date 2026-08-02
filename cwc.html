@@ -160,7 +160,10 @@ html,body{overflow-x:hidden;}                   /* no sideways scrollbar, ever *
   --goal-red:#C0392B;  --goal-red-text:#ffffff;     /* the banner red - one red everywhere */
   --goal-amber:#D99A2B; --goal-amber-text:#ffffff;
   --goal-green:#2E7D52; --goal-green-text:#ffffff;  /* a green that belongs beside teal, not a highlighter */
-  --dk-bg:var(--field); --dk-card:#FFFFFF; --dk-ink:#16202E; --dk-dim:#5F7A99; --dk-line:#DDE4EC;
+  /* h226: these still held the old LIGHT values, which is why the schedule and
+     task panels rendered as white cards on the dark board - .appt-sidebar and
+     friends are painted from --dk-card, not from the new tokens. */
+  --dk-bg:#0d1112; --dk-card:#151b1c; --dk-ink:#eef3f2; --dk-dim:#8b9694; --dk-line:rgb(255 255 255 / .07);
   /* h212: ONE accent, three derivatives. Every teal in the app is a variable now,
      so changing this one setting retints buttons, pills, links and goal fills
      together. Defaults to the teal the app has always been. */
@@ -899,6 +902,78 @@ html,body{ overflow-x:hidden !important; }
 
 @media(max-width:1280px){ .stat-row.hero-row{ grid-template-columns:repeat(2,minmax(0,1fr)) !important; } }
 @media(max-width:640px){ .stat-row.hero-row{ grid-template-columns:minmax(0,1fr) !important; } }
+
+/* ============================================================================
+   h226 - HEADER, RAIL, AND THE THINGS THAT WERE STILL LIGHT
+   ========================================================================== */
+
+/* ---- HEADER: one line. Brand left; everything that answers "when" on the
+   right, on the SAME line rather than stacked below it. ---- */
+.hdr{
+  display:flex !important; align-items:center !important;
+  gap:20px !important; padding:0 0 14px !important; flex-wrap:nowrap !important;
+}
+.hdr-left{ flex:0 1 auto !important; }
+.hdr-right{
+  display:flex !important; align-items:center !important; gap:10px !important;
+  flex-wrap:nowrap !important; margin-left:auto !important;
+}
+.hdr-right .nav-row{ margin:0 !important; flex:0 0 auto !important; }
+.hdr-right .nav-row:last-child{ margin-left:6px !important; }
+.period-label{ min-width:88px; text-align:center; }
+
+/* ---- TAB ROW then the status line, both full width. ---- */
+.tab-bar{ margin:0 0 0 !important; }
+#pace-banner, .pace-banner{ margin:16px 0 22px !important; }
+
+/* ---- THE RAIL: it was painting from --dk-card, which was still light. Sizes
+   were also set for a narrow 320px column and read as tiny at 360. ---- */
+#task-sidebar, .appt-sidebar{
+  background:var(--surface) !important; border:1px solid var(--line) !important;
+  padding:16px 16px !important;
+}
+.appt-sidebar-title{ font-size:12px !important; }
+.appt-sidebar-divider{ font-size:10.5px !important; margin:14px 0 6px !important; }
+.appt-sidebar-item{
+  padding:12px 13px !important; margin-bottom:4px !important;
+  background:transparent !important; border-radius:10px !important;
+}
+.appt-sidebar-item .ap-name, .appt-sidebar-item > div:nth-child(2){
+  font-size:14px !important; font-weight:600 !important; color:var(--ink) !important;
+}
+.appt-sidebar-item .ap-time{ font-size:11.5px !important; font-weight:700 !important; }
+.appt-sidebar-item .ap-meta, .appt-sidebar-item > div:nth-child(3),
+.appt-sidebar-item > div:nth-child(4){
+  font-size:12px !important; color:var(--faint) !important;
+}
+.task-item{ padding:10px 8px !important; font-size:13.5px !important; }
+#task-sidebar > div:first-child{ font-size:12px !important; letter-spacing:.14em !important; }
+
+/* ---- SIX ACROSS AT MOST. auto-fill has no ceiling, so a wide board packed
+   nine into a row and each one shrank to nothing. ---- */
+.stat-row, .stat-row2{ grid-template-columns:repeat(6, minmax(0,1fr)) !important; }
+@media(max-width:1400px){ .stat-row, .stat-row2{ grid-template-columns:repeat(5, minmax(0,1fr)) !important; } }
+@media(max-width:1180px){ .stat-row, .stat-row2{ grid-template-columns:repeat(4, minmax(0,1fr)) !important; } }
+@media(max-width:900px){  .stat-row, .stat-row2{ grid-template-columns:repeat(3, minmax(0,1fr)) !important; } }
+@media(max-width:640px){  .stat-row, .stat-row2{ grid-template-columns:repeat(2, minmax(0,1fr)) !important; } }
+
+/* ---- ONE BASELINE PER ROW. A one-line label and a two-line label pushed their
+   numbers to different heights, so a row of figures zig-zagged. Fixed rows put
+   every label, number and sub on the same line as its neighbours. ---- */
+.stat{
+  display:grid !important; grid-template-rows:auto 1fr auto !important;
+  align-content:start !important; row-gap:6px !important; min-height:96px !important;
+}
+.stat-lbl{ min-height:26px !important; display:flex !important; align-items:flex-start !important; }
+.stat-val{ margin:0 !important; align-self:end !important; }
+.stat-sub{ min-height:14px !important; }
+.stat.hero{ display:block !important; min-height:0 !important; }
+
+/* ---- BOTH COLUMNS END LEVEL ---- */
+.page-layout{ align-items:start !important; }
+.right-sidebar-col{ align-self:stretch !important; display:flex !important; flex-direction:column !important; }
+#appt-sidebar{ flex:1 1 auto !important; display:flex !important; flex-direction:column !important; min-height:0 !important; }
+#appt-sidebar > div:last-child{ flex:1 1 auto !important; overflow-y:auto !important; min-height:0 !important; }
 </style>
 </head>
 <body>
@@ -906,14 +981,19 @@ html,body{ overflow-x:hidden !important; }
 <div class="page-outer"><div class="wrap app-main" id="app">
   <div class="hdr">
     <div class="hdr-left">
-      <div class="hdr-title" id="hdr-title">Banks Advantage - CWC</div>
+      <div style="display:flex;align-items:baseline;gap:0;flex-wrap:wrap;">
+        <div class="hdr-title" id="hdr-title">Banks Advantage - CWC</div>
+        <!-- h226: the WHITE text says WHO you are looking at. You today; a team,
+             base shop or the whole agency once those exist. -->
+        <div class="hdr-who" id="hdr-who"></div>
+      </div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
         </div>
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h225</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h226</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -2390,7 +2470,37 @@ function _sectionOf(el) {
   return null;
 }
 
+// h226: two structural moves that belong in the DOM rather than the file.
+function placeHeaderWho() {
+  const el = document.getElementById('hdr-who'); if (!el) return;
+  const s = getAgentSettings() || {};
+  el.textContent = s.agentName || '';
+}
+
+// The tasks panel sat level with the header because the header lives INSIDE the
+// left column of a two-column grid - so the rail starts at the top of the same
+// row. Lifting the header and the tab row out to be direct children of the grid,
+// spanning both columns, puts them across the whole page and drops the rail
+// underneath. Done here rather than in the file: the same move in markup would
+// mean re-nesting a block that half the layout rules point at.
+function liftHeaderFullWidth() {
+  const layout = document.querySelector('.page-layout');
+  const hdr = document.querySelector('.hdr');
+  const tabs = document.querySelector('.tab-bar');
+  const pace = document.getElementById('pace-banner');
+  if (!layout || !hdr || layout.dataset.hdrLifted) return;
+  [hdr, tabs, pace].forEach((el, i) => {
+    if (!el) return;
+    el.style.gridColumn = '1 / -1';
+    layout.insertBefore(el, layout.children[i]);
+  });
+  layout.dataset.hdrLifted = '1';
+}
+
 function reflowBoard() {
+  try { placeHeaderWho(); } catch (e) {}
+  try { liftHeaderFullWidth(); } catch (e) {}
+
   const main = document.getElementById('app') || document;
 
   // ---- 1. the hero row ----
