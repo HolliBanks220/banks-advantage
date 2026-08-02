@@ -2777,6 +2777,62 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
 
 /* the hero cards stay separate objects with real gaps between them */
 .stat-row.hero-row{ background:none !important; border:none !important; overflow:visible !important; }
+
+/* h290: these rows reused .client-card, which is a DARK-board style, inside a
+   LIGHT modal - and the modal's blanket ink rule then painted the text dark too.
+   Dark on dark. Their own class, on the light sheet the modal actually is. */
+.opt-row{
+  background:#fff !important; border:1px solid #E2EAF2 !important;
+  border-radius:10px !important; padding:12px 14px !important; margin-bottom:8px !important;
+}
+.opt-row:hover{ background:#F7FAFD !important; }
+.opt-row-name{
+  font-size:14.5px !important; font-weight:600 !important;
+  color:#16202E !important; cursor:pointer; line-height:1.35;
+}
+.opt-row-name:hover{ text-decoration:underline; }
+.opt-row-meta{
+  font-size:12.5px !important; color:#5F7A99 !important;
+  margin-top:3px !important; line-height:1.45;
+}
+
+/* ============================================================================
+   h292 - THE HAIRLINES, VISIBLE
+   They were drawn in --line, which is white at 7% - against a #151b1c card that
+   is very nearly nothing. The grid gets its own value, bright enough to read as
+   a line and still quiet enough not to become a cage.
+   ========================================================================== */
+:root{ --grid-line:rgb(255 255 255 / .16); }
+
+.stat-row:not(.hero-row):not(.money-row),
+.stat-row2{
+  background:var(--surface) !important;
+  border:1px solid var(--grid-line) !important;
+  border-radius:var(--r) !important;
+  overflow:hidden !important;
+}
+.stat-row:not(.hero-row):not(.money-row) > .stat,
+.stat-row2 > .stat{
+  background:transparent !important;
+  border:none !important;
+  border-radius:0 !important;
+  box-shadow:
+    inset -1px 0 0 var(--grid-line),
+    inset  0 -1px 0 var(--grid-line) !important;
+}
+.stat-row:not(.hero-row):not(.money-row) > .stat:last-child,
+.stat-row2 > .stat:last-child{
+  box-shadow:inset 0 -1px 0 var(--grid-line) !important;
+}
+
+/* the rail's panels get the same treatment so the page reads as one system */
+#task-sidebar, #appt-sidebar, .appt-sidebar{
+  border:1px solid var(--grid-line) !important;
+}
+.appt-sidebar-item{ border-color:var(--grid-line) !important; }
+
+/* and the section labels' rule */
+.section-lbl::after{ background:var(--grid-line) !important; }
 </style>
 </head>
 <body>
@@ -2803,7 +2859,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h288</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h292</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -6660,12 +6716,12 @@ function openNotInOpt() {
     const when = r.d.getFullYear() > 2000
       ? r.d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' \u00b7 ' + days + 'd ago'
       : 'no date';
-    return '<div class="client-card" style="cursor:default;">' +
+    return '<div class="opt-row">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">' +
         '<div style="min-width:0;">' +
-          '<div class="client-name" style="cursor:pointer;" onclick="closeModal();setTimeout(()=>openClient(\'' + r.c.id + '\'),100)">' +
+          '<div class="opt-row-name" onclick="closeModal();setTimeout(()=>openClient(\'' + r.c.id + '\'),100)">' +
             esc(r.c.name || 'Unknown') + '</div>' +
-          '<div class="client-meta">' + esc(r.ap.carrier || '') +
+          '<div class="opt-row-meta">' + esc(r.ap.carrier || '') +
             (r.ap.product ? ' \u00b7 ' + esc(r.ap.product) : '') +
             ' \u00b7 ' + (r.ap.status || 'Written') + ' \u00b7 ' + when + '</div>' +
         '</div>' +
@@ -15650,7 +15706,10 @@ window._agentSettings = null;
 // ===== GOOGLE CALENDAR SYNC =====
 // Per-agent from day one: the token is stored against this agent's id, so when the
 // team version lands, each agent connects their own calendar with no refactor.
-const SB_FN_BASE = 'https://mdsaqxbqmvmusdtwlgay.supabase.co/functions/v1';
+// h289: this was a SECOND hardcoded project URL, so an agent's copy would have
+// sent its calendar tokens to Holli's project while everything else went to
+// theirs. Derived from SUPABASE_URL, so one credential swap moves the whole file.
+const SB_FN_BASE = SUPABASE_URL + '/functions/v1';
 const GOOGLE_CLIENT_ID_PUBLIC = '411098095079-vq113elr395pigbsdvo9b2hrulfs61bt.apps.googleusercontent.com';
 
 // Escape a value going into an HTML attribute. Without this, a name like
@@ -17162,7 +17221,10 @@ function connectGoogleCalendar() {
     response_type: 'code',
     scope: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email',
     access_type: 'offline',       // gives us the refresh token
-    prompt: 'consent',            // force it so we always get a refresh token
+    // h291: 'consent' alone re-uses whichever Google account is already signed
+    // in, so "Change calendar" would silently reconnect the same one. Asking to
+    // select an account is what makes changing it possible at all.
+    prompt: 'select_account consent',
     state: getAgentId()
   });
   window.open('https://accounts.google.com/o/oauth2/v2/auth?' + params.toString(), '_blank');
@@ -17201,20 +17263,31 @@ async function getCalendarStatus() {
 // h284: switching accounts used to mean disconnecting and reconnecting, which you
 // only knew to do if you already knew. This does both, and says what it will do
 // first - the appointments already on the old calendar stay there.
+// h291: named "Use a different account", which read as though it would cut the
+// current one off and leave you with nothing. It is a CHANGE - the only way to
+// move to another calendar, since one account is connected at a time. The old
+// connection is only dropped once Google hands back a new one, so a cancelled
+// popup leaves the existing calendar exactly as it was.
 async function switchGoogleCalendar() {
   const ok = confirm(
-    'Connect a different Google account?\n\n' +
-    'Appointments already on the current calendar stay where they are - they are ' +
-    'not moved or deleted. New ones go to the account you pick next, and you can ' +
-    'push existing appointments across with "Sync existing appointments".'
+    'Change which Google calendar CWC syncs to?\n\n' +
+    'You will pick an account on the next screen. Appointments already on the ' +
+    'current calendar stay there - nothing is moved or deleted - and you can push ' +
+    'them across afterwards with "Sync existing appointments".\n\n' +
+    'If you close the Google window, nothing changes.'
   );
   if (!ok) return;
-  try { await disconnectGoogleCalendar(true); } catch (e) {}
-  try { connectGoogleCalendar(); } catch (e) {}
+  window._calSwitching = true;          // reconnecting, not disconnecting
+  try {
+    connectGoogleCalendar();
+  } catch (e) {
+    window._calSwitching = false;
+  }
 }
 
 async function disconnectGoogleCalendar() {
   if (!arguments[0] && !confirm('Disconnect Google Calendar? Appointments will stop syncing.')) return;
+  window._calSwitching = false;
   try {
     await fetch(SB_FN_BASE + '/calendar-sync', {
       method: 'POST',
@@ -18391,7 +18464,7 @@ function openSettings(tab) {
       // h284: there was no way to move to a different Google account without
       // knowing to disconnect first and then reconnect. One button does both.
       ac.innerHTML = '<button class="set-save" onclick="syncExistingAppts()">Sync existing appointments</button>' +
-        '<button onclick="switchGoogleCalendar()" style="width:100%;background:none;border:1px solid #C9D6E2;color:#16202E;border-radius:8px;padding:9px;font-size:12.5px;font-weight:600;cursor:pointer;margin-top:6px;font-family:inherit;">Use a different account</button>' +
+        '<button onclick="switchGoogleCalendar()" style="width:100%;background:none;border:1px solid #C9D6E2;color:#16202E;border-radius:8px;padding:9px;font-size:12.5px;font-weight:600;cursor:pointer;margin-top:6px;font-family:inherit;">Change calendar</button>' +
         '<button onclick="disconnectGoogleCalendar()" style="width:100%;background:none;border:1px solid #E0A0A0;color:#A32D2D;border-radius:8px;padding:9px;font-size:12.5px;font-weight:600;cursor:pointer;margin-top:6px;font-family:inherit;">Disconnect</button>';
     } else {
       st.textContent = 'Not connected. Connect once and your CWC appointments will show up on your Google Calendar.';
