@@ -171,10 +171,10 @@ html,body{overflow-x:hidden;}                   /* no sideways scrollbar, ever *
   /* h216: WHITE CARDS ON A SOFT LIGHT FIELD. Mid-grey tiles on near-black was
      the muddiest possible pairing - no contrast at the card edge, so nothing
      looked cut out, and two passes of shadow work could not rescue it. */
-  --tile-base:#FFFFFF; --tile-base2:#FFFFFF; --tile-text:#16202E;
-  --field:#EDF1F6;            /* the page behind the cards */
-  --hair:#DDE4EC;             /* the hairline every card carries */
-  --ink:#16202E; --ink-dim:#5F7A99; --ink-faint:#93A7BC;
+  --tile-base:#151b1c; --tile-base2:#151b1c; --tile-text:#eef3f2;   /* h220: were white from the light pass */
+  --field:#0d1112;            /* the page behind the cards */
+  --hair:rgba(255,255,255,.07);  /* the hairline every card carries */
+  --ink:#eef3f2; --ink-dim:#8b9694; --ink-faint:#5b6462;
   --goal-red:#C0392B;  --goal-red-text:#ffffff;     /* the banner red - one red everywhere */
   --goal-amber:#D99A2B; --goal-amber-text:#ffffff;
   --goal-green:#2E7D52; --goal-green-text:#ffffff;  /* a green that belongs beside teal, not a highlighter */
@@ -708,6 +708,122 @@ input:focus, select:focus, textarea:focus{ outline:2px solid var(--accent); outl
 }
 #pace-banner *, .pace-banner *{ color:#f3a3a5 !important; }
 
+/* h220: the remaining light-mode leftovers that survived the flip. Any inline
+   background or dark text colour still sitting on a tile fights the dark card,
+   and the task list was white text on a white row. */
+.stat[style*="background:#"], .stat[style*="background: #"]{
+  background:var(--surface) !important; border:none !important;
+}
+.stat[style] .stat-lbl{ color:var(--muted) !important; }
+.stat[style] .stat-val{ color:var(--ink) !important; }
+.stat[style] .stat-sub{ color:var(--faint) !important; }
+.lbl-navy, .lbl-white, .lbl-amber, .lbl-teal{ color:var(--muted) !important; }
+.val-navy, .val-white, .val-amber, .val-teal{ color:var(--ink) !important; }
+.sub-navy, .sub-white, .sub-amber, .sub-teal{ color:var(--faint) !important; }
+
+/* Tasks: the label and the input sat in dark ink on what is now a dark panel. */
+#task-sidebar, #task-sidebar *{ color:var(--ink); }
+#task-sidebar .task-item span, #task-sidebar label{ color:var(--ink) !important; }
+#task-sidebar input[type="text"]{
+  background:var(--bg) !important; border:1px solid var(--line) !important; color:var(--ink) !important;
+}
+#task-sidebar input[type="text"]::placeholder{ color:var(--faint) !important; }
+#task-sidebar a{ color:var(--accent-lift, var(--accent)) !important; }
+.appt-sidebar-item, .appt-sidebar-item *{ color:var(--ink) !important; }
+.appt-sidebar-item .appt-sidebar-meta, .appt-sidebar-item small{ color:var(--faint) !important; }
+
+/* The period pills were stretching the full width of a now-much-wider header. */
+.hdr .nav-row{ justify-content:flex-end !important; flex-wrap:wrap !important; }
+.hdr .pill{ flex:0 0 auto !important; padding:6px 14px !important; }
+
+/* ============================================================================
+   h221 - THE TOPBAR, THE STATUS LINE, AND THE HERO METERS
+   The three structural pieces of v0's design my first pass approximated instead
+   of building. Everything here is markup shape, not colour.
+   ========================================================================== */
+
+/* ---- ONE ROW: brand left, tabs in the middle, period selector right. ---- */
+.hdr{
+  display:flex !important; align-items:center !important; gap:24px !important;
+  flex-wrap:wrap !important; padding:0 0 20px !important;
+  background:transparent !important; box-shadow:none !important;
+  border-bottom:1px solid var(--line) !important; border-radius:0 !important;
+}
+.hdr-left{ display:flex !important; flex-direction:column !important; gap:2px !important; margin-right:auto !important; }
+.hdr-title{
+  font-size:11px !important; letter-spacing:.22em !important; text-transform:uppercase !important;
+  color:var(--accent-lift, var(--accent)) !important; font-weight:600 !important;
+}
+.hdr-left > div:last-child{ display:flex !important; align-items:baseline !important; gap:12px !important; }
+.hdr-sub{ font-size:13px !important; font-weight:500 !important; color:var(--faint) !important; }
+.hdr-right{ display:flex !important; align-items:center !important; gap:14px !important; flex-wrap:wrap !important; }
+.hdr-right .nav-row{ margin:0 !important; display:flex !important; align-items:center !important; gap:6px !important; }
+.period-label{ font-size:12.5px !important; color:var(--muted) !important; font-weight:600 !important; white-space:nowrap; }
+.gear-btn, .arrow-btn{
+  background:var(--surface) !important; border:1px solid var(--line) !important;
+  color:var(--muted) !important; border-radius:8px !important;
+}
+.gear-btn:hover, .arrow-btn:hover{ color:var(--ink) !important; border-color:var(--line-2) !important; }
+
+/* the period pills become one segmented control, not five stretched buttons */
+.hdr-right .nav-row:last-child{
+  background:var(--surface) !important; border:1px solid var(--line) !important;
+  border-radius:10px !important; padding:3px !important; gap:0 !important;
+}
+.hdr-right .nav-row:last-child .pill{
+  background:none !important; border:none !important; border-radius:7px !important;
+  padding:6px 13px !important; font-size:12.5px !important; font-weight:600 !important;
+  color:var(--muted) !important; flex:0 0 auto !important;
+}
+.hdr-right .nav-row:last-child .pill.on{
+  background:var(--accent) !important; color:#fff !important;
+}
+
+/* ---- THE MAIN TABS: underline, not a filled bar. ---- */
+.tab-bar{
+  background:transparent !important; border:none !important;
+  border-bottom:1px solid var(--line) !important; border-radius:0 !important;
+  display:flex !important; gap:22px !important; padding:0 !important; margin:22px 0 0 !important;
+}
+.tab{
+  background:none !important; border:none !important; flex:0 0 auto !important;
+  padding:7px 2px !important; font-size:13.5px !important; font-weight:600 !important;
+  color:var(--muted) !important; position:relative !important;
+}
+.tab.on{ color:var(--ink) !important; }
+.tab.on::after{
+  content:""; position:absolute; left:0; right:0; bottom:-1px; height:2px;
+  background:var(--accent-lift, var(--accent)); border-radius:2px;
+}
+
+/* ---- THE STATUS LINE: a small chip and quiet text, not a full-width slab. ---- */
+#pace-banner, .pace-banner{
+  display:flex !important; align-items:center !important; gap:14px !important;
+  flex-wrap:wrap !important; background:none !important; border:none !important;
+  padding:0 !important; margin:22px 0 26px !important;
+  font-size:13px !important; color:var(--muted) !important; font-weight:400 !important;
+}
+#pace-banner u, .pace-banner u,
+#pace-banner a, .pace-banner a{
+  display:inline-flex; align-items:center; gap:8px;
+  padding:6px 12px; border-radius:8px; text-decoration:none !important;
+  background:rgb(229 72 77 / .13); border:1px solid rgb(229 72 77 / .28);
+  color:#f3a3a5 !important; font-weight:600; font-size:12.5px;
+}
+#pace-banner u::before, .pace-banner u::before,
+#pace-banner a::before, .pace-banner a::before{
+  content:""; width:6px; height:6px; border-radius:50%; background:#e5484d;
+}
+#pace-banner *, .pace-banner *{ color:var(--muted) !important; }
+#pace-banner u, .pace-banner u, #pace-banner a, .pace-banner a{ color:#f3a3a5 !important; }
+
+/* ---- HERO METERS: the goal bar becomes a proper meter with its caption. ---- */
+.stat.hero .goal-slot{
+  margin-top:18px !important; display:flex !important; flex-direction:column !important;
+  gap:9px !important; min-height:0 !important;
+}
+.stat.hero .goal-slot span{ font-size:12px !important; }
+
 @media(max-width:1280px){ .stat-row.hero-row{ grid-template-columns:repeat(2,1fr) !important; } }
 @media(max-width:800px){
   .page-outer{ padding-top:12px !important; }
@@ -729,7 +845,7 @@ input:focus, select:focus, textarea:focus{ outline:2px solid var(--accent); outl
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h219</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h221</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -812,8 +928,7 @@ input:focus, select:focus, textarea:focus{ outline:2px solid var(--accent); outl
         <div class="stat-btns">
         </div>
       </div>
-    </div>
-    <div class="stat-row">
+    
       <div class="stat" style="background:#F0FBF7;border:1px solid var(--accent-line);">
         <div class="stat-lbl" style="color:var(--accent);">Texts sent</div>
         <div class="stat-val" id="s-texts" style="color:var(--accent);">0</div>
@@ -833,11 +948,9 @@ input:focus, select:focus, textarea:focus{ outline:2px solid var(--accent); outl
         <div class="stat-sub sub-green" id="s-resolved-pct">0% of convos</div>
         <div class="stat-sub" style="color:#639922;" id="s-resolved-fresh">0 fresh</div>
       </div>
-    </div>
-    <div class="divider"></div>
-    <div class="stat-row" style="grid-template-columns:repeat(2,minmax(0,1fr));">
-      <div class="stat" style="background:#EBF3FF;border:1px solid #B3D1F7;">
-        <div class="stat-lbl" style="color:#1D3557;">Dial time</div>
+    
+      <div class="stat">
+        <div class="stat-lbl">Dial time</div>
         <div class="stat-val" id="s-time-dial" style="color:#1D3557;font-size:18px;cursor:pointer;" onclick="editTimerTime('dial')" title="Tap to correct">0:00</div>
         <div class="stat-sub" id="s-dialtime-perhr" style="color:#1D3557;font-size:10px;"></div>
       </div>
@@ -861,7 +974,7 @@ input:focus, select:focus, textarea:focus{ outline:2px solid var(--accent); outl
     </div>
     <div id="mp-panel">
     <!-- Row 1 - did they show? -->
-    <div class="stat-row" style="grid-template-columns:repeat(4,minmax(0,1fr));">
+    <div class="stat-row">
       <div class="stat stat-navy">
         <div class="stat-lbl lbl-white">Appts</div>
         <div class="stat-val val-white" id="p-first" style="cursor:pointer;" onclick="drillDown('appts')">0</div>
@@ -878,12 +991,11 @@ input:focus, select:focus, textarea:focus{ outline:2px solid var(--accent); outl
         <div class="stat-sub" style="color:#854F0B;" id="p-cancel">-</div>
       </div>
       <div class="stat" style="background:#EBF3FF;">
-        <div class="stat-lbl" style="color:#1D3557;">Upcoming</div>
+        <div class="stat-lbl">Upcoming</div>
         <div class="stat-val" style="color:#1D3557;cursor:pointer;" id="p-upcoming" onclick="drillDown('upcoming')">0</div>
         <div class="stat-sub" style="color:#5f7a99;" id="p-upcoming-sub">-</div>
       </div>
-    </div>
-    <div class="stat-row" style="grid-template-columns:repeat(4,minmax(0,1fr));">
+    
       
       <div class="stat stat-red">
         <div class="stat-lbl lbl-red">No Sales</div>
@@ -900,10 +1012,7 @@ input:focus, select:focus, textarea:focus{ outline:2px solid var(--accent); outl
         <div class="stat-lbl" id="needsoutcome-lbl" style="color:#5f7a99;">Needs outcome</div>
         <div class="stat-val" id="p-needsoutcome" style="color:#5f7a99;">0</div>
       </div>
-    </div>
-    <!-- old production-panel strip removed; the Needs Outcome tile is the single source now -->
-    <!-- Mid-process: TAI / PPU / Dropped (Dropped is PPU-only) -->
-    <div class="stat-row">
+    
       <div class="stat stat-navy-lt" id="p-tai-tile">
         <div class="stat-lbl lbl-navy" style="font-size:10px;">Think About It</div>
         <div class="stat-val val-navy" id="p-tai" style="cursor:pointer;" onclick="drillDown('tai')">0</div>
@@ -915,13 +1024,11 @@ input:focus, select:focus, textarea:focus{ outline:2px solid var(--accent); outl
         <div class="stat-sub sub-navy" id="p-ppu-sub">-</div>
       </div>
       <div class="stat" style="background:#F4F1FA;">
-        <div class="stat-lbl" style="color:#3C3489;">Dropped</div>
+        <div class="stat-lbl">Dropped</div>
         <div class="stat-val" style="color:#3C3489;cursor:pointer;" id="p-dropped" onclick="drillDown('dropped')">0</div>
         <div class="stat-sub" style="color:#3C3489;" id="p-dropped-sub">-</div>
       </div>
-    </div>
-    <!-- Row 4 - asks & pipeline building -->
-    <div class="stat-row" style="grid-template-columns:repeat(4,minmax(0,1fr));">
+    
       <div class="stat stat-purple">
         <div class="stat-lbl lbl-purple">Resets</div>
         <div class="stat-val val-purple" id="p-resets" style="cursor:pointer;" onclick="drillDown('resets')">0</div>
@@ -959,22 +1066,19 @@ input:focus, select:focus, textarea:focus{ outline:2px solid var(--accent); outl
          account being moved; APV is 5% of it by company convention and is only
          useful for leaderboards and bonuses - commission comes off the amount. -->
     <div id="ret-panel" style="display:none;">
-      <div class="stat-row" style="grid-template-columns:repeat(3,minmax(0,1fr));">
+      <div class="stat-row">
         <div class="stat"><div class="stat-lbl">Step 1 scheduled</div><div class="stat-val" id="r-s1-sched" style="cursor:pointer;" onclick="drillDown('ret_s1_sched')">0</div><div class="stat-sub" id="r-s1-sched-sub"></div></div>
         <div class="stat"><div class="stat-lbl">Step 2 scheduled</div><div class="stat-val" id="r-s2-sched" style="cursor:pointer;" onclick="drillDown('ret_s2_sched')">0</div><div class="stat-sub" id="r-s2-sched-sub"></div></div>
         <div class="stat"><div class="stat-lbl">Step 3 scheduled</div><div class="stat-val" id="r-s3-sched" style="cursor:pointer;" onclick="drillDown('ret_s3_sched')">0</div><div class="stat-sub" id="r-s3-sched-sub"></div></div>
-      </div>
-      <div class="stat-row" style="grid-template-columns:repeat(3,minmax(0,1fr));">
+      
         <div class="stat"><div class="stat-lbl">Step 1 attended</div><div class="stat-val" id="r-s1-att" style="cursor:pointer;" onclick="drillDown('ret_s1_att')">0</div><div class="stat-sub" id="r-s1-att-sub">- show ratio</div></div>
         <div class="stat"><div class="stat-lbl">Step 2 attended</div><div class="stat-val" id="r-s2-att" style="cursor:pointer;" onclick="drillDown('ret_s2_att')">0</div><div class="stat-sub" id="r-s2-att-sub">- show ratio</div></div>
         <div class="stat"><div class="stat-lbl">Step 3 attended</div><div class="stat-val" id="r-s3-att" style="cursor:pointer;" onclick="drillDown('ret_s3_att')">0</div><div class="stat-sub" id="r-s3-att-sub">- show ratio</div></div>
-      </div>
-      <div class="stat-row" style="grid-template-columns:repeat(3,minmax(0,1fr));">
+      
         <div class="stat"><div class="stat-lbl">In progress</div><div class="stat-val" id="r-inprog" style="cursor:pointer;" onclick="drillDown('ret_inprog')">0</div><div class="stat-sub">more time needed</div></div>
         <div class="stat"><div class="stat-lbl">Won</div><div class="stat-val" id="r-won" style="cursor:pointer;" onclick="drillDown('ret_won')">0</div><div class="stat-sub" id="r-won-sub"></div></div>
         <div class="stat"><div class="stat-lbl">Lost</div><div class="stat-val" id="r-lost" style="cursor:pointer;" onclick="drillDown('ret_lost')">0</div><div class="stat-sub" id="r-lost-sub"></div></div>
-      </div>
-      <div class="stat-row" style="grid-template-columns:repeat(3,minmax(0,1fr));">
+      
         <div class="stat"><div class="stat-lbl">Amount</div><div class="stat-val" id="r-amount" style="font-size:20px;cursor:pointer;" onclick="openRetMoneyDetail('amount')">$0</div><div class="stat-sub">account moving</div></div>
         <div class="stat"><div class="stat-lbl">APV submitted</div><div class="stat-val" id="r-apv-sub" style="font-size:20px;cursor:pointer;" onclick="openRetMoneyDetail('apvSub')">$0</div><div class="stat-sub">5% of amount</div></div>
         <div class="stat"><div class="stat-lbl">APV placed</div><div class="stat-val" id="r-apv-placed" style="font-size:20px;cursor:pointer;" onclick="openRetMoneyDetail('apvPlaced')">$0</div><div class="stat-sub">issued &amp; paid</div></div>
@@ -995,15 +1099,11 @@ input:focus, select:focus, textarea:focus{ outline:2px solid var(--accent); outl
          Lead resolution in Dialing Activity, and it counted a booked appointment
          as resolved even when nothing was ever decided. It lives in Reports now.
          Client care left too: it is work, not measurement, and sits with Tasks. -->
-    <div class="stat-row" style="grid-template-columns:repeat(3,minmax(0,1fr));">
+    <div class="stat-row">
       <div class="stat"><div class="stat-lbl">APV / lead</div><div class="stat-val" id="lp-apvlead" style="font-size:18px;">-</div><div class="stat-sub">volume per lead</div></div>
       <div class="stat"><div class="stat-lbl">Comm / lead</div><div class="stat-val" id="lp-commlead" style="font-size:18px;">-</div><div class="stat-sub">before cost</div></div>
       <div class="stat"><div class="stat-lbl">Profit / lead</div><div class="stat-val" id="lp-profitlead" style="font-size:18px;">-</div><div class="stat-sub" id="lp-profit-sub">after lead spend</div></div>
-    </div>
-    <!-- h217: 'Avg APV / sale' left. Production already shows APV / Sale and the
-         two disagreed - Production counts sales made IN the period, this counted
-         the cohort assigned in it. Same label, two questions, two numbers. -->
-    <div class="stat-row" style="grid-template-columns:repeat(2,minmax(0,1fr));">
+    
       <div class="stat" style="cursor:pointer;" onclick="openLeadSpend()"><div class="stat-lbl">Lead spend</div><div class="stat-val" id="lp-spend" style="font-size:20px;">-</div><div class="stat-sub" style="color:var(--accent);font-weight:700;">tap to add a charge</div></div>
       <div class="stat"><div class="stat-lbl">Return on spend</div><div class="stat-val" id="lp-roi" style="font-size:20px;">-</div><div class="stat-sub">for every $1 out</div></div>
       <div class="stat-val" id="lp-avgapv" style="display:none;">-</div>
@@ -14789,6 +14889,7 @@ function renderGoalZones(vals){
   const key = currentPeriodKey();
   GOAL_TILES.forEach(m => {
     const slot = document.getElementById(m.slotId); if (!slot) return;
+    slot.classList.add('goal-slot');   // h221: so the meter can be laid out
     const valEl = document.getElementById(m.valId);
     const tile = slot.closest('.stat');
     const dark = _lum(getTheme().base) <= 0.45;
@@ -14813,17 +14914,32 @@ function renderGoalZones(vals){
                   : st.state === 'red'   ? 'var(--goal-red)' : 'var(--goal-amber)';
       const txt   = isHero ? 'var(--accent-ink)' : 'var(--ink)';
       const soft  = isHero ? 'rgba(255,255,255,.65)' : 'var(--ink-faint)';
-      const barFill  = isHero ? 'rgba(255,255,255,.95)' : gcVar;
-      const barTrack = isHero ? 'rgba(255,255,255,.28)' : 'rgba(22,32,46,.10)';
+      const barFill  = isHero ? 'var(--accent-lift, var(--accent))' : gcVar;
+      const barTrack = 'rgba(255,255,255,.08)';
       const aStr = m.money ? goalMoney(actual) : Math.round(actual).toLocaleString();
       const tStr = m.money ? goalMoney(target) : Math.round(target).toLocaleString();
       slot.style.cursor = 'pointer';
       slot.onclick = () => openGoalSetter(m.metric);
-      slot.innerHTML = wrap(
-        '<div style="display:flex;justify-content:space-between;font-size:9px;color:'+txt+';font-weight:700;line-height:1.1;">' +
-          '<span>'+aStr+(st.hit?' \u2713':'')+'</span><span style="color:'+soft+';font-weight:500;">'+tStr+'</span></div>' +
-        '<div style="height:5px;border-radius:3px;background:'+barTrack+';overflow:hidden;margin-top:3px;">' +
-          '<div style="height:100%;width:'+fillPct+'%;background:'+barFill+';border-radius:3px;transition:width .4s ease;"></div></div>');
+      // h221: a hero tile reads like v0's meter - a bar, then "of 200 goal" on the
+      // left and how you are doing on the right. A small tile keeps the compact
+      // two-number form, since there is no room for a sentence.
+      const pace = st.hit ? 'goal met' : (st.state === 'red' ? 'behind' : 'on pace');
+      const paceCol = st.hit || st.state !== 'red' ? 'var(--accent-lift, var(--accent))' : 'var(--goal-red)';
+      if (isHero) {
+        slot.innerHTML =
+          '<div style="height:4px;border-radius:4px;background:'+barTrack+';overflow:hidden;">' +
+            '<div style="height:100%;width:'+fillPct+'%;background:'+barFill+';border-radius:4px;transition:width .4s ease;"></div></div>' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:var(--faint);">' +
+            '<span>' + (st.hit ? 'goal was ' : 'of ') + '<b style="color:var(--muted);font-weight:600;">'+tStr+'</b>' + (st.hit ? '' : ' goal') + '</span>' +
+            '<span style="color:'+paceCol+';font-weight:700;font-size:11px;">' + (st.hit ? '\u2713 ' : '') + pace + '</span>' +
+          '</div>';
+      } else {
+        slot.innerHTML = wrap(
+          '<div style="display:flex;justify-content:space-between;font-size:9px;color:'+txt+';font-weight:700;line-height:1.1;">' +
+            '<span>'+aStr+(st.hit?' \u2713':'')+'</span><span style="color:'+soft+';font-weight:500;">'+tStr+'</span></div>' +
+          '<div style="height:5px;border-radius:3px;background:'+barTrack+';overflow:hidden;margin-top:3px;">' +
+            '<div style="height:100%;width:'+fillPct+'%;background:'+barFill+';border-radius:3px;transition:width .4s ease;"></div></div>');
+      }
     } else {
       // No goal for THIS period instance. Always reset the slot so a goal set in
       // another filter (day/week/month...) can't leave stale content behind - this
