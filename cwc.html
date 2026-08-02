@@ -2092,7 +2092,7 @@ html,body{ overflow-x:hidden !important; }
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h255</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h256</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -7354,6 +7354,20 @@ function getNextApptInfo() {
     clientName: next.clientName || '',
     minsUntil: Math.round((dt - now) / 60000),
   };
+}
+
+// h256: this was defined between getNextApptInfo and renderAlerts, and the h254
+// rewrite of that whole block took it out with it - so the banner had an onclick
+// pointing at nothing. Its job: filter to the live queue, then open the card at
+// the top of it, which is the lead she would have clicked anyway.
+function startDialing() {
+  try { setFilterAlert('active'); } catch (e) {
+    try { showTab('clients'); } catch (e2) {}
+  }
+  setTimeout(() => {
+    const first = document.querySelector('#clients-list .client-card');
+    if (first) first.click();
+  }, 80);
 }
 
 function renderAlerts() {
