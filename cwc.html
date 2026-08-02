@@ -1227,6 +1227,41 @@ html,body{ overflow-x:hidden !important; }
   .tab-bar{ order:3; width:100%; margin-top:14px !important; }
   .tab.on::after{ bottom:-6px !important; }
 }
+
+/* ============================================================================
+   h230 - THE PERIOD ARROWS DROP BELOW THE SELECTOR
+   The page tabs and the time filter share the top line. The arrows sit under the
+   filter, on the same baseline as the tab underline, so the two controls that
+   move you around line up with each other.
+   ========================================================================== */
+.hdr{ align-items:flex-start !important; padding:26px 0 0 !important; border:none !important; }
+.hdr-left{ padding-top:2px !important; }
+.tab-bar{ align-self:flex-start !important; padding-top:4px !important; }
+
+/* right side becomes a column: filter on top, arrows beneath it */
+.hdr-right{
+  display:flex !important; flex-direction:column !important;
+  align-items:flex-end !important; gap:10px !important;
+}
+/* the filter row first */
+.hdr-right .nav-row:last-child{ order:1 !important; }
+/* then the arrows, right-aligned under it */
+.hdr-right .nav-row:first-child{ order:2 !important; gap:8px !important; }
+
+/* the rule runs under the whole band, level with the tab underline */
+.hdr::after{ content:none; }
+.tab.on::after{ bottom:-14px !important; }
+#pace-line{
+  border-top:1px solid var(--line) !important;
+  padding-top:22px !important; margin:14px 0 26px !important;
+}
+
+@media(max-width:1100px){
+  .hdr{ flex-wrap:wrap !important; }
+  .tab-bar{ order:3; width:100%; margin-top:16px !important; padding-top:0 !important; }
+  .hdr-right{ order:2; }
+  .tab.on::after{ bottom:-6px !important; }
+}
 </style>
 </head>
 <body>
@@ -1245,7 +1280,7 @@ html,body{ overflow-x:hidden !important; }
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h229</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h230</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -2746,10 +2781,13 @@ function liftHeaderFullWidth() {
   // the period selector share one line the way v0 has it
   hdr.style.gridColumn = '1 / -1';
   layout.insertBefore(hdr, layout.firstElementChild);
-  if (tabs) {
-    const right = hdr.querySelector('.hdr-right');
-    hdr.insertBefore(tabs, right || null);
-  }
+  // h230: the flag used to be set whether or not the tab row had rendered yet.
+  // On the first pass it has not, so the header was marked done and the tabs
+  // never moved in - which is why the band stayed stacked in the browser even
+  // though it assembled correctly under test.
+  if (!tabs) return;
+  const right = hdr.querySelector('.hdr-right');
+  hdr.insertBefore(tabs, right || null);
   layout.dataset.hdrLifted = '1';
 }
 
