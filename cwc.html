@@ -2517,6 +2517,20 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
   background:var(--accent) !important; border:1px solid var(--accent) !important;
   color:#fff !important;
 }
+
+/* h271: THE SCHEDULE SCROLLS AGAIN.
+   An earlier pass gave the rail min-height:max(100%, 560px). On a tall board that
+   makes the rail taller than the window, so the schedule never overflows its box -
+   just grows, the page scrolls instead, and the inner scrollbar has nothing to
+   do. Capping the list to the viewport gives it something to overflow. */
+.sidebar-appts{
+  max-height:calc(100vh - 260px) !important;
+  overflow-y:auto !important;
+  min-height:200px !important;
+}
+@media(max-width:800px){
+  .sidebar-appts{ max-height:55vh !important; }
+}
 </style>
 </head>
 <body>
@@ -2535,7 +2549,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h270</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h271</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -4638,6 +4652,7 @@ function renderScore() {
   if (nsSub) nsSub.textContent = heldInitials>0 ? pct(totalShowed, heldInitials) + ' show ratio' : '- show ratio';
   window._coach = {nsFirstLost, nsFirstRecovered, nsInProcess, avgLeadDays, pStart, pEnd};
   document.getElementById('p-sales').textContent = totalSales;
+  window._boardSales = totalSales;   // h271: ROI reads the same count Production shows
   // h211: Dropped is a PPU she gave up on - the policy pickup never happened, so
   // they NEVER REACHED NUMBERS. It has no business in a close ratio: you cannot
   // fail to close something you never presented. It keeps its own card because
@@ -5025,8 +5040,15 @@ function renderSourceComparison(pStart, pEnd, label) {
     // dollar of it returned. A multiple reads faster than a percentage here.
     setEl('lp-roi', spend > 0 ? '$' + (A.comm / spend).toFixed(2) : '-');
     // h253: what one sale costs, and what each dollar returned
-    setEl('lp-costsale', (spend > 0 && A.sales > 0) ? money(Math.round(spend / A.sales)) : '-');
-    setEl('lp-costsale-sub', A.sales > 0 ? A.sales + ' sale' + (A.sales === 1 ? '' : 's') : 'no sales yet');
+    // h271: A.sales is the COHORT count - sales from leads ASSIGNED in this
+    // period, which is nearly always a handful because those leads have not had
+    // time yet. Beside a Production tile reading 28 it just looks broken. Cost
+    // per sale uses the sales MADE in the period, same as Production.
+    const _prodSales = (typeof window._boardSales === 'number') ? window._boardSales : A.sales;
+    setEl('lp-costsale', (spend > 0 && _prodSales > 0) ? money(Math.round(spend / _prodSales)) : '-');
+    setEl('lp-costsale-sub', _prodSales > 0
+      ? _prodSales + ' sale' + (_prodSales === 1 ? '' : 's') + ' this period'
+      : 'no sales yet');
     setEl('lp-spend-sub', spend > 0
       ? '$' + (A.comm / spend).toFixed(2) + ' back for every $1'
       : 'tap to add a charge');
@@ -5034,6 +5056,13 @@ function renderSourceComparison(pStart, pEnd, label) {
                                (cia.m ? cia.m.neverPct : 0) * cia.assigned) / (A.assigned || 1));
     setEl('lp-never', A.assigned ? neverN + '%' : '-');   // h211: no longer on the board; setEl no-ops when absent
     setEl('lp-spend', '$' + Math.round(spend).toLocaleString());
+    // h271: say WHICH window this is - a $0 that turns out to be the wrong month
+    // is worse than a $0 that tells you it is looking at the wrong month.
+    const _spendWin = pStart.toLocaleDateString('en-US',{month:'short',day:'numeric'}) +
+      ' - ' + pEnd.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    setEl('lp-spend-sub', spend > 0
+      ? '$' + (A.comm / spend).toFixed(2) + ' back for every $1'
+      : 'nothing logged ' + _spendWin + ' - tap to add');
   }
 }
 //  TABS 
