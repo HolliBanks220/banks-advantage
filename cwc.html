@@ -1057,6 +1057,102 @@ html,body{ overflow-x:hidden !important; }
 .stat-row.money-row{ grid-template-columns:repeat(2, minmax(0,1fr)) !important; margin-top:8px !important; }
 .stat-row.money-row .stat-val{ font-size:30px !important; }
 @media(max-width:640px){ .stat-row.money-row{ grid-template-columns:minmax(0,1fr) !important; } }
+
+/* ============================================================================
+   h228 - THE HEADER, TO v0's SPACING
+   Their measurements, not my approximations: 24px between blocks, a 20px title
+   with the date on its baseline 12px away, an 11px eyebrow tracked to .22em,
+   and a 20px gap down to the rule.
+   ========================================================================== */
+.hdr{
+  display:flex !important; align-items:center !important; gap:24px !important;
+  padding:26px 0 20px !important; margin:0 !important; flex-wrap:wrap !important;
+  border:none !important; border-bottom:1px solid var(--line) !important;
+  min-height:0 !important; background:transparent !important;
+}
+.hdr-left{
+  display:flex !important; flex-direction:column !important; gap:2px !important;
+  margin-right:auto !important; flex:0 0 auto !important;
+}
+.hdr-title{
+  font-size:11px !important; font-weight:600 !important; letter-spacing:.22em !important;
+  text-transform:uppercase !important; color:var(--accent-lift) !important;
+  line-height:1.4 !important; margin:0 !important;
+}
+/* title and date share a baseline, 12px apart */
+.hdr-left > div:nth-child(2){
+  display:flex !important; align-items:baseline !important; gap:12px !important;
+}
+.hdr-who{
+  font-size:20px !important; font-weight:700 !important; color:#fff !important;
+  letter-spacing:-.01em !important; margin:0 !important; line-height:1.2 !important;
+}
+.hdr-sub{
+  font-size:13px !important; font-weight:500 !important; color:var(--faint) !important;
+  letter-spacing:0 !important; margin:0 !important;
+}
+/* the WHO and the date sit on one line under the eyebrow */
+.hdr-left{ position:relative; }
+
+.tab-bar{
+  display:flex !important; gap:18px !important; margin:0 !important; padding:0 !important;
+  border:none !important; background:transparent !important; flex:0 0 auto !important;
+  align-self:center !important;
+}
+.tab{
+  padding:7px 4px !important; font-size:13.5px !important; font-weight:600 !important;
+  background:none !important; border:none !important; flex:0 0 auto !important;
+}
+.tab.on::after{ bottom:-21px !important; height:2px !important; }
+
+.hdr-right{
+  display:flex !important; align-items:center !important; gap:10px !important;
+  margin-left:0 !important; flex:0 0 auto !important; flex-wrap:nowrap !important;
+}
+.hdr-right .nav-row{ gap:4px !important; margin:0 !important; }
+.hdr-right .nav-row:last-child{
+  background:var(--surface) !important; border:1px solid var(--line) !important;
+  border-radius:10px !important; padding:3px !important; gap:0 !important;
+}
+.period-label{ min-width:74px; font-size:12.5px !important; }
+
+/* ---- THE STATUS LINE. Only "Behind pace" glows; the rest is plain white. ---- */
+#pace-banner, .pace-banner{
+  display:flex !important; align-items:center !important; gap:16px !important;
+  margin:22px 0 26px !important; padding:0 !important;
+  border:none !important; background:none !important;
+  font-size:13px !important; color:#fff !important; font-weight:400 !important;
+}
+#pace-banner *, .pace-banner *{ color:#fff !important; }
+/* the overdue link stays plain now - the glow moved to the pace text itself */
+#pace-banner u, .pace-banner u, #pace-banner a, .pace-banner a{
+  background:none !important; border:none !important; padding:0 !important;
+  box-shadow:none !important; text-shadow:none !important;
+  color:#fff !important; text-decoration:underline !important;
+}
+#pace-banner u::before, .pace-banner u::before,
+#pace-banner a::before, .pace-banner a::before{ content:none !important; }
+/* "Behind pace - call 25 now" is the only thing on this line that glows */
+.pace-alert .pace-hot, #pace-banner .pace-hot{
+  display:inline-flex; align-items:center; gap:8px;
+  padding:6px 12px 6px 11px; border-radius:8px;
+  background:var(--red-dim) !important; border:1px solid var(--red-border) !important;
+  color:#ff8a8e !important; font-weight:600 !important; font-size:12.5px !important;
+  box-shadow:0 0 20px -4px rgb(var(--c-red) / .6), inset 0 0 0 1px rgb(var(--c-red) / .12);
+  text-shadow:0 0 14px rgb(var(--c-red) / .8);
+}
+.pace-hot::before{
+  content:""; width:6px; height:6px; border-radius:50%; background:var(--red-hot); flex:0 0 auto;
+}
+.pace-actions{ margin-left:auto !important; display:inline-flex !important; gap:4px !important; }
+
+/* the status line container, not just the banner inside it */
+#pace-line{
+  display:flex !important; align-items:center !important; gap:16px !important;
+  margin:22px 0 26px !important; width:100% !important;
+}
+#pace-line .pace-banner{ flex:1 1 auto !important; margin:0 !important; }
+#pace-line .pace-actions{ margin-left:auto !important; }
 </style>
 </head>
 <body>
@@ -1076,7 +1172,7 @@ html,body{ overflow-x:hidden !important; }
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h227</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h228</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -2571,19 +2667,45 @@ function liftHeaderFullWidth() {
   const layout = document.querySelector('.page-layout');
   const hdr = document.querySelector('.hdr');
   const tabs = document.querySelector('.tab-bar');
-  const pace = document.getElementById('pace-banner');
   if (!layout || !hdr || layout.dataset.hdrLifted) return;
-  [hdr, tabs, pace].forEach((el, i) => {
-    if (!el) return;
-    el.style.gridColumn = '1 / -1';
-    layout.insertBefore(el, layout.children[i]);
-  });
+
+  // header spans the full grid; the tab row moves INSIDE it so brand, tabs and
+  // the period selector share one line the way v0 has it
+  hdr.style.gridColumn = '1 / -1';
+  layout.insertBefore(hdr, layout.firstElementChild);
+  if (tabs) {
+    const right = hdr.querySelector('.hdr-right');
+    hdr.insertBefore(tabs, right || null);
+  }
   layout.dataset.hdrLifted = '1';
+}
+
+// The status line renders later than the header, so it gets its own pass. The
+// settings gear moves onto it, flush right - it acts on the whole board rather
+// than belonging among the period buttons.
+function liftPaceLine() {
+  const layout = document.querySelector('.page-layout');
+  // the container is #pace-line; .pace-banner is what renders inside it
+  const pace = document.getElementById('pace-line');
+  const hdr = document.querySelector('.hdr');
+  if (!layout || !pace || !hdr) return;
+  if (pace.parentNode !== layout) {
+    pace.style.gridColumn = '1 / -1';
+    layout.insertBefore(pace, hdr.nextElementSibling);
+  }
+  const gear = document.querySelector('.hdr-actions');
+  if (gear && !pace.querySelector('.pace-actions')) {
+    const wrap = document.createElement('span');
+    wrap.className = 'pace-actions';
+    wrap.appendChild(gear);
+    pace.appendChild(wrap);
+  }
 }
 
 function reflowBoard() {
   try { placeHeaderWho(); } catch (e) {}
   try { liftHeaderFullWidth(); } catch (e) {}
+  try { liftPaceLine(); } catch (e) {}
 
   const main = document.getElementById('app') || document;
 
@@ -6336,16 +6458,19 @@ function renderAlerts() {
     // The per-stage breakdown lives on the Leads page (the cockpit).
     let behindNow = 0;
     try { behindNow = paceStats().now; } catch(e) {}
-    if (behindNow > 0) parts.push('Behind pace \u2014 call ' + behindNow + ' now');
+    // h228: the glow belongs on the thing that needs doing, not on the overdue
+    // count beside it. Wrapped so the CSS can light this one span and leave the
+    // rest of the line plain white.
+    if (behindNow > 0) parts.push('<span class="pace-hot">Behind pace \u2014 call ' + behindNow + ' now</span>');
     else if (dueNow > 0) parts.push(dueNow + ' lead' + (dueNow>1?'s':'') + ' due now');
     if (overdue > 0) parts.push('<span onclick="event.stopPropagation();setFilterAlert(\'overdue\')" style="text-decoration:underline;cursor:pointer;">' + overdue + ' overdue</span>');
     if (earliestUpcomingLabel && dueNow === 0 && behindNow === 0) parts.push('next at ' + earliestUpcomingLabel);
     parts.push(apptPart + apptFire);
+    // h228: the inline light-mode fill is gone. The line is plain white text on
+    // the board; only the "behind pace" span carries a colour, and it carries it
+    // from the stylesheet where the glow lives.
     const alert = overdue > 0 || behindNow > 0;
-    const color = overdue > 0 ? '#A32D2D' : behindNow > 0 ? '#854F0B' : '#1D3557';
-    const bg = overdue > 0 ? '#FFF5F5' : behindNow > 0 ? '#FFF6E8' : '#EBF3FF';
-    const border = overdue > 0 ? '#F5A0A0' : behindNow > 0 ? '#F0C888' : '#B3D1F7';
-    html = '<div class="pace-banner' + (alert ? ' pace-alert' : '') + '" onclick="setFilterAlert(\'active\')" style="background:' + bg + ';border:1px solid ' + border + ';border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:600;color:' + color + ';">' + parts.join(' &middot; ') + '</div>';
+    html = '<div class="pace-banner' + (alert ? ' pace-alert' : '') + '" onclick="setFilterAlert(\'active\')">' + parts.join(' &middot; ') + '</div>';
   }
 
   el.innerHTML = html;
