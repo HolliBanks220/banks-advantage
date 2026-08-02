@@ -1746,6 +1746,17 @@ html,body{ overflow-x:hidden !important; }
   .right-sidebar-col{ grid-column:1 !important; order:2 !important; }
   .page-outer{ grid-column:1 !important; order:1 !important; }
 }
+
+/* h245: the status line reads act-now, then how long you have, then how many are
+   coming - one sentence, left to right. Nothing is pushed to the far edge. */
+.pace-next{
+  margin-left:0 !important; color:#fff !important;
+  font-weight:600 !important; font-size:13px !important; white-space:nowrap;
+}
+.pace-count{
+  color:var(--muted) !important; font-weight:500 !important;
+  font-size:13px !important; white-space:nowrap;
+}
 </style>
 </head>
 <body>
@@ -1764,7 +1775,7 @@ html,body{ overflow-x:hidden !important; }
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h244</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h245</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -7054,11 +7065,15 @@ function renderAlerts() {
     apptPart = apptLabel + ' NOW'; apptFire = ' &#128293;';
   } else if (apptInfo.minsUntil <= 30) {
     apptPart = apptLabel + ' in ' + apptInfo.minsUntil + ' min'; apptFire = ' &#128293;';
-  } else if (apptInfo.minsUntil <= 120) {
-    const h = Math.floor(apptInfo.minsUntil/60), m = apptInfo.minsUntil%60;
-    apptPart = apptLabel + ' in ' + (h>0?h+'h ':'') + (m>0?m+'m':'');
   } else {
-    apptPart = apptLabel + ' at ' + apptInfo.dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    // h245: this used to switch to a clock time past two hours - "appt at 4:30".
+    // A countdown answers the question she is actually asking, which is how long
+    // she has, so it stays a countdown however far out the next thing is.
+    const h = Math.floor(apptInfo.minsUntil/60), m = apptInfo.minsUntil%60;
+    const parts = [];
+    if (h > 0) parts.push(h + ' hour' + (h === 1 ? '' : 's'));
+    if (m > 0) parts.push(m + ' min');
+    apptPart = apptLabel + ' in ' + parts.join(' ');
   }
 
   let html = '';
@@ -7086,8 +7101,20 @@ function renderAlerts() {
     // h239: the warm/cooling breakdown is gone. It repeated what "behind pace"
     // already says and it was the only orange on the board.
 
-    // and the next thing on the schedule, hard right, beside the gear
+    // h245: the countdown sits right after the glow, and the day's appointment
+    // count travels with it rather than sitting alone at the far right.
     parts.push('<span class="pace-next">' + apptPart + apptFire + '</span>');
+    let todayCount = 0;
+    try {
+      const { start, end } = getPeriodBounds('activity');
+      todayCount = (clients || []).filter(c => {
+        const dt = apptOf(c); if (!dt) return false;
+        const d = new Date(dt); return d >= start && d <= end;
+      }).length;
+    } catch (e) {}
+    parts.push('<span class="pace-count">' +
+      (todayCount ? todayCount + ' appt' + (todayCount === 1 ? '' : 's') + ' today'
+                  : 'no appts today') + '</span>');
     // h228: the inline light-mode fill is gone. The line is plain white text on
     // the board; only the "behind pace" span carries a colour, and it carries it
     // from the stylesheet where the glow lives.
