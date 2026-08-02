@@ -453,7 +453,7 @@ body{
 .hdr{ background:transparent !important; box-shadow:none !important; border-bottom:1px solid var(--line) !important; border-radius:0 !important; }
 .tab-bar{ background:transparent !important; border:none !important; border-bottom:1px solid var(--line) !important; border-radius:0 !important; }
 .tab{ color:var(--muted) !important; }
-.tab.on{ color:var(--ink) !important; border-bottom:2px solid var(--accent-lift, var(--accent)) !important; }
+.tab.on{ color:var(--ink) !important; border-bottom:2px solid var(--accent-lift) !important; }
 .pill{ background:var(--surface) !important; border:1px solid var(--line) !important; color:var(--muted) !important; }
 .pill.on{ background:var(--accent) !important; border-color:var(--accent) !important; color:#fff !important; }
 .client-card, .sit-card{
@@ -491,7 +491,7 @@ input:focus, select:focus, textarea:focus{ outline:2px solid var(--accent); outl
   background:var(--bg) !important; border:1px solid var(--line) !important; color:var(--ink) !important;
 }
 #task-sidebar input[type="text"]::placeholder{ color:var(--faint) !important; }
-#task-sidebar a{ color:var(--accent-lift, var(--accent)) !important; }
+#task-sidebar a{ color:var(--accent-lift) !important; }
 .appt-sidebar-item, .appt-sidebar-item *{ color:var(--ink) !important; }
 .appt-sidebar-item .appt-sidebar-meta, .appt-sidebar-item small{ color:var(--faint) !important; }
 
@@ -814,6 +814,91 @@ input:focus, select:focus, textarea:focus{
   .stat, .stat.hero, .client-card{ transition:none !important; transform:none !important; }
 }
 html,body{ overflow-x:hidden !important; }
+
+/* ============================================================================
+   h225 - HER PASS OVER THE REBUILT BOARD
+   ========================================================================== */
+
+/* ---- HEADER. Everything that answers "when am I looking at" lives up here on
+   one line; the tab row below it answers "what am I looking at". The tasks panel
+   drops below that line so the two never compete. ---- */
+.hdr{ padding:0 0 16px !important; gap:18px !important; }
+.hdr-title{
+  font-size:19px !important; font-weight:300 !important; letter-spacing:.02em !important;
+  text-transform:none !important; color:var(--accent-lift) !important;
+}
+/* the WHITE text says WHO you are looking at - you today, a team or a base shop
+   once that exists. It is the loudest thing in the header for that reason. */
+.hdr-who{
+  font-size:19px !important; font-weight:600 !important; color:#fff !important;
+  letter-spacing:-.01em !important; margin-left:10px;
+}
+.hdr-sub{ font-size:12.5px !important; color:var(--faint) !important; }
+.right-sidebar-col{ padding-top:0 !important; }
+
+/* ---- STATUS LINE. Behind pace is the one thing on this board that should
+   glow, and a glow needs two reds: a saturated core and a soft halo of the same
+   hue behind it. Everything else on the line stays plain white so the red is
+   the only thing your eye is pulled to. ---- */
+#pace-banner, .pace-banner{ gap:14px !important; color:#fff !important; }
+#pace-banner *, .pace-banner *{ color:#fff !important; }
+#pace-banner u, .pace-banner u, #pace-banner a, .pace-banner a{
+  background:var(--red-dim) !important;
+  border:1px solid var(--red-border) !important;
+  color:#ff8a8e !important;
+  box-shadow:0 0 18px -4px rgb(var(--c-red) / .55), 0 0 0 1px rgb(var(--c-red) / .12) inset;
+  text-shadow:0 0 14px rgb(var(--c-red) / .8);
+}
+.pace-alert u, .pace-alert a{
+  box-shadow:0 0 26px -3px rgb(var(--c-red) / .75), 0 0 0 1px rgb(var(--c-red) / .18) inset !important;
+}
+
+/* ---- HERO. 4 across, then 2x2, then 1. Never 3+1: an odd tile on its own line
+   reads as a mistake. Fixed columns at every step, never auto-fill. ---- */
+.stat-row.hero-row{ grid-template-columns:repeat(4,minmax(0,1fr)) !important; }
+/* the accent edge lands in the same place on every card - it was running down
+   the side of one of them and across the top of the others */
+.stat.hero{ border-radius:var(--r) !important; }
+.stat.hero::before{
+  inset:0 0 auto 0 !important; height:2px !important; width:100% !important;
+  border-radius:var(--r) var(--r) 0 0;
+}
+.stat.hero::after{ content:none !important; }
+.stat.hero.tile-goal-red, .stat.hero.tile-goal-yellow, .stat.hero.tile-goal-green{
+  border-left-width:1px !important; border-right-width:1px !important;
+}
+
+/* ---- TILES: crisper text. The old sizes were set for a light card; on this
+   field they needed more weight and more contrast to hold their edges. ---- */
+.stat-lbl{ color:#9aa5a3 !important; font-weight:600 !important; }
+.stat-val{ color:#f4f8f7 !important; font-weight:700 !important; }
+.stat-sub{ color:#7d8a88 !important; }
+.stat.hero .stat-lbl{ color:#9aa5a3 !important; }
+.stat.hero .stat-val{ color:#ffffff !important; }
+
+/* ---- MORE ACROSS. Five is the floor on a full-width board, and ROI's five
+   tiles should never wrap onto a second line while there is room. ---- */
+.stat-row, .stat-row2{ grid-template-columns:repeat(auto-fill, minmax(140px,1fr)) !important; }
+#mp-panel .stat-row, #ret-panel .stat-row{ grid-template-columns:repeat(auto-fill, minmax(132px,1fr)) !important; }
+
+/* ---- TASKS: it was grey on grey at the top of the panel. ---- */
+#task-sidebar, #task-sidebar *{ color:var(--ink) !important; }
+#task-sidebar .appt-sidebar-title, #task-sidebar h3, #task-sidebar > div:first-child{
+  color:#fff !important;
+}
+.task-item, .task-item span, .task-item label{ color:#e8eeed !important; font-size:13.5px !important; }
+#task-sidebar input[type="text"], #task-sidebar input[type="search"]{
+  background:#0f1415 !important; color:var(--ink) !important;
+  border:1px solid var(--line-2) !important;
+}
+#task-sidebar input::placeholder{ color:#7d8a88 !important; }
+
+/* ---- BOTH COLUMNS END LEVEL ---- */
+.page-layout{ align-items:stretch !important; }
+.right-sidebar-col{ height:100% !important; }
+
+@media(max-width:1280px){ .stat-row.hero-row{ grid-template-columns:repeat(2,minmax(0,1fr)) !important; } }
+@media(max-width:640px){ .stat-row.hero-row{ grid-template-columns:minmax(0,1fr) !important; } }
 </style>
 </head>
 <body>
@@ -828,7 +913,7 @@ html,body{ overflow-x:hidden !important; }
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h224</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h225</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -945,10 +1030,6 @@ html,body{ overflow-x:hidden !important; }
     <!-- h216: a number tells you where you are; a shape tells you where you are
          going. Hand-rolled SVG so there is no library to load and nothing to
          break offline. Hidden on Day view - one bar is not a trend. -->
-    <div id="trend-strip" style="display:none;">
-      <div class="t-lbl" id="trend-lbl" onclick="cycleTrendMetric()" style="cursor:pointer;" title="Tap to change what this shows">Dials</div>
-      <div id="trend-svg"></div>
-    </div>
 
     <div class="section-lbl">Production</div>
     <div id="prod-board-toggle" style="display:flex;gap:6px;margin-bottom:8px;">
@@ -2281,22 +2362,123 @@ function updateProdBoardToggle() {
 // All four are dialing-activity numbers so they share one calendar - mixing in a
 // production number would put two different Julys side by side.
 const HERO_IDS = ['s-dials', 's-appts', 's-resolved', 's-time-dial'];
-function buildHeroRow() {
-  if (document.querySelector('.hero-row')) return;
-  const label = [...document.querySelectorAll('.section-lbl')]
-    .find(el => /dialing activity/i.test(el.textContent || ''));
-  if (!label) return;
-  const tiles = HERO_IDS.map(id => {
-    const v = document.getElementById(id);
-    return v ? v.closest('.stat') : null;
-  }).filter(Boolean);
-  if (tiles.length !== HERO_IDS.length) return;   // markup moved - leave it alone
-  const row = document.createElement('div');
-  row.className = 'stat-row hero-row';
-  label.parentNode.insertBefore(row, label);
-  tiles.forEach(t => { t.classList.add('hero'); row.appendChild(t); });
-  document.querySelectorAll('.stat-row:not(.hero-row)').forEach(r => {
-    if (!r.children.length) r.remove();   // a row emptied by the move
+
+// h225: the board is REFLOWED here rather than in the markup. Two attempts at
+// moving tiles in the file corrupted the surrounding rows - a block matcher
+// cannot reliably tell a tile from the divs inside it. Done in the DOM it is
+// exact, repeatable, and cannot damage anything.
+//
+// Three jobs:
+//   1. lift the four headline tiles into their own row
+//   2. MERGE each section's rows into ONE grid - separate rows are why three
+//      tiles sat alone across a wide board with the rest of the row empty
+//   3. put each section's tiles in the order she reads them
+const SECTION_ORDER = {
+  'dialing activity': ['s-callbacks', 's-texts', 's-dead'],
+  'production':       ['p-first','p-showed','p-noshow','p-upcoming','p-sales','p-nosales',
+                       'p-apps','p-needs','p-apv-hh','p-think','p-ppu','p-dropped',
+                       'p-resets','p-refasks','p-recruitasks','p-plans'],
+  'roi':              ['lp-apv','lp-comm','lp-profit','lp-spend','lp-roi'],
+};
+
+function _sectionOf(el) {
+  let n = el;
+  while (n && n.previousElementSibling !== undefined) {
+    n = n.previousElementSibling;
+    if (n && n.classList && n.classList.contains('section-lbl')) return n;
+  }
+  return null;
+}
+
+function reflowBoard() {
+  const main = document.getElementById('app') || document;
+
+  // ---- 1. the hero row ----
+  if (!document.querySelector('.hero-row')) {
+    const label = [...main.querySelectorAll('.section-lbl')]
+      .find(el => /dialing activity/i.test(el.textContent || ''));
+    const tiles = HERO_IDS.map(id => {
+      const v = document.getElementById(id);
+      return v ? v.closest('.stat') : null;
+    }).filter(Boolean);
+    if (label && tiles.length === HERO_IDS.length) {
+      const row = document.createElement('div');
+      row.className = 'stat-row hero-row';
+      label.parentNode.insertBefore(row, label);
+      tiles.forEach(t => { t.classList.add('hero'); row.appendChild(t); });
+    }
+  }
+
+  // ---- 2. one grid per section, but NEVER across a panel boundary. Life/MP and
+  //         Retirement are two panels that toggle; merging them would put 26 tiles
+  //         in one grid and show both boards at once. Rows only merge into a
+  //         sibling that shares their parent. ----
+  const allRows = [...main.querySelectorAll('.stat-row, .stat-row2')]
+    .filter(r => !r.classList.contains('hero-row'));
+  const byParent = new Map();
+  allRows.forEach(r => {
+    const key = r.parentNode;
+    if (!byParent.has(key)) byParent.set(key, []);
+    byParent.get(key).push(r);
+  });
+  byParent.forEach(rows => {
+    // within one parent, merge runs that are not separated by a section label
+    let target = null;
+    let n = rows[0].parentNode.firstElementChild;
+    while (n) {
+      const next = n.nextElementSibling;
+      if (n.classList && n.classList.contains('section-lbl')) { target = null; }
+      else if (rows.includes(n)) {
+        if (!target) target = n;
+        else { while (n.firstElementChild) target.appendChild(n.firstElementChild); n.remove(); }
+      }
+      n = next;
+    }
+  });
+
+  // ---- 2b. Sales and Submitted APV are production numbers and belong under the
+  //          Production heading, not stranded in a row of their own above it. ----
+  const prodLabel = [...main.querySelectorAll('.section-lbl')]
+    .find(el => /^production/i.test((el.textContent || '').trim()));
+  if (prodLabel) {
+    let prodRow = prodLabel.nextElementSibling;
+    while (prodRow && !(prodRow.classList &&
+           (prodRow.classList.contains('stat-row') || prodRow.classList.contains('stat-row2')))) {
+      if (prodRow.id === 'mp-panel') { prodRow = prodRow.querySelector('.stat-row, .stat-row2'); break; }
+      prodRow = prodRow.nextElementSibling;
+    }
+    if (prodRow) {
+      ['p-sales','p-apv'].forEach(id => {
+        const v = document.getElementById(id);
+        const tile = v ? v.closest('.stat') : null;
+        if (tile && tile.parentNode !== prodRow) prodRow.insertBefore(tile, prodRow.firstElementChild);
+      });
+    }
+  }
+
+  // ---- 3. her reading order. Anything listed lands first, in the order given;
+  //         everything else keeps its relative position after them. ----
+  Object.keys(SECTION_ORDER).forEach(name => {
+    const label = [...main.querySelectorAll('.section-lbl')]
+      .find(el => (el.textContent || '').trim().toLowerCase().startsWith(name));
+    if (!label) return;
+    let row = label.nextElementSibling;
+    while (row && !(row.classList &&
+           (row.classList.contains('stat-row') || row.classList.contains('stat-row2')))) {
+      if (row.id === 'mp-panel') { row = row.querySelector('.stat-row, .stat-row2'); break; }
+      row = row.nextElementSibling;
+    }
+    if (!row) return;
+    const listed = SECTION_ORDER[name]
+      .map(id => { const v = document.getElementById(id); return v ? v.closest('.stat') : null; })
+      .filter(t => t && t.parentNode === row);
+    const rest = [...row.children].filter(t => !listed.includes(t));
+    listed.concat(rest).forEach(t => row.appendChild(t));
+  });
+
+  // a row left empty by any of the above would show as a stray hairline box
+  main.querySelectorAll('.stat-row, .stat-row2').forEach(r => {
+    if (!r.children.length) r.remove();
   });
 }
 
@@ -2743,8 +2925,7 @@ function renderScore() {
   }
   applyTheme();            // push the agent's theme colors into CSS vars
   applyNeutralPalette();   // theme-driven base field; alerts + goal glow carry color
-  try { renderTrendStrip(); } catch (e) {}
-  try { buildHeroRow(); } catch (e) {}
+  try { reflowBoard(); } catch (e) {}
   renderGoalZones({ dials: dials, appts_set: appts, sits: totalShowed, sales: totalSales, apps: appsWritten, resets: totalResets, apv: totalAPV });
   document.getElementById('p-closed').textContent = appsWritten;
   { const e=document.getElementById('p-close-rate'); if (e) e.textContent = ''; }   // per-sale removed; slot serves the Apps goal
@@ -14910,7 +15091,7 @@ function renderTrendStrip() {
     ' this ' + (view === 'week' ? 'week' : view);
   host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" ' +
     'style="width:100%;height:38px;display:block;overflow:visible;">' + bars + '</svg>' +
-    '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--ink-faint);margin-top:4px;">' +
+    '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--faint);margin-top:4px;">' +
       '<span>' + start.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + '</span>' +
       '<span>' + end.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + '</span></div>';
   wrap.style.display = '';
@@ -14944,9 +15125,12 @@ function renderGoalZones(vals){
       const isHero = tile && tile.classList.contains('hero');
       const gcVar = st.state === 'green' ? 'var(--goal-green)'
                   : st.state === 'red'   ? 'var(--goal-red)' : 'var(--goal-amber)';
-      const txt   = isHero ? 'var(--accent-ink)' : 'var(--ink)';
-      const soft  = isHero ? 'rgba(255,255,255,.65)' : 'var(--ink-faint)';
-      const barFill  = isHero ? 'var(--accent-lift, var(--accent))' : gcVar;
+      // h225: these referenced --accent-ink and --ink-faint, which no longer
+      // exist - an undefined custom property resolves to nothing, which is why
+      // half the tiles rendered as faded-out text on the dark board.
+      const txt   = 'var(--ink)';
+      const soft  = 'var(--faint)';
+      const barFill  = isHero ? 'var(--accent-lift)' : gcVar;
       const barTrack = 'rgba(255,255,255,.08)';
       const aStr = m.money ? goalMoney(actual) : Math.round(actual).toLocaleString();
       const tStr = m.money ? goalMoney(target) : Math.round(target).toLocaleString();
@@ -14956,7 +15140,7 @@ function renderGoalZones(vals){
       // left and how you are doing on the right. A small tile keeps the compact
       // two-number form, since there is no room for a sentence.
       const pace = st.hit ? 'goal met' : (st.state === 'red' ? 'behind' : 'on pace');
-      const paceCol = st.hit || st.state !== 'red' ? 'var(--accent-lift, var(--accent))' : 'var(--goal-red)';
+      const paceCol = st.hit || st.state !== 'red' ? 'var(--accent-lift)' : 'var(--goal-red)';
       if (isHero) {
         slot.innerHTML =
           '<div style="height:4px;border-radius:4px;background:'+barTrack+';overflow:hidden;">' +
