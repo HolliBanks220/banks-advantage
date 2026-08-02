@@ -2449,7 +2449,7 @@ button.chip-action:hover, .modal button.chip-action:hover{ filter:brightness(1.1
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h266</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h267</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -3175,12 +3175,38 @@ function startRealtimeSync() {
     .subscribe();
 }
 
+// h267: ONE null touchpoint in one lead's case took down every renderer - the
+// board, the business list, the schedule and the lead list all read a property
+// off it and threw. The visible effect was the Business tab emptying and the
+// period arrows appearing to stick, because a throw in renderScore stops
+// shiftPeriod before it ever reaches renderAppsTab.
+// Guarding 246 call sites still left 60 throws; there are more ways to walk this
+// data than can be chased one at a time. The fix belongs at the door: nothing
+// null gets into `clients` in the first place.
+function sanitizeClient(c) {
+  if (!c) return null;
+  const cases = (c.cases || []).filter(Boolean).map(cs => ({
+    ...cs,
+    touchpoints: (cs.touchpoints || []).filter(Boolean).map(tp => ({
+      ...tp,
+      apps: (tp.apps || []).filter(Boolean),
+    })),
+  }));
+  return {
+    ...c,
+    cases,
+    call_log: (c.call_log || []).filter(Boolean),
+    sits: (c.sits || []).filter(Boolean),
+    referrals: (c.referrals || []).filter(Boolean),
+  };
+}
+
 async function loadClients() {
   const { data, error } = await sb.from('clients').select('*').order('created_at', { ascending: false });
   if (!error && data) {
     // Deduplicate by id in case realtime sync already added some
     const seen = new Set();
-    clients = data.map(c => ({...c, cases: c.cases||[]})).filter(c => {
+    clients = data.map(c => sanitizeClient(c)).filter(Boolean).filter(c => {
       if (seen.has(c.id)) return false;
       if (c.status === 'Removed') return false; // not-valid leads: gone from all lists & tracking
       seen.add(c.id);
@@ -3195,8 +3221,8 @@ async function loadClients() {
 // fall back to the (often old) touchpoint date. Keep both spellings in sync so
 // every app counts toward the day it was actually done.
 function normalizeAppDates() {
-  clients.forEach(c => (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp =>
-    (tp.apps||[]).forEach(ap => {
+  clients.forEach(c => (c.cases||[]).filter(Boolean).forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp =>
+    (tp.apps||[]).filter(Boolean).filter(Boolean).forEach(ap => {
       const wd = ap.writtenDate || ap.written_date;
       if (wd) { ap.writtenDate = wd; ap.written_date = wd; }
     })
@@ -3547,7 +3573,7 @@ function countApptsScheduled(start, end) {
   const inR = (dt) => { const d = new Date(dt); return d >= start && d <= end; };
   clients.forEach(c => {
     let sits = 0, noshowsTp = 0, pending = 0;
-    (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+    (c.cases||[]).filter(Boolean).forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
       if (!tp || !tp.datetime || !inR(tp.datetime)) return;
       if (tp.outcome === 'sale' || tp.outcome === 'nosale' || tp.outcome === 'cont') sits++;
       else if (tp.outcome === 'noshow') noshowsTp++;
@@ -3576,8 +3602,8 @@ const SLINGSHOT = { 80: {next: 85, req: 2500}, 85: {next: 90, req: 5000}, 90: {n
 function getNetPlacedForMonth(year, month) {
   let placed = 0, lapsed = 0;
   clients.forEach(c => {
-    (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
-      (tp.apps||[]).forEach(ap => {
+    (c.cases||[]).filter(Boolean).forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
+      (tp.apps||[]).filter(Boolean).filter(Boolean).forEach(ap => {
         const pm = getPlacementMonth({...ap, tpDate: ap.writtenDate || tp.datetime});
         if (!pm || pm.getFullYear() !== year || pm.getMonth() !== month) return;
         // h155: 'Placed' is not one of APP_STATUSES (Written/Submitted/Approved/Issued/
@@ -3592,8 +3618,8 @@ function getNetPlacedForMonth(year, month) {
       });
     }));
     // Chargebacks subtract in the month they HAPPEN (lapse_date)
-    (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
-      (tp.apps||[]).forEach(ap => {
+    (c.cases||[]).filter(Boolean).forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
+      (tp.apps||[]).filter(Boolean).filter(Boolean).forEach(ap => {
         if (!['Lapse','Cancel'].includes(ap.status||'')) return;
         const d = new Date(ap.lapse_date || ap.writtenDate || tp.datetime || 0);
         const back = (ap.chargeback_amount !== undefined && ap.chargeback_amount !== null && ap.chargeback_amount !== '') ? Number(ap.chargeback_amount) : (ap.premium||0);
@@ -3608,8 +3634,8 @@ function getWritingWeeks(year, month) {
   // Weeks (Sat-Fri) in the calendar month with at least one app written
   const weeks = new Map();
   clients.forEach(c => {
-    (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
-      (tp.apps||[]).forEach(ap => {
+    (c.cases||[]).filter(Boolean).forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
+      (tp.apps||[]).filter(Boolean).filter(Boolean).forEach(ap => {
         const d = new Date(ap.writtenDate || tp.datetime || 0);
         if (d.getFullYear() !== year || d.getMonth() !== month) return;
         const sat = new Date(d); sat.setDate(d.getDate() - ((d.getDay() + 1) % 7));
@@ -3687,7 +3713,7 @@ function collectProduction(start, end) {
   const inR = (dt) => { if (!dt) return false; const d = new Date(dt); return d >= start && d <= end; };
 
   clients.forEach(c => {
-    (c.cases||[]).forEach(cs => {
+    (c.cases||[]).filter(Boolean).forEach(cs => {
       const tps = (cs.touchpoints||[]);
       const resolvedSits = tps.filter(tp => tp && (tp.outcome === 'sale' || tp.outcome === 'nosale' || tp.outcome === 'cont'));
 
@@ -3742,7 +3768,7 @@ function renderProduction() {
   // Both stay hidden otherwise so the board isn't carrying dead weight.
   const APPROVED = ['Approved','Issued','Paid','Not taken','Lapse','Cancel'];
   const reachedApproved = (lead) => !!lead && (lead.cases||[]).some(cs =>
-    (cs.touchpoints||[]).some(tp => (tp.apps||[]).some(ap => APPROVED.includes(ap.status||''))));
+    (cs.touchpoints||[]).filter(Boolean).some(tp => (tp.apps||[]).some(ap => APPROVED.includes(ap.status||''))));
   const owed = [];
   clients.forEach(c => {
     (c.referrals || []).forEach(r => {
@@ -3759,7 +3785,7 @@ function renderProduction() {
   try {
     const nowMs = Date.now();
     const {start: qS, end: qE} = getPeriodBounds('production');
-    clients.forEach(c => (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+    clients.forEach(c => (c.cases||[]).filter(Boolean).forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
       if (!tp || !tp.datetime) return;
       if (tp.outcome && tp.outcome !== 'pending') return;
       const d = new Date(tp.datetime);
@@ -3805,13 +3831,13 @@ function renderCaseClock() {
   let totalDays = 0, totalN = 0;
   const byType = {};
   clients.forEach(c => {
-    (c.cases||[]).forEach(cs => {
+    (c.cases||[]).filter(Boolean).forEach(cs => {
       const tps = cs.touchpoints||[];
       const saleTp = [...tps].reverse().find(tp => tp && tp.outcome === 'sale' && tp.datetime);
       if (!saleTp) return;
       const openDt = new Date(cs.created || (tps[0] && tps[0].datetime) || saleTp.datetime);
       const days = Math.max(0, (new Date(saleTp.datetime) - openDt) / 86400000);
-      const apv = tps.reduce((a,tp) => a+(tp.apps||[]).reduce((b,ap)=>b+premOf(ap),0), 0);
+      const apv = tps.reduce((a,tp) => a+(tp.apps||[]).filter(Boolean).filter(Boolean).reduce((b,ap)=>b+premOf(ap),0), 0);
       totalDays += days; totalN++;
       const b = buckets.find(x => days < x.max);
       b.n++; b.apv += apv;
@@ -3869,8 +3895,8 @@ function isSubmitted(ap) { return ap && (ap.status || 'Written') !== 'Written'; 
 
 function countSubmittedApps(pStart, pEnd) {
   let n = 0;
-  clients.forEach(c => (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp =>
-    (tp.apps||[]).forEach(ap => {
+  clients.forEach(c => (c.cases||[]).filter(Boolean).forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp =>
+    (tp.apps||[]).filter(Boolean).filter(Boolean).forEach(ap => {
       if (!isSubmitted(ap)) return;                       // Written = not submitted yet
       if (['Lapse','Cancel'].includes(ap.status||'')) return;
       if (submittedDateInPeriod(submittedAppDate(ap, tp, cs), pStart, pEnd)) n++;
@@ -4143,7 +4169,7 @@ function renderScore() {
   // appt-set here if the booking never produced a sit at all. Everything after
   // the sit (continuations, PPUs, TAI, rewrites, retirement steps) is production
   // and can never reach back and strip credit for work the phone already did.
-  const everSat = (c) => (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp =>
+  const everSat = (c) => (c.cases||[]).filter(Boolean).some(cs => (cs.touchpoints||[]).filter(Boolean).some(tp =>
       SAT_OUTCOMES.includes(tp.outcome)))
     || (c.sits||[]).some(s => s.outcome==='showed');
   const appts = clients.filter(c => {
@@ -4247,7 +4273,7 @@ function renderScore() {
   // on the lead; those must not land in the life production numbers (they were
   // inflating sits and dragging close rate + show ratio). allTPsRaw keeps the
   // full set so the Advanced Market board can pull its own touchpoints later.
-  const allTPsRaw = clients.flatMap(c => (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).filter(tp => {
+  const allTPsRaw = clients.flatMap(c => (c.cases||[]).filter(Boolean).flatMap(cs => (cs.touchpoints||[]).filter(Boolean).filter(tp => {
     const d = new Date(tp.datetime); return d >= pStart && d <= pEnd;
   })));
   // Which production board is showing. Life is the default; the toggle flips it
@@ -4291,7 +4317,7 @@ function renderScore() {
     setTxt('r-apv-sub', money(apvSub));
     setTxt('r-apv-placed', money(apvPlaced));
   }
-  const allTPs = clients.flatMap(c => (c.cases||[]).filter(cs => boardOf(cs) === _pb).flatMap(cs => (cs.touchpoints||[]).filter(tp => {
+  const allTPs = clients.flatMap(c => (c.cases||[]).filter(cs => boardOf(cs) === _pb).flatMap(cs => (cs.touchpoints||[]).filter(Boolean).filter(tp => {
     const d = new Date(tp.datetime); return d >= pStart && d <= pEnd;
   })));
   const allSits = clients.flatMap(c => (c.sits||[]).filter(s => {
@@ -4322,12 +4348,12 @@ function renderScore() {
   const _decidedCase = cs => {
     if (['Closed','Closed Won','Closed Lost','Reset'].includes(cs.status)) return true;
     if (cs.verdict) return true;
-    return (cs.touchpoints||[]).some(t => t && (t.outcome==='sale'||t.outcome==='nosale'||t.outcome==='dropped'));
+    return (cs.touchpoints||[]).filter(Boolean).some(t => t && (t.outcome==='sale'||t.outcome==='nosale'||t.outcome==='dropped'));
   };
   const countableTPs = [];
   clients.forEach(c => (c.cases||[]).filter(cs => boardOf(cs) === _pb).forEach(cs => {
     const decided = _decidedCase(cs);
-    (cs.touchpoints||[]).forEach(tp => {
+    (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
       if (!tp || !tp.datetime) return;
       const d = new Date(tp.datetime); if (d < pStart || d > pEnd) return;
       if (tp.continues_appt || APPT_ARTIFACT.includes(tp.outcome)) return;
@@ -4351,7 +4377,7 @@ function renderScore() {
   // ---- CASES: one sit, one outcome -----------------------------------------
   // However many meetings it took, you sat that case once. Two cases (mortgage
   // protection and retirement) means two sits. Continuations never add sits.
-  const caseAttendedTPs = cs => (cs.touchpoints||[]).filter(tp => ATTENDED.includes(tp.outcome) && tp.datetime)
+  const caseAttendedTPs = cs => (cs.touchpoints||[]).filter(Boolean).filter(tp => ATTENDED.includes(tp.outcome) && tp.datetime)
       .sort((a,b)=> new Date(a.datetime)-new Date(b.datetime));
   const caseSatDate = cs => { const a = caseAttendedTPs(cs); return a.length ? new Date(a[0].datetime) : null; };
   const caseVerdict = cs => {
@@ -4429,7 +4455,7 @@ function renderScore() {
   //   in-process        -> urgency and logistics. They already bought in.
   let nsFirstLost = 0, nsFirstRecovered = 0, nsInProcess = 0;
   const recoveredLeads = [];
-  clients.forEach(c => (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+  clients.forEach(c => (c.cases||[]).filter(Boolean).forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
     if (!tp || tp.outcome !== 'noshow' || !tp.datetime) return;
     const d = new Date(tp.datetime);
     if (d < pStart || d > pEnd) return;
@@ -4442,16 +4468,16 @@ function renderScore() {
   const unbucketed = periodAppts - bucketed;   // must be 0; shown if it ever isn't
 
   const allCasesInPeriod = clients.flatMap(c => (c.cases||[]).filter(cs => {
-    return (cs.touchpoints||[]).some(tp => {
+    return (cs.touchpoints||[]).filter(Boolean).some(tp => {
       const d = new Date(tp.datetime);
       return d >= pStart && d <= pEnd && (tp.outcome==='sale'||tp.outcome==='nosale');
     });
   }).map(cs => ({...cs, clientId: c.id})));
 
-  const hasPPUTouchpoint = cs => (cs.touchpoints||[]).some(tp => tp.type === 'PPU / Policy Pickup' && (tp.outcome==='sale'||tp.outcome==='nosale'));
-  const caseAPV = cs => (cs.touchpoints||[]).reduce((a,tp) => a+(tp.apps||[]).reduce((b,ap)=>b+premOf(ap),0), 0);
-  const caseSold = cs => (cs.touchpoints||[]).some(tp => tp.outcome==='sale');
-  const caseNoSale = cs => (cs.touchpoints||[]).some(tp => tp.outcome==='nosale') && !(cs.touchpoints||[]).some(tp=>tp.outcome==='sale');
+  const hasPPUTouchpoint = cs => (cs.touchpoints||[]).filter(Boolean).some(tp => tp.type === 'PPU / Policy Pickup' && (tp.outcome==='sale'||tp.outcome==='nosale'));
+  const caseAPV = cs => (cs.touchpoints||[]).filter(Boolean).reduce((a,tp) => a+(tp.apps||[]).filter(Boolean).filter(Boolean).reduce((b,ap)=>b+premOf(ap),0), 0);
+  const caseSold = cs => (cs.touchpoints||[]).filter(Boolean).some(tp => tp.outcome==='sale');
+  const caseNoSale = cs => (cs.touchpoints||[]).filter(Boolean).some(tp => tp.outcome==='nosale') && !(cs.touchpoints||[]).filter(Boolean).some(tp=>tp.outcome==='sale');
 
   const ppuCases = allCasesInPeriod.filter(hasPPUTouchpoint);
   const nonPPUCases = allCasesInPeriod.filter(cs => !hasPPUTouchpoint(cs));
@@ -4479,8 +4505,8 @@ function renderScore() {
   // follow-up or continuation is still an app written. Matches the Business tab.
   const periodApps = [];
   clients.forEach(c => {
-    (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
-      (tp.apps||[]).forEach(ap => {
+    (c.cases||[]).filter(Boolean).forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
+      (tp.apps||[]).filter(Boolean).filter(Boolean).forEach(ap => {
         const d = new Date(ap.writtenDate || tp.datetime || cs.created || 0);
         if (d >= pStart && d <= pEnd) periodApps.push(ap);
       });
@@ -4575,12 +4601,12 @@ function renderScore() {
   document.getElementById('p-closed').textContent = appsWritten;
   { const e=document.getElementById('p-close-rate'); if (e) e.textContent = ''; }   // per-sale removed; slot serves the Apps goal
   // Lead-to-App CR: submitted apps on THIS board in period over leads assigned.
-  const boardApps = clients.reduce((n,c)=> n + (c.cases||[]).filter(cs=>boardOf(cs)===_pb).reduce((m,cs)=> m + (cs.touchpoints||[]).reduce((k,tp)=> k + (tp.apps||[]).filter(ap=>{ const d=new Date(ap.writtenDate||tp.datetime||cs.created||0); return isSubmitted(ap) && d>=pStart && d<=pEnd; }).length,0),0),0);
+  const boardApps = clients.reduce((n,c)=> n + (c.cases||[]).filter(cs=>boardOf(cs)===_pb).reduce((m,cs)=> m + (cs.touchpoints||[]).filter(Boolean).reduce((k,tp)=> k + (tp.apps||[]).filter(Boolean).filter(ap=>{ const d=new Date(ap.writtenDate||tp.datetime||cs.created||0); return isSubmitted(ap) && d>=pStart && d<=pEnd; }).length,0),0),0);
   { const e=document.getElementById('p-lead2app'); if (e) e.textContent = coh.assigned > 0 ? pct(boardApps, coh.assigned) + ' lead\u2192app' : '- lead\u2192app'; }
 
   // --- ASK RATES: the behaviours that compound. Denominator is resolved sits -
   // you can only ask someone who actually sat with you.
-  const resolvedTps = clients.flatMap(c => (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).filter(tp => {
+  const resolvedTps = clients.flatMap(c => (c.cases||[]).filter(Boolean).flatMap(cs => (cs.touchpoints||[]).filter(Boolean).filter(tp => {
     if (!SAT_OUTCOMES.includes(tp.outcome) || tp.outcome === 'dropped') return false;
     const d = new Date(tp.datetime); return d >= pStart && d <= pEnd;
   })));
@@ -4590,7 +4616,7 @@ function renderScore() {
   // referral and recruit pair - the discipline, then the result.
   const nResetAsk = resolvedTps.filter(t => t.did_reset !== undefined && t.did_reset !== null).length;
   // STP now belongs to the person, not the sit. This counts prospects actually sent to.
-  const allProspects = clients.flatMap(c => (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).flatMap(tp => tp.recruit_people||[])));
+  const allProspects = clients.flatMap(c => (c.cases||[]).filter(Boolean).flatMap(cs => (cs.touchpoints||[]).filter(Boolean).flatMap(tp => tp.recruit_people||[])));
   const nStp = allProspects.filter(x => x.stp_sent).length;
   const setTxt = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
   setTxt('p-resetask', nResetAsk);
@@ -4687,7 +4713,7 @@ function renderSourceComparison(pStart, pEnd, label) {
         const d = new Date(s.datetime);
         return d >= pStart && d <= pEnd;
       }) ||
-      (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => {
+      (c.cases||[]).filter(Boolean).some(cs => (cs.touchpoints||[]).filter(Boolean).some(tp => {
         // A continuation IS a sit - they showed up. Counting it keeps "ever showed"
         // honest for a lead that took several appointments to work.
         if (tp.outcome !== 'sale' && tp.outcome !== 'nosale' && tp.outcome !== 'cont') return false;
@@ -4699,7 +4725,7 @@ function renderSourceComparison(pStart, pEnd, label) {
 
     // Sales in period (all-time for day)
     const sales = sourceClients.filter(c =>
-      (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => {
+      (c.cases||[]).filter(Boolean).some(cs => (cs.touchpoints||[]).filter(Boolean).some(tp => {
         if (tp.outcome !== 'sale') return false;
         if (isDay) return true;
         const d = new Date(tp.datetime);
@@ -4714,8 +4740,8 @@ function renderSourceComparison(pStart, pEnd, label) {
     // which is how $77 APV/lead sat beside $592 commission/lead.
     // Recent periods read low on purpose: those leads have not closed yet.
     const totalAPV = cohort.reduce((acc, c) => {
-      const tpAPV = (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).filter(tp => tp.outcome === 'sale'))
-        .reduce((a,tp) => a + (tp.apps||[]).reduce((b,ap) => b+premOf(ap), 0), 0);
+      const tpAPV = (c.cases||[]).filter(Boolean).flatMap(cs => (cs.touchpoints||[]).filter(Boolean).filter(tp => tp.outcome === 'sale'))
+        .reduce((a,tp) => a + (tp.apps||[]).filter(Boolean).filter(Boolean).reduce((b,ap) => b+premOf(ap), 0), 0);
       const sitAPV = (c.sits||[]).filter(s => s.outcome === 'showed')
         .reduce((a,s) => a + (s.apps||[]).reduce((b,ap) => b+premOf(ap), 0), 0);
       return acc + tpAPV + sitAPV;
@@ -4724,7 +4750,7 @@ function renderSourceComparison(pStart, pEnd, label) {
     // RESOLVED-ONLY DENOMINATORS. An appointment on the books for Thursday hasn't
     // failed to show, and a lead still in continuation hasn't failed to buy - so
     // neither belongs in a ratio yet. Both only count once they RESOLVE.
-    const tpsOf = (c) => (c.cases||[]).flatMap(cs => cs.touchpoints||[]);
+    const tpsOf = (c) => (c.cases||[]).filter(Boolean).flatMap(cs => cs.touchpoints||[]);
     const inPeriod = (d) => { if (isDay) return true; const t = new Date(d); return t >= pStart && t <= pEnd; };
 
     // Appointments that actually happened (showed OR no-showed) - excludes pending.
@@ -4810,7 +4836,7 @@ function renderSourceComparison(pStart, pEnd, label) {
 
     const resolvedLeads = cohort.filter(c => c.resolved_at);
     const apptLeads     = cohort.filter(c => c.resolved_as === 'appt' && c.resolved_at);
-    const saleLeads     = cohort.filter(c => (c.cases||[]).some(cs => cs.status === 'Closed Won'));
+    const saleLeads     = cohort.filter(c => (c.cases||[]).filter(Boolean).some(cs => cs.status === 'Closed Won'));
 
     const neverResolved = assigned - resolvedLeads.length;
     const m = {
@@ -5263,11 +5289,11 @@ function needsOutcomeList(){
   const rows = [];
   clients.forEach(c => {
     if (RESOLVED_LEAD.includes(c.status)) return;   // lead already answered
-    (c.cases||[]).forEach(cs => {
-      const decided = (cs.touchpoints||[]).some(t => t && VERDICT_OUTCOMES.includes(t.outcome));
+    (c.cases||[]).filter(Boolean).forEach(cs => {
+      const decided = (cs.touchpoints||[]).filter(Boolean).some(t => t && VERDICT_OUTCOMES.includes(t.outcome));
       if (decided) return;                          // case already has a verdict
       const ci = (c.cases||[]).indexOf(cs);
-      (cs.touchpoints||[]).forEach(tp => {
+      (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
         if (!tp || !tp.datetime) return;
         if (tp.outcome && tp.outcome !== 'pending') return;
         const d = new Date(tp.datetime);
@@ -5287,7 +5313,7 @@ function needsOutcomeList(){
 // step in, which is why the tile said 6 and the list showed nothing relevant.
 function retAttendedSteps(cs) {
   const seen = new Set();
-  (cs.touchpoints||[]).forEach(tp => {
+  (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
     const n = retStepIndexOf(tp);
     if (n && tp.outcome && tp.outcome !== 'pending' && tp.outcome !== 'noshow') seen.add(n);
   });
@@ -5305,7 +5331,7 @@ function retDrillRows(type, start, end) {
     const step = (type.match(/ret_s(\d)_/) || [])[1];
     if (step) {
       const want = +step, attended = /_att$/.test(type);
-      (cs.touchpoints||[]).forEach(tp => {
+      (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
         if (retStepIndexOf(tp) !== want) return;
         if (!inWin(tp.datetime)) return;
         const didAttend = tp.outcome && tp.outcome !== 'pending' && tp.outcome !== 'noshow';
@@ -5405,7 +5431,7 @@ function drillDown(type) {
     // pending) — appt_datetime is mutable and gets cleared by follow-ups/outcomes.
     const apptTime = (c) => {
       let t = null;
-      (c.cases||[]).filter(_ddOn).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+      (c.cases||[]).filter(_ddOn).forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
         if (!tp || !tp.datetime) return;
         const d = new Date(tp.datetime);
         if (d >= start && d <= end && (!t || d < t)) t = d;
@@ -5442,7 +5468,7 @@ function drillDown(type) {
       // continuations included. Listed per appointment, like the Appts drill.
       const A = SAT_OUTCOMES;
       const rows = [];
-      clients.forEach(c => (c.cases||[]).filter(_ddOn).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+      clients.forEach(c => (c.cases||[]).filter(_ddOn).forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
         if (!tp || !tp.datetime || tp.continues_appt) return;
         if (!A.includes(tp.outcome)) return;
         const d = new Date(tp.datetime);
@@ -5478,18 +5504,18 @@ function drillDown(type) {
   } else if (type === 'sales') {
     title = 'Sales - ' + label;
     leads = clients.filter(c =>
-      (c.cases||[]).filter(_ddOn).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&tp.outcome==='sale'; }))
+      (c.cases||[]).filter(_ddOn).some(cs => (cs.touchpoints||[]).filter(Boolean).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&tp.outcome==='sale'; }))
     );
   } else if (type === 'nosales') {
     title = 'No sales - ' + label;
     leads = clients.filter(c =>
-      (c.cases||[]).filter(_ddOn).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&tp.outcome==='nosale'; })) ||
+      (c.cases||[]).filter(_ddOn).some(cs => (cs.touchpoints||[]).filter(Boolean).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&tp.outcome==='nosale'; })) ||
       (c.sits||[]).some(s => { const d=new Date(s.datetime); return d>=start&&d<=end&&s.outcome==='showed'&&(s.apps||[]).length===0; })
     );
   } else if (type === 'cont') {
     title = 'Continuations - ' + label;
     leads = clients.filter(c =>
-      (c.cases||[]).filter(_ddOn).some(cs => (cs.touchpoints||[]).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&tp.outcome==='cont'; }))
+      (c.cases||[]).filter(_ddOn).some(cs => (cs.touchpoints||[]).filter(Boolean).some(tp => { const d=new Date(tp.datetime); return d>=start&&d<=end&&tp.outcome==='cont'; }))
     );
   } else if (type === 'ppu' || type === 'tai') {
     // ONE ROW PER CONTINUATION EVENT that booked a PPU (resp. TAI) this period -
@@ -5579,7 +5605,7 @@ function drillDown(type) {
     // on the board without a drill-down.
     title = 'Dropped PPUs - ' + label;
     leads = clients.filter(c => (c.cases||[]).filter(_ddOn).some(cs =>
-      (cs.touchpoints||[]).some(tp => {
+      (cs.touchpoints||[]).filter(Boolean).some(tp => {
         if (!tp || tp.outcome !== 'dropped') return false;
         const d = new Date(tp.datetime);
         return d >= start && d <= end;
@@ -5662,7 +5688,7 @@ function getClientAppts(c) {
     // If a touchpoint at this time already has a LOGGED outcome, the appointment
     // happened and was recorded — it disappears from the sidebar.
     const apptMs = new Date(apptOf(c)).getTime();
-    const outcomeLogged = (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp =>
+    const outcomeLogged = (c.cases||[]).filter(Boolean).some(cs => (cs.touchpoints||[]).filter(Boolean).some(tp =>
       tp && tp.outcome && tp.outcome !== 'pending' && tp.datetime &&
       Math.abs(new Date(tp.datetime).getTime() - apptMs) < 5 * 60 * 1000
     ));
@@ -5671,9 +5697,9 @@ function getClientAppts(c) {
     let matchedCase = null;
     let matchedTp = null;
     const apptTime = new Date(apptOf(c)).getTime();
-    (c.cases||[]).forEach(cs => {
+    (c.cases||[]).filter(Boolean).forEach(cs => {
       if (cs.status !== 'Open') return;
-      (cs.touchpoints||[]).forEach(tp => {
+      (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
         if (tp.outcome === 'pending') {
           const tpTime = new Date(tp.datetime).getTime();
           // Match within 5 minutes
@@ -5701,7 +5727,7 @@ function getClientAppts(c) {
   }
 
   // Secondary: add any OTHER pending touchpoints from open cases that are NOT the primary appt
-  (c.cases||[]).forEach(cs => {
+  (c.cases||[]).filter(Boolean).forEach(cs => {
     if (cs.status !== 'Open') return;
     const pendingTps = (cs.touchpoints||[])
       .filter(tp => tp.outcome === 'pending' && tp.datetime && !pastApptSuperseded(c, tp.datetime))
@@ -6108,9 +6134,9 @@ function renderAppsTab() {
 
   // Collect all apps from all clients
   const allApps = clients.flatMap(c =>
-    (c.cases||[]).flatMap((cs, ci) =>
-      (cs.touchpoints||[]).flatMap((tp, ti) =>
-        (tp.apps||[]).map((ap, ai) => ({
+    (c.cases||[]).filter(Boolean).flatMap((cs, ci) =>
+      (cs.touchpoints||[]).filter(Boolean).flatMap((tp, ti) =>
+        (tp.apps||[]).filter(Boolean).filter(Boolean).map((ap, ai) => ({
           ...ap,
           ci, ti, ai,
           caseType: cs.type,
@@ -6577,7 +6603,7 @@ function badgeClass(src) { return 'badge b-' + (src||'').split(' ')[0]; }
 // "not interested" in a policy they already own.
 function hasSold(c) {
   if (!c) return false;
-  return (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp =>
+  return (c.cases||[]).filter(Boolean).some(cs => (cs.touchpoints||[]).filter(Boolean).some(tp =>
       tp && (tp.outcome === 'sale' || (tp.apps||[]).length)))
     || (c.sits||[]).some(s => (s.apps||[]).length);
 }
@@ -6607,7 +6633,7 @@ function isFirstAppt(cs, tp) {
 // came back and sat HAD a why - the mechanics failed (tie-down, confirmation,
 // booked too far out). One who never came back never had a why at all.
 function caseEverSat(cs) {
-  return (cs.touchpoints||[]).some(tp => ATTENDED_OUTCOMES.includes(tp.outcome));
+  return (cs.touchpoints||[]).filter(Boolean).some(tp => ATTENDED_OUTCOMES.includes(tp.outcome));
 }
 // Days between booking it and the appointment itself. Long lead times are the
 // usual cause of a recovered no-show - they meant it, they just forgot.
@@ -6635,7 +6661,7 @@ function openCoaching() {
 
   // Cases that sold in this period, and how many appointments each took.
   const sold = [];
-  clients.forEach(c => (c.cases||[]).forEach(cs => {
+  clients.forEach(c => (c.cases||[]).filter(Boolean).forEach(cs => {
     const tps = cs.touchpoints||[];
     const saleTp = tps.filter(t=>t.outcome==='sale'&&t.datetime).sort((a,b)=>new Date(b.datetime)-new Date(a.datetime))[0];
     if (!saleTp || !inP(new Date(saleTp.datetime))) return;
@@ -6647,7 +6673,7 @@ function openCoaching() {
 
   // Every case with a no-show this period, as a timeline.
   const stories = [];
-  clients.forEach(c => (c.cases||[]).forEach(cs => {
+  clients.forEach(c => (c.cases||[]).filter(Boolean).forEach(cs => {
     const appts = caseAppts(cs);
     if (!appts.some(t => t.outcome==='noshow' && inP(new Date(t.datetime)))) return;
     stories.push({c, cs, appts});
@@ -6704,9 +6730,9 @@ function apptTpOf(c) {
   if (!c) return null;
   const now = Date.now();
   let future = null, past = null;
-  (c.cases||[]).forEach(cs => {
+  (c.cases||[]).filter(Boolean).forEach(cs => {
     if (cs.status && cs.status !== 'Open') return;
-    (cs.touchpoints||[]).forEach(tp => {
+    (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
       if (!tp || !tp.datetime) return;
       if (tp.outcome && tp.outcome !== 'pending') return;
       const t = new Date(tp.datetime).getTime();
@@ -7046,24 +7072,24 @@ function getCaughtUpDaysThisWeek() {
 function caseIsDecided(cs) {
   if (!cs) return false;
   if (['Closed Won','Closed Lost'].includes(cs.status)) return true;
-  return (cs.touchpoints||[]).some(tp => tp && ['sale','nosale','nooffer'].includes(tp.outcome));
+  return (cs.touchpoints||[]).filter(Boolean).some(tp => tp && ['sale','nosale','nooffer'].includes(tp.outcome));
 }
 function getNoShowCount(c) {
   // A case that sold contributes nothing. Neither does the call log once ANY case
   // has sold - log entries carry no case reference, so they cannot be split.
-  const anyDecided = (c.cases||[]).some(caseIsDecided);
+  const anyDecided = (c.cases||[]).filter(Boolean).some(caseIsDecided);
   const fromLog = anyDecided ? 0
     : (c.call_log||[]).filter(cl => cl.outcome === 'No show').length;
   const fromTps = (c.cases||[]).reduce((n, cs) =>
-    n + (caseIsDecided(cs) ? 0 : (cs.touchpoints||[]).filter(tp => tp && tp.outcome === 'noshow').length), 0);
+    n + (caseIsDecided(cs) ? 0 : (cs.touchpoints||[]).filter(Boolean).filter(tp => tp && tp.outcome === 'noshow').length), 0);
   return fromLog + fromTps;
 }
 // Most recent no-show from either place - drives the 72hr recovery window.
 function lastNoShowAt(c) {
   const ts = [];
-  const anyDecided = (c.cases||[]).some(caseIsDecided);
+  const anyDecided = (c.cases||[]).filter(Boolean).some(caseIsDecided);
   if (!anyDecided) (c.call_log||[]).forEach(cl => { if (cl.outcome === 'No show' && cl.ts) ts.push(new Date(cl.ts)); });
-  (c.cases||[]).filter(cs => !caseIsDecided(cs)).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+  (c.cases||[]).filter(cs => !caseIsDecided(cs)).forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
     if (tp && tp.outcome === 'noshow' && (tp.datetime || tp.logged_at)) ts.push(new Date(tp.logged_at || tp.datetime));
   }));
   const valid = ts.filter(d => !isNaN(d));
@@ -7072,7 +7098,7 @@ function lastNoShowAt(c) {
 
 function getAttemptCount(c) {
   const callLogAttempts = (c.call_log||[]).filter(cl => cl.dials > 0).length;
-  const caseAttempts = (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).filter(tp => tp && tp.outcome && tp.outcome !== 'pending')).length;
+  const caseAttempts = (c.cases||[]).filter(Boolean).flatMap(cs => (cs.touchpoints||[]).filter(Boolean).filter(tp => tp && tp.outcome && tp.outcome !== 'pending')).length;
   return Math.max(callLogAttempts, caseAttempts > 0 ? callLogAttempts + caseAttempts : 0, callLogAttempts);
 }
 
@@ -7097,8 +7123,8 @@ function getDaysSinceLastAttempt(c) {
   // silently scrambles the queue sort around this lead - never let that out.
   const lastLog = meaningful.length ? meaningful[meaningful.length-1] : null;
   const callLogDate = lastLog ? new Date(lastLog.ts || lastLog.datetime || lastLog.date || 0) : null;
-  const tpDates = (c.cases||[]).flatMap(cs =>
-    (cs.touchpoints||[]).filter(tp => tp && tp.outcome && tp.outcome !== 'pending')
+  const tpDates = (c.cases||[]).filter(Boolean).flatMap(cs =>
+    (cs.touchpoints||[]).filter(Boolean).filter(tp => tp && tp.outcome && tp.outcome !== 'pending')
       .map(tp => new Date(tp.created || tp.datetime || 0))
   );
   const tpDate = tpDates.length ? new Date(Math.max(...tpDates)) : null;
@@ -7409,7 +7435,7 @@ function isGhostPending(tps, tp) {
 // filtered so a stale appt can't jam the clock (the old stuck-clock hazard).
 function hasApptContext(c) {
   if (!c) return false;
-  return (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp =>
+  return (c.cases||[]).filter(Boolean).some(cs => (cs.touchpoints||[]).filter(Boolean).some(tp =>
     tp && tp.outcome === 'pending' && tp.datetime && !isGhostPending(cs.touchpoints, tp)
   ));
 }
@@ -7429,7 +7455,7 @@ function isApptImminent(c) {
   const now = new Date();
   const todayStr = now.toDateString();
   const apptMs = apptOf(c) ? new Date(apptOf(c)).getTime() : null;
-  return (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => {
+  return (c.cases||[]).filter(Boolean).some(cs => (cs.touchpoints||[]).filter(Boolean).some(tp => {
     if (!tp || tp.outcome !== 'pending' || !tp.datetime) return false;
     if (isGhostPending(cs.touchpoints, tp)) return false;
     const dt = new Date(tp.datetime);
@@ -7662,8 +7688,8 @@ function replacementBar(c) {
   const apps = allAppsOf(c);
   const dec = apps.find(ap => (ap.status||'') === 'Declined' && !isSuperseded(ap));
   let loc = null;
-  (c.cases||[]).forEach((cs,ci) => (cs.touchpoints||[]).forEach((tp,ti) =>
-    (tp.apps||[]).forEach((ap,ai) => { if (ap === dec) loc = {ci,ti,ai}; })));
+  (c.cases||[]).filter(Boolean).forEach((cs,ci) => (cs.touchpoints||[]).filter(Boolean).forEach((tp,ti) =>
+    (tp.apps||[]).filter(Boolean).filter(Boolean).forEach((ap,ai) => { if (ap === dec) loc = {ci,ti,ai}; })));
   if (!loc) return '';
   return '<div style="background:#FFF6E8;border:1px solid #F0C888;border-radius:8px;padding:10px;margin-bottom:8px;">' +
     '<div style="font-size:12px;font-weight:600;color:#854F0B;margin-bottom:2px;">Needs a replacement policy</div>' +
@@ -7990,12 +8016,12 @@ function getFilteredClients(q='') {
     // nowhere else. Now the whole household is reachable from either name.
     const _ql = (q||'').toLowerCase();
     const matchQ = !q || (c.name||'').toLowerCase().includes(_ql) || (c.phone||'').includes(q) ||
-      (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => (tp.apps||[]).some(ap =>
+      (c.cases||[]).filter(Boolean).some(cs => (cs.touchpoints||[]).filter(Boolean).some(tp => (tp.apps||[]).some(ap =>
         ap && (ap.who||'').toLowerCase().includes(_ql))));
     const days = Math.floor((new Date()-new Date(c.assigned_date||c.created_at))/(1000*60*60*24));
     const isAppt = c.status === 'Appointment set';
     const isNoShow = c.status === 'No show';
-    const hasOpenCase = (c.cases||[]).some(cs => cs.status === 'Open' && (cs.touchpoints||[]).length > 0);
+    const hasOpenCase = (c.cases||[]).filter(Boolean).some(cs => cs.status === 'Open' && (cs.touchpoints||[]).length > 0);
     let matchF = false;
     // h198: THE CALLING WINDOW IS A CURFEW, NOT A PREFERENCE. Being outside it used
     // to add 500 to the sort score, which only pushed a lead down - so an 81-year-old
@@ -8378,9 +8404,9 @@ function contradictionsFor(c) {
   // 1. They said no, but a booking outlived the verdict.
   if (notInterested) {
     if (c.appt_datetime) out.push({ kind: 'clear', text: 'Not interested, but still holds an appointment' });
-    (c.cases||[]).forEach(cs => {
+    (c.cases||[]).filter(Boolean).forEach(cs => {
       if (cs.status !== 'Open' || caseSurvivesVerdict(cs, saidNoAt)) return;
-      if ((cs.touchpoints||[]).some(pending))
+      if ((cs.touchpoints||[]).filter(Boolean).some(pending))
         out.push({ kind: 'clear', text: 'Not interested, but a step is still pending', where: caseLabel(cs) });
     });
     if (!_CONTRA_TERMINAL.includes(c.status) && getScheduledCallback(c) && !isCallbackResolved(c))
@@ -8392,9 +8418,9 @@ function contradictionsFor(c) {
   //    Closed WON is excluded on purpose; that is where a real PPU lives.
   //    A Follow-up status is NOT here at all - follow-ups are post-sale work and
   //    living on a closed case is exactly what they are for.
-  (c.cases||[]).forEach((cs, ci) => {
+  (c.cases||[]).filter(Boolean).forEach((cs, ci) => {
     if (cs.status !== 'Closed Lost' && cs.status !== 'Reset') return;
-    (cs.touchpoints||[]).forEach((tp, ti) => {
+    (cs.touchpoints||[]).filter(Boolean).forEach((tp, ti) => {
       if (!pending(tp)) return;
       out.push({ kind: 'outcome', ci, ti,
                  text: 'Pending ' + (tp.type || 'step') + ' on a ' + cs.status + ' case needs an outcome',
@@ -8407,7 +8433,7 @@ function contradictionsFor(c) {
 
   // 3. A callback still live on a lead with nothing open at all.
   if (!_CONTRA_TERMINAL.includes(c.status) && (c.cases||[]).length &&
-      !(c.cases||[]).some(cs => cs.status === 'Open') &&
+      !(c.cases||[]).filter(Boolean).some(cs => cs.status === 'Open') &&
       getScheduledCallback(c) && !isCallbackResolved(c) && !notInterested)
     out.push({ kind: 'clear', text: 'Callback scheduled, but every case is closed' });
 
@@ -8428,7 +8454,7 @@ function noteContradictsType(c) {
   const notesStep = +m[1];
   const apptMs = new Date(apptOf(c)).getTime();
   let liveStep = 0, liveType = '';
-  (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+  (c.cases||[]).filter(Boolean).forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
     if (!tp || tp.outcome !== 'pending' || !tp.datetime) return;
     if (Math.abs(new Date(tp.datetime).getTime() - apptMs) >= 5*60*1000) return;
     liveType = tp.type || '';
@@ -8442,10 +8468,10 @@ function noteContradictsType(c) {
 // A retirement case whose booked step skips one that was never attended.
 function stepsOutOfSequence(c) {
   const out = [];
-  (c.cases||[]).forEach((cs, ci) => {
+  (c.cases||[]).filter(Boolean).forEach((cs, ci) => {
     if (!isRetirementCase(cs)) return;
     const attended = retAttendedSteps(cs);
-    (cs.touchpoints||[]).forEach((tp, ti) => {
+    (cs.touchpoints||[]).filter(Boolean).forEach((tp, ti) => {
       if (!tp || tp.outcome !== 'pending') return;
       const n = retStepIndexOf(tp);
       if (n < 2) return;
@@ -8479,7 +8505,7 @@ async function repairContradiction(id) {
   if (notInterested) cases.forEach(cs => {
     if (cs.status !== 'Open' || caseSurvivesVerdict(cs, saidNoAt)) return;
     cs.status = 'Closed Lost';
-    (cs.touchpoints||[]).forEach(tp => {
+    (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
       if (tp && (!tp.outcome || tp.outcome === 'pending')) tp.outcome = 'cancelled';
     });
   });
@@ -8521,7 +8547,7 @@ async function reopenCancelledCase(id, ci) {
   const cases = JSON.parse(JSON.stringify(c.cases || []));
   const cs = cases[ci]; if (!cs) return;
   cs.status = 'Open';
-  (cs.touchpoints||[]).forEach(tp => {
+  (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
     if (tp && (!tp.outcome || tp.outcome === 'pending')) tp.outcome = 'cancelled';
   });
   const patch = { cases };
@@ -8618,7 +8644,7 @@ function openRepairPanel() {
 function resetCountFor(c, pStart, pEnd) {
   const inWin = (d) => d && !isNaN(d) && d >= pStart && d <= pEnd;
   const tpResets = (c.cases||[]).reduce((a, cs) =>
-    a + (cs.touchpoints||[]).filter(tp => tp && inWin(new Date(tp.datetime)) && (tp.resetSelf || tp.resetSME)).length, 0);
+    a + (cs.touchpoints||[]).filter(Boolean).filter(tp => tp && inWin(new Date(tp.datetime)) && (tp.resetSelf || tp.resetSME)).length, 0);
   const caseResets = (c.cases||[]).filter(cs => {
     const n = cs.notes || '';
     if (!n.includes('Reset from') && !n.startsWith('Reset -')) return false;
@@ -8637,7 +8663,7 @@ function isResetInPeriod(c, pStart, pEnd) { return resetCountFor(c, pStart, pEnd
 // Amount, APV submitted and APV placed. One list, three tiles.
 function retMoneyRows(retCases, pStart, pEnd) {
   const rows = [];
-  (retCases||[]).forEach(({ c, cs }) => (cs.touchpoints||[]).forEach(tp => (tp.apps||[]).forEach(ap => {
+  (retCases||[]).forEach(({ c, cs }) => (cs.touchpoints||[]).filter(Boolean).forEach(tp => (tp.apps||[]).filter(Boolean).filter(Boolean).forEach(ap => {
     const d = new Date(ap.submitted_date || tp.datetime);
     if (!(d >= pStart && d <= pEnd)) return;
     const st = ap.status || '';
@@ -8745,7 +8771,7 @@ function commissionDetail(cl) {
     return prem * lvl;
   }
 
-  (cl.cases||[]).forEach((cs, ci) => (cs.touchpoints||[]).forEach((t, ti) => {
+  (cl.cases||[]).forEach((cs, ci) => (cs.touchpoints||[]).filter(Boolean).forEach((t, ti) => {
     if (!t || t.outcome !== 'sale') return;
     // h194: was isRetirementCase(cs). A life policy written on an Advanced Market
     // case is still a life policy and earns premium x contract level.
@@ -8793,7 +8819,7 @@ function premOf(ap) { return ap && ap.premium || 0; }
 
 // Every app on a client, across all cases - the pool a rewrite is matched within.
 function allAppsOf(c) {
-  return (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).flatMap(tp => tp.apps||[]));
+  return (c.cases||[]).filter(Boolean).flatMap(cs => (cs.touchpoints||[]).filter(Boolean).flatMap(tp => tp.apps||[]));
 }
 
 // A declined client still wants coverage and you owe them a policy. They stay in the
@@ -8865,9 +8891,9 @@ async function removeApptMistake(id) {
   if (!confirm('Remove ' + c.name + "'s upcoming appointment as booked-by-mistake?\n\nThis erases it completely - no Cancelled outcome, no dodger cadence, and the appts-set number on your board goes back down. Any PAST appointment still waiting for its outcome is untouched.")) return;
   const now = new Date();
   // strip future pendings; drop cases left with zero touchpoints
-  c.cases = (c.cases||[]).map(cs => {
+  c.cases = (c.cases||[]).filter(Boolean).map(cs => {
     if (cs.status !== 'Open') return cs;
-    return {...cs, touchpoints: (cs.touchpoints||[]).filter(tp => !tp || tp.outcome !== 'pending' || new Date(tp.datetime) <= now)};
+    return {...cs, touchpoints: (cs.touchpoints||[]).filter(Boolean).filter(tp => !tp || tp.outcome !== 'pending' || new Date(tp.datetime) <= now)};
   }).filter(cs => (cs.touchpoints||[]).length > 0 || (cs.apps||[]).length > 0);
   // remove the most recent 'Appt set' log entry - the mistaken click
   const lastIdx = (c.call_log||[]).map(cl => cl.outcome).lastIndexOf('Appt set');
@@ -8876,7 +8902,7 @@ async function removeApptMistake(id) {
   c.appt_datetime = null;
   c.appt_notes = '';
   // status falls back to the truth of the record: dialed before = Working
-  const stillPending = (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => tp && tp.outcome === 'pending'));
+  const stillPending = (c.cases||[]).filter(Boolean).some(cs => (cs.touchpoints||[]).filter(Boolean).some(tp => tp && tp.outcome === 'pending'));
   c.status = stillPending ? 'Appointment set' : ((c.call_log||[]).length ? 'Working' : 'New');
   await saveClientRecord(c);
   closeModal();
@@ -8900,10 +8926,10 @@ async function cancelAppt(id, fallout) {
   c.call_log = [...(c.call_log||[]), {ts, outcome:'Cancelled', dials:_cancelDials}];
   const verdict = afterOptions ? 'nosale' : 'dropped';
   const now = Date.now();
-  (c.cases||[]).forEach(cs => {
+  (c.cases||[]).filter(Boolean).forEach(cs => {
     if (cs.status !== 'Open') return;
     let touched = false;
-    (cs.touchpoints||[]).forEach(tp => {
+    (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
       if (tp && (!tp.outcome || tp.outcome === 'pending') && tp.datetime && new Date(tp.datetime).getTime() >= now - 86400000) {
         tp.outcome = 'cancelled';   // neither a show nor a no-show
         touched = true;
@@ -9018,7 +9044,7 @@ async function _cancelApptLive(id, ci) {
   const targets = (ci === null || ci === undefined) ? cases.map((_, i) => i) : [ci];
   targets.forEach(i => {
     const cs = cases[i]; if (!cs || cs.status !== 'Open') return;
-    (cs.touchpoints||[]).forEach(tp => {
+    (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
       if (tp && (!tp.outcome || tp.outcome === 'pending') && tp.datetime && new Date(tp.datetime).getTime() >= nowMs - 86400000) {
         tp.outcome = 'cancelled';   // neither a show nor a no-show
       }
@@ -9087,7 +9113,7 @@ function apptNeedsOutcome(c) {
   if (!apptOf(c) || c.status !== 'Appointment set') return false;
   if (new Date(apptOf(c)) >= new Date(Date.now() - 86400000)) return false;  // 1 day grace
   const apptMs = new Date(apptOf(c)).getTime();
-  const logged = (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp =>
+  const logged = (c.cases||[]).filter(Boolean).some(cs => (cs.touchpoints||[]).filter(Boolean).some(tp =>
     tp && tp.outcome && tp.outcome !== 'pending' && tp.datetime &&
     Math.abs(new Date(tp.datetime).getTime() - apptMs) < 5*60*1000));
   return !logged;
@@ -9382,10 +9408,10 @@ function openClient(id, keepDialCount) {
       // Self-describing: "2 Gerber ADV, 1 Americo Eagle" straight off the apps.
       const at = new Date(cl.ts).getTime();
       const apps = [];
-      (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+      (c.cases||[]).filter(Boolean).forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
         if (!tp || !tp.datetime) return;
         if (Math.abs(new Date(tp.datetime).getTime() - at) > 5*60000) return;
-        (tp.apps||[]).forEach(ap => apps.push(ap));
+        (tp.apps||[]).filter(Boolean).filter(Boolean).forEach(ap => apps.push(ap));
       }));
       if (apps.length) {
         const tally = {};
@@ -9498,7 +9524,7 @@ function openClient(id, keepDialCount) {
     // time), the 'tap to log outcome' banner is resolved business — hide it.
     if (apptOf(c) && c.status !== 'Follow-up') {
       const apptMs = new Date(apptOf(c)).getTime();
-      const tpLogged = (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp =>
+      const tpLogged = (c.cases||[]).filter(Boolean).some(cs => (cs.touchpoints||[]).filter(Boolean).some(tp =>
         tp && tp.outcome && tp.outcome !== 'pending' && tp.datetime &&
         Math.abs(new Date(tp.datetime).getTime() - apptMs) < 5 * 60 * 1000
       ));
@@ -9508,7 +9534,7 @@ function openClient(id, keepDialCount) {
     }
     const isCallback = isCallbackToday(c) || isCallbackDueNow(c) || isCallbackFuture(c);
     const isFollowUp = c.status === 'Follow-up' && fu;
-    const hasOpenCase = (c.cases||[]).some(cs => cs.status === 'Open');
+    const hasOpenCase = (c.cases||[]).filter(Boolean).some(cs => cs.status === 'Open');
     if (isFollowUp) {
       const fuLabel = fu.datetime ? new Date(fu.datetime).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + new Date(fu.datetime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + (fu.note?' - '+fu.note:'') : (fu.note || 'No date set');
       return '<div style="margin-bottom:8px;"><div style="font-size:12px;font-weight:600;color:#534AB7;background:#F3EEFF;border:1px solid #C4AAFF;border-radius:6px;padding:5px 10px;margin-bottom:4px;display:block;">Follow-up: ' + fuLabel + '</div><div style="display:flex;gap:6px;"><button onclick="openFollowUpPicker(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit</button><button onclick="doneFollowUp(\'' + id + '\')" style="font-size:10px;background:#534AB7;color:#fff;border:none;border-radius:6px;padding:3px 10px;cursor:pointer;">Done</button><button onclick="removeFollowUp(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #E8B4B4;border-radius:6px;padding:3px 10px;color:#A32D2D;cursor:pointer;">Remove</button></div></div>';
@@ -9541,7 +9567,7 @@ function openClient(id, keepDialCount) {
       try {
         const at = apptOf(c) ? new Date(apptOf(c)).getTime() : null;
         let tp = null;
-        (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(t => {
+        (c.cases||[]).filter(Boolean).forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(t => {
           if (t && t.datetime && at && Math.abs(new Date(t.datetime).getTime() - at) < 60000) tp = t;
         }));
         if (tp && tp.revived_from) {
@@ -10010,7 +10036,7 @@ async function saveASR(referrerId) {
 
   const {data, error} = await sb.from('clients').insert([newLead]).select();
   if (error) { alert('Error saving ASR: ' + error.message); return; }
-  if (data) clients.push(data[0]);
+  if (data) clients.push(sanitizeClient(data[0]));
   const newId = data && data[0] ? data[0].id : null;
 
   // Record the referral on the referrer as a real linked entry (not a note that
@@ -10150,8 +10176,8 @@ async function confirmMoveAppt(id) {
   // Also move the pending touchpoint to match the new datetime — on ANY case,
   // not just Open ones. Restricting to Open left legacy cases with a stale-dated
   // pending touchpoint that kept reading as overdue after the appt was moved.
-  const cases = (c.cases||[]).map(cs => {
-    const touchpoints = (cs.touchpoints||[]).map(tp => {
+  const cases = (c.cases||[]).filter(Boolean).map(cs => {
+    const touchpoints = (cs.touchpoints||[]).filter(Boolean).map(tp => {
       if (tp && tp.outcome === 'pending') return {...tp, datetime: newDt, notes: notes || tp.notes};
       return tp;
     });
@@ -10339,7 +10365,7 @@ async function confirmReschedule(id) {
   // a logged no-show makes a new appointment - the no-show already happened.)
   // Moving every pending at once is what left duplicate touchpoints behind, so
   // exactly one moves: the one this appointment actually is.
-  const cases = (c.cases||[]).map(cs => {
+  const cases = (c.cases||[]).filter(Boolean).map(cs => {
     if (cs.status !== 'Open') return cs;
     const tps = (cs.touchpoints||[]).slice();
     const pendIdxs = tps.map((t,i)=>({t,i})).filter(x=>x.t.outcome==='pending' && x.t.datetime);
@@ -10378,9 +10404,9 @@ async function resolvePendingAsSit(id, outcome, note) {
   const c = clients.find(x=>x.id===id); if(!c) return false;
   const now = Date.now();
   let best = null, bestCs = null;
-  (c.cases||[]).forEach(cs => {
+  (c.cases||[]).filter(Boolean).forEach(cs => {
     if (cs.status !== 'Open') return;
-    (cs.touchpoints||[]).forEach(tp => {
+    (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
       if (!tp || (tp.outcome && tp.outcome !== 'pending') || !tp.datetime) return;
       if (new Date(tp.datetime).getTime() > now) return;      // future = still upcoming
       if (!best || new Date(tp.datetime) > new Date(best.datetime)) { best = tp; bestCs = cs; }
@@ -10391,7 +10417,7 @@ async function resolvePendingAsSit(id, outcome, note) {
   if (note) best.outcome_note = note;
   // Point the lead at its next real appointment, if any.
   const futures = [];
-  (c.cases||[]).forEach(cs => { if (cs.status==='Open') (cs.touchpoints||[]).forEach(tp => {
+  (c.cases||[]).filter(Boolean).forEach(cs => { if (cs.status==='Open') (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
     if ((!tp.outcome || tp.outcome==='pending') && tp.datetime && new Date(tp.datetime).getTime() > now) futures.push(tp.datetime);
   }); });
   futures.sort();
@@ -10649,7 +10675,7 @@ function computeInitialSet(pStart, pEnd, board) {
 function inferBoard(cs) {
   if (!cs) return 'mp_life';
   if (cs.board) return cs.board;                                   // already stamped
-  const smeMarked = (cs.touchpoints||[]).some(tp => tp && tp.resetSME) || /SME:/i.test(cs.notes||'');
+  const smeMarked = (cs.touchpoints||[]).filter(Boolean).some(tp => tp && tp.resetSME) || /SME:/i.test(cs.notes||'');
   if (smeMarked) return 'sme_handoff';
   if (cs.type === 'Retirement') return 'advanced_market';
   if (cs.type === 'Debt Free Life' || cs.type === 'Infinite Banking') return 'sme_handoff';
@@ -10668,7 +10694,7 @@ async function backfillBoards(opts) {
   const totals = { advanced_market:0, sme_handoff:0, mp_life:0 };
   clients.forEach(c => {
     let changed = false;
-    const cases = (c.cases||[]).map(cs => {
+    const cases = (c.cases||[]).filter(Boolean).map(cs => {
       if (cs.board) return cs;
       const board = inferBoard(cs);
       totals[board] = (totals[board]||0) + 1;
@@ -10718,7 +10744,7 @@ async function confirmResetTo(id) {
   disarmDial();   // h137: these dials are spent by THIS entry
 
   const fromType = ((c.cases||[]).find(cs=>cs.status==='Open')||{type:'previous'}).type;
-  const cases = (c.cases||[]).map(cs => {
+  const cases = (c.cases||[]).filter(Boolean).map(cs => {
     if (cs.status === 'Open') return {...cs, status:'Reset', notes:(cs.notes?cs.notes+' | ':'')+'Reset to '+resetLabel+(smeName?' ('+smeName+')':'')};
     return cs;
   });
@@ -10784,7 +10810,7 @@ async function confirmResetTo(id) {
 // any later click asks what it really is.
 function hasPriorAppointment(c) {
   return (c.call_log||[]).some(e => e && (e.outcome === 'Appt set' || e.outcome === 'Rescheduled'))
-      || (c.cases||[]).some(cs => (cs.touchpoints||[]).length > 0);
+      || (c.cases||[]).filter(Boolean).some(cs => (cs.touchpoints||[]).length > 0);
 }
 
 // Single front door for "Appt set". No prior appointment -> book normally (the
@@ -10821,7 +10847,7 @@ function openApptSet(id) {
 // from reopening last week's retirement.
 function openReopenCasePicker(id) {
   const c = clients.find(x => x.id === id); if (!c) return;
-  const rows = (c.cases||[]).map((cs, i) => ({ cs, i }))
+  const rows = (c.cases||[]).filter(Boolean).map((cs, i) => ({ cs, i }))
     .filter(r => r.cs.status && r.cs.status !== 'Open')
     .sort((a, b) => new Date(b.cs.created || 0) - new Date(a.cs.created || 0));
   if (!rows.length) { openApptPicker(id); return; }
@@ -10910,10 +10936,10 @@ async function _confirmAppt(id) {
   // PASSED is an unlogged sit that still owes an outcome, and no booking
   // click may silently delete a sit that happened.
   const _bookNow = new Date();
-  const _hadFuturePending = (c.cases||[]).some(cs => cs.status === 'Open' && (cs.touchpoints||[]).some(tp => tp && tp.outcome === 'pending' && new Date(tp.datetime) > _bookNow));
-  const cases = (c.cases||[]).map(cs => {
+  const _hadFuturePending = (c.cases||[]).filter(Boolean).some(cs => cs.status === 'Open' && (cs.touchpoints||[]).filter(Boolean).some(tp => tp && tp.outcome === 'pending' && new Date(tp.datetime) > _bookNow));
+  const cases = (c.cases||[]).filter(Boolean).map(cs => {
     if (cs.status !== 'Open') return cs;
-    return {...cs, touchpoints: (cs.touchpoints||[]).filter(tp => !tp || tp.outcome !== 'pending' || new Date(tp.datetime) <= _bookNow)};
+    return {...cs, touchpoints: (cs.touchpoints||[]).filter(Boolean).filter(tp => !tp || tp.outcome !== 'pending' || new Date(tp.datetime) <= _bookNow)};
   });
   const existingCaseIdx = cases.findIndex(cs => cs.status === 'Open' && cs.type === caseType);
 
@@ -11835,7 +11861,7 @@ const DRAFT_CHECK_LAG = 3;        // carriers run 2-5 days behind the draft date
 
 function _firstAppWithDraftDay(c) {
   let found = null;
-  (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => (tp.apps||[]).forEach(ap => {
+  (c.cases||[]).filter(Boolean).forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp => (tp.apps||[]).filter(Boolean).filter(Boolean).forEach(ap => {
     if (!found && ap && ap.draft_day) found = ap;
   })));
   return found;
@@ -11929,7 +11955,7 @@ function birthdayPeopleFor(c) {
     byName.set(key, { name: String(name).trim(), md });
   };
   add(c.name, c.dob || c.birthday);
-  (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => (tp.apps||[]).forEach(ap => {
+  (c.cases||[]).filter(Boolean).forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp => (tp.apps||[]).filter(Boolean).filter(Boolean).forEach(ap => {
     if (!ap || !ap.dob) return;
     const who = (ap.who && ap.who !== 'Borrower') ? ap.who : c.name;
     add(who, ap.dob);
@@ -12016,7 +12042,7 @@ function deliveryDueList() { return clientCareDue().filter(r => r.kind === 'deli
 
 function draftDayOf(c) {
   let day = null;
-  (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => (tp.apps||[]).forEach(ap => {
+  (c.cases||[]).filter(Boolean).forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp => (tp.apps||[]).filter(Boolean).filter(Boolean).forEach(ap => {
     if (day == null && ap && ap.draft_day) day = Number(ap.draft_day) || null;
   })));
   return day;
@@ -12066,7 +12092,7 @@ async function markPlacedFromPortal(id) {
   const c = clients.find(x => x.id === id); if (!c) return;
   await recordAction(id, 'Placed from portal check', async () => {
     const cases = JSON.parse(JSON.stringify(c.cases || []));
-    cases.forEach(cs => (cs.touchpoints||[]).forEach(tp => (tp.apps||[]).forEach(ap => {
+    cases.forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp => (tp.apps||[]).filter(Boolean).filter(Boolean).forEach(ap => {
       if (ap && ['Submitted','Approved'].includes(ap.status || '')) {
         ap.status = 'Issued';
         stampIssuedDate(ap);   // starts the delivery clock
@@ -12095,7 +12121,7 @@ async function confirmDelivery(id) {
   // Straight into the ask. Confirming delivery is the warmest they will ever be -
   // the policy is in their hands and it did what you said it would.
   const sale = (c.cases||[]).reduce((found, cs, ci) => found ||
-    (cs.touchpoints||[]).reduce((f2, tp, ti) => f2 || (tp.outcome === 'sale' ? {ci, ti} : null), null), null);
+    (cs.touchpoints||[]).filter(Boolean).reduce((f2, tp, ti) => f2 || (tp.outcome === 'sale' ? {ci, ti} : null), null), null);
   if (sale) {
     window._cap = { id, ci: sale.ci, ti: sale.ti, outcome: 'sale', phase: 'post' };
     return showCaptureScreen();
@@ -12154,7 +12180,7 @@ function openDeliveryPanel() { return openClientCare(); }
 
 function getIssuedAt(c) {
   let earliest = null;
-  (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp =>
+  (c.cases||[]).filter(Boolean).forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp =>
     ((tp && tp.apps) || []).forEach(ap => {
       if (!ap || !ap.issued_date) return;
       if (['Lapse','Cancel','Declined'].includes(ap.status)) return;   // no longer in force
@@ -12176,7 +12202,7 @@ function getLeadTextStage(c) {
     cl.outcome === 'Appt set' || cl.outcome === 'Callback' ||
     cl.outcome === 'Not interested' || cl.outcome === 'Rescheduled' ||
     cl.outcome === 'Conversation'
-  ) || (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp =>
+  ) || (c.cases||[]).filter(Boolean).some(cs => (cs.touchpoints||[]).filter(Boolean).some(tp =>
     tp && ['sale','nosale','cont','dropped','noshow','showed'].includes(tp.outcome)));
   const isNoShow = c.status === 'No show' || getNoShowCount(c) > 0;
   const hasAppt = !!apptOf(c);
@@ -12542,7 +12568,7 @@ async function _quickLog(id, outcome, statKey) {
     // killed the Advanced Market case they had been reset into - the whole point
     // of a reset - and dropped it into Lost on the retirement board. A verdict
     // belongs to one product line. Same rule Repair already uses.
-    const closedCases = (c.cases||[]).map(cs =>
+    const closedCases = (c.cases||[]).filter(Boolean).map(cs =>
       (cs.status==='Open' && !isRetirementCase(cs)) ? {...cs,status:'Closed Lost'} : cs);
     callLog[callLog.length-1].cases_closed = true;
     // h65: quietly note how many appts this lead had booked that never sat, so a
@@ -12552,7 +12578,7 @@ async function _quickLog(id, outcome, statKey) {
     // retirement step is untouched, it is a different product they never declined
     closedCases.forEach(cs => {
       if (cs.status !== 'Closed Lost') return;
-      (cs.touchpoints||[]).forEach(tp => {
+      (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
         if (tp && (!tp.outcome || tp.outcome==='pending')) tp.outcome = 'cancelled';
       });
     });
@@ -13482,7 +13508,7 @@ async function confirmLeadImport() {
   const { data, error } = await sb.from('clients').insert(rows).select();
   hideSync();
   if (error) { alert('Import failed: ' + error.message); return; }
-  if (data) data.forEach(d => clients.push(d));
+  if (data) data.forEach(d => clients.push(sanitizeClient(d)));
   closeModal();
   renderClients('');
   renderScore();
@@ -13739,13 +13765,13 @@ function renderCasesHtml(c) {
   return cases.map((cs, ci) => {
     const cls = CASE_TYPE_CLASS[cs.type] || 'mp';
     // Only show resolved touchpoints in history (not pending)
-    const resolvedTps = (cs.touchpoints||[]).filter(tp => tp.outcome && tp.outcome.toLowerCase() !== 'pending');
+    const resolvedTps = (cs.touchpoints||[]).filter(Boolean).filter(tp => tp.outcome && tp.outcome.toLowerCase() !== 'pending');
     const actualSits = resolvedTps.filter(tp => tp.outcome==='sale'||tp.outcome==='nosale').length;
     const statusColors = {'Closed Won':'#3B6D11','Closed Lost':'#A32D2D','Reset':'#534AB7','Open':'var(--accent)'};
     const hdrColor = cls==='ret'?'var(--accent)':(cls==='dfl'||cls==='ib')?'#534AB7':'#1D3557';
 
     // History log (carry original index so no-shows can be revived)
-    const resolvedWithIdx = (cs.touchpoints||[]).map((tp,ti)=>({tp,ti})).filter(x => x.tp && x.tp.outcome && x.tp.outcome.toLowerCase() !== 'pending');
+    const resolvedWithIdx = (cs.touchpoints||[]).filter(Boolean).map((tp,ti)=>({tp,ti})).filter(x => x.tp && x.tp.outcome && x.tp.outcome.toLowerCase() !== 'pending');
     const historyHtml = resolvedTps.length ? resolvedWithIdx.slice().reverse().map(({tp, ti}) => {
       const dt = new Date(tp.datetime);
       const dtStr = dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' + dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
@@ -13773,7 +13799,7 @@ function renderCasesHtml(c) {
     }).filter(Boolean).join('') : '';
 
     // Apps for this case
-    const caseApps = (cs.touchpoints||[]).flatMap((tp,ti) => (tp.apps||[]).map((ap,ai) => ({...ap, ti, ai})));
+    const caseApps = (cs.touchpoints||[]).filter(Boolean).flatMap((tp,ti) => (tp.apps||[]).filter(Boolean).filter(Boolean).map((ap,ai) => ({...ap, ti, ai})));
     const appsHtml = caseApps.length ? caseApps.map(ap => {
       const sc = appStatusColor(ap.status);
       return '<div style="background:#f7fafd;border:1px solid #e2eaf2;border-radius:6px;padding:6px 8px;margin-top:4px;display:flex;justify-content:space-between;align-items:center;">' +
@@ -13799,7 +13825,7 @@ function renderCasesHtml(c) {
         (historyHtml||'<div style="font-size:11px;color:#a0b8cc;padding:4px 0;">No sits logged yet.</div>') +
         appsHtml +
         '<div style="display:flex;gap:6px;margin-top:8px;">' +
-          ((cs.status==='Open' || (cs.touchpoints||[]).some(tp=>tp && tp.outcome==='pending'))?'<button onclick="openSitOutcomeForCase(\''+c.id+'\','+ci+')" style="flex:1;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;font-weight:500;">+ Log outcome</button>':'') +
+          ((cs.status==='Open' || (cs.touchpoints||[]).filter(Boolean).some(tp=>tp && tp.outcome==='pending'))?'<button onclick="openSitOutcomeForCase(\''+c.id+'\','+ci+')" style="flex:1;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;font-weight:500;">+ Log outcome</button>':'') +
           (resolvedTps.some(tp=>tp.outcome==='sale')?'<button onclick="openAddAppsForCase(\''+c.id+'\','+ci+')" style="flex:1;background:#1D3557;color:#fff;border:none;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;font-weight:500;">+ Add apps</button>':'') +
           '<button onclick="openEditCase(\''+c.id+'\','+ci+')" style="background:#f0f4f8;border:none;border-radius:6px;padding:6px 10px;font-size:11px;color:#5f7a99;cursor:pointer;">Edit</button>' +
         '</div>' +
@@ -14205,14 +14231,14 @@ const STRANDED_LABEL = {sale:'Sit (sale)', noshow:'No show', closed:'Closed, no 
 function findUnloggedSits() {
   const out = [];
   const now = Date.now();
-  clients.forEach(c => (c.cases||[]).forEach((cs,ci) => (cs.touchpoints||[]).forEach((tp,ti) => {
+  clients.forEach(c => (c.cases||[]).filter(Boolean).forEach((cs,ci) => (cs.touchpoints||[]).filter(Boolean).forEach((tp,ti) => {
     if (!tp || !tp.datetime) return;
     if (tp.outcome && tp.outcome !== 'pending') return;
     if (new Date(tp.datetime).getTime() >= now) return;      // still upcoming
     const kind = classifyStrandedAppt(c, cs, tp);
     if (!kind) return;
     out.push({ id:c.id, name:c.name, ci, ti, when:tp.datetime, kind,
-      apps:(tp.apps||[]).map(a=>(a.carrier||'')+' '+(a.product||'')).join(', ') });
+      apps:(tp.apps||[]).filter(Boolean).filter(Boolean).map(a=>(a.carrier||'')+' '+(a.product||'')).join(', ') });
   })));
   return out.sort((a,b)=> new Date(a.when)-new Date(b.when));
 }
@@ -14524,9 +14550,9 @@ async function _saveAppsToTouchpoint(id, ci, ti) {
 }
 
 function renderAppsSection(c) {
-  const allApps = (c.cases||[]).flatMap((cs, ci) =>
-    (cs.touchpoints||[]).flatMap((tp, ti) =>
-      (tp.apps||[]).map((ap, ai) => ({...ap, ci, ti, ai, caseType: cs.type, tpType: tp.type, tpDate: tp.datetime}))
+  const allApps = (c.cases||[]).filter(Boolean).flatMap((cs, ci) =>
+    (cs.touchpoints||[]).filter(Boolean).flatMap((tp, ti) =>
+      (tp.apps||[]).filter(Boolean).filter(Boolean).map((ap, ai) => ({...ap, ci, ti, ai, caseType: cs.type, tpType: tp.type, tpDate: tp.datetime}))
     )
   );
   if (!allApps.length) return '<div style="font-size:12px;color:#a0b8cc;margin-bottom:8px;">No applications yet.</div>';
@@ -15236,7 +15262,7 @@ function renderPeople(k) {
 // This is the seed of the recruiting pipeline - tick STP as you actually send it.
 function _recruitRows() {
   const rows = [];
-  clients.forEach(c => (c.cases||[]).forEach((cs,ci) => (cs.touchpoints||[]).forEach((tp,ti) =>
+  clients.forEach(c => (c.cases||[]).filter(Boolean).forEach((cs,ci) => (cs.touchpoints||[]).filter(Boolean).forEach((tp,ti) =>
     (tp.recruit_people||[]).forEach((pp,pi) => rows.push({
       pp, cid:c.id, ci, ti, pi,
       when: tp.datetime || cs.created || c.created_at || null,
@@ -15347,7 +15373,7 @@ function _referralRows() {
         paid: !!r.paid, amount: r.amount||30 });
     });
   });
-  clients.forEach(c => (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp =>
+  clients.forEach(c => (c.cases||[]).filter(Boolean).forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp =>
     (tp.ref_people||[]).forEach(p => {
       if (p.phone && asrPhones.has(normPhone(p.phone))) return; // already shown as ASR
       rows.push({ name: p.name||'', phone: p.phone||'', why: p.why||'',
@@ -15626,7 +15652,7 @@ async function migrateFreeLookStatus() {
   const touched = [];
   (clients || []).forEach(c => {
     let changed = false;
-    (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => (tp.apps||[]).forEach(ap => {
+    (c.cases||[]).filter(Boolean).forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp => (tp.apps||[]).filter(Boolean).filter(Boolean).forEach(ap => {
       if (ap && ap.status === 'Free Look') { ap.status = 'Not taken'; changed = true; }
     })));
     (c.sits||[]).forEach(si => (si.apps||[]).forEach(ap => {
@@ -15805,7 +15831,7 @@ function reportStats(pStart, pEnd) {
     }
 
     let sat = false, sold = false, firstAppt = null, saleAt = null;
-    (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+    (c.cases||[]).filter(Boolean).forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
       if (!tp) return;
       if (tp.datetime && !firstAppt) firstAppt = new Date(tp.datetime);
       if (['sale','nosale','nooffer'].includes(tp.outcome)) sat = true;
@@ -15817,7 +15843,7 @@ function reportStats(pStart, pEnd) {
         if (tp.datetime) saleAt = new Date(tp.datetime);
         if (/PPU|Pickup/i.test(tp.type || '')) appsPPU++;
       }
-      (tp.apps||[]).forEach(ap => {
+      (tp.apps||[]).filter(Boolean).filter(Boolean).forEach(ap => {
         apps++;
         const st = normalizeAppStatus(ap.status);
         const prem = Number(ap.premium) || 0;
@@ -15831,19 +15857,19 @@ function reportStats(pStart, pEnd) {
     }));
     // h208: a no-offer sit is a SIT but not a DECISION. A close ratio measures
     // closing, and nothing was presented to close.
-    const offered = (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp =>
+    const offered = (c.cases||[]).filter(Boolean).some(cs => (cs.touchpoints||[]).filter(Boolean).some(tp =>
       tp && ['sale','nosale'].includes(tp.outcome)));
     if (sat) { if (offered) decided++; if (sold) sales++; }
     // split the same case by whether a pickup happened on the way
-    const hadPPU = (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp =>
+    const hadPPU = (c.cases||[]).filter(Boolean).some(cs => (cs.touchpoints||[]).filter(Boolean).some(tp =>
       tp && /PPU|Pickup/i.test(tp.type || '')));
-    const caseApv = (c.cases||[]).reduce((a, cs) => a + (cs.touchpoints||[]).reduce((b, tp) =>
-      b + ((tp.apps||[]).reduce((d, ap) => d + (Number(ap.premium) || 0), 0)), 0), 0);
+    const caseApv = (c.cases||[]).reduce((a, cs) => a + (cs.touchpoints||[]).filter(Boolean).reduce((b, tp) =>
+      b + ((tp.apps||[]).filter(Boolean).filter(Boolean).reduce((d, ap) => d + (Number(ap.premium) || 0), 0)), 0), 0);
     if (offered) {
       if (hadPPU) { ppuDecided++; if (sold) { ppuSales++; ppuApv += caseApv; } }
       else        { noPpuDecided++; if (sold) { noPpuSales++; noPpuApv += caseApv; } }
     }
-    (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+    (c.cases||[]).filter(Boolean).forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
       if (tp && tp.outcome === 'dropped') ppuDropped++;
     }));
     // the two halves of a cancellation, counted apart - what matters is the
@@ -15873,7 +15899,7 @@ function reportStats(pStart, pEnd) {
   const refAppts = (clients||[]).filter(c => c.referred_by && inWin(c.assigned_date || c.created_at) &&
     (c.call_log||[]).some(e => e.outcome === 'Appt set')).length;
   const refSits = (clients||[]).filter(c => c.referred_by && inWin(c.assigned_date || c.created_at) &&
-    (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => ['sale','nosale','nooffer'].includes(tp.outcome)))).length;
+    (c.cases||[]).filter(Boolean).some(cs => (cs.touchpoints||[]).filter(Boolean).some(tp => ['sale','nosale','nooffer'].includes(tp.outcome)))).length;
   const avg = (a) => a.length ? a.reduce((x,y)=>x+y,0) / a.length : null;
 
   return {
@@ -15906,14 +15932,14 @@ function reportStats(pStart, pEnd) {
 // visible instead of argued about.
 function ppuSplit(cohort) {
   const out = { withSat: 0, withSales: 0, withApv: 0, noSat: 0, noSales: 0, noApv: 0, droppedPPU: 0 };
-  (cohort || []).forEach(c => (c.cases||[]).forEach(cs => {
+  (cohort || []).forEach(c => (c.cases||[]).filter(Boolean).forEach(cs => {
     const tps = cs.touchpoints || [];
     const hadPPU = tps.some(tp => tp && /PPU|Pickup/i.test(tp.type || ''));
     if (tps.some(tp => tp && tp.outcome === 'dropped')) out.droppedPPU++;
     const sat = tps.some(tp => tp && ['sale','nosale'].includes(tp.outcome));
     if (!sat) return;
     const sold = tps.some(tp => tp && tp.outcome === 'sale');
-    const apv = tps.reduce((a, tp) => a + ((tp.apps||[]).reduce((b, ap) => b + (Number(ap.premium) || 0), 0)), 0);
+    const apv = tps.reduce((a, tp) => a + ((tp.apps||[]).filter(Boolean).filter(Boolean).reduce((b, ap) => b + (Number(ap.premium) || 0), 0)), 0);
     if (hadPPU) { out.withSat++; if (sold) { out.withSales++; out.withApv += apv; } }
     else        { out.noSat++;   if (sold) { out.noSales++;   out.noApv   += apv; } }
   }));
@@ -16925,16 +16951,16 @@ const TREND_METRICS = {
   dials:  { label: 'Dials',          get: (a, b) => sumStat('dials', a, b) },
   appts:  { label: 'Appointments',   get: (a, b) => sumStat('appts', a, b) },
   sales:  { label: 'Sales',          get: (a, b) => (clients||[]).reduce((n, c) =>
-             n + (c.cases||[]).reduce((m, cs) => m + (cs.touchpoints||[]).filter(tp => {
+             n + (c.cases||[]).reduce((m, cs) => m + (cs.touchpoints||[]).filter(Boolean).filter(tp => {
                if (!tp || tp.outcome !== 'sale') return false;
                const d = new Date(tp.datetime); return d >= a && d <= b;
              }).length, 0), 0) },
   apv:    { label: 'Submitted APV',  money: true, get: (a, b) => (clients||[]).reduce((n, c) =>
-             n + (c.cases||[]).reduce((m, cs) => m + (cs.touchpoints||[]).reduce((k, tp) => {
+             n + (c.cases||[]).reduce((m, cs) => m + (cs.touchpoints||[]).filter(Boolean).reduce((k, tp) => {
                if (!tp || tp.outcome !== 'sale') return k;
                const d = new Date(tp.datetime);
                if (!(d >= a && d <= b)) return k;
-               return k + (tp.apps||[]).reduce((x, ap) => x + (Number(ap.premium) || 0), 0);
+               return k + (tp.apps||[]).filter(Boolean).filter(Boolean).reduce((x, ap) => x + (Number(ap.premium) || 0), 0);
              }, 0), 0), 0) },
 };
 function trendMetric() {
@@ -17145,7 +17171,7 @@ async function lockExistingLevels(oldLevel) {
   const touched = [];
   (clients || []).forEach(c => {
     let changed = false;
-    (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => (tp.apps||[]).forEach(ap => {
+    (c.cases||[]).filter(Boolean).forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp => (tp.apps||[]).filter(Boolean).filter(Boolean).forEach(ap => {
       if (ap && !ap.contract_level) { ap.contract_level = oldLevel; changed = true; n++; }
     })));
     (c.sits||[]).forEach(si => (si.apps||[]).forEach(ap => {
@@ -17164,8 +17190,8 @@ async function lockExistingLevels(oldLevel) {
 async function onContractLevelChanged(oldLevel, newLevel) {
   if (!oldLevel || !newLevel || oldLevel === newLevel) return;
   const unstamped = (clients || []).reduce((a, c) =>
-    a + (c.cases||[]).reduce((b, cs) => b + (cs.touchpoints||[]).reduce((d, tp) =>
-      d + ((tp.apps||[]).filter(ap => ap && !ap.contract_level).length), 0), 0), 0);
+    a + (c.cases||[]).reduce((b, cs) => b + (cs.touchpoints||[]).filter(Boolean).reduce((d, tp) =>
+      d + ((tp.apps||[]).filter(Boolean).filter(ap => ap && !ap.contract_level).length), 0), 0), 0);
   if (!unstamped) return;
   const lock = confirm(
     'You were at ' + oldLevel + '%, now ' + newLevel + '%.\n\n' +
@@ -17217,7 +17243,7 @@ async function migrateLgaName() {
   const touched = [];
   (clients || []).forEach(c => {
     let changed = false;
-    (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => (tp.apps||[]).forEach(ap => {
+    (c.cases||[]).filter(Boolean).forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp => (tp.apps||[]).filter(Boolean).filter(Boolean).forEach(ap => {
       if (ap && ap.carrier === OLD) { ap.carrier = NEW; changed = true; }
     })));
     (c.sits||[]).forEach(si => (si.apps||[]).forEach(ap => {
@@ -17373,8 +17399,8 @@ function getCarrierAdvance(carrierName) {
 function recheckComp() {
   const drift = [];
   const unknown = [];
-  clients.forEach(c => (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp =>
-    (tp.apps||[]).forEach(ap => {
+  clients.forEach(c => (c.cases||[]).filter(Boolean).forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp =>
+    (tp.apps||[]).filter(Boolean).filter(Boolean).forEach(ap => {
       if (!ap.carrier || !ap.product || !ap.premium) return;
       const fresh = calcAppComp(ap.carrier, ap.product, ap.premium, null, undefined, ap.age, ap.product_range || null);
       if (!fresh) { unknown.push({c, ap}); return; }
@@ -18149,7 +18175,7 @@ async function capMaybeCreateASR(k,i){
   try{
     const {data,error}=await sb.from('clients').insert([newLead]).select();
     if(error){ console.warn('ASR insert',error); return; }
-    if(data&&data[0]){ clients.push(data[0]); row._asrId=data[0].id;
+    if(data&&data[0]){ clients.push(sanitizeClient(data[0])); row._asrId=data[0].id;
       referrer.referrals=referrer.referrals||[];
       referrer.referrals.push({id:data[0].id,name,phone,relationship:row.relationship||'',paid:false,amount:30,paidDate:null});
       capRenderPeople(k); await capPersist();
