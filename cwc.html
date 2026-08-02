@@ -2145,6 +2145,65 @@ html,body{ overflow-x:hidden !important; }
   font-size:11px !important; color:#8FA0B4 !important; font-weight:700 !important;
   letter-spacing:.09em !important;
 }
+
+/* ============================================================================
+   h258 - THE LEADS TAB
+   Same disease as the lead card: colour on text instead of on the things you
+   press. A purple "Follow-up" on white, an accent-coloured "Text needed" with a
+   white emoji on white, NS counts too faint to read. Ink, grey, white, accent -
+   nothing else.
+   ========================================================================== */
+
+/* ---- FILTER CHIPS: readable, and the selected one is unmistakable ---- */
+.filter-btn{
+  font-size:12.5px !important; font-weight:600 !important;
+  padding:7px 14px !important; border-radius:999px !important;
+  background:var(--surface) !important; border:1px solid var(--line-2) !important;
+  color:#c3cdcb !important; white-space:nowrap;
+}
+.filter-btn:hover{ color:#fff !important; border-color:var(--accent-lift) !important; }
+.filter-btn.on{
+  background:var(--accent) !important; border-color:var(--accent) !important;
+  color:#fff !important;
+}
+
+/* ---- LEAD CARDS: room to breathe, and bigger type ---- */
+.client-card{
+  padding:15px 16px !important; margin-bottom:9px !important;
+  border-radius:12px !important; line-height:1.5 !important;
+}
+.client-name{ font-size:15.5px !important; font-weight:600 !important; color:#fff !important; }
+.client-meta{ font-size:13px !important; color:#a8b3b1 !important; margin-top:3px !important; }
+.client-card div{ font-size:13px; }
+
+/* every stray ink inside a lead card resolves to the four allowed colours */
+.client-card [style*="color:#"]{ color:#a8b3b1 !important; }
+.client-card [style*="color:#"] b, .client-card b{ color:#fff !important; }
+/* the no-show / attempt counters were the faintest thing on the card */
+.client-card [style*="NS"], .client-card .ns-count, .client-card .attempt-count{
+  color:#e8eeed !important; font-weight:700 !important; font-size:13px !important;
+}
+
+/* ---- THE STATUS TAG: white on accent, always ---- */
+.client-card .pill, .client-card .tag, .client-card .lead-tag,
+.client-card span[style*="border-radius:999px"],
+.client-card span[style*="border-radius: 999px"]{
+  background:var(--accent) !important; border:none !important;
+  color:#fff !important; font-size:11.5px !important; font-weight:700 !important;
+  padding:4px 11px !important; border-radius:999px !important; letter-spacing:.02em;
+}
+/* a due or overdue tag is the one exception - it stays red */
+.client-card .pill.p-red, .client-card [style*="background:#FFF5F5"],
+.client-card [style*="background:#A32D2D"]{
+  background:var(--goal-red) !important; color:#fff !important;
+}
+
+/* ---- THE BADGES: readable, no invisible emoji ---- */
+.client-card .badge, .client-card .lead-badge{
+  font-size:12.5px !important; font-weight:600 !important; color:#e8eeed !important;
+  background:rgb(255 255 255 / .08) !important; border:1px solid var(--line-2) !important;
+  border-radius:7px !important; padding:3px 9px !important;
+}
 </style>
 </head>
 <body>
@@ -2163,7 +2222,7 @@ html,body{ overflow-x:hidden !important; }
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h257</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h258</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -6730,8 +6789,17 @@ function getAttemptCount(c) {
   return Math.max(callLogAttempts, caseAttempts > 0 ? callLogAttempts + caseAttempts : 0, callLogAttempts);
 }
 
+// h258: this returned NaN when a lead had no assigned date, and a NEGATIVE number
+// when the date was in the future - and leadStage tests `days <= 3`, which both
+// of those pass. So an undated lead was labelled FRESH and treated as the top of
+// the queue forever. An unknown age is not a fresh lead; it is an old one.
 function getDaysSinceAssigned(c) {
-  return Math.floor((new Date() - new Date(c.assigned_date||c.created_at)) / (1000*60*60*24));
+  const raw = c && (c.assigned_date || c.created_at);
+  if (!raw) return 999;                       // never seen a date - treat as old
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return 999;          // unparseable
+  const days = Math.floor((new Date() - d) / 86400000);
+  return days < 0 ? 999 : days;                // a future date is bad data, not new
 }
 
 function getDaysSinceLastAttempt(c) {
