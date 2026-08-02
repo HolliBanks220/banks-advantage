@@ -1801,6 +1801,64 @@ html,body{ overflow-x:hidden !important; }
   border-top:1px solid rgb(255 255 255 / .10) !important;
   padding-top:16px !important; margin:16px 0 18px !important;
 }
+
+/* ============================================================================
+   h248 - THE RAIL
+   ========================================================================== */
+/* Tasks reads at the same weight as Schedule - they are peers */
+#task-sidebar .appt-sidebar-title{
+  font-size:12px !important; font-weight:700 !important; letter-spacing:.14em !important;
+  text-transform:uppercase !important; color:var(--ink) !important;
+}
+#task-count{
+  font-size:12px !important; font-weight:600 !important; color:var(--muted) !important;
+  text-transform:none !important; letter-spacing:0 !important;
+}
+
+/* Client care is a link, not a chip - the pill made it read as a status badge */
+#care-btn{
+  background:none !important; border:none !important; padding:0 !important;
+  color:var(--accent-lift) !important; font-size:12.5px !important; font-weight:600 !important;
+  cursor:pointer; white-space:nowrap; font-family:inherit;
+}
+#care-btn:hover{ text-decoration:underline !important; }
+
+/* the schedule scrolls on its left edge */
+#appt-sidebar, .appt-sidebar{ direction:rtl !important; }
+#appt-sidebar > *, .appt-sidebar > *{ direction:ltr !important; }
+.appt-sidebar::-webkit-scrollbar{ width:8px; }
+.appt-sidebar::-webkit-scrollbar-thumb{
+  background:rgb(255 255 255 / .12); border-radius:8px; border:2px solid var(--surface);
+}
+
+/* ---- APPOINTMENT CARDS: one card style, like everything else on the board.
+   The type colour lived on a left stripe; the date and time carry the accent
+   instead, which is the part you actually scan for. ---- */
+.appt-sidebar-item,
+.appt-sidebar-item.ap-phone, .appt-sidebar-item.ap-advanced, .appt-sidebar-item.ap-reminder{
+  background:var(--surface) !important;
+  border:1px solid var(--line) !important; border-left:1px solid var(--line) !important;
+  border-radius:10px !important; padding:12px 13px !important; margin-bottom:6px !important;
+}
+.appt-sidebar-item:hover{ background:var(--surface-2) !important; }
+.appt-sidebar-item .ap-name{
+  color:#fff !important; font-size:14px !important; font-weight:600 !important;
+}
+.appt-sidebar-item .ap-time,
+.appt-sidebar-item.ap-phone .ap-time, .appt-sidebar-item.ap-advanced .ap-time,
+.appt-sidebar-item.ap-reminder .ap-time{
+  color:var(--accent-lift) !important; font-size:12.5px !important; font-weight:700 !important;
+}
+.appt-sidebar-item .ap-meta,
+.appt-sidebar-item div:not(.ap-name):not(.ap-time){
+  color:var(--faint) !important; font-size:12px !important;
+}
+/* due now is the one exception - it still needs to shout */
+.appt-sidebar-item.ap-due{
+  background:var(--red-dim) !important; border-color:var(--red-border) !important;
+}
+.appt-sidebar-item.ap-due .ap-name{ color:#fff !important; }
+.appt-sidebar-item.ap-due .ap-time{ color:#ff8a8e !important; }
 </style>
 </head>
 <body>
@@ -1819,7 +1877,7 @@ html,body{ overflow-x:hidden !important; }
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h247</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h248</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -2211,11 +2269,11 @@ html,body{ overflow-x:hidden !important; }
 <div class="right-sidebar-col" style="position:sticky;top:12px;display:flex;flex-direction:column;gap:12px;">
   <div id="task-sidebar" style="background:#fff;border-radius:12px;border:1px solid #e2eaf2;padding:14px 12px;">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
-      <div onclick="openTaskModal()" title="Open to reorder" style="font-size:10px;font-weight:600;color:#1D3557;text-transform:uppercase;letter-spacing:0.08em;cursor:pointer;display:flex;align-items:center;gap:5px;">Tasks <span id="task-count" style="font-weight:500;color:#8fa8c0;text-transform:none;letter-spacing:0;"></span></div>
+      <div class="appt-sidebar-title" onclick="openTaskModal()" title="Open to reorder" style="cursor:pointer;display:flex;align-items:center;gap:6px;">Tasks <span id="task-count"></span></div>
       <!-- h211: Client care is work with deadlines, not a measurement, so it left
            the ROI strip. It sits here because this column is what needs doing and
            because a policy lapses if it is ignored - unlike a task, which waits. -->
-      <button id="care-btn" onclick="openClientCare()" style="border:1px solid #d0dcea;background:#fff;color:#8fa8c0;border-radius:999px;padding:3px 10px;font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;">Client care</button>
+      <button id="care-btn" onclick="openClientCare()">Client care</button>
     </div>
     <div id="task-list" style="margin-bottom:8px;"><div style="font-size:11px;color:#a0b8cc;">Loading...</div></div>
     <div style="display:flex;gap:6px;">
