@@ -1587,6 +1587,40 @@ html,body{ overflow-x:hidden !important; }
   margin-left:auto !important; color:#fff !important;
   font-weight:600 !important; font-size:13px !important; white-space:nowrap;
 }
+
+/* ============================================================================
+   h240 - THE REAL STATUS LINE, AND THE TOP OF THE BOARD
+   ========================================================================== */
+/* the lifted banner behaves like the header's own line */
+#alerts-section{
+  display:flex !important; align-items:center !important; gap:16px !important;
+  width:100% !important; margin:8px 0 14px !important; padding:0 !important;
+  background:none !important; border:none !important;
+}
+#alerts-section .pace-banner{
+  display:flex !important; align-items:center !important; gap:14px !important;
+  flex:1 1 auto !important; margin:0 !important; padding:0 !important;
+  background:none !important; border:none !important; border-radius:0 !important;
+  font-size:13px !important; font-weight:400 !important; color:#fff !important;
+}
+#alerts-section .pace-actions{ margin-left:auto !important; }
+/* the empty leftover container takes no space */
+#pace-line:empty{ display:none !important; margin:0 !important; }
+
+/* nothing above the hero row may add height when it is hidden */
+.mobile-task-row{ margin:0 !important; }
+.mobile-task-row:not(:has(button:not([style*="display:none"]))){ display:none !important; }
+#sync-bar[style*="display: none"], #appt-banner[style*="display: none"]{ margin:0 !important; }
+#tab-score > :first-child{ margin-top:0 !important; }
+.app-main, #app{ padding-top:0 !important; margin-top:0 !important; }
+
+/* ---- THE DATE LEAVES THE HEADER; THE GEAR TAKES ITS PLACE ---- */
+#hdr-date{ display:none !important; }
+.hdr-name-row{ gap:14px !important; align-items:center !important; }
+.hdr-name-row .hdr-actions .gear-btn{
+  padding:6px 12px !important; font-size:14px !important; line-height:1 !important;
+  border-radius:9px !important;
+}
 </style>
 </head>
 <body>
@@ -1605,7 +1639,7 @@ html,body{ overflow-x:hidden !important; }
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h239</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h240</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -1632,7 +1666,7 @@ html,body{ overflow-x:hidden !important; }
   <div id="appt-banner" class="appt-banner" onclick="showTab('appts',document.querySelector('.tab:nth-child(3)'))">
     <span id="next-appt-text">Loading...</span>
   </div>
-  <div style="display:flex;gap:6px;margin-bottom:8px;">
+  <div class="mobile-task-row" style="display:flex;gap:6px;">
     <button id="task-mobile-btn" onclick="openTaskModal()" style="display:none;flex:1;background:#1D3557;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:500;cursor:pointer;">Tasks <span id="task-badge"></span></button>
   </div>
 
@@ -3121,21 +3155,22 @@ function liftHeaderFullWidth() {
 // than belonging among the period buttons.
 function liftPaceLine() {
   const layout = document.querySelector('.page-layout');
-  // the container is #pace-line; .pace-banner is what renders inside it
-  const pace = document.getElementById('pace-line');
+  // h240: this pointed at #pace-line, which is an empty leftover in the header.
+  // The banner actually renders into #alerts-section INSIDE the board - so the
+  // real status line stayed above the hero cards, pushing them down, while the
+  // gear sat alone in the empty container I had lifted. Lift the real one.
+  const pace = document.getElementById('alerts-section') || document.getElementById('pace-line');
   const hdr = document.querySelector('.hdr');
   if (!layout || !pace || !hdr) return;
   if (pace.parentNode !== layout) {
     pace.style.gridColumn = '1 / -1';
     layout.insertBefore(pace, hdr.nextElementSibling);
   }
+  // h240: the gear sits beside the name now, not on the status line - the date
+  // has moved out to the schedule tab and this is the space it leaves.
   const gear = document.querySelector('.hdr-actions');
-  if (gear && !pace.querySelector('.pace-actions')) {
-    const wrap = document.createElement('span');
-    wrap.className = 'pace-actions';
-    wrap.appendChild(gear);
-    pace.appendChild(wrap);
-  }
+  const nameRow = document.querySelector('.hdr-name-row');
+  if (gear && nameRow && gear.parentNode !== nameRow) nameRow.appendChild(gear);
 }
 
 function reflowBoard() {
