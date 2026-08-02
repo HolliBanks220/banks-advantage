@@ -2549,7 +2549,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h272</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h273</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -5995,29 +5995,26 @@ function renderSidebar() {
     </div>`;
   }
 
-  function callbackCard(a) {
+  // h273: these had no due state at all - the red fill and the five-minute arming
+  // only ever existed on appointment cards. A callback you promised at 3:00 is
+  // every bit as owed as a meeting.
+  function reminderCard(a, kind, icon) {
     const dt = new Date(a.datetime);
     const isToday = dt.toDateString() === todayStr;
     const dateStr = isToday ? '' : dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' - ';
     const timeStr = dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-    return `<div class="appt-sidebar-item ap-item ap-reminder" onclick="openClient('${a.clientId}')">
+    const mins = (dt - now) / 60000;
+    const dueNow = mins <= 5;                       // armed 5 min before, stays until logged
+    const late = mins < -5 ? ' - owed an outcome' : '';
+    return `<div class="appt-sidebar-item ap-item ap-reminder${dueNow ? ' ap-due' : ''}" onclick="openClient('${a.clientId}')">
       <div class="ap-name">${a.clientName}</div>
-      <div class="ap-time">📞 ${dateStr}${timeStr}</div>
-      <div class="ap-kind">Callback</div>
+      <div class="ap-time">${icon} ${dateStr}${timeStr}${late}</div>
+      <div class="ap-kind">${kind}</div>
     </div>`;
   }
+  function callbackCard(a) { return reminderCard(a, 'Callback', '\uD83D\uDCDE'); }
 
-  function followUpCard(a) {
-    const dt = new Date(a.datetime);
-    const isToday = dt.toDateString() === todayStr;
-    const dateStr = isToday ? '' : dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' - ';
-    const timeStr = dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-    return `<div class="appt-sidebar-item ap-item ap-reminder" onclick="openClient('${a.clientId}')">
-      <div class="ap-name">${a.clientName}</div>
-      <div class="ap-time">📋 ${dateStr}${timeStr}</div>
-      <div class="ap-kind">Follow-up</div>
-    </div>`;
-  }
+  function followUpCard(a) { return reminderCard(a, 'Follow-up', '\uD83D\uDCCB'); }
 
   const sidebar = document.getElementById('sidebar-appts');
   if (sidebar) {
@@ -7964,12 +7961,21 @@ function getNextSlotTime(c) {
 // status line now reads the top of the same list the schedule renders.
 function getNextApptInfo() {
   const now = new Date();
-  const staleCutoff = new Date(now.getTime() - 15 * 60000);   // 15 min grace
+  // h273: there used to be a 15 minute grace, after which a passed item simply
+  // fell out of this list - so a 3:00 follow-up disappeared from the top of the
+  // board at 3:15 with nothing logged against it. A commitment you have not
+  // logged is still owed. Anything past its time stays, and stays FIRST, until
+  // an outcome exists. Only genuinely old business is let go, so a forgotten
+  // item from three weeks ago cannot hold the line hostage.
+  const floor = new Date(now.getTime() - 7 * 24 * 3600000);   // a week
   let all = [];
   try { all = getAllScheduled() || []; } catch (e) { return null; }
-  const next = all
-    .filter(a => a && a.datetime && new Date(a.datetime) >= staleCutoff)
-    .sort((x, y) => new Date(x.datetime) - new Date(y.datetime))[0];
+  const live = all.filter(a => a && a.datetime && new Date(a.datetime) >= floor);
+  const overdue = live.filter(a => new Date(a.datetime) < now)
+    .sort((x, y) => new Date(y.datetime) - new Date(x.datetime));   // most recent first
+  const upcoming = live.filter(a => new Date(a.datetime) >= now)
+    .sort((x, y) => new Date(x.datetime) - new Date(y.datetime));
+  const next = overdue[0] || upcoming[0];
   if (!next) return null;
   const dt = new Date(next.datetime);
   return {
@@ -8042,6 +8048,12 @@ function renderAlerts() {
   const apptLabel = apptInfo ? apptInfo.type : 'appt';
   if (!apptInfo) {
     apptPart = 'no appts today';
+  } else if (apptInfo.minsUntil < -5) {
+    // h273: past, and nothing logged. It says so, and it keeps saying so.
+    const late = Math.abs(apptInfo.minsUntil);
+    const lh = Math.floor(late / 60), lm = late % 60;
+    apptPart = apptLabel + ' OVERDUE by ' + (lh > 0 ? lh + 'h ' : '') + lm + 'm';
+    apptFire = ' &#128293;';
   } else if (apptInfo.minsUntil <= 0) {
     apptPart = apptLabel + ' NOW'; apptFire = ' &#128293;';
   } else if (apptInfo.minsUntil <= 30) {
