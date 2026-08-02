@@ -1621,6 +1621,31 @@ html,body{ overflow-x:hidden !important; }
   padding:6px 12px !important; font-size:14px !important; line-height:1 !important;
   border-radius:9px !important;
 }
+
+/* ============================================================================
+   h241 - THE MONEY CARDS JOIN THE GRID, AND THE NUMBERS GET AIR
+   ========================================================================== */
+/* two columns wide - a hero card's width at preferred view - and seamless with
+   everything around them rather than floating in a row of their own */
+.stat.span-2{ grid-column:span 2 !important; }
+.stat.span-2 .stat-val{ font-size:30px !important; font-weight:800 !important; }
+.stat.span-2 .stat-lbl{ font-size:11px !important; letter-spacing:.12em !important; }
+@media(max-width:640px){ .stat.span-2{ grid-column:span 1 !important; } }
+
+/* the money row is gone; anything left of it takes no space */
+.stat-row.money-row{ display:none !important; }
+
+/* ---- BREATHING ROOM. The number sat mid-card with the sub crushed under it.
+   A shorter label band lifts the figure and leaves the foot room to be read. ---- */
+.stat{
+  grid-template-rows:26px auto 1fr !important;
+  row-gap:10px !important;
+  padding:14px 16px 16px !important;
+  min-height:112px !important;
+}
+.stat-val{ align-self:start !important; }
+.stat-sub{ align-self:start !important; line-height:1.4 !important; }
+.stat .goal-slot{ align-self:start !important; }
 </style>
 </head>
 <body>
@@ -1639,7 +1664,7 @@ html,body{ overflow-x:hidden !important; }
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h240</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h241</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -3273,10 +3298,17 @@ function reflowBoard() {
     const t1 = a ? a.closest('.stat') : null;
     const t2 = b ? b.closest('.stat') : null;
     if (!t1 || !t2) return;
-    const row = t2.closest('.money-row') || t1.closest('.money-row');
-    if (!row) return;
-    row.appendChild(t1);          // Submitted APV joins APV / Sale
-    row.appendChild(t2);
+    // h241: they belong IN the production grid, not in a detached row beside it.
+    // Each spans two columns, so at preferred view they are the same width as a
+    // hero card and they carry the same seamless hairline as every other tile.
+    const grid = t1.closest('.stat-row:not(.money-row)') ||
+                 (document.getElementById('p-first') || {}).closest &&
+                 document.getElementById('p-first').closest('.stat-row');
+    if (!grid) return;
+    t1.classList.add('span-2'); t2.classList.add('span-2');
+    grid.appendChild(t1);
+    grid.appendChild(t2);
+    document.querySelectorAll('.money-row').forEach(r => { if (!r.children.length) r.remove(); });
   })();
 
   // a row left empty by any of the above would show as a stray hairline box
