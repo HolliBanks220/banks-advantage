@@ -1718,6 +1718,34 @@ html,body{ overflow-x:hidden !important; }
 .stat-row.hero-row{ gap:14px !important; margin-bottom:20px !important; }
 /* the tiles below sit tight under them */
 .stat-row:not(.hero-row){ margin-top:0 !important; }
+
+/* ============================================================================
+   h244 - THE RAIL MOVES LEFT
+   Tasks and schedule take the left column; the board takes the right. Two things
+   fall out of it: the selectors now sit directly over the board they control,
+   and the brand stays top-left over its own column instead of floating above
+   someone else's. Purely a column swap - nothing inside either column moves.
+   ========================================================================== */
+.page-layout{ grid-template-columns:360px minmax(0,1fr) !important; }
+.right-sidebar-col{ grid-column:1 !important; }
+.page-outer{ grid-column:2 !important; }
+
+/* the header follows: brand over the rail, selectors over the board */
+.hdr{ grid-template-columns:360px 1fr auto !important; }
+.hdr-left{ grid-column:1 !important; }
+.tab-bar{ grid-column:2 !important; justify-self:start !important; }
+.hdr-right{ grid-column:3 !important; }
+
+@media(max-width:1180px){
+  .page-layout{ grid-template-columns:320px minmax(0,1fr) !important; }
+  .hdr{ grid-template-columns:320px 1fr auto !important; }
+}
+@media(max-width:800px){
+  .page-layout{ grid-template-columns:minmax(0,1fr) !important; }
+  /* on a phone the board comes first - the rail is reference, not the work */
+  .right-sidebar-col{ grid-column:1 !important; order:2 !important; }
+  .page-outer{ grid-column:1 !important; order:1 !important; }
+}
 </style>
 </head>
 <body>
@@ -1736,7 +1764,7 @@ html,body{ overflow-x:hidden !important; }
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h243</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h244</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
