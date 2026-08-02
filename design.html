@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  /* ---------- Tokens ---------- */
+  /* Every colour is defined here. Rules below reference var() only —
+     no raw hex or rgba() lives in the rules themselves. */
+  :root {
+    /* Base channels — the ONLY place raw colour numbers live.
+       The accent and the alert red are each defined once, here. */
+    --c-white: 255 255 255;
+    --c-black:   0   0   0;
+    --c-teal:   35 183 183;   /* the one accent  */
+    --c-red:   229  72  77;   /* the one alert   */
+
+    /* Greys / surfaces */
+    --bg:        #0d1112;     /* near-black board */
+    --surface:   #151b1c;     /* card */
+    --surface-2: #1b2325;     /* elevated / hover */
+
+    /* Text */
+    --ink:       #eef3f2;     /* primary */
+    --muted:     #8b9694;     /* secondary */
+    --faint:     #5b6462;     /* tertiary / captions */
+    --on-accent: #ffffff;     /* text + marks on a teal/red fill */
+
+    /* Translucent greys (derived from white) */
+    --line:        rgb(var(--c-white) / .07);
+    --line-2:      rgb(var(--c-white) / .12);
+    --track:       rgb(var(--c-white) / .08);
+    --pill-bg:     rgb(var(--c-white) / .06);
+    --subtle-bg:   rgb(var(--c-white) / .04);
+    --scroll-thumb:rgb(var(--c-white) / .10);
+    --vignette:    rgb(var(--c-white) / .035);
+
+    /* Accent (teal) */
+    --teal:        #138181;   /* fills */
+    --teal-lift:   #23b7b7;   /* text / meters on dark */
+    --teal-glow:   rgb(var(--c-teal) / .16);
+    --teal-border: rgb(var(--c-teal) / .40);
+    --teal-wash:   rgb(var(--c-teal) / .05);
+
+    /* Alert (red) */
+    --red:         #e5484d;   /* the dot / fills */
+    --red-dim:     rgb(var(--c-red) / .13);
+    --red-border:  rgb(var(--c-red) / .28);
+    --red-soft:    #f3a3a5;   /* red text on a dim red bg */
+    --red-text:    #f0868a;   /* red text on the board */
+
+    /* Shadow */
+    --shadow:      rgb(var(--c-black) / .25);
+
+    --r: 14px;
+    --pad: 22px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { background: var(--bg); }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: var(--ink);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "cv02","cv03","cv04","ss01";
+    /* faint atmospheric depth behind the hero, no color cast */
+    background:
+      radial-gradient(900px 420px at 34% -8%, var(--vignette), transparent 70%),
+      var(--bg);
+    min-height: 100vh;
+  }
+
+  .num { font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+
+  .shell { max-width: 1680px; margin: 0 auto; padding: 26px 34px 48px; }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+    display: flex; align-items: center; gap: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
+  }
+  .brand { display: flex; flex-direction: column; gap: 2px; margin-right: auto; }
+  .brand .eyebrow {
+    font-size: 11px; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--teal-lift); font-weight: 600;
+  }
+  .brand h1 {
+    font-size: 20px; font-weight: 700; letter-spacing: -.01em;
+    display: flex; align-items: baseline; gap: 12px;
+  }
+  .brand h1 .date { font-size: 13px; font-weight: 500; color: var(--faint); letter-spacing: 0; }
+
+  .seg {
+    display: inline-flex; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 10px; padding: 3px;
+  }
+  .seg button {
+    font: inherit; font-size: 12.5px; font-weight: 600; color: var(--muted);
+    background: none; border: 0; padding: 6px 13px; border-radius: 7px; cursor: pointer;
+    transition: color .15s, background .15s;
+  }
+  .seg button:hover { color: var(--ink); }
+  .seg button[aria-current="true"] { background: var(--teal); color: var(--on-accent); box-shadow: 0 1px 0 var(--shadow); }
+
+  .nav-tabs { display: flex; gap: 4px; }
+  .nav-tabs a {
+    text-decoration: none; color: var(--muted); font-size: 13.5px; font-weight: 600;
+    padding: 7px 4px; position: relative; transition: color .15s;
+  }
+  .nav-tabs a + a { margin-left: 18px; }
+  .nav-tabs a:hover { color: var(--ink); }
+  .nav-tabs a[aria-current="page"] { color: var(--ink); }
+  .nav-tabs a[aria-current="page"]::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: -21px; height: 2px;
+    background: var(--teal-lift); border-radius: 2px;
+  }
+
+  /* ---------- Status line (honest, not nagging) ---------- */
+  .status {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    margin: 22px 0 26px; font-size: 13px; color: var(--muted);
+  }
+  .status .chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px 6px 11px; border-radius: 8px;
+    background: var(--red-dim); border: 1px solid var(--red-border);
+    color: var(--red-soft); font-weight: 600; font-size: 12.5px;
+  }
+  .status .chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--red); }
+  .status .chip a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+  .status .sep { width: 4px; height: 4px; border-radius: 50%; background: var(--faint); }
+
+  /* ---------- Layout ---------- */
+  .grid { display: grid; grid-template-columns: minmax(0,1fr) 360px; gap: 26px; align-items: start; }
+  .main { display: flex; flex-direction: column; gap: 30px; }
+
+  /* ---------- Hero: the four that matter ---------- */
+  .hero { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .stat {
+    position: relative; background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--r); padding: var(--pad); overflow: hidden;
+    text-decoration: none; color: inherit; display: block;
+    transition: border-color .18s, transform .18s, background .18s;
+  }
+  .stat::before {
+    content: ""; position: absolute; inset: 0 0 auto 0; height: 2px;
+    background: linear-gradient(90deg, var(--teal-lift), transparent 78%);
+    opacity: .55;
+  }
+  .stat:hover { border-color: var(--line-2); background: var(--surface-2); transform: translateY(-2px); }
+  .stat .label {
+    font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--muted); font-weight: 600; display: flex; align-items: center; gap: 8px;
+  }
+  .stat .value { margin-top: 14px; font-size: clamp(2.6rem, 4vw, 3.4rem); font-weight: 800; line-height: 1; }
+  .stat .value.money { font-size: clamp(2.1rem, 3.2vw, 2.9rem); }
+  .stat .value .cur { font-size: .5em; font-weight: 700; color: var(--muted); vertical-align: .18em; margin-right: 2px; }
+
+  .meter { margin-top: 18px; }
+  .meter .track { height: 4px; border-radius: 4px; background: var(--track); overflow: hidden; }
+  .meter .fill { height: 100%; border-radius: 4px; background: var(--teal-lift); box-shadow: 0 0 12px var(--teal-glow); }
+  .meter .cap {
+    margin-top: 9px; font-size: 12px; color: var(--faint);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .meter .cap b { color: var(--muted); font-weight: 600; }
+
+  /* pace pill */
+  .pace { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: .02em; }
+  .pace.good { color: var(--teal-lift); }
+  .pace.good .tick {
+    width: 12px; height: 12px; position: relative; display: inline-block;
+  }
+  .pace.good .tick::after {
+    content: ""; position: absolute; left: 3px; top: 0; width: 5px; height: 9px;
+    border: solid var(--teal-lift); border-width: 0 2px 2px 0; transform: rotate(42deg);
+  }
+  .stat.over { border-color: var(--teal-border); }
+  .stat.over::before { opacity: 1; }
+
+  /* ---------- Recessive metric groups ---------- */
+  .group { }
+  .group-head {
+    display: flex; align-items: center; gap: 14px; margin-bottom: 14px;
+  }
+  .group-head h2 {
+    font-size: 11px; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--faint); font-weight: 700;
+  }
+  .group-head .rule { flex: 1; height: 1px; background: var(--line); }
+
+  .mini-seg { display: inline-flex; gap: 2px; background: var(--subtle-bg); border: 1px solid var(--line); border-radius: 8px; padding: 2px; }
+  .mini-seg button {
+    font: inherit; font-size: 11.5px; font-weight: 600; letter-spacing: .02em;
+    color: var(--muted); background: none; border: 0; padding: 4px 12px; border-radius: 6px; cursor: pointer;
+  }
+  .mini-seg button[aria-current="true"] { background: var(--teal); color: var(--on-accent); }
+
+  .cells { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 1px;
+           background: var(--line); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+  .cell {
+    background: var(--surface); padding: 15px 16px 16px; text-decoration: none; color: inherit;
+    display: flex; flex-direction: column; gap: 7px; min-height: 88px;
+    transition: background .15s;
+  }
+  .cell:hover { background: var(--surface-2); }
+  .cell .k { font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .cell .v { font-size: 26px; font-weight: 700; line-height: 1; margin-top: auto; }
+  .cell .sub { font-size: 11px; color: var(--faint); }
+  .cell .sub.pos { color: var(--teal-lift); }
+  .cell .sub.neg { color: var(--red-text); }
+
+  /* ROI cells get a touch more weight since they're money */
+  .cells.roi .cell .v { font-size: 24px; }
+
+  /* ---------- Right rail ---------- */
+  .rail { position: sticky; top: 22px; display: flex; flex-direction: column; gap: 22px; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+  .panel-head {
+    display: flex; align-items: center; gap: 10px; padding: 16px 18px;
+    border-bottom: 1px solid var(--line);
+  }
+  .panel-head h2 { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink); font-weight: 700; }
+  .panel-head .count {
+    font-size: 11px; font-weight: 700; color: var(--muted);
+    background: var(--pill-bg); border-radius: 20px; padding: 2px 9px;
+  }
+  .panel-head .link { margin-left: auto; font-size: 12px; color: var(--teal-lift); text-decoration: none; font-weight: 600; }
+  .panel-head .link:hover { text-decoration: underline; }
+
+  /* tasks */
+  .tasks { padding: 8px; display: flex; flex-direction: column; }
+  .task {
+    display: flex; align-items: center; gap: 11px; padding: 10px 10px;
+    border-radius: 9px; transition: background .15s;
+  }
+  .task:hover { background: var(--surface-2); }
+  .task input[type="checkbox"] { appearance: none; -webkit-appearance: none; width: 17px; height: 17px; flex: 0 0 auto;
+    border: 1.5px solid var(--line-2); border-radius: 5px; cursor: pointer; position: relative; background: transparent; transition: border-color .15s, background .15s; }
+  .task input:hover { border-color: var(--teal-lift); }
+  .task input:checked { background: var(--teal); border-color: var(--teal); }
+  .task input:checked::after { content: ""; position: absolute; left: 5px; top: 1px; width: 4px; height: 9px;
+    border: solid var(--on-accent); border-width: 0 2px 2px 0; transform: rotate(43deg); }
+  .task label { font-size: 13.5px; color: var(--ink); cursor: pointer; flex: 1; }
+  .task.overdue label { color: var(--red-text); }
+  .task input:checked + label { color: var(--faint); text-decoration: line-through; }
+  .task .x { color: var(--faint); font-size: 15px; line-height: 1; opacity: 0; transition: opacity .15s; background: none; border: 0; cursor: pointer; }
+  .task:hover .x { opacity: 1; }
+  .task-more { padding: 8px 12px 4px; font-size: 12px; }
+  .task-more a { color: var(--teal-lift); text-decoration: none; font-weight: 600; }
+  .add-task { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--line); }
+  .add-task input[type="text"] { flex: 1; background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+    padding: 9px 12px; color: var(--ink); font: inherit; font-size: 13px; }
+  .add-task input::placeholder { color: var(--faint); }
+  .add-task input:focus { outline: none; border-color: var(--teal); }
+  .add-task button { background: var(--teal); border: 0; color: var(--on-accent); font: inherit; font-weight: 700; font-size: 16px;
+    width: 38px; border-radius: 8px; cursor: pointer; }
+  .add-task button:hover { background: var(--teal-lift); }
+
+  /* schedule */
+  .sched { max-height: 640px; overflow-y: auto; padding: 6px; }
+  .sched::-webkit-scrollbar { width: 8px; }
+  .sched::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 8px; border: 2px solid var(--surface); }
+  .appt {
+    display: block; text-decoration: none; color: inherit; padding: 12px 13px;
+    border-radius: 10px; border-left: 2px solid transparent; transition: background .15s, border-color .15s;
+  }
+  .appt:hover { background: var(--surface-2); }
+  .appt.next { border-left-color: var(--teal-lift); background: var(--teal-wash); }
+  .appt .when { font-size: 11.5px; font-weight: 700; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+  .appt.next .when { color: var(--teal-lift); }
+  .appt .who { font-size: 14px; font-weight: 600; color: var(--ink); margin-top: 3px; }
+  .appt .meta { font-size: 12px; color: var(--faint); margin-top: 2px; }
+  .day-sep { font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--faint);
+    font-weight: 700; padding: 14px 13px 6px; }
+
+  /* ---------- Responsive: hold down to 1100px ---------- */
+  @media (max-width: 1280px) {
+    .hero { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 1180px) {
+    .shell { padding: 22px 22px 40px; }
+    .grid { grid-template-columns: minmax(0,1fr) 320px; gap: 20px; }
+  }
+</style>
+</head>
+<body>
+  <div class="shell">
+
+    <!-- Top bar -->
+    <header class="topbar">
+      <div class="brand">
+        <span class="eyebrow">Crushing the numbers</span>
+        <h1>Today&apos;s Board <span class="date num">Sun, Aug 2</span></h1>
+      </div>
+
+      <nav class="nav-tabs" aria-label="Sections">
+        <a href="#" aria-current="page">Board</a>
+        <a href="#">Leads</a>
+        <a href="#">Appts</a>
+        <a href="#">Business</a>
+      </nav>
+
+      <div class="seg" role="group" aria-label="Time range">
+        <button aria-current="true">Day</button>
+        <button>Week</button>
+        <button>Month</button>
+        <button>Qtr</button>
+        <button>Year</button>
+      </div>
+    </header>
+
+    <!-- Honest status, quietly stated -->
+    <div class="status">
+      <span class="chip"><span class="dot"></span><a href="#">16 overdue</a></span>
+      <span class="sep"></span>
+      <span>Next follow-up at <b style="color:var(--ink);font-weight:600">8:00 AM</b></span>
+      <span class="sep"></span>
+      <span>No appointments booked for today &mdash; yet.</span>
+    </div>
+
+    <div class="grid">
+      <!-- ============ MAIN ============ -->
+      <div class="main">
+
+        <!-- The four that matter — an event -->
+        <section class="hero" aria-label="Headline numbers">
+          <a class="stat" href="#">
+            <div class="label">Dials</div>
+            <div class="value num">143</div>
+            <div class="meter">
+              <div class="track"><div class="fill" style="width:72%"></div></div>
+              <div class="cap"><span>of <b>200</b> goal</span><span class="pace good"><span class="tick"></span>on pace</span></div>
+            </div>
+          </a>
+
+          <a class="stat over" href="#">
+            <div class="label">Appointments Set</div>
+            <div class="value num">4</div>
+            <div class="meter">
+              <div class="track"><div class="fill" style="width:100%"></div></div>
+              <div class="cap"><span>goal was <b>3</b></span><span class="pace good"><span class="tick"></span>goal met</span></div>
+            </div>
+          </a>
+
+          <a class="stat" href="#">
+            <div class="label">Sales</div>
+            <div class="value num">2</div>
+            <div class="meter">
+              <div class="track"><div class="fill" style="width:66%"></div></div>
+              <div class="cap"><span>of <b>3</b> goal</span><span class="pace good"><span class="tick"></span>on pace</span></div>
+            </div>
+          </a>
+
+          <a class="stat" href="#">
+            <div class="label">Submitted APV</div>
+            <div class="value money num"><span class="cur">$</span>3,240</div>
+            <div class="meter">
+              <div class="track"><div class="fill" style="width:81%"></div></div>
+              <div class="cap"><span>of <b>$4,000</b> goal</span><span class="pace good"><span class="tick"></span>on pace</span></div>
+            </div>
+          </a>
+        </section>
+
+        <!-- Dialing activity (supporting) -->
+        <section class="group" aria-label="Dialing activity">
+          <div class="group-head">
+            <h2>Dialing Activity</h2>
+            <span class="rule"></span>
+          </div>
+          <div class="cells">
+            <a class="cell" href="#"><span class="k">Callbacks</span><span class="v num">16</span><span class="sub">due to work</span></a>
+            <a class="cell" href="#"><span class="k">Not Interested</span><span class="v num">22</span><span class="sub">&nbsp;</span></a>
+            <a class="cell" href="#"><span class="k">Texts Sent</span><span class="v num">18</span><span class="sub">&nbsp;</span></a>
+            <a class="cell" href="#"><span class="k">Resolved</span><span class="v num">9</span><span class="sub">lead resolution</span></a>
+            <a class="cell" href="#"><span class="k">Dial Time</span><span class="v num">2:14</span><span class="sub">on the phone</span></a>
+            <a class="cell" href="#"><span class="k">Appt Time</span><span class="v num">0:35</span><span class="sub">&nbsp;</span></a>
+          </div>
+        </section>
+
+        <!-- Production (supporting) -->
+        <section class="group" aria-label="Production">
+          <div class="group-head">
+            <h2>Production</h2>
+            <div class="mini-seg" role="group" aria-label="Product line">
+              <button aria-current="true">Life / MP</button>
+              <button>Retirement</button>
+            </div>
+            <span class="rule"></span>
+          </div>
+          <div class="cells">
+            <a class="cell" href="#"><span class="k">Appts</span><span class="v num">6</span><span class="sub">&nbsp;</span></a>
+            <a class="cell" href="#"><span class="k">Sits</span><span class="v num">5</span><span class="sub pos">83% sit rate</span></a>
+            <a class="cell" href="#"><span class="k">No Shows</span><span class="v num">1</span><span class="sub">show ratio</span></a>
+            <a class="cell" href="#"><span class="k">Upcoming</span><span class="v num">3</span><span class="sub">&nbsp;</span></a>
+            <a class="cell" href="#"><span class="k">No Sales</span><span class="v num">3</span><span class="sub">close ratio</span></a>
+            <a class="cell" href="#"><span class="k">Applications</span><span class="v num">2</span><span class="sub">&nbsp;</span></a>
+            <a class="cell" href="#"><span class="k">Needs Outcome</span><span class="v num">1</span><span class="sub">&nbsp;</span></a>
+            <a class="cell" href="#"><span class="k">APV / Sale</span><span class="v num">$1,620</span><span class="sub">$1,620 PPU</span></a>
+            <a class="cell" href="#"><span class="k">Think About It</span><span class="v num">2</span><span class="sub">&nbsp;</span></a>
+            <a class="cell" href="#"><span class="k">Policy Pickup</span><span class="v num">1</span><span class="sub">&nbsp;</span></a>
+            <a class="cell" href="#"><span class="k">Dropped</span><span class="v num">0</span><span class="sub">&nbsp;</span></a>
+            <a class="cell" href="#"><span class="k">Resets</span><span class="v num">1</span><span class="sub">&nbsp;</span></a>
+            <a class="cell" href="#"><span class="k">Ref Asks</span><span class="v num">4</span><span class="sub">ref sit &rarr; sale</span></a>
+            <a class="cell" href="#"><span class="k">Recruit Asks</span><span class="v num">0</span><span class="sub">&nbsp;</span></a>
+            <a class="cell" href="#"><span class="k">Plans Sent</span><span class="v num">1</span><span class="sub">of 1 prospects</span></a>
+          </div>
+        </section>
+
+        <!-- ROI (supporting) -->
+        <section class="group" aria-label="Return on investment">
+          <div class="group-head">
+            <h2>ROI</h2>
+            <span class="rule"></span>
+          </div>
+          <div class="cells roi">
+            <a class="cell" href="#"><span class="k">APV / Lead</span><span class="v num">$212</span><span class="sub">volume per lead</span></a>
+            <a class="cell" href="#"><span class="k">Comm / Lead</span><span class="v num">$186</span><span class="sub">before cost</span></a>
+            <a class="cell" href="#"><span class="k">Profit / Lead</span><span class="v num">$186</span><span class="sub neg">no spend entered</span></a>
+            <a class="cell" href="#"><span class="k">Lead Spend</span><span class="v num">$0</span><span class="sub">tap to add a charge</span></a>
+            <a class="cell" href="#"><span class="k">Return on Spend</span><span class="v num">&mdash;</span><span class="sub">for every $1 out</span></a>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- ============ RIGHT RAIL ============ -->
+      <aside class="rail" aria-label="Tasks and schedule">
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Tasks</h2>
+            <span class="count">5</span>
+            <a class="link" href="#">Client care</a>
+          </div>
+          <div class="tasks">
+            <div class="task overdue">
+              <input type="checkbox" id="t1" />
+              <label for="t1">Call Matthew Meyers after 7</label>
+              <button class="x" aria-label="Dismiss task">&times;</button>
+            </div>
+            <div class="task">
+              <input type="checkbox" id="t2" />
+              <label for="t2">Reschedule Tammie</label>
+              <button class="x" aria-label="Dismiss task">&times;</button>
+            </div>
+            <div class="task">
+              <input type="checkbox" id="t3" />
+              <label for="t3">Clint Burwell &ndash; lapse situation &middot; 919-482-0258</label>
+              <button class="x" aria-label="Dismiss task">&times;</button>
+            </div>
+            <div class="task">
+              <input type="checkbox" id="t4" />
+              <label for="t4">Daouda Gerber &mdash; send app</label>
+              <button class="x" aria-label="Dismiss task">&times;</button>
+            </div>
+            <div class="task-more"><a href="#">+1 more &middot; open to reorder</a></div>
+          </div>
+          <form class="add-task" onsubmit="return false">
+            <input type="text" placeholder="Add a task&hellip;" aria-label="Add a task" />
+            <button type="submit" aria-label="Add task">+</button>
+          </form>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Schedule</h2>
+            <a class="link" href="#">Full calendar</a>
+          </div>
+          <div class="sched">
+            <div class="day-sep">Today &middot; Sun, Aug 2</div>
+            <a class="appt next" href="#">
+              <div class="when">3:00 PM <span>&middot; next up</span></div>
+              <div class="who">Jared Deandrade</div>
+              <div class="meta">America Term 125 &middot; options</div>
+            </a>
+
+            <div class="day-sep">Mon, Aug 3</div>
+            <a class="appt" href="#">
+              <div class="when">8:30 AM</div>
+              <div class="who">Charles Bowling</div>
+              <div class="meta">Mortgage Protection &middot; Initial</div>
+            </a>
+            <a class="appt" href="#">
+              <div class="when">10:15 AM</div>
+              <div class="who">Gregory A. Williams</div>
+              <div class="meta">Mortgage Protection &middot; Policy Pickup</div>
+            </a>
+            <a class="appt" href="#">
+              <div class="when">4:30 PM</div>
+              <div class="who">James Price</div>
+              <div class="meta">Retirement &middot; Initial</div>
+            </a>
+
+            <div class="day-sep">Tue, Aug 4</div>
+            <a class="appt" href="#">
+              <div class="when">10:00 AM</div>
+              <div class="who">Charles Stubbs</div>
+              <div class="meta">Mortgage Protection &middot; Follow-up</div>
+            </a>
+
+            <div class="day-sep">Wed, Aug 5</div>
+            <a class="appt" href="#">
+              <div class="when">11:00 AM</div>
+              <div class="who">Elliott Robinson</div>
+              <div class="meta">Retirement &middot; Continuation</div>
+            </a>
+            <a class="appt" href="#">
+              <div class="when">2:00 PM</div>
+              <div class="who">Anthony Keith Grant</div>
+              <div class="meta">Retirement &middot; Step 1 (revived)</div>
+            </a>
+            <a class="appt" href="#">
+              <div class="when">2:30 PM</div>
+              <div class="who">Kuchelarao Thulasi</div>
+              <div class="meta">Confirm coverage</div>
+            </a>
+
+            <div class="day-sep">Fri, Aug 7</div>
+            <a class="appt" href="#">
+              <div class="when">10:00 AM</div>
+              <div class="who">Charlotte Griffin</div>
+              <div class="meta">Mortgage Protection &middot; Think about it</div>
+            </a>
+
+            <div class="day-sep">Later this month</div>
+            <a class="appt" href="#">
+              <div class="when">Mon, Aug 10 &middot; 10:00 AM</div>
+              <div class="who">Anna Vollmar</div>
+              <div class="meta">Mortgage Protection &middot; Think about it</div>
+            </a>
+            <a class="appt" href="#">
+              <div class="when">Tue, Aug 11 &middot; 5:30 PM</div>
+              <div class="who">Alberto Dasilva</div>
+              <div class="meta">Mortgage Protection &middot; Initial</div>
+            </a>
+            <a class="appt" href="#">
+              <div class="when">Sat, Aug 22 &middot; 12:00 PM</div>
+              <div class="who">Fabiana Mcleod</div>
+              <div class="meta">Mortgage Protection &middot; Initial</div>
+            </a>
+          </div>
+        </section>
+
+      </aside>
+    </div>
+  </div>
+</body>
+</html>
