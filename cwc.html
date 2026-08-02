@@ -2619,6 +2619,25 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
   .stat-row:not(.hero-row) > .stat, .stat-row2 > .stat,
   .stat-row:not(.hero-row) > .stat.span-2{ grid-column:span 1 !important; }
 }
+
+/* h278: the schedule's scrollbar. The list is the thing that scrolls, so the bar
+   belongs on it - stated last so nothing outranks it, and wide enough to grab. */
+.sidebar-appts{
+  overflow-y:scroll !important;          /* always present, so it never jumps */
+  scrollbar-width:auto !important;
+  scrollbar-color:rgb(255 255 255 / .28) transparent !important;
+}
+.sidebar-appts::-webkit-scrollbar{ width:14px !important; }
+.sidebar-appts::-webkit-scrollbar-track{ background:transparent !important; }
+.sidebar-appts::-webkit-scrollbar-thumb{
+  background:rgb(255 255 255 / .28) !important;
+  border-radius:10px !important;
+  border:4px solid var(--surface) !important;
+  min-height:48px !important;
+}
+.sidebar-appts::-webkit-scrollbar-thumb:hover{ background:rgb(255 255 255 / .40) !important; }
+/* the curtain holds a little longer, so give it a gentler exit */
+#boot-curtain{ animation:boot-fail-open 0s linear 8s forwards !important; }
 </style>
 </head>
 <body>
@@ -2645,7 +2664,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h277</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h278</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -3220,7 +3239,14 @@ const BOOT_LINES = [
   { t: 'Energy and persistence conquer all things.', a: 'Benjamin Franklin' },
 ];
 
+// h278: the board loads fast enough that the line was gone before it could be
+// read. The curtain holds for a minimum so there is time to take it in - the
+// clock starts when it appears, so a slow load still costs nothing extra.
+let _bootShownAt = 0;
+const BOOT_MIN_MS = 2200;
+
 function showBootCurtain() {
+  _bootShownAt = Date.now();
   const q = document.getElementById('boot-quote');
   const a = document.getElementById('boot-attr');
   if (!q) return;
@@ -3232,6 +3258,11 @@ function showBootCurtain() {
 function hideBootCurtain() {
   const el = document.getElementById('boot-curtain');
   if (!el || el.dataset.gone) return;
+  const waited = Date.now() - (_bootShownAt || 0);
+  if (waited < BOOT_MIN_MS) {           // not long enough to read - hold it
+    setTimeout(hideBootCurtain, BOOT_MIN_MS - waited);
+    return;
+  }
   el.dataset.gone = '1';
   el.classList.add('boot-out');
   setTimeout(() => { el.style.display = 'none'; }, 420);
@@ -4872,7 +4903,7 @@ function renderScore() {
   applyTheme();            // push the agent's theme colors into CSS vars
   applyNeutralPalette();   // theme-driven base field; alerts + goal glow carry color
   try { reflowBoard(); } catch (e) {}
-  try { hideBootCurtain(); } catch (e) {}   // h276: the board is arranged - lift the curtain
+  try { hideBootCurtain(); } catch (e) {}   // h276: the board is arranged - lift the curtain (held to a readable minimum)
   renderGoalZones({ dials: dials, appts_set: appts, sits: totalShowed, sales: totalSales, apps: appsWritten, resets: totalResets, apv: totalAPV });
   document.getElementById('p-closed').textContent = appsWritten;
   { const e=document.getElementById('p-close-rate'); if (e) e.textContent = ''; }   // per-sale removed; slot serves the Apps goal
