@@ -249,12 +249,13 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
     <button class="tick" aria-pressed="false" data-id="s4">✓</button>
     <div class="step-body">
       <h3>Enter the lead types you buy</h3>
-      <p>Comma separated — <kbd>CIC, CID</kbd>, or whatever you're working. It's the only list offered when you log a lead charge.</p>
-      <div class="why"><b>A lead is a lead.</b> Don't spend time deciding which codes are "good" ones. Dial them.</div>
+      <p>Comma separated, and just the <b>type</b> — <kbd>CI, MI, Lighthouse, Level Up</kbd>. Whatever you're actually buying.</p>
+      <p>Not the freshness letter. CIA, CIB and CIC are all CI, and the app groups them for you.</p>
+      <div class="why"><b>A lead is a lead.</b> Don't spend time deciding which codes are the "good" ones. Dial them.</div>
     </div>
     <div class="shot">
       <div class="shot-lbl">Settings → Profile</div>
-      <div class="lite"><div class="m">Lead types I buy</div><div class="n hi">CIC, CID</div>
+      <div class="lite"><div class="m">Lead types I buy</div><div class="n hi">CI, MI</div>
         <div class="m" style="margin-top:4px">These are the only options offered when you log a lead charge.</div></div>
     </div>
   </div>
@@ -262,15 +263,16 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
   <div class="step">
     <button class="tick" aria-pressed="false" data-id="s5">✓</button>
     <div class="step-body">
-      <h3>Set one goal</h3>
-      <p>Tap the small <kbd>+ set a goal</kbd> under any tile. Start with dials — it's the only number entirely inside your control.</p>
-      <div class="why"><b>One, not six.</b> A tile with a goal fills with colour as you close on it. Six goals is six things to feel behind on.</div>
+      <h3>Set a goal</h3>
+      <p>Tap the small <kbd>+ set a goal</kbd> under any tile. It applies to whichever period you're looking at — so a goal set on Day is today's, a goal set on Month is the month's.</p>
+      <p>Run one per time period. A dials goal for <b>today</b>, an APV goal for the <b>month</b>. They can feed each other — dials today building toward the month's APV — or they can be different things to keep an eye on.</p>
+      <div class="why"><b>One per period, not six on one.</b> A tile with a goal fills with colour as you close on it. Six goals in the same day is six things to feel behind on before lunch.</div>
     </div>
     <div class="shot">
       <div class="shot-lbl">Board → Dialing activity</div>
       <div class="row2">
-        <div class="tile"><div class="l">Dials</div><div class="v">0</div><div class="s hi" style="color:var(--teal);font-weight:600">+ set a goal</div></div>
-        <div class="tile"><div class="l">Appts set</div><div class="v">0</div><div class="s" style="color:var(--teal)">+ set a goal</div></div>
+        <div class="tile"><div class="l">Dials · today</div><div class="v">0</div><div class="s hi" style="color:var(--teal);font-weight:600">+ set a goal</div></div>
+        <div class="tile"><div class="l">Submitted APV · month</div><div class="v">$0</div><div class="s" style="color:var(--teal)">+ set a goal</div></div>
       </div>
     </div>
   </div>
@@ -282,6 +284,24 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
 <div class="wrap">
   <div class="sec-head"><div class="sec-num">02</div><h2>Your first dial block</h2></div>
   <p class="sec-sub indent">The part you'll do a thousand times. Learn it once properly and the rest of the app takes care of itself.</p>
+
+  <div class="step">
+    <button class="tick" aria-pressed="false" data-id="d0">✓</button>
+    <div class="step-body">
+      <h3>Tap the red banner</h3>
+      <p>It sits across the top of the board and reads your pace: <b>"Behind pace — call 24 now"</b> is how many dials puts you back on your goal today. It disappears when you're on track.</p>
+      <p><b>It's also a button.</b> Tap it and you land straight in your call list, at the top of the queue. Fastest way from the board to dialing, and you never have to think about which tab you're on.</p>
+      <div class="why"><b>Start every block here.</b> The banner tells you the number and then takes you to the work. The <b>15 overdue</b> in it is a link too — that's the leads you've let slip.</div>
+    </div>
+    <div class="shot">
+      <div class="shot-lbl">Board</div>
+      <div class="banner hi">Behind pace — call 24 now · <u>15 overdue</u> · appt in 10 min</div>
+      <div class="row2">
+        <div class="tile"><div class="l">Dials</div><div class="v">12</div><div class="s">of 60</div></div>
+        <div class="tile"><div class="l">Appts set</div><div class="v">1</div></div>
+      </div>
+    </div>
+  </div>
 
   <div class="step">
     <button class="tick" aria-pressed="false" data-id="d1">✓</button>
@@ -332,7 +352,7 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
       <div class="lite"><div class="n">Jacqueline Benson</div><div class="m">832-468-3125 · TX · 60</div></div>
       <div class="btnrow" style="margin:7px 0"><span class="b b-out">1</span><span class="b b-teal hi">2</span><span class="b b-out">3</span><span class="b b-out">4+</span></div>
       <div class="btnrow">
-        <span class="b b-ink">No answer</span><span class="b b-gold">Callback</span><span class="b b-teal">Conversation</span>
+        <span class="b b-ink">No answer</span><span class="b b-gold">Callback</span>
       </div>
       <div class="btnrow"><span class="b b-teal">Appt set</span><span class="b b-red">Not interested</span></div>
     </div>
@@ -342,7 +362,8 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
     <button class="tick" aria-pressed="false" data-id="d4">✓</button>
     <div class="step-body">
       <h3>Log the outcome honestly</h3>
-      <p><kbd>No answer</kbd> for a ring-out. <kbd>Callback</kbd> when they name a time. <kbd>Conversation</kbd> when you spoke but didn't book. <kbd>Not interested</kbd> when they're done.</p>
+      <p>Four outcomes, and every call is one of them. <kbd>Appt set</kbd> when you book it. <kbd>Callback</kbd> when they name a time. <kbd>Not interested</kbd> when they're done. <kbd>No answer</kbd> for everything else — including a conversation that went nowhere.</p>
+      <p>If you spoke but they wouldn't name a time, that's still No answer. Use Callback without a time only if you want them back sooner than the queue would bring them.</p>
       <div class="why warn"><b>Not interested is final.</b> It closes their case, clears any appointment and takes them out of your queue. It's the right button when they mean it — and the wrong one when they're just busy. That's what Callback is for.</div>
     </div>
     <div class="shot">
@@ -377,11 +398,9 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
     <div class="step-body">
       <h3>Book one</h3>
       <p><kbd>Appt set</kbd> → pick the day and time → confirm. It lands on your schedule on the right and pushes to your Google Calendar.</p>
-      <div class="why"><b>The red banner is your pace.</b> "Behind pace — call 24 now" is the number of dials that puts you back on your goal today. It goes away when you're on track.</div>
     </div>
     <div class="shot">
       <div class="shot-lbl">Schedule</div>
-      <div class="banner">Behind pace — call 24 now · appt in 10 min</div>
       <div class="lite" style="border-left:3px solid var(--teal)"><div class="n">Peter Lastowski</div><div class="m">4:30 PM · Mortgage Protection — Initial</div></div>
       <div class="lite" style="border-left:3px solid var(--plum)"><div class="n">Bobbie Weaver</div><div class="m">5:30 PM · Retirement — Initial</div></div>
     </div>
@@ -418,7 +437,8 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
     <button class="tick" aria-pressed="false" data-id="a2">✓</button>
     <div class="step-body">
       <h3>Ask, while you're still sitting there</h3>
-      <p>Logging a sale or a no sale opens one screen: referrals, resets, recruits. Fill in what you got.</p>
+      <p>The moment you log a sale or a no sale, one screen opens: referrals, resets, recruits. It comes up <b>before</b> you enter the application, on purpose — so you do the asking while you're still in the room.</p>
+      <p>You get it again <b>after</b> the application, to add anyone who came up while you were writing.</p>
       <div class="why"><b>Yes, after a no sale too.</b> They didn't buy. They still know people, and they've just spent an hour with you. The ask costs nothing.</div>
     </div>
     <div class="shot">
@@ -434,14 +454,19 @@ footer{padding:40px 0 60px;color:var(--faint);font-size:13px}
     <div class="step-body">
       <h3>Enter the application</h3>
       <p>Carrier, product, face amount, then the <b>monthly premium as you quoted it</b> — the app works out the annual figure. Then who it's on, their birth date, and the day of the month it drafts.</p>
-      <div class="why"><b>Fill in the draft day.</b> It's how the app knows when to remind you to check the carrier portal, and it's what you'll confirm with them on the delivery call. A surprise draft date is a first-month lapse.</div>
+      <p>New applications default to <kbd>Submitted</kbd>, since that's what usually happened.</p>
+      <div class="why"><b>Fill in the draft day.</b> It's how the app knows when to remind you to check the carrier portal, and it's what you'll confirm on the delivery call. A surprise draft date is a first-month lapse.</div>
+      <div class="why"><b>Take the birth date.</b> It's per person, so a spouse on their own application gets their own. It's what the birthday reminders run on — one per person, however many policies they have.</div>
+      <div class="why"><b>And write what it did for them.</b> "Six months of mortgage payments." That's the line you'll want at the 13 month review, and the one that makes a referral ask concrete instead of vague.</div>
     </div>
     <div class="shot">
       <div class="shot-lbl">Application</div>
       <div class="lite"><div class="m">Carrier</div><div class="n">Foresters</div></div>
       <div class="lite"><div class="m">Monthly premium</div><div class="n">$95.20</div><div class="m">= $1,142.40 APV</div></div>
       <div class="lite"><div class="m">Who</div><div class="n">Jane Smith</div></div>
+      <div class="lite hi"><div class="m">Their birth date</div><div class="n">14 Aug 1962</div></div>
       <div class="lite hi"><div class="m">Drafts on the</div><div class="n">12th</div></div>
+      <div class="lite"><div class="m">What this did for them</div><div class="n" style="font-size:11px;font-weight:400">Six months of mortgage payments. Kids stay in the house.</div></div>
     </div>
   </div>
 
