@@ -2328,6 +2328,109 @@ button.chip-action:hover, .modal button.chip-action:hover{ filter:brightness(1.1
 }
 .appt-sidebar-item.ap-due .ap-kind{ color:#ffd9da !important; }
 .appt-sidebar-item{ padding:13px 14px !important; }
+
+/* ============================================================================
+   h266 - THE BUSINESS TAB
+   Built when the app was light: a navy summary bar, a white bonus panel, and a
+   commission line in dim green on what is now a dark card. Same palette as the
+   rest of the board.
+   ========================================================================== */
+
+/* the sub-tabs match the filter chips on Leads */
+#apps-view-submitted, #apps-view-placed, #apps-view-written,
+#apps-view-report, #apps-view-commissions{
+  background:var(--surface) !important; border:1px solid var(--line-2) !important;
+  color:#c3cdcb !important; border-radius:10px !important;
+  padding:9px 14px !important; font-size:13px !important; font-weight:600 !important;
+}
+#apps-view-submitted:hover, #apps-view-placed:hover, #apps-view-written:hover,
+#apps-view-report:hover{ color:#fff !important; border-color:var(--accent-lift) !important; }
+.apps-view-on{
+  background:var(--accent) !important; border-color:var(--accent) !important;
+  color:#fff !important;
+}
+#apps-search{
+  background:var(--surface) !important; border:1px solid var(--line-2) !important;
+  color:var(--ink) !important; border-radius:10px !important;
+  padding:9px 13px !important; font-size:13px !important;
+}
+#apps-search::placeholder{ color:#7d8a88 !important; }
+
+/* the summary bar was navy - now a card like everything else */
+#apps-summary-bar{
+  background:var(--surface) !important; border:1px solid var(--line) !important;
+  border-radius:var(--r) !important; color:var(--ink) !important;
+  padding:14px 18px !important;
+}
+#apps-summary-bar *{ color:var(--ink) !important; }
+#apps-summary-bar [style*="font-size:10px"], #apps-summary-bar [style*="font-size:11px"],
+#apps-summary-bar .sum-lbl{ color:#9aa5a3 !important; font-size:11px !important; }
+#apps-summary-bar [style*="font-size:18px"], #apps-summary-bar [style*="font-size:20px"],
+#apps-summary-bar b, #apps-summary-bar strong{
+  color:#fff !important; font-size:19px !important; font-weight:700 !important;
+}
+
+/* the producer bonus panel was white on white */
+#apps-placement-bar, #producer-bonus, [id*="bonus"]{
+  background:var(--surface) !important; border:1px solid var(--line) !important;
+  border-radius:var(--r) !important; color:var(--ink) !important;
+}
+#apps-placement-bar *, #producer-bonus *{ color:#c3cdcb !important; }
+#apps-placement-bar [style*="background:#e"], #apps-placement-bar [style*="background:#f"],
+#producer-bonus [style*="background:#e"], #producer-bonus [style*="background:#f"]{
+  background:rgb(255 255 255 / .10) !important;
+}
+
+/* ---- APPLICATION ROWS ---- */
+#apps-tab-list > div{
+  background:var(--surface) !important; border:1px solid var(--line) !important;
+  border-radius:12px !important; padding:14px 16px !important; margin-bottom:9px !important;
+}
+#apps-tab-list > div:hover{ background:var(--surface-2) !important; }
+/* client name leads */
+#apps-tab-list [style*="font-weight:700"], #apps-tab-list [style*="font-weight:600"]{
+  color:#fff !important;
+}
+/* carrier and product were near-invisible */
+#apps-tab-list [style*="color:#8fa8c0"], #apps-tab-list [style*="color:#a0b8cc"],
+#apps-tab-list [style*="color:#5f7a99"]{ color:#a8b3b1 !important; font-size:12.5px !important; }
+/* the money line: premium white, the comp breakdown readable grey - it was a
+   dim green nobody could read */
+#apps-tab-list [style*="color:#3B6D11"], #apps-tab-list [style*="color:#2E7D52"],
+#apps-tab-list [style*="color:var(--accent-dark)"]{
+  color:#a8b3b1 !important; font-size:12.5px !important;
+}
+#apps-tab-list [style*="font-size:9px"], #apps-tab-list [style*="font-size:10px"]{
+  font-size:12px !important;
+}
+
+/* the status dropdown */
+#apps-tab-list select{
+  background:var(--surface-2) !important; border:1px solid var(--line-2) !important;
+  color:#fff !important; border-radius:8px !important;
+  padding:6px 10px !important; font-size:12.5px !important; font-weight:600 !important;
+}
+#apps-tab-list select option{ background:#1b2325 !important; color:#fff !important; }
+
+/* OPT chips and the row actions */
+#apps-tab-list button{
+  background:rgb(255 255 255 / .08) !important; border:1px solid var(--line-2) !important;
+  color:#e8eeed !important; border-radius:7px !important;
+  padding:4px 10px !important; font-size:12px !important; font-weight:600 !important;
+}
+#apps-tab-list button:hover{ border-color:var(--accent-lift) !important; color:#fff !important; }
+#apps-tab-list button[onclick*="delete"], #apps-tab-list button[onclick*="Delete"],
+#apps-tab-list button[onclick*="remove"]{
+  background:var(--red-dim) !important; border-color:var(--red-border) !important;
+  color:#ff8a8e !important;
+}
+
+/* ---- THE RAIL NEEDS A FLOOR ----
+   An earlier pass gave it height:0 so it could never set the row height. On a short page -
+   Business with a handful of rows - that collapsed it and cut the schedule off
+   mid-client. It matches the board, but never shrinks below what it needs. */
+.right-sidebar-col{ min-height:min(100%, 720px) !important; }
+.sidebar-appts{ min-height:220px !important; }
 </style>
 </head>
 <body>
@@ -2346,7 +2449,7 @@ button.chip-action:hover, .modal button.chip-action:hover{ filter:brightness(1.1
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h265</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h266</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -5827,6 +5930,12 @@ function renderSidebar() {
 let appsView = 'submitted'; // 'submitted' or 'placed'
 function setAppsView(v) {
   appsView = v;
+  // h266: the active tab used to be marked with inline colours written in the
+  // light palette. A class lets the stylesheet own it.
+  ['submitted','placed','written','report','commissions'].forEach(k => {
+    const b = document.getElementById('apps-view-' + k);
+    if (b) b.classList.toggle('apps-view-on', k === v);
+  });
   const sub = document.getElementById('apps-view-submitted');
   const pl = document.getElementById('apps-view-placed');
   const cm = document.getElementById('apps-view-commissions');
