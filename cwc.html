@@ -168,11 +168,17 @@ html,body{overflow-x:hidden;}                   /* no sideways scrollbar, ever *
 /* THEME (h130): the board is driven by CSS variables so the theme picker can
    retune it live. One base field + scoreboard goal colors. */
 :root{
-  --tile-base:#E9EDF2; --tile-base2:#DEE4EC; --tile-text:#1D2733;
-  --goal-red:#C64A46;  --goal-red-text:#ffffff;
-  --goal-amber:#E7B93E; --goal-amber-text:#20242B;
-  --goal-green:#4C9A5E; --goal-green-text:#ffffff;
-  --dk-bg:#1A1D23; --dk-card:#E9EDF2; --dk-ink:#1D2733; --dk-dim:#5E6A78; --dk-line:rgba(0,0,0,0.10);
+  /* h216: WHITE CARDS ON A SOFT LIGHT FIELD. Mid-grey tiles on near-black was
+     the muddiest possible pairing - no contrast at the card edge, so nothing
+     looked cut out, and two passes of shadow work could not rescue it. */
+  --tile-base:#FFFFFF; --tile-base2:#FFFFFF; --tile-text:#16202E;
+  --field:#EDF1F6;            /* the page behind the cards */
+  --hair:#DDE4EC;             /* the hairline every card carries */
+  --ink:#16202E; --ink-dim:#5F7A99; --ink-faint:#93A7BC;
+  --goal-red:#C0392B;  --goal-red-text:#ffffff;     /* the banner red - one red everywhere */
+  --goal-amber:#D99A2B; --goal-amber-text:#ffffff;
+  --goal-green:#2E7D52; --goal-green-text:#ffffff;  /* a green that belongs beside teal, not a highlighter */
+  --dk-bg:var(--field); --dk-card:#FFFFFF; --dk-ink:#16202E; --dk-dim:#5F7A99; --dk-line:#DDE4EC;
   /* h212: ONE accent, three derivatives. Every teal in the app is a variable now,
      so changing this one setting retints buttons, pills, links and goal fills
      together. Defaults to the teal the app has always been. */
@@ -323,7 +329,7 @@ select option{background:#FFFFFF !important;color:#1D2733 !important;}
 .tab:not(.on):hover{background:rgba(0,0,0,0.05) !important;}
 
 /* BEHIND PACE: an alert should read as one. White on solid red. */
-/* h215: the banner was #C0392B and the behind-goal tile is --goal-red (#C64A46).
+/* h215: the banner and the behind-goal tile were two different reds, close
    Two reds side by side that are nearly-but-not-quite the same read as a mistake.
    One variable, so they always agree - and they retint together if the goal
    colours are ever changed. Padding trimmed: it is meant to be noticed, not to
@@ -513,116 +519,125 @@ html,body{overflow-x:hidden !important;}
 #client-count{color:#9FB2C4;}
 
 /* ============================================================================
-   h215 - DEPTH AND TYPE, for the theme this app actually has
-   The h212 pass was built for dark elements on a light page and this is the
-   reverse: light tiles on near-black. A black shadow on a near-black field is
-   invisible, and a white top-edge on an already-light tile does nothing. Hence
-   no visible change. Light-on-dark needs the opposite technique - the LIGHT
-   surface carries the modelling, not the space around it.
+   h216 - LIGHT FIELD, WHITE CARDS, COLOUR ON THE DATA
+   Two things were making this read amateur, and neither was the shadows:
+     1. Mid-grey tiles on near-black. No contrast at the card edge, so nothing
+        looked cut out. Light field + white cards gets a crisp edge for free.
+     2. A goal tile flooded ENTIRELY with colour - a whole lime rectangle. Good
+        dashboards colour the DATA, not the container: a thin bar and a number.
+   Colour now means two separate things that never fight: a gradient marks the
+   four headline numbers, and bar colour says how the day is going.
    ========================================================================== */
 
-/* The field itself. A flat fill reads as paper; a very slight gradient reads as
-   a room. Barely perceptible on purpose. */
-body{
-  background:
-    radial-gradient(1200px 700px at 50% -10%, #23272F 0%, transparent 60%),
-    var(--dk-bg) !important;
-  background-attachment:fixed;
-}
+body{ background:var(--field) !important; color:var(--ink) !important; }
 
-/* TILES. The modelling lives inside the light surface: a bright top edge, a
-   gentle vertical fall, a darker bottom edge. That is what a lit physical panel
-   looks like, and it works whatever is behind it. */
+/* ---- CARDS. One hairline, one soft shadow. That is the whole recipe. ---- */
+.stat, .client-card, .sit-card, .modal, #task-sidebar, .appt-sidebar{
+  background:#fff !important;
+  border:1px solid var(--hair) !important;
+  box-shadow:0 1px 2px rgba(22,32,46,.05), 0 2px 8px -4px rgba(22,32,46,.08);
+}
 .stat{
-  position:relative;
-  background-image:linear-gradient(180deg, rgba(255,255,255,.60) 0%, rgba(255,255,255,0) 42%, rgba(0,0,0,.045) 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.85),
-    inset 0 -1px 0 rgba(0,0,0,.10),
-    0 1px 0 rgba(0,0,0,.55),
-    0 6px 14px -8px rgba(0,0,0,.75);
-  transition:transform .13s ease, box-shadow .13s ease, filter .13s ease;
+  border-radius:12px !important;
+  transition:transform .13s ease, box-shadow .13s ease, border-color .13s ease;
+  padding:11px 12px !important;
 }
-.stat:has(.stat-val[onclick]):hover{
-  transform:translateY(-1.5px);
-  filter:brightness(1.02);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.95),
-    inset 0 -1px 0 rgba(0,0,0,.10),
-    0 2px 0 rgba(0,0,0,.55),
-    0 14px 26px -10px rgba(0,0,0,.85);
+.stat:has(.stat-val[onclick]):hover, .client-card:hover{
+  transform:translateY(-1px); border-color:#C6D3E1 !important;
+  box-shadow:0 2px 4px rgba(22,32,46,.06), 0 10px 22px -8px rgba(22,32,46,.16);
 }
+.stat-row, .stat-row2{ gap:10px !important; margin-bottom:10px !important; }
 
-/* TYPE. The label was 9px/500 and the number 22px/500 - near-identical weight,
-   so three lines of grey with no hierarchy. Wide-tracked small label, big tight
-   confident number, quiet sub. This is most of the "expensive" feeling. */
+/* ---- TYPE. Small tracked label, big tight number, quiet sub. ---- */
 .stat-lbl{
   font-size:9px !important; font-weight:700 !important;
-  letter-spacing:0.10em !important; opacity:.58;
+  letter-spacing:0.10em !important; color:var(--ink-faint) !important;
 }
 .stat-val{
   font-size:29px !important; font-weight:650 !important;
   letter-spacing:-0.03em !important; line-height:1 !important;
-  margin:1px 0 0 !important;
+  color:var(--ink) !important; margin:2px 0 0 !important;
 }
-.stat-sub{ font-size:10px !important; opacity:.62; letter-spacing:.005em; }
+.stat-sub{ font-size:10px !important; color:var(--ink-dim) !important; }
 .stat-val, .stat-sub, .money, input[type=number]{
   font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1;
 }
-
-/* Section labels were the same grey as everything else. */
 .section-lbl{
-  font-weight:700 !important; letter-spacing:0.14em !important;
-  font-size:9px !important; opacity:.55;
+  font-size:9px !important; font-weight:700 !important;
+  letter-spacing:0.14em !important; color:var(--ink-faint) !important;
+  margin:18px 0 8px !important;
 }
 
-/* CARDS. Same idea - the white surface carries the edge. */
-.client-card{
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.9), 0 1px 0 rgba(0,0,0,.45), 0 8px 18px -10px rgba(0,0,0,.7);
-  transition:transform .13s ease, box-shadow .13s ease, border-color .13s ease;
+/* ---- THE FOUR HEADLINE NUMBERS. A permanent gradient in the agent's accent.
+   They look different because they ARE different, not because of how today is
+   going - which is the bar's job, below. ---- */
+.stat.hero{
+  background:linear-gradient(145deg, var(--accent) 0%, var(--accent-dark) 100%) !important;
+  border-color:transparent !important;
+  box-shadow:0 1px 2px rgba(22,32,46,.10), 0 8px 20px -8px color-mix(in srgb, var(--accent) 55%, transparent);
 }
-.client-card:hover{
-  transform:translateY(-1.5px); border-color:#cfdcea;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.95), 0 2px 0 rgba(0,0,0,.45), 0 16px 30px -12px rgba(0,0,0,.8);
-}
-#task-sidebar, .appt-sidebar{
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.85), 0 1px 0 rgba(0,0,0,.5), 0 10px 26px -14px rgba(0,0,0,.75);
-}
+.stat.hero .stat-lbl{ color:rgba(255,255,255,.68) !important; }
+.stat.hero .stat-val{ color:var(--accent-ink) !important; font-size:32px !important; }
+.stat.hero .stat-sub{ color:rgba(255,255,255,.72) !important; }
+.stat.hero:hover{ box-shadow:0 2px 4px rgba(22,32,46,.12), 0 16px 30px -10px color-mix(in srgb, var(--accent) 60%, transparent); }
 
-/* MODALS lift right off the page, and the field behind actually recedes. */
-.modal{
-  box-shadow:0 30px 70px -18px rgba(0,0,0,.85), 0 6px 18px rgba(0,0,0,.4) !important;
-  border:none !important;
+/* ---- GOAL STATE. The card NEVER floods. A bar at the bottom carries it, and
+   the number goes green only when the goal is actually hit. ---- */
+.stat.tile-goal-red, .stat.tile-goal-yellow, .stat.tile-goal-green{
+  background:#fff !important; border-color:var(--hair) !important;
 }
-.modal-overlay{
-  background:rgba(10,12,16,.55) !important;
-  backdrop-filter:blur(3px) saturate(1.1); -webkit-backdrop-filter:blur(3px) saturate(1.1);
+.stat.tile-goal-red .stat-lbl, .stat.tile-goal-yellow .stat-lbl, .stat.tile-goal-green .stat-lbl{
+  color:var(--ink-faint) !important;
 }
-.modal-title{ letter-spacing:-0.02em; font-weight:650; }
+.stat.tile-goal-red .stat-val, .stat.tile-goal-yellow .stat-val{ color:var(--ink) !important; }
+.stat.tile-goal-green .stat-val{ color:var(--goal-green) !important; }
+.stat.tile-goal-red .stat-sub, .stat.tile-goal-yellow .stat-sub, .stat.tile-goal-green .stat-sub{
+  color:var(--ink-dim) !important; font-weight:500 !important;
+}
+/* the goal-settable marker was a teal strip down the right edge - unnecessary
+   now that an unset tile simply says "+ set a goal" */
+.stat.goal-able{ border-right-width:1px !important; }
 
-/* The header should read as the frame, not another card. */
+/* ---- CHROME ---- */
 .hdr{
-  background:linear-gradient(180deg,#272C35 0%,#20242B 100%) !important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 10px 26px -18px rgba(0,0,0,.9) !important;
+  background:linear-gradient(180deg,#20242B 0%,#1A1D23 100%) !important;
+  border-radius:12px; box-shadow:0 6px 18px -10px rgba(22,32,46,.45) !important;
 }
+.tab-bar{ background:#fff !important; border:1px solid var(--hair) !important; border-radius:10px; }
+.tab{ color:var(--ink-dim) !important; }
+.tab.on{ color:#fff !important; }
+.modal{ box-shadow:0 24px 60px -16px rgba(22,32,46,.35), 0 4px 12px rgba(22,32,46,.10) !important; }
+.modal-overlay{
+  background:rgba(22,32,46,.38) !important;
+  backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
+}
+.modal-title{ letter-spacing:-0.02em; font-weight:650; color:var(--ink) !important; }
+.search, input, select, textarea{ background:#fff !important; border-color:var(--hair) !important; color:var(--ink) !important; }
+.pill{ background:#fff !important; border-color:var(--hair) !important; color:var(--ink-dim) !important; }
+.pill.on{ background:var(--accent) !important; border-color:var(--accent) !important; color:var(--accent-ink) !important; }
 
-/* Buttons: lit top edge, and they physically press. */
+/* Buttons press. */
 .save-btn, .call-btn, .add-btn{
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.22), 0 1px 2px rgba(0,0,0,.35);
+  box-shadow:0 1px 2px rgba(22,32,46,.12);
   transition:transform .08s ease, box-shadow .12s ease, filter .12s ease;
 }
-.save-btn:hover, .call-btn:hover, .add-btn:hover{ filter:brightness(1.07); }
-.save-btn:active, .call-btn:active, .add-btn:active{
-  transform:translateY(1px); box-shadow:inset 0 1px 3px rgba(0,0,0,.3);
-}
+.save-btn:hover, .call-btn:hover, .add-btn:hover{ filter:brightness(1.06); }
+.save-btn:active, .call-btn:active, .add-btn:active{ transform:translateY(1px); box-shadow:none; }
 
-/* Two radii, not four. */
-.stat, .client-card, .case-body, .modal{ border-radius:11px; }
 .save-btn, .call-btn, .add-btn, .search, input, select, textarea{ border-radius:8px; }
-
-/* Focus you can see, in whatever accent is chosen. */
 input:focus, select:focus, textarea:focus{
   outline:2px solid var(--accent); outline-offset:1px; border-color:transparent !important;
+}
+
+/* ---- the trend strip under Dialing activity ---- */
+#trend-strip{
+  background:#fff; border:1px solid var(--hair); border-radius:12px;
+  padding:12px 14px 8px; margin-bottom:10px;
+  box-shadow:0 1px 2px rgba(22,32,46,.05), 0 2px 8px -4px rgba(22,32,46,.08);
+}
+#trend-strip .t-lbl{
+  font-size:9px; font-weight:700; letter-spacing:.10em;
+  color:var(--ink-faint); text-transform:uppercase; margin-bottom:6px;
 }
 
 @media (prefers-reduced-motion: reduce){
@@ -643,7 +658,7 @@ input:focus, select:focus, textarea:focus{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h215</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h216</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="gear-btn" id="undo-btn" onclick="undoLastAction()" style="display:none;" title="Undo the last action">&#8634;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
@@ -682,7 +697,7 @@ input:focus, select:focus, textarea:focus{
     <div class="stat-row">
       <div class="stat stat-navy">
         <div class="stat-lbl lbl-white">Dials</div>
-        <div class="stat-val val-white" id="s-dials">0</div>
+        <div class="stat-val val-white hero" id="s-dials">0</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.6);margin-top:-4px;margin-bottom:2px;" id="s-dials-per-hr"></div>
         <div class="stat-btns">
           
@@ -690,7 +705,7 @@ input:focus, select:focus, textarea:focus{
       </div>
       <div class="stat stat-navy-lt">
         <div class="stat-lbl lbl-navy">Appts set</div>
-        <div class="stat-val val-navy" id="s-appts">0</div>
+        <div class="stat-val val-navy hero" id="s-appts">0</div>
         <div class="stat-sub sub-navy" id="p-appts-sub"></div>
         <div class="stat-btns">
         </div>
@@ -736,6 +751,14 @@ input:focus, select:focus, textarea:focus{
         <div class="stat-val" id="s-time-appt" style="color:var(--accent);font-size:18px;cursor:pointer;" onclick="editTimerTime('appt')" title="Tap to correct">0:00</div>
       </div>
     </div>
+    <!-- h216: a number tells you where you are; a shape tells you where you are
+         going. Hand-rolled SVG so there is no library to load and nothing to
+         break offline. Hidden on Day view - one bar is not a trend. -->
+    <div id="trend-strip" style="display:none;">
+      <div class="t-lbl" id="trend-lbl">Dials</div>
+      <div id="trend-svg"></div>
+    </div>
+
     <div class="section-lbl">Production</div>
     <div id="prod-board-toggle" style="display:flex;gap:6px;margin-bottom:8px;">
       <button id="pbt-mp_life" onclick="setProdBoard('mp_life')" style="flex:1;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;background:#1D3557;color:#fff;">Life / MP</button>
@@ -768,7 +791,7 @@ input:focus, select:focus, textarea:focus{
     <div class="stat-row" style="grid-template-columns:repeat(4,minmax(0,1fr));">
       <div class="stat stat-teal">
         <div class="stat-lbl lbl-white">Sales</div>
-        <div class="stat-val val-white" id="p-sales" style="cursor:pointer;" onclick="drillDown('sales')">0</div>
+        <div class="stat-val val-white hero" id="p-sales" style="cursor:pointer;" onclick="drillDown('sales')">0</div>
         <div class="stat-sub sub-white" id="p-sales-sub">- close rate</div>
       </div>
       <div class="stat stat-red">
@@ -832,7 +855,7 @@ input:focus, select:focus, textarea:focus{
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
       <div class="stat stat-teal">
         <div class="stat-lbl lbl-white">Submitted APV</div>
-        <div class="stat-val val-white" id="p-apv" style="font-size:20px;">$0</div>
+        <div class="stat-val val-white hero" id="p-apv" style="font-size:20px;">$0</div>
         <div class="stat-sub sub-white" id="p-apv-goalsub"></div>
       </div>
       <div class="stat stat-navy-lt">
@@ -2498,6 +2521,7 @@ function renderScore() {
   }
   applyTheme();            // push the agent's theme colors into CSS vars
   applyNeutralPalette();   // theme-driven base field; alerts + goal glow carry color
+  try { renderTrendStrip(); } catch (e) {}
   renderGoalZones({ dials: dials, appts_set: appts, sits: totalShowed, sales: totalSales, apps: appsWritten, resets: totalResets, apv: totalAPV });
   document.getElementById('p-closed').textContent = appsWritten;
   { const e=document.getElementById('p-close-rate'); if (e) e.textContent = ''; }   // per-sale removed; slot serves the Apps goal
@@ -9072,7 +9096,7 @@ function openLogEntryEditor(id, idx) {
         '<b>' + esc(_statLine(cur, -1)) + '</b>' +
         (ownsAppt ? ' and deletes the appointment plus its calendar event' : '') +
         '. It is kept so you can put it back.</div>' +
-      '<button class="save-btn" style="background:#C0392B;" onclick="confirmDeleteLogEntry(\'' + id + '\',' + idx + ')">Remove this entry</button>' +
+      '<button class="save-btn" style="background:var(--goal-red);" onclick="confirmDeleteLogEntry(\'' + id + '\',' + idx + ')">Remove this entry</button>' +
     '</div>'
   );
 }
@@ -11336,7 +11360,7 @@ function openEditOutcome(id, ci, ti) {
     ${hasApps
       ? '<div style="font-size:11px;color:#5E6A78;">This sit has ' + (tp.apps||[]).length + ' application(s) on it, so it cannot be removed here \u2014 move or delete those first, or the applications go with it.</div>'
       : '<div style="font-size:11px;color:#5E6A78;margin-bottom:6px;">Logged twice by mistake? Removing it takes this sit off the case. It is kept so you can put it back.</div>' +
-        '<button class="save-btn" style="background:#C0392B;" onclick="confirmDeleteTouchpoint(\'' + id + '\',' + ci + ',' + ti + ')">Remove this sit</button>'}
+        '<button class="save-btn" style="background:var(--goal-red);" onclick="confirmDeleteTouchpoint(\'' + id + '\',' + ci + ',' + ti + ')">Remove this sit</button>'}
   </div>`);
 }
 
@@ -13282,7 +13306,7 @@ function openLeadSpend(showAll) {
             '<div style="font-size:10px;font-weight:700;color:var(--accent-dark);width:34px;flex-shrink:0;">' + esc(ch.source) + '</div>' +
             '<div style="flex:1;font-size:11px;color:#5E6A78;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(ch.note || '') + '</div>' +
             '<div style="font-size:12px;font-weight:600;">$' + Number(ch.amount).toLocaleString() + '</div>' +
-            '<button onclick="removeLeadCharge(\'' + ch.id + '\')" style="background:none;border:none;color:#C0392B;font-size:13px;cursor:pointer;padding:0 2px;">&times;</button>' +
+            '<button onclick="removeLeadCharge(\'' + ch.id + '\')" style="background:none;border:none;color:var(--goal-red);font-size:13px;cursor:pointer;padding:0 2px;">&times;</button>' +
           '</div>').join('')
       : '<div style="font-size:12px;color:#8B97A6;padding:6px 0;">No charges in this period.</div>') +
 
@@ -14587,6 +14611,50 @@ function applyNeutralPalette(){
 // The goal bar lives IN the tile's existing sub-line slot - no extra row. Bar when
 // set for THIS period instance (tap to edit); a quiet "+ set a goal" when not.
 // The one-activity/one-outcome idea is a suggestion now, not enforced.
+// A small column chart of dials across the period. Deliberately plain: no axes,
+// no legend, no library - the shape is the point, and the numbers are already on
+// the tiles above it.
+function renderTrendStrip() {
+  const wrap = document.getElementById('trend-strip');
+  const host = document.getElementById('trend-svg');
+  const lbl  = document.getElementById('trend-lbl');
+  if (!wrap || !host) return;
+  if (view === 'day') { wrap.style.display = 'none'; return; }   // one bar is not a trend
+
+  const { start, end } = getPeriodBounds('activity');
+  const buckets = [];
+  const oneDay = 86400000;
+  const span = Math.max(1, Math.round((end - start) / oneDay));
+  const step = span > 62 ? 7 : 1;                                 // weeks for a quarter or a year
+  for (let t = start.getTime(); t <= end.getTime(); t += step * oneDay) {
+    const a = new Date(t), b = new Date(Math.min(end.getTime(), t + step * oneDay - 1));
+    buckets.push({ a, b, v: sumStat('dials', a, b) });
+  }
+  if (!buckets.length) { wrap.style.display = 'none'; return; }
+  const max = Math.max(1, ...buckets.map(x => x.v));
+  const total = buckets.reduce((s2, x) => s2 + x.v, 0);
+  if (!total) { wrap.style.display = 'none'; return; }
+
+  const W = 100, H = 34, gap = 100 / buckets.length * 0.28;
+  const bw = (100 / buckets.length) - gap;
+  const bars = buckets.map((x, i) => {
+    const h = (x.v / max) * H;
+    const xx = i * (100 / buckets.length) + gap / 2;
+    const t = x.a.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return '<rect x="' + xx.toFixed(2) + '" y="' + (H - h).toFixed(2) + '" width="' + bw.toFixed(2) +
+      '" height="' + Math.max(h, x.v ? 0.8 : 0).toFixed(2) + '" rx="0.6" fill="var(--accent)" ' +
+      'opacity="' + (x.v ? 0.85 : 0.10) + '"><title>' + t + ': ' + x.v + ' dials</title></rect>';
+  }).join('');
+
+  lbl.textContent = 'Dials \u00b7 ' + total.toLocaleString() + ' this ' + (view === 'week' ? 'week' : view);
+  host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" ' +
+    'style="width:100%;height:38px;display:block;overflow:visible;">' + bars + '</svg>' +
+    '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--ink-faint);margin-top:4px;">' +
+      '<span>' + start.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + '</span>' +
+      '<span>' + end.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + '</span></div>';
+  wrap.style.display = '';
+}
+
 function renderGoalZones(vals){
   const goals = getGoals();
   const key = currentPeriodKey();
@@ -14607,13 +14675,17 @@ function renderGoalZones(vals){
       const fillPct = target > 0 ? Math.min(100, (actual/target)*100) : 0;
       const st = goalStatusColor(actual, target);
       if (tile) { tile.classList.remove('tile-navy','tile-lblue','tile-slate','tile-a','tile-b','tile-base','tile-base2'); tile.classList.add('tile-goal-'+st.state); }
-      const _th = getTheme();
-      const gc = st.state === 'green' ? _th.green : (st.state === 'red' ? _th.red : _th.amber);
-      const onLight = _lum(gc) > 0.45;   // is the goal color light? (amber usually is)
-      const txt   = onLight ? '#1D3557' : '#ffffff';
-      const soft  = onLight ? 'rgba(29,53,87,0.55)' : 'rgba(255,255,255,0.7)';
-      const barFill = onLight ? '#1D3557' : 'rgba(255,255,255,0.92)';
-      const barTrack = onLight ? 'rgba(29,53,87,0.22)' : 'rgba(255,255,255,0.28)';
+      // h216: the tile used to flood entirely with the goal colour - a whole lime
+      // rectangle when you hit target. The card stays white now and the BAR
+      // carries the state, which is how a dashboard reads as considered rather
+      // than loud. A hero tile is already coloured, so it inverts.
+      const isHero = tile && tile.classList.contains('hero');
+      const gcVar = st.state === 'green' ? 'var(--goal-green)'
+                  : st.state === 'red'   ? 'var(--goal-red)' : 'var(--goal-amber)';
+      const txt   = isHero ? 'var(--accent-ink)' : 'var(--ink)';
+      const soft  = isHero ? 'rgba(255,255,255,.65)' : 'var(--ink-faint)';
+      const barFill  = isHero ? 'rgba(255,255,255,.95)' : gcVar;
+      const barTrack = isHero ? 'rgba(255,255,255,.28)' : 'rgba(22,32,46,.10)';
       const aStr = m.money ? goalMoney(actual) : Math.round(actual).toLocaleString();
       const tStr = m.money ? goalMoney(target) : Math.round(target).toLocaleString();
       slot.style.cursor = 'pointer';
@@ -14621,7 +14693,7 @@ function renderGoalZones(vals){
       slot.innerHTML = wrap(
         '<div style="display:flex;justify-content:space-between;font-size:9px;color:'+txt+';font-weight:700;line-height:1.1;">' +
           '<span>'+aStr+(st.hit?' \u2713':'')+'</span><span style="color:'+soft+';font-weight:500;">'+tStr+'</span></div>' +
-        '<div style="height:4px;border-radius:3px;background:'+barTrack+';overflow:hidden;margin-top:2px;">' +
+        '<div style="height:5px;border-radius:3px;background:'+barTrack+';overflow:hidden;margin-top:3px;">' +
           '<div style="height:100%;width:'+fillPct+'%;background:'+barFill+';border-radius:3px;transition:width .4s ease;"></div></div>');
     } else {
       // No goal for THIS period instance. Always reset the slot so a goal set in
@@ -14630,7 +14702,7 @@ function renderGoalZones(vals){
       if (tile) { tile.classList.remove('tile-goal-red','tile-goal-yellow','tile-goal-green'); }
       slot.style.cursor = 'pointer';
       slot.onclick = () => openGoalSetter(m.metric);
-      slot.innerHTML = wrap('<span style="font-size:9px;color:'+faint+';">+ set a goal</span>');
+      slot.innerHTML = wrap('<span style="font-size:9px;color:var(--accent);font-weight:600;">+ set a goal</span>');
     }
   });
 }
