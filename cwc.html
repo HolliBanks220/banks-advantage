@@ -629,15 +629,6 @@ body{
 .stat.hero .stat-sub{ margin-top:18px !important; font-size:12px !important; }
 .stat.hero.tile-goal-green{ border-color:var(--teal-border) !important; }
 .stat.hero.tile-goal-green::before{ opacity:1; }
-
-/* ---- THE RECESSIVE GRIDS: one seamless hairline block per section. ---- */
-.stat-row, .stat-row2{
-  display:grid !important;
-  grid-template-columns:repeat(auto-fill, minmax(148px,1fr)) !important;
-  gap:1px !important; margin:0 0 8px !important;
-  background:var(--line) !important; border:1px solid var(--line) !important;
-  border-radius:var(--r) !important; overflow:hidden !important;
-}
 .stat{
   display:flex !important; flex-direction:column !important; gap:7px !important;
   background:var(--surface) !important; border:none !important; border-radius:0 !important;
@@ -753,7 +744,6 @@ input:focus, select:focus, textarea:focus{
   .page-layout{ grid-template-columns:minmax(0,1fr) !important; max-width:520px !important; padding:14px 14px 32px !important; }
   .right-sidebar-col{ position:static !important; }
   #appt-sidebar{ max-height:55vh !important; overflow-y:auto !important; }
-  .stat-row, .stat-row2{ grid-template-columns:repeat(auto-fill,minmax(140px,1fr)) !important; }
   .stat-row.hero-row{ grid-template-columns:repeat(2,1fr) !important; gap:12px !important; }
 }
 @media (prefers-reduced-motion: reduce){
@@ -816,10 +806,6 @@ html,body{ overflow-x:hidden !important; }
 .stat-sub{ color:#7d8a88 !important; }
 .stat.hero .stat-lbl{ color:#9aa5a3 !important; }
 .stat.hero .stat-val{ color:#ffffff !important; }
-
-/* ---- MORE ACROSS. Five is the floor on a full-width board, and ROI's five
-   tiles should never wrap onto a second line while there is room. ---- */
-.stat-row, .stat-row2{ grid-template-columns:repeat(auto-fill, minmax(140px,1fr)) !important; }
 /* h227: this was ID-scoped and beat the six-column cap below, which is why
    production still packed nine across. The cap is the only rule now. */
 
@@ -880,14 +866,6 @@ html,body{ overflow-x:hidden !important; }
 .task-item{ padding:10px 8px !important; font-size:13.5px !important; }
 #task-sidebar > div:first-child{ font-size:12px !important; letter-spacing:.14em !important; }
 
-/* ---- SIX ACROSS AT MOST. auto-fill has no ceiling, so a wide board packed
-   nine into a row and each one shrank to nothing. ---- */
-.stat-row, .stat-row2{ grid-template-columns:repeat(6, minmax(0,1fr)) !important; }
-@media(max-width:1400px){ .stat-row, .stat-row2{ grid-template-columns:repeat(5, minmax(0,1fr)) !important; } }
-@media(max-width:1180px){ .stat-row, .stat-row2{ grid-template-columns:repeat(4, minmax(0,1fr)) !important; } }
-@media(max-width:900px){  .stat-row, .stat-row2{ grid-template-columns:repeat(3, minmax(0,1fr)) !important; } }
-@media(max-width:640px){  .stat-row, .stat-row2{ grid-template-columns:repeat(2, minmax(0,1fr)) !important; } }
-
 /* ---- ONE BASELINE PER ROW. A one-line label and a two-line label pushed their
    numbers to different heights, so a row of figures zig-zagged. Fixed rows put
    every label, number and sub on the same line as its neighbours. ---- */
@@ -936,14 +914,6 @@ html,body{ overflow-x:hidden !important; }
 #mp-panel .stat-row, #ret-panel .stat-row, #mp-panel .stat-row2, #ret-panel .stat-row2{
   grid-template-columns:repeat(6, minmax(0,1fr)) !important;
 }
-@media(max-width:1400px){ .stat-row:not(.hero-row), .stat-row2,
-  #mp-panel .stat-row, #ret-panel .stat-row{ grid-template-columns:repeat(5,minmax(0,1fr)) !important; } }
-@media(max-width:1180px){ .stat-row:not(.hero-row), .stat-row2,
-  #mp-panel .stat-row, #ret-panel .stat-row{ grid-template-columns:repeat(4,minmax(0,1fr)) !important; } }
-@media(max-width:900px){  .stat-row:not(.hero-row), .stat-row2,
-  #mp-panel .stat-row, #ret-panel .stat-row{ grid-template-columns:repeat(3,minmax(0,1fr)) !important; } }
-@media(max-width:640px){  .stat-row:not(.hero-row), .stat-row2,
-  #mp-panel .stat-row, #ret-panel .stat-row{ grid-template-columns:repeat(2,minmax(0,1fr)) !important; } }
 
 /* ---- THE RAIL. No white anywhere, and no colour on the text except the time,
    which carries the accent. The type colours belong on the left stripe. ---- */
@@ -2211,7 +2181,8 @@ html,body{ overflow-x:hidden !important; }
    beating their inline white. */
 .modal [style*="background:var(--accent)"],
 .modal [style*="background: var(--accent)"],
-.modal .save-btn, .modal button.save-btn,
+.modal .save-btn, .modal button.save-btn{
+  color:#fff !important;
 }
 .modal [style*="background:var(--accent)"] *,
 .modal .save-btn *{ color:#fff !important; }
@@ -2721,7 +2692,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h282</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h283</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
