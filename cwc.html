@@ -2547,10 +2547,52 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
   font-size:11.5px !important; font-weight:800 !important;
   letter-spacing:.04em; border-radius:999px !important; padding:3px 12px !important;
 }
+
+/* h276: the boot curtain. It covers a wait that already existed, so it must not
+   add one - it lifts the moment the board is arranged, and it fails open: if the
+   lift never fires, the animation takes it away by itself. */
+#boot-curtain{
+  position:fixed; inset:0; z-index:9999;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:16px; padding:32px;
+  background:
+    radial-gradient(900px 500px at 50% 40%, rgb(255 255 255 / .04), transparent 70%),
+    #0d1112;
+  text-align:center;
+  animation:boot-fail-open 0s linear 6s forwards;   /* never trap her behind it */
+}
+#boot-quote{
+  font-family:'Inter',-apple-system,sans-serif;
+  font-size:clamp(1.15rem, 2.6vw, 1.75rem); font-weight:600; line-height:1.45;
+  color:#eef3f2; max-width:22ch; letter-spacing:-.01em;
+  animation:boot-rise .5s ease both;
+}
+#boot-attr{
+  font-family:'Inter',-apple-system,sans-serif;
+  font-size:13px; font-weight:500; color:var(--accent-lift);
+  letter-spacing:.04em;
+  animation:boot-rise .5s ease .08s both;
+}
+#boot-attr:empty{ display:none; }
+#boot-curtain.boot-out{ opacity:0; transition:opacity .4s ease; pointer-events:none; }
+@keyframes boot-rise{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:none; } }
+@keyframes boot-fail-open{ to{ opacity:0; visibility:hidden; pointer-events:none; } }
+@media (prefers-reduced-motion: reduce){
+  #boot-quote, #boot-attr{ animation:none; }
+  #boot-curtain.boot-out{ transition:none; }
+}
 </style>
 </head>
 <body>
 <div class="page-layout">
+<!-- h276: the board renders in its original arrangement and is then rearranged
+     by reflowBoard() at runtime, so for a moment you can watch it move. This
+     covers exactly the wait that already existed. One line, drawn at random,
+     gone the moment the board is ready. -->
+<div id="boot-curtain">
+  <div id="boot-quote"></div>
+  <div id="boot-attr"></div>
+</div>
 <div class="page-outer"><div class="wrap app-main" id="app">
   <div class="hdr">
     <div class="hdr-left">
@@ -2565,7 +2607,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h275</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h276</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -3103,7 +3145,62 @@ let seeded = false;
 document.getElementById('hdr-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
 
 //  INIT 
+// h276: originals carry no attribution because there is nobody to attribute them
+// to. Everything credited is public domain - all five died before 1950 - so it
+// can ship in an app that goes to other agents without becoming her problem.
+const BOOT_LINES = [
+  // mindset
+  { t: 'Decided beats motivated.' },
+  { t: 'Motivation is a mood. Discipline is a decision.' },
+  { t: 'You don\'t need a better week. You need a better hour.' },
+  { t: 'Being nervous and doing it anyway is the whole job.' },
+  { t: 'Confidence comes after. Start without it.' },
+  // focus
+  { t: 'Do the hard one first. The rest gets easier.' },
+  { t: 'Busy isn\'t the same as productive.' },
+  { t: 'Protect the block. Everything else can wait an hour.' },
+  { t: 'You already know what to do. Go do that.' },
+  // compounding
+  { t: 'You\'re not behind. You\'re just not started yet.' },
+  { t: 'Today barely matters. A hundred todays decide everything.' },
+  { t: 'The gap between good and great is mostly just showing up again.' },
+  // vision
+  { t: 'The version of you that has this figured out started exactly here.' },
+  { t: 'Build it so it works without you.' },
+  { t: 'Somebody\'s whole family is protected because you didn\'t quit today.' },
+  { t: 'You\'re three years from something you can\'t picture yet.' },
+  // hers
+  { t: 'I wasn\'t decidedly better. I was just more decided.', a: 'Holli Banks' },
+  // public domain
+  { t: 'You must do the thing you think you cannot do.', a: 'Eleanor Roosevelt' },
+  { t: 'Every great dream begins with a dreamer.', a: 'Harriet Tubman' },
+  { t: 'The most effective way to do it, is to do it.', a: 'Amelia Earhart' },
+  { t: 'I am not afraid of storms, for I am learning how to sail my ship.', a: 'Louisa May Alcott' },
+  { t: 'I find that the harder I work, the more luck I seem to have.', a: 'Thomas Jefferson' },
+  { t: 'Whether you think you can or think you can\'t, you\'re right.', a: 'Henry Ford' },
+  { t: 'Do not wait; the time will never be just right.', a: 'Napoleon Hill' },
+  { t: 'Energy and persistence conquer all things.', a: 'Benjamin Franklin' },
+];
+
+function showBootCurtain() {
+  const q = document.getElementById('boot-quote');
+  const a = document.getElementById('boot-attr');
+  if (!q) return;
+  const pick = BOOT_LINES[Math.floor(Math.random() * BOOT_LINES.length)];
+  q.textContent = pick.t;
+  if (a) a.textContent = pick.a ? '\u2014 ' + pick.a : '';
+}
+
+function hideBootCurtain() {
+  const el = document.getElementById('boot-curtain');
+  if (!el || el.dataset.gone) return;
+  el.dataset.gone = '1';
+  el.classList.add('boot-out');
+  setTimeout(() => { el.style.display = 'none'; }, 420);
+}
+
 async function init() {
+  showBootCurtain();
   initTimer();
   showSync('Loading your data...');
   await Promise.all([loadClients(), loadStats(), loadAgentSettings()]);
@@ -4726,6 +4823,7 @@ function renderScore() {
   applyTheme();            // push the agent's theme colors into CSS vars
   applyNeutralPalette();   // theme-driven base field; alerts + goal glow carry color
   try { reflowBoard(); } catch (e) {}
+  try { hideBootCurtain(); } catch (e) {}   // h276: the board is arranged - lift the curtain
   renderGoalZones({ dials: dials, appts_set: appts, sits: totalShowed, sales: totalSales, apps: appsWritten, resets: totalResets, apv: totalAPV });
   document.getElementById('p-closed').textContent = appsWritten;
   { const e=document.getElementById('p-close-rate'); if (e) e.textContent = ''; }   // per-sale removed; slot serves the Apps goal
