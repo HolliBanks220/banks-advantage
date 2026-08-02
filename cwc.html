@@ -2531,6 +2531,12 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
 @media(max-width:800px){
   .sidebar-appts{ max-height:55vh !important; }
 }
+
+/* h274: the two money numbers split whatever the production grid leaves, so they
+   stay even however many columns the board is showing. */
+.stat.span-2{ grid-column:span 3 !important; }
+@media(max-width:1280px){ .stat.span-2{ grid-column:span 2 !important; } }
+@media(max-width:640px){  .stat.span-2{ grid-column:span 1 !important; } }
 </style>
 </head>
 <body>
@@ -2549,7 +2555,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h273</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h274</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -2603,7 +2609,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
         </div>
       </div>
       <div class="stat stat-navy-lt">
-        <div class="stat-lbl lbl-navy">Appts set</div>
+        <div class="stat-lbl lbl-navy">Appointments set</div>
         <div class="stat-val val-navy" id="s-appts">0</div>
         <div class="stat-sub sub-navy" id="p-appts-sub"></div>
         <div class="stat-btns">
@@ -2630,13 +2636,18 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
         <div class="stat-btns">
         </div>
       </div>
-      <!-- h223: was 'Texts sent'. A voicemail is outbound contact too and has logged
-           here since h180, so the tile counted both while claiming only one. The
-           label is honest now and the split is on the sub-line. -->
-      <div class="stat" style="">
-        <div class="stat-lbl" style="">Messages</div>
-        <div class="stat-val" id="s-texts" style="">0</div>
-        <div class="stat-sub" id="s-messages-sub" style="">-</div>
+      <!-- h274: was one "Messages" tile counting both. They are different actions -
+           a text they can reply to, a voicemail they cannot - and the slot Appt
+           time used to occupy was better spent separating them. -->
+      <div class="stat">
+        <div class="stat-lbl">Texts</div>
+        <div class="stat-val" id="s-texts">0</div>
+        <div class="stat-sub" id="s-texts-sub">-</div>
+      </div>
+      <div class="stat">
+        <div class="stat-lbl">Voicemails</div>
+        <div class="stat-val" id="s-vms">0</div>
+        <div class="stat-sub" id="s-vms-sub">-</div>
       </div>
       <div class="stat stat-amber">
         <!-- h243: the hint used to sit BETWEEN the label and the number, which
@@ -4049,13 +4060,15 @@ const HERO_IDS = ['s-dials', 's-appts', 's-resolved', 's-time-dial'];
 //      tiles sat alone across a wide board with the rest of the row empty
 //   3. put each section's tiles in the order she reads them
 const SECTION_ORDER = {
-  'dialing activity': ['s-callbacks', 's-texts', 's-dead'],
+  'dialing activity': ['s-callbacks', 's-texts', 's-vms', 's-dead'],
   // h250: four rows of four. Appointments and what happened at them, then the
   // verdicts, then what is still open, then the asks.
+  // h274: Appt time closes the fourth row, under Plans sent - it is time spent
+  // IN appointments, so it belongs with what appointments produce.
   'production':       ['p-first','p-showed','p-noshow','p-upcoming',
                        'p-sales','p-nosales','p-closed','p-needsoutcome',
                        'p-tai','p-ppu','p-dropped','p-resets',
-                       'p-resetask','p-refask','p-recask','p-stp'],
+                       'p-resetask','p-refask','p-recask','p-stp','s-time-appt'],
   'roi':              ['lp-apv','lp-comm','lp-profit','lp-spend','lp-roi'],
 };
 
@@ -4186,7 +4199,7 @@ function reflowBoard() {
       prodRow = prodRow.nextElementSibling;
     }
     if (prodRow) {
-      ['p-sales','p-apv'].forEach(id => {
+      ['s-time-appt','p-sales','p-apv'].forEach(id => {
         const v = document.getElementById(id);
         const tile = v ? v.closest('.stat') : null;
         if (tile && tile.parentNode !== prodRow) prodRow.insertBefore(tile, prodRow.firstElementChild);
@@ -4315,6 +4328,7 @@ function renderScore() {
     if (el && el.tagName !== 'INPUT') el.textContent = [dials,convos,appts,callbacks,dead][i];
   });
   const textsEl = document.getElementById('s-texts');
+  const vmsEl = document.getElementById('s-vms');
   // h223: a voicemail logs a dial but never had a stat of its own, so a counter
   // would read zero. Counted from the call log instead, which also picks up every
   // voicemail already sent rather than starting from today.
@@ -4323,12 +4337,13 @@ function renderScore() {
     const d = new Date(e.ts);
     return d >= aStart && d <= aEnd;
   }).length, 0);
-  if (textsEl) textsEl.textContent = texts + vms;
-  const msgSub = document.getElementById('s-messages-sub');
-  if (msgSub) {
-    msgSub.textContent = (texts + vms) === 0 ? '-'
-      : texts + ' text' + (texts === 1 ? '' : 's') + ' \u00b7 ' + vms + ' voicemail' + (vms === 1 ? '' : 's');
-  }
+  // h274: two tiles, each counting its own thing
+  if (textsEl) textsEl.textContent = texts;
+  if (vmsEl) vmsEl.textContent = vms;
+  const _sub = (id, v, per) => { const e = document.getElementById(id); if (!e) return;
+    e.textContent = v === 0 ? '-' : (per > 0 ? Math.round((v / per) * 100) + '% of dials' : ''); };
+  _sub('s-texts-sub', texts, dials);
+  _sub('s-vms-sub', vms, dials);
 
   // Time tracking - sum from stats table for the period
   const dialSecs = sumStat('time_dial_' + aStart.toISOString().slice(0,10) + (aStart.toISOString().slice(0,10) === aEnd.toISOString().slice(0,10) ? '' : '_multi'), aStart, aEnd);
