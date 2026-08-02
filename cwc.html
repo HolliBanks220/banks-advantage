@@ -2336,7 +2336,7 @@ button.chip-action:hover, .modal button.chip-action:hover{ filter:brightness(1.1
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h262</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h263</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -5604,6 +5604,37 @@ function getAllAppts() {
   return clients.flatMap(c => getClientAppts(c));
 }
 
+// h263: getAllAppts returns APPOINTMENTS ONLY. The schedule looked complete
+// because renderSidebar gathered callbacks and follow-ups separately, in local
+// variables nothing else could reach - so the status line, pointed at
+// getAllAppts, was structurally unable to see a follow-up however it was
+// written. This is the whole stream, and both now read from it.
+function getAllScheduled() {
+  const out = getAllAppts().map(a => Object.assign({}, a));
+
+  clients.forEach(c => {
+    if (['Closed','Dead','No sale'].includes(c.status)) return;
+
+    const cb = getScheduledCallback(c);
+    if (cb && cb.callback_dt && !isCallbackResolved(c)) {
+      out.push({ clientId: c.id, clientName: c.name, datetime: cb.callback_dt,
+                 note: cb.callback_note || 'Callback', isCallback: true });
+    }
+
+    if (c.status === 'Follow-up') {
+      const fu = getScheduledFollowUp(c);
+      if (fu && fu.datetime) {
+        out.push({ clientId: c.id, clientName: c.name, datetime: fu.datetime,
+                   note: fu.note || 'Follow-up', isFollowUp: true });
+      }
+    }
+  });
+
+  return out.filter((a, i, arr) =>
+    arr.findIndex(b => b.clientId === a.clientId && b.datetime === a.datetime) === i
+  ).sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+}
+
 function renderSidebar() {
   const now = new Date();
   const todayStr = now.toDateString();
@@ -7600,7 +7631,7 @@ function getNextApptInfo() {
   const now = new Date();
   const staleCutoff = new Date(now.getTime() - 15 * 60000);   // 15 min grace
   let all = [];
-  try { all = getAllAppts() || []; } catch (e) { return null; }
+  try { all = getAllScheduled() || []; } catch (e) { return null; }
   const next = all
     .filter(a => a && a.datetime && new Date(a.datetime) >= staleCutoff)
     .sort((x, y) => new Date(x.datetime) - new Date(y.datetime))[0];
