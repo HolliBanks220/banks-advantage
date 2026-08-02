@@ -2318,6 +2318,16 @@ button.chip-action:hover, .modal button.chip-action:hover{ filter:brightness(1.1
 .ns-chip.ns-hot{
   background:var(--red-dim); border-color:var(--red-border); color:#ff8a8e;
 }
+
+/* h264: one line for what kind of meeting it is, with room to say it. It used to
+   share the slot with the raw lead note, which pushed the type onto one crushed
+   line and printed an address underneath it. */
+.appt-sidebar-item .ap-kind{
+  font-size:12.5px !important; color:#a8b3b1 !important; font-weight:500 !important;
+  line-height:1.45 !important; margin-top:5px !important;
+}
+.appt-sidebar-item.ap-due .ap-kind{ color:#ffd9da !important; }
+.appt-sidebar-item{ padding:13px 14px !important; }
 </style>
 </head>
 <body>
@@ -2336,7 +2346,7 @@ button.chip-action:hover, .modal button.chip-action:hover{ filter:brightness(1.1
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h263</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h265</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -3663,14 +3673,11 @@ function renderProduction() {
       '<button onclick="drillDown(\'needsoutcome\')" style="font-size:11px;font-weight:600;background:#FFF6E8;border:1px solid #F0C888;color:#854F0B;border-radius:6px;padding:4px 10px;cursor:pointer;">' + needsN + ' need an outcome</button>' +
       (fixableN ? '<span onclick="reviewUnloggedSits()" style="font-size:11px;color:var(--accent);text-decoration:underline;cursor:pointer;">' + fixableN + ' resolved elsewhere \u2014 fix</span>' : '') +
     '</div>' : '';
-  el.innerHTML =
-    (owed.length ? `
-    <div style="font-size:11px;font-weight:700;color:#1D3557;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Referral thank you &middot; $${total}</div>
-    ${owed.map(o => `
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0;border-top:1px solid #eef2f7;">
-        <div style="font-size:12px;color:#1D3557;">$${o.amount||30} to <strong onclick="openClient('${o.referrerId}')" style="cursor:pointer;text-decoration:underline;">${o.referrerName}</strong> <span style="color:#8fa8c0;">(ref: ${o.refName})</span></div>
-        <button onclick="markReferralPaid('${o.referrerId}','${o.refId}')" style="font-size:11px;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-weight:500;flex-shrink:0;">Mark paid</button>
-      </div>`).join('')}` : '') + needsBtn;
+  // h265: the "Referral thank you - $X owed" strip is gone. Tracking what you owe
+  // a client for sending business is rebating; the rules vary by state and an app
+  // that keeps a running tally of it is a record nobody should want. The
+  // referrals themselves are untouched - only the money came out.
+  el.innerHTML = needsBtn;
 }
 
 async function markReferralPaid(referrerId, refId) {
@@ -5514,6 +5521,28 @@ function drillDown(type) {
 }
 
 // Get all pending appointments for a client across all open cases
+// h265: a note is worth showing when it tells you something the TYPE does not.
+// "PPU Continuation" above "PPU / Policy Pickup", "Follow-up (revived)" above
+// "Follow-up", "Continuation" above "Step 3" - all of those are the structure
+// said twice. "Securian - 55k 399/qr, loss of coverage at 100" is a note. The
+// test: strip the structural words; if nothing of substance is left, drop it.
+const STRUCTURAL_WORDS = /\b(continuation|revived|revive|follow[- ]?up|ppu|policy\s*pickup|initial|step\s*\d|retirement|mortgage\s*protection|solutions?|appt|appointment|scheduled|reset|rescheduled)\b/gi;
+function meaningfulNote(note, typeLabel) {
+  const n = String(note || '').trim();
+  if (!n) return '';
+  // an exact echo of the type line, however punctuated
+  const norm = str => String(str || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const nn = norm(n), nt = norm(typeLabel);
+  if (!nn) return '';
+  // an echo, or a fragment the type line already contains - "Think about it"
+  // under "Mortgage Protection - Think about it" says nothing new
+  if (nn === nt || (nt && nt.indexOf(nn) > -1)) return '';
+  // strip the structural vocabulary and see whether anything substantive remains
+  const residue = n.replace(STRUCTURAL_WORDS, '').replace(/[^a-zA-Z0-9]+/g, '').trim();
+  if (residue.length < 3) return '';
+  return n;
+}
+
 function getClientAppts(c) {
   const appts = [];
   const now = new Date();
@@ -5706,12 +5735,16 @@ function renderSidebar() {
     const _minsAway = (dt - now) / 60000;
     const dueNow = _minsAway <= 5;      // 5 min before, and it stays until logged
     const accent = typeClass + (dueNow ? ' ap-due' : '');
-    const typeLabel = a.caseType ? `<div class="ap-meta">${a.caseType}${a.tpType?' - '+a.tpType:''}</div>` : '';
+    // h264: the raw lead note used to print here - which is where the address and
+    // the carrier quotes were coming from. Every card now says the same three
+    // things in the same order: who, when, and what kind of meeting it is.
+    const typeLabel = [a.caseType, a.tpType].filter(Boolean).join(' \u00b7 ');
+    const extra = meaningfulNote(a.notes, typeLabel);
     return `<div class="appt-sidebar-item ap-item ${accent}" onclick="openClient('${a.clientId}')">
       <div class="ap-name">${a.clientName}</div>
       <div class="ap-time">${dateStr}${timeStr}${passed?' - owed an outcome':''}</div>
-      ${typeLabel}
-      ${a.notes?`<div class="ap-meta">${a.notes}</div>`:''}
+      ${typeLabel?`<div class="ap-kind">${typeLabel}</div>`:''}
+      ${extra?`<div class="ap-note">${esc(extra)}</div>`:''}
     </div>`;
   }
 
@@ -5723,7 +5756,7 @@ function renderSidebar() {
     return `<div class="appt-sidebar-item ap-item ap-reminder" onclick="openClient('${a.clientId}')">
       <div class="ap-name">${a.clientName}</div>
       <div class="ap-time">📞 ${dateStr}${timeStr}</div>
-      <div class="ap-meta">Scheduled callback</div>
+      <div class="ap-kind">Callback</div>
     </div>`;
   }
 
@@ -5735,7 +5768,7 @@ function renderSidebar() {
     return `<div class="appt-sidebar-item ap-item ap-reminder" onclick="openClient('${a.clientId}')">
       <div class="ap-name">${a.clientName}</div>
       <div class="ap-time">📋 ${dateStr}${timeStr}</div>
-      <div class="ap-meta">${a.note||'Follow-up'}</div>
+      <div class="ap-kind">Follow-up</div>
     </div>`;
   }
 
@@ -8210,6 +8243,25 @@ function caseSurvivesVerdict(cs, saidNoAt) {
 function contradictionsFor(c) {
   const out = [];
   if (!c) return out;
+
+  // h265: the appointment label disagrees with the appointment itself
+  const nc = noteContradictsType(c);
+  if (nc) out.push({
+    kind: 'stale-note',
+    text: 'The card says "' + nc.raw + '" but the booked meeting is ' +
+          (nc.liveType || 'Step ' + nc.liveStep) + '. The label is left over from an earlier booking.',
+    fix: 'Clear the stale label',
+    action: "clearStaleApptNote('" + c.id + "')",
+  });
+
+  // h265: a step booked before the one under it was ever attended
+  stepsOutOfSequence(c).forEach(x => out.push({
+    kind: 'step-skip',
+    text: 'Step ' + x.step + ' is booked, but step ' + x.missing + ' has no outcome logged.',
+    fix: 'Open the lead and log step ' + x.missing,
+    action: "closeModal();setTimeout(()=>openClient('" + c.id + "'),100)",
+  }));
+
   const pending = tp => tp && (!tp.outcome || tp.outcome === 'pending') && tp.datetime;
   const notInterested = verdictIsNotInterested(c);
   const saidNoAt = Math.max(0, ...((c.call_log||[]).filter(cl => cl.outcome === 'Not interested').map(cl => new Date(cl.ts).getTime() || 0)));
@@ -8255,6 +8307,45 @@ function contradictionsFor(c) {
 
 function caseLabel(cs) {
   return (cs && cs.type) ? cs.type : 'case';
+}
+
+// h265: two new contradictions, both from the Anthony Keith Grant case - a card
+// reading "Retirement - Step 1" with "Step 2 (revived)" under it.
+function noteContradictsType(c) {
+  if (!c || !apptOf(c)) return null;
+  const raw = String(c.appt_notes || '').trim();
+  const m = raw.match(/step\s*(\d)/i);
+  if (!m) return null;
+  const notesStep = +m[1];
+  const apptMs = new Date(apptOf(c)).getTime();
+  let liveStep = 0, liveType = '';
+  (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+    if (!tp || tp.outcome !== 'pending' || !tp.datetime) return;
+    if (Math.abs(new Date(tp.datetime).getTime() - apptMs) >= 5*60*1000) return;
+    liveType = tp.type || '';
+    const lm = liveType.match(/step\s*(\d)/i);
+    liveStep = lm ? +lm[1] : 0;
+  }));
+  if (!liveStep || liveStep === notesStep) return null;
+  return { notesStep, liveStep, liveType, raw };
+}
+
+// A retirement case whose booked step skips one that was never attended.
+function stepsOutOfSequence(c) {
+  const out = [];
+  (c.cases||[]).forEach((cs, ci) => {
+    if (!isRetirementCase(cs)) return;
+    const attended = retAttendedSteps(cs);
+    (cs.touchpoints||[]).forEach((tp, ti) => {
+      if (!tp || tp.outcome !== 'pending') return;
+      const n = retStepIndexOf(tp);
+      if (n < 2) return;
+      for (let prior = 1; prior < n; prior++) {
+        if (!attended.has(prior)) { out.push({ ci, ti, step: n, missing: prior }); return; }
+      }
+    });
+  });
+  return out;
 }
 
 function findContradictions() {
@@ -8334,6 +8425,19 @@ async function reopenCancelledCase(id, ci) {
   openRepairPanel();
 }
 
+// h265: clears only the leftover label. The appointment, the case and every
+// logged outcome are untouched - the card simply stops claiming something the
+// booking does not say.
+async function clearStaleApptNote(id) {
+  const c = clients.find(x => x.id === id); if (!c) return;
+  showSync('Clearing...');
+  await sb.from('clients').update({ appt_notes: '' }).eq('id', id);
+  c.appt_notes = '';
+  hideSync();
+  render();
+  openRepairPanel();
+}
+
 async function resolveStaleStep(id, ci, ti, outcome) {
   const c = clients.find(x => x.id === id); if (!c) return;
   const cases = JSON.parse(JSON.stringify(c.cases || []));
@@ -8391,6 +8495,10 @@ function openRepairPanel() {
               : '') +
             (i.kind === 'reopen'
               ? '<button onclick="reopenCancelledCase(\'' + r.c.id + '\',' + i.ci + ')" style="width:100%;margin-top:4px;background:none;border:1px solid var(--accent-line);color:var(--accent);border-radius:6px;padding:5px;font-size:11px;font-weight:600;cursor:pointer;">Reopen - they only cancelled</button>'
+              : '') +
+            // h265: the new checks state their own fix and she approves it
+            ((i.kind === 'stale-note' || i.kind === 'step-skip')
+              ? '<button onclick="' + i.action + '" style="width:100%;margin-top:5px;background:none;border:1px solid var(--accent-line);color:var(--accent);border-radius:6px;padding:6px;font-size:11px;font-weight:600;cursor:pointer;">' + esc(i.fix) + '</button>'
               : '') +
           '</div>').join('') +
       '</div>').join('');
@@ -9263,7 +9371,11 @@ function openClient(id, keepDialCount) {
       h += `<div style="font-size:11px;color:#5f7a99;margin-bottom:2px;">Referrals given:</div>`;
       h += (c.referrals||[]).map(rf=>{
         const nm = rf.name || 'referral';
-        const paid = rf.paid ? `<span style="color:var(--accent);">paid $${rf.amount||30}</span>` : `<span style="color:#A32D2D;">owe $${rf.amount||30}</span> <button class="chip-action" onclick="markReferralPaid('${c.id}','${rf.id}')">Mark paid</button>`;
+        // h265: the payout tracker is gone. Paying a client for a referral is
+        // rebating, the rules vary by state, and an app that tallies what you
+        // "owe" a referrer is not a record anyone should want to be holding.
+        // Referrals themselves are untouched - only the money came out.
+        const paid = '';
         return `<div style="font-size:11px;color:#1D3557;margin-bottom:3px;padding-left:8px;"><strong onclick="closeModal();openClient('${rf.id}')" style="cursor:pointer;text-decoration:underline;">${nm}</strong> - ${paid}</div>`;
       }).join('');
     }
@@ -13498,8 +13610,14 @@ async function confirmReviveTp(id, ci, ti) {
   cases[ci].status = 'Open';
   const callLog = [...(c.call_log||[]), {ts: new Date().toISOString(), outcome: 'Rescheduled', reason: 'revived no-show', callback_dt: null, dials: 0}];
   showSync('Reviving...');
-  await sb.from('clients').update({cases, status:'Appointment set', appt_datetime: newDt, appt_notes: (srcTp.type||'') + ' (revived)', call_log: callLog}).eq('id', id);
-  Object.assign(c, {cases, status:'Appointment set', appt_datetime: newDt, appt_notes: (srcTp.type||'') + ' (revived)', call_log: callLog});
+  // h265: this used to write "Step 2 (revived)" into appt_notes - a LABEL, not a
+  // note. appt_notes then survived every later reschedule while the appointment
+  // moved on, so the card ended up showing a live Step 1 with a frozen "Step 2
+  // (revived)" underneath. The note carries whatever the source touchpoint
+  // actually said, and nothing else.
+  const _revivedNotes = srcTp.notes || '';
+  await sb.from('clients').update({cases, status:'Appointment set', appt_datetime: newDt, appt_notes: _revivedNotes, call_log: callLog}).eq('id', id);
+  Object.assign(c, {cases, status:'Appointment set', appt_datetime: newDt, appt_notes: _revivedNotes, call_log: callLog});
   pushApptToCalendar(c, 'upsert');
   hideSync(); closeModal();
   openClient(id); renderScore(); renderSidebar();
@@ -15143,8 +15261,7 @@ function renderReferralRows(q) {
   return filtered.map(r => {
     const nameClick = r.leadId ? ' style="cursor:pointer;text-decoration:underline;" onclick="closeModal();openClient(\'' + r.leadId + '\')"' : '';
     const tag = r.source === 'ASR'
-      ? (r.paid ? '<span style="font-size:10px;color:var(--accent);">paid $' + r.amount + '</span>'
-                : '<span style="font-size:10px;color:#A32D2D;">owe $' + r.amount + '</span>')
+      ? '<span style="font-size:10px;color:#8fa8c0;">asked for at a sit</span>'
       : '<span style="font-size:10px;color:#8fa8c0;">captured at sit</span>';
     return '<div style="border:1px solid #e2eaf2;border-radius:8px;padding:10px;margin-bottom:6px;">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
