@@ -510,7 +510,7 @@ html,body{overflow-x:hidden !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h210</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h211</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="gear-btn" id="undo-btn" onclick="undoLastAction()" style="display:none;" title="Undo the last action">&#8634;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
@@ -669,7 +669,7 @@ html,body{overflow-x:hidden !important;}
       </div>
       <div class="stat" style="background:#F4F1FA;">
         <div class="stat-lbl" style="color:#3C3489;">Dropped</div>
-        <div class="stat-val" style="color:#3C3489;" id="p-dropped">0</div>
+        <div class="stat-val" style="color:#3C3489;cursor:pointer;" id="p-dropped" onclick="drillDown('dropped')">0</div>
         <div class="stat-sub" style="color:#3C3489;" id="p-dropped-sub">-</div>
       </div>
     </div>
@@ -743,11 +743,15 @@ html,body{overflow-x:hidden !important;}
        reporting with it, which was not the ask. -->
   <div style="margin-top:4px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 6px;">
-      <div class="section-lbl" style="margin:0;">Lead performance</div>
-      <div onclick="openReports()" style="font-size:9px;color:#138181;text-decoration:underline;cursor:pointer;">compare sources &rarr;</div>
+      <div class="section-lbl" style="margin:0;">ROI</div>
+      <div id="src-compare-link" onclick="openReports()" style="font-size:9px;color:#138181;text-decoration:underline;cursor:pointer;display:none;">compare sources &rarr;</div>
     </div>
     <!-- h169: only what is NOT already on the board. Appt set, show, close and APV
-         all live in Dialing Activity and Production, so they are not repeated here. -->
+         all live in Dialing Activity and Production, so they are not repeated here.
+         h211: renamed ROI. 'Never resolved' left - it measured the same axis as
+         Lead resolution in Dialing Activity, and it counted a booked appointment
+         as resolved even when nothing was ever decided. It lives in Reports now.
+         Client care left too: it is work, not measurement, and sits with Tasks. -->
     <div class="stat-row" style="grid-template-columns:repeat(3,minmax(0,1fr));">
       <div class="stat"><div class="stat-lbl">APV / lead</div><div class="stat-val" id="lp-apvlead" style="font-size:18px;">-</div><div class="stat-sub">volume per lead</div></div>
       <div class="stat"><div class="stat-lbl">Comm / lead</div><div class="stat-val" id="lp-commlead" style="font-size:18px;">-</div><div class="stat-sub">before cost</div></div>
@@ -755,9 +759,7 @@ html,body{overflow-x:hidden !important;}
     </div>
     <div class="stat-row" style="grid-template-columns:repeat(3,minmax(0,1fr));">
       <div class="stat"><div class="stat-lbl">Avg APV / sale</div><div class="stat-val" id="lp-avgapv" style="font-size:18px;">-</div><div class="stat-sub">per sale</div></div>
-      <div class="stat"><div class="stat-lbl">Never resolved</div><div class="stat-val" id="lp-never">-</div><div class="stat-sub">of the cohort</div></div>
       <div class="stat" style="cursor:pointer;" onclick="openLeadSpend()"><div class="stat-lbl">Lead spend</div><div class="stat-val" id="lp-spend" style="font-size:18px;">-</div><div class="stat-sub" style="color:var(--teal);font-weight:700;">tap to add a charge</div></div>
-      <div class="stat" style="cursor:pointer;" onclick="openClientCare()"><div class="stat-lbl">Client care</div><div class="stat-val" id="lp-care" style="font-size:18px;">0</div><div class="stat-sub" id="lp-care-sub" style="color:var(--teal);font-weight:700;">nothing due</div></div>
     </div>
   </div>
 
@@ -882,7 +884,13 @@ html,body{overflow-x:hidden !important;}
 </div><!-- end wrap -->
 <div class="right-sidebar-col" style="position:sticky;top:12px;display:flex;flex-direction:column;gap:12px;">
   <div id="task-sidebar" style="background:#fff;border-radius:12px;border:1px solid #e2eaf2;padding:14px 12px;">
-    <div onclick="openTaskModal()" title="Open to reorder" style="font-size:10px;font-weight:600;color:#1D3557;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:5px;">Tasks <span id="task-count" style="font-weight:500;color:#8fa8c0;text-transform:none;letter-spacing:0;"></span></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
+      <div onclick="openTaskModal()" title="Open to reorder" style="font-size:10px;font-weight:600;color:#1D3557;text-transform:uppercase;letter-spacing:0.08em;cursor:pointer;display:flex;align-items:center;gap:5px;">Tasks <span id="task-count" style="font-weight:500;color:#8fa8c0;text-transform:none;letter-spacing:0;"></span></div>
+      <!-- h211: Client care is work with deadlines, not a measurement, so it left
+           the ROI strip. It sits here because this column is what needs doing and
+           because a policy lapses if it is ignored - unlike a task, which waits. -->
+      <button id="care-btn" onclick="openClientCare()" style="border:1px solid #d0dcea;background:#fff;color:#8fa8c0;border-radius:999px;padding:3px 10px;font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;">Client care</button>
+    </div>
     <div id="task-list" style="margin-bottom:8px;"><div style="font-size:11px;color:#a0b8cc;">Loading...</div></div>
     <div style="display:flex;gap:6px;">
       <input id="task-input" type="text" placeholder="Add a task..." style="flex:1;border:1px solid #d0dcea;border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit;background:#f7fafd;color:#1a2e44;" onkeydown="if(event.key==='Enter')addTask()">
@@ -2308,11 +2316,15 @@ function renderScore() {
   if (nsSub) nsSub.textContent = heldInitials>0 ? pct(totalShowed, heldInitials) + ' show ratio' : '- show ratio';
   window._coach = {nsFirstLost, nsFirstRecovered, nsInProcess, avgLeadDays, pStart, pEnd};
   document.getElementById('p-sales').textContent = totalSales;
-  const withDropped = decidedSits + totalDropped;
+  // h211: Dropped is a PPU she gave up on - the policy pickup never happened, so
+  // they NEVER REACHED NUMBERS. It has no business in a close ratio: you cannot
+  // fail to close something you never presented. It keeps its own card because
+  // it is real work that produced nothing, and it is how you judge whether the
+  // pickup step is worth doing at all.
   document.getElementById('p-sales-sub').textContent = '';   // close ratio moved to the No Sales card
   document.getElementById('p-nosales').textContent = totalNoSales;
   document.getElementById('p-nosales-sub').textContent = decidedSits > 0
-    ? pct(totalSales, decidedSits) + ' close ratio' + (totalDropped ? ' \u00b7 ' + pct(totalSales, withDropped) + ' w/ dropped' : '')
+    ? pct(totalSales, decidedSits) + ' close ratio'
     : '- close ratio';
   const drEl = document.getElementById('p-dropped');
   if (drEl) drEl.textContent = totalDropped;
@@ -2670,12 +2682,7 @@ function renderSourceComparison(pStart, pEnd, label) {
     const spend = (typeof spendInPeriod === 'function') ? spendInPeriod(pStart, pEnd) : 0;
     // h202: deliberately NOT in the pace banner and NOT in the call queue -
     // follow-up work does not belong inside appointment-setting time.
-    try {
-      const careN = clientCareDue().length;
-      const cv = document.getElementById('lp-care'), cs2 = document.getElementById('lp-care-sub');
-      if (cv) cv.textContent = careN;
-      if (cs2) cs2.textContent = careN ? 'tap to work them' : 'nothing due';
-    } catch (e) {}
+    try { renderCareButton(); } catch (e) {}
     setEl('lp-apvlead',  fmtAvg(apv, A.assigned));
     setEl('lp-commlead', fmtAvg(A.comm, A.assigned));
     // profit per lead: what you earned minus what the leads cost, per lead
@@ -2688,7 +2695,7 @@ function renderSourceComparison(pStart, pEnd, label) {
     setEl('lp-avgapv', fmtAvg(apv, A.sales));
     const neverN = Math.round(((mia.m ? mia.m.neverPct : 0) * mia.assigned +
                                (cia.m ? cia.m.neverPct : 0) * cia.assigned) / (A.assigned || 1));
-    setEl('lp-never', A.assigned ? neverN + '%' : '-');
+    setEl('lp-never', A.assigned ? neverN + '%' : '-');   // h211: no longer on the board; setEl no-ops when absent
     setEl('lp-spend', '$' + Math.round(spend).toLocaleString());
   }
 }
@@ -3345,6 +3352,16 @@ function drillDown(type) {
       const bLast = Math.max(...(b.call_log||[]).filter(cl=>cl.outcome==='Callback').map(cl=>new Date(cl.ts)));
       return bLast - aLast;
     });
+  } else if (type === 'dropped') {
+    // h211: this tile showed a number and did nothing when tapped - the only one
+    // on the board without a drill-down.
+    title = 'Dropped PPUs - ' + label;
+    leads = clients.filter(c => (c.cases||[]).filter(_ddOn).some(cs =>
+      (cs.touchpoints||[]).some(tp => {
+        if (!tp || tp.outcome !== 'dropped') return false;
+        const d = new Date(tp.datetime);
+        return d >= start && d <= end;
+      })));
   } else if (type === 'resets') {
     title = 'Resets - ' + label;
     // h186: this used to disagree with the tile above it and show "none this
@@ -9639,6 +9656,16 @@ async function confirmDelivery(id) {
   openClientCare();
 }
 
+// Teal with a count when something is due, grey and quiet when nothing is.
+function renderCareButton() {
+  const el = document.getElementById('care-btn'); if (!el) return;
+  const n = clientCareDue().length;
+  el.textContent = n ? 'Client care ' + n : 'Client care';
+  el.style.background = n ? '#138181' : '#fff';
+  el.style.color = n ? '#fff' : '#8fa8c0';
+  el.style.borderColor = n ? '#138181' : '#d0dcea';
+}
+
 function openClientCare() {
   const rows = clientCareDue();
   let html = '<button class="close-x" onclick="closeModal()">x</button>' +
@@ -13272,6 +13299,12 @@ function reportStats(pStart, pEnd) {
   const inWin = (d) => { const x = new Date(d); return !isNaN(x) && x >= pStart && x <= pEnd; };
   const cohort = (clients || []).filter(c => inWin(c.assigned_date || c.created_at));
 
+  // h211: DOES THE PICKUP STEP PAY? The theory is that collecting their existing
+  // coverage first lifts both the close ratio and the size of the sale. It also
+  // costs you the ones who never bring the policy back. These four numbers are
+  // the whole argument, and they only mean anything side by side.
+  let ppuSales = 0, ppuDecided = 0, ppuApv = 0,
+      noPpuSales = 0, noPpuDecided = 0, noPpuApv = 0, ppuDropped = 0;
   let contacted = 0, apptsBooked = 0, apptsSat = 0, noShows = 0, decided = 0,
       sales = 0, apps = 0, appsPPU = 0, ppu = 0, resolved = 0,
       apvSub = 0, apvPlaced = 0, comm = 0, advance = 0, chargeback = 0,
@@ -13321,6 +13354,18 @@ function reportStats(pStart, pEnd) {
     const offered = (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp =>
       tp && ['sale','nosale'].includes(tp.outcome)));
     if (sat) { if (offered) decided++; if (sold) sales++; }
+    // split the same case by whether a pickup happened on the way
+    const hadPPU = (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp =>
+      tp && /PPU|Pickup/i.test(tp.type || '')));
+    const caseApv = (c.cases||[]).reduce((a, cs) => a + (cs.touchpoints||[]).reduce((b, tp) =>
+      b + ((tp.apps||[]).reduce((d, ap) => d + (Number(ap.premium) || 0), 0)), 0), 0);
+    if (offered) {
+      if (hadPPU) { ppuDecided++; if (sold) { ppuSales++; ppuApv += caseApv; } }
+      else        { noPpuDecided++; if (sold) { noPpuSales++; noPpuApv += caseApv; } }
+    }
+    (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
+      if (tp && tp.outcome === 'dropped') ppuDropped++;
+    }));
     // the two halves of a cancellation, counted apart - what matters is the
     // share you save, and that is invisible if they are added together
     log.forEach(e => { if (e.outcome === 'Cancelled') { if (e.cancel_dead) cancelLost++; else cancelSaved++; } });
@@ -13338,6 +13383,7 @@ function reportStats(pStart, pEnd) {
     });
   });
 
+  const _ppu = ppuSplit(cohort);
   const dials = sumStat('dials', pStart, pEnd);
   const texts = sumStat('texts', pStart, pEnd);
   const dialSecs = sumStatPrefix('time_dial_', pStart, pEnd);
@@ -13356,6 +13402,12 @@ function reportStats(pStart, pEnd) {
     dialHours: dialSecs / 3600, apptHours: apptSecs / 3600,
     apptsBooked, apptsSat, noShows, decided, sales, apps, ppu, appsPPU,
     noOffer, cancelSaved, cancelLost, cancelTotal: cancelSaved + cancelLost,
+    ppuWithSat: _ppu.withSat, ppuWithSales: _ppu.withSales, ppuWithApv: _ppu.withApv,
+    ppuNoSat: _ppu.noSat, ppuNoSales: _ppu.noSales, ppuNoApv: _ppu.noApv,
+    ppuDropped: _ppu.droppedPPU,
+    ppuSales, ppuDecided, ppuApv, noPpuSales, noPpuDecided, noPpuApv, ppuDropped,
+    // 'never resolved' left the board in h211 - it lives here instead
+    neverResolved: cohort.length - resolved,
     resets, resetSold,
     refLeads: ref.count, refAppts, refSits, refSales: ref.sales, refApv: ref.apv,
     apvSub, apvPlaced, chargeback,
@@ -13366,6 +13418,28 @@ function reportStats(pStart, pEnd) {
 
 // label, group, how to read it, and how to combine columns. 'sum' adds; 'ratio'
 // is recomputed from its parts for the Total and Average columns.
+// h211: DOES THE PICKUP STEP PAY? A PPU is discovery - you collect what they
+// already have before recommending anything - and it costs an extra meeting.
+// The case for it is that a lead who sits through one closes better and buys
+// bigger; the case against is the ones who never bring the policy back and get
+// dropped. This splits every sit by whether a pickup happened, so the trade is
+// visible instead of argued about.
+function ppuSplit(cohort) {
+  const out = { withSat: 0, withSales: 0, withApv: 0, noSat: 0, noSales: 0, noApv: 0, droppedPPU: 0 };
+  (cohort || []).forEach(c => (c.cases||[]).forEach(cs => {
+    const tps = cs.touchpoints || [];
+    const hadPPU = tps.some(tp => tp && /PPU|Pickup/i.test(tp.type || ''));
+    if (tps.some(tp => tp && tp.outcome === 'dropped')) out.droppedPPU++;
+    const sat = tps.some(tp => tp && ['sale','nosale'].includes(tp.outcome));
+    if (!sat) return;
+    const sold = tps.some(tp => tp && tp.outcome === 'sale');
+    const apv = tps.reduce((a, tp) => a + ((tp.apps||[]).reduce((b, ap) => b + (Number(ap.premium) || 0), 0)), 0);
+    if (hadPPU) { out.withSat++; if (sold) { out.withSales++; out.withApv += apv; } }
+    else        { out.noSat++;   if (sold) { out.noSales++;   out.noApv   += apv; } }
+  }));
+  return out;
+}
+
 const REPORT_METRICS = [
   {k:'leads',        g:'Activity',   l:'Leads received',        t:'int',   c:'sum'},
   {k:'contacted',    g:'Activity',   l:'Contacts',              t:'int',   c:'sum'},
@@ -13387,6 +13461,19 @@ const REPORT_METRICS = [
   {k:'resetSold',    g:'Production', l:'Resets sold',           t:'int',   c:'sum'},
   {k:'ppu',          g:'Production', l:'Policy pickups',        t:'int',   c:'sum'},
   {k:'appsPPU',      g:'Production', l:'Sales from PPU',        t:'int',   c:'sum'},
+  {k:'ppuDropped',   g:'Pickup',     l:'PPUs dropped',          t:'int',   c:'sum'},
+  {k:'ppuWithSat',   g:'Pickup',     l:'Sits WITH a pickup',    t:'int',   c:'sum'},
+  {k:'_ppuWithCR',   g:'Pickup',     l:'Close ratio WITH',      t:'pct',   c:'ratio', n:'ppuWithSales', d:'ppuWithSat'},
+  {k:'_ppuWithApv',  g:'Pickup',     l:'Avg APV WITH',          t:'money', c:'ratio', n:'ppuWithApv',   d:'ppuWithSales'},
+  {k:'ppuNoSat',     g:'Pickup',     l:'Sits with NO pickup',   t:'int',   c:'sum'},
+  {k:'_ppuNoCR',     g:'Pickup',     l:'Close ratio WITHOUT',   t:'pct',   c:'ratio', n:'ppuNoSales',   d:'ppuNoSat'},
+  {k:'_ppuNoApv',    g:'Pickup',     l:'Avg APV WITHOUT',       t:'money', c:'ratio', n:'ppuNoApv',     d:'ppuNoSales'},
+  {k:'ppuDropped',   g:'Production', l:'PPUs dropped',          t:'int',   c:'sum'},
+  {k:'_ppuClose',    g:'Production', l:'Close ratio WITH a PPU', t:'pct',  c:'ratio', n:'ppuSales', d:'ppuDecided'},
+  {k:'_noPpuClose',  g:'Production', l:'Close ratio without',   t:'pct',   c:'ratio', n:'noPpuSales', d:'noPpuDecided'},
+  {k:'_ppuApv',      g:'Production', l:'Avg APV WITH a PPU',    t:'money', c:'ratio', n:'ppuApv', d:'ppuSales'},
+  {k:'_noPpuApv',    g:'Production', l:'Avg APV without',       t:'money', c:'ratio', n:'noPpuApv', d:'noPpuSales'},
+  {k:'neverResolved',g:'Production', l:'Never resolved',        t:'int',   c:'sum'},
   {k:'sales',        g:'Production', l:'Sales',                 t:'int',   c:'sum'},
   {k:'apps',         g:'Production', l:'Apps written',          t:'int',   c:'sum'},
   {k:'noOffer',      g:'Production', l:'Sat, no offer made',    t:'int',   c:'sum'},
@@ -14879,7 +14966,13 @@ function openSettings(tab) {
 
       card(head('Data') +
         '<button onclick="recheckComp()" style="width:100%;background:#138181;color:#fff;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;">Recheck comp on all apps</button>' +
-        '<div style="font-size:10px;color:#8fa8c0;margin-top:4px;">Compares every application against the current comp grid and offers to fix any that drifted.</div>');
+        '<div style="font-size:10px;color:#8fa8c0;margin-top:4px;">Compares every application against the current comp grid and offers to fix any that drifted.</div>') +
+
+      // h211: the build tag used to sit in the header, where it was useful while
+      // deploying several times a day and clutter the rest of the time. Here it is
+      // still one tap away when someone asks what version you are on.
+      '<div style="text-align:center;font-size:10px;color:#c3ccd6;font-family:monospace;padding:4px 0 2px;">' +
+        (document.getElementById('build-tag') ? esc(document.getElementById('build-tag').textContent) : '') + '</div>';
   }
 
   showModal(
