@@ -1901,6 +1901,48 @@ html,body{ overflow-x:hidden !important; }
   background:rgb(255 255 255 / .34) !important;
 }
 #appt-sidebar, .appt-sidebar{ scrollbar-width:auto !important; scrollbar-color:rgb(255 255 255 / .22) transparent; }
+
+/* ============================================================================
+   h251 - THE ACCENT REACHES EVERYTHING, AND THE RAIL IS READABLE
+   ========================================================================== */
+/* the board name, Client care, the schedule times and the tab underline all run
+   off --accent-lift, which is derived from the chosen swatch now */
+.hdr-title{ color:var(--accent-lift) !important; }
+#care-btn{ color:var(--accent-lift) !important; }
+.tab.on::after{ background:var(--accent-lift) !important; }
+.appt-sidebar-item .ap-time,
+.appt-sidebar-item.ap-phone .ap-time, .appt-sidebar-item.ap-advanced .ap-time,
+.appt-sidebar-item.ap-reminder .ap-time{ color:var(--accent-lift) !important; }
+.hero-meter-fill{ background:var(--accent-lift) !important; }
+.hero-hit{ color:var(--accent-lift) !important; }
+#task-sidebar a, .appt-sidebar a{ color:var(--accent-lift) !important; }
+
+/* ---- CLIENT NAMES IN THE SCHEDULE ARE WHITE ----
+   The generic "everything in this card inherits" rule was landing on the name
+   too and pulling it down to the muted grey. */
+.appt-sidebar-item .ap-name,
+.appt-sidebar-item.ap-phone .ap-name,
+.appt-sidebar-item.ap-advanced .ap-name,
+.appt-sidebar-item.ap-reminder .ap-name,
+.appt-sidebar-item.ap-due .ap-name{
+  color:#ffffff !important; font-weight:600 !important; font-size:14px !important;
+}
+
+/* ---- THE SCHEDULE ENDS LEVEL WITH THE BOARD ----
+   The rail stretches to the board's height and the schedule takes whatever is
+   left below Tasks, scrolling inside itself. Both columns finish on one line. */
+.page-layout{ align-items:stretch !important; }
+.right-sidebar-col{
+  align-self:stretch !important; height:100% !important;
+  display:flex !important; flex-direction:column !important; min-height:0 !important;
+}
+#task-sidebar{ flex:0 0 auto !important; }
+#appt-sidebar, .appt-sidebar{
+  flex:1 1 auto !important; min-height:0 !important;
+  display:flex !important; flex-direction:column !important;
+  max-height:none !important; overflow:hidden !important;
+}
+#appt-sidebar > *:last-child{ flex:1 1 auto !important; overflow-y:auto !important; min-height:0 !important; }
 </style>
 </head>
 <body>
@@ -1919,7 +1961,7 @@ html,body{ overflow-x:hidden !important; }
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h249</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h251</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -2046,7 +2088,7 @@ html,body{ overflow-x:hidden !important; }
     <!-- Row 1 - did they show? -->
         <div class="stat-row">
       <div class="stat stat-navy">
-        <div class="stat-lbl lbl-white">Appts</div>
+        <div class="stat-lbl lbl-white">Appointments</div>
         <div class="stat-val val-white" id="p-first" style="cursor:pointer" onclick="drillDown('appts')">0</div>
         <div class="stat-sub sub-white" id="p-first-rate">- sit ratio</div>
       </div>
@@ -2100,6 +2142,13 @@ html,body{ overflow-x:hidden !important; }
         <div class="stat-lbl">Dropped</div>
         <div class="stat-val" style="cursor:pointer" id="p-dropped" onclick="drillDown('dropped')">0</div>
         <div class="stat-sub" style="" id="p-dropped-sub">-</div>
+      </div>
+      <!-- h250: the reset ASK sits with the referral and recruit asks; the reset
+           itself stays with the outcomes it belongs to. -->
+      <div class="stat">
+        <div class="stat-lbl">Reset asks</div>
+        <div class="stat-val" id="p-resetask">0</div>
+        <div class="stat-sub" id="p-resetask-sub">- of sits</div>
       </div>
       <div class="stat stat-purple">
         <div class="stat-lbl lbl-purple">Resets</div>
@@ -3382,9 +3431,12 @@ const HERO_IDS = ['s-dials', 's-appts', 's-resolved', 's-time-dial'];
 //   3. put each section's tiles in the order she reads them
 const SECTION_ORDER = {
   'dialing activity': ['s-callbacks', 's-texts', 's-dead'],
-  'production':       ['p-first','p-showed','p-noshow','p-upcoming','p-sales','p-nosales',
-                       'p-apps','p-needs','p-apv-hh','p-think','p-ppu','p-dropped',
-                       'p-resets','p-refasks','p-recruitasks','p-plans'],
+  // h250: four rows of four. Appointments and what happened at them, then the
+  // verdicts, then what is still open, then the asks.
+  'production':       ['p-first','p-showed','p-noshow','p-upcoming',
+                       'p-sales','p-nosales','p-closed','p-needsoutcome',
+                       'p-tai','p-ppu','p-dropped','p-resets',
+                       'p-resetask','p-refask','p-recask','p-stp'],
   'roi':              ['lp-apv','lp-comm','lp-profit','lp-spend','lp-roi'],
 };
 
@@ -4044,10 +4096,15 @@ function renderScore() {
   })));
   const nAsk = resolvedTps.filter(t => t.ref_ask).length;
   const nRec = resolvedTps.filter(t => t.recruit_ask).length;
+  // h250: the reset ASK, beside the resets that came of it. Same shape as the
+  // referral and recruit pair - the discipline, then the result.
+  const nResetAsk = resolvedTps.filter(t => t.did_reset !== undefined && t.did_reset !== null).length;
   // STP now belongs to the person, not the sit. This counts prospects actually sent to.
   const allProspects = clients.flatMap(c => (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).flatMap(tp => tp.recruit_people||[])));
   const nStp = allProspects.filter(x => x.stp_sent).length;
   const setTxt = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  setTxt('p-resetask', nResetAsk);
+  setTxt('p-resetask-sub', resolvedTps.length ? pct(nResetAsk, resolvedTps.length) + ' of sits' : '- of sits');
   setTxt('p-refask', nAsk);
   setTxt('p-refask-sub', resolvedTps.length ? pct(nAsk, resolvedTps.length) + ' of sits' : '- of sits');
   // Referral Sit-to-Sale: among referral leads (referred_by set), decided sits
@@ -7159,6 +7216,16 @@ function getNextApptInfo() {
   };
 }
 
+// h251: the banner's job is to remove a step. Filter to the live queue, then
+// open the card at the top of it - which is the lead she would have clicked.
+function startDialing() {
+  try { setFilterAlert('active'); } catch (e) {}
+  setTimeout(() => {
+    const first = document.querySelector('#clients-list .client-card');
+    if (first) first.click();
+  }, 60);
+}
+
 function renderAlerts() {
   const el = document.getElementById('alerts-section');
   if (!el) return;
@@ -7268,15 +7335,16 @@ function renderAlerts() {
     } catch (e) {}
     // h249: only show the count when there is one - "no appts today" straight
     // after a line that already said there is nothing next says it twice.
-    if (todayCount) {
-      parts.push('<span class="pace-count">' + todayCount +
-        ' appt' + (todayCount === 1 ? '' : 's') + ' today</span>');
-    }
+    // h251: always shown - "0 appts today" is information, not an empty state.
+    parts.push('<span class="pace-count">' + todayCount +
+      ' appt' + (todayCount === 1 ? '' : 's') + ' today</span>');
     // h228: the inline light-mode fill is gone. The line is plain white text on
     // the board; only the "behind pace" span carries a colour, and it carries it
     // from the stylesheet where the glow lives.
     const alert = behindNow > 0 || dueNow > 0;
-    html = '<div class="pace-banner' + (alert ? ' pace-alert' : '') + '" onclick="setFilterAlert(\'active\')">' + parts.join('') + '</div>';
+    // h251: tapping it puts her ON the first card, not on a filtered list she
+    // then has to click into. The point of the banner is to remove a step.
+    html = '<div class="pace-banner' + (alert ? ' pace-alert' : '') + '" onclick="startDialing()">' + parts.join('') + '</div>';
   }
 
   el.innerHTML = html;
@@ -16071,6 +16139,10 @@ function applyAccent() {
   r.setProperty('--accent-line', _mixHex(a.c, '#ffffff', 0.62));
   r.setProperty('--accent-pale', _mixHex(a.c, '#ffffff', 0.90));
   r.setProperty('--accent-ink', a.ink);
+  // h251: --accent-lift was pinned to teal, so the board name, Client care, the
+  // schedule times and the tab underline stayed teal whatever swatch was chosen.
+  // It is the accent lifted toward white - readable on the dark board.
+  r.setProperty('--accent-lift', _mixHex(a.c, '#ffffff', 0.30));
 }
 
 async function setAccent(k) {
