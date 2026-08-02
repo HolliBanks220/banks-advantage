@@ -510,7 +510,7 @@ html,body{overflow-x:hidden !important;}
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build">b715h206</span>
+        <span class="build-tag" id="build-tag" title="build">b715h209</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="gear-btn" id="undo-btn" onclick="undoLastAction()" style="display:none;" title="Undo the last action">&#8634;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
@@ -897,6 +897,14 @@ html,body{overflow-x:hidden !important;}
 </div><!-- end page-outer -->
 
 <script>
+// h208: 'nooffer' is a SIT. Everywhere the app asks "did they attend", it counts.
+// The ONE place it must not appear is the close-ratio denominator - see
+// confirmSitOutcome for why. These lists exist so a future outcome gets added in
+// one place instead of eleven.
+const SAT_OUTCOMES  = ['sale','nosale','nooffer','cont','dropped'];   // they attended
+const VERDICT_OUTCOMES = ['sale','nosale','nooffer','dropped'];       // the case is decided
+const CLOSE_OUTCOMES = ['sale','nosale'];                             // an offer was made and answered
+
 //  SUPABASE CONFIG 
 const SUPABASE_URL = 'https://mdsaqxbqmvmusdtwlgay.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_bIh3jnNzNjQ31D6KdDConw_cVJChb67';
@@ -1935,7 +1943,7 @@ function renderScore() {
   // the sit (continuations, PPUs, TAI, rewrites, retirement steps) is production
   // and can never reach back and strip credit for work the phone already did.
   const everSat = (c) => (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp =>
-      ['sale','nosale','cont','dropped'].includes(tp.outcome)))
+      SAT_OUTCOMES.includes(tp.outcome)))
     || (c.sits||[]).some(s => s.outcome==='showed');
   const appts = clients.filter(c => {
     const r = lastResolution(c);
@@ -2084,7 +2092,7 @@ function renderScore() {
   // A PPU or TAI continuation is the same appointment carrying on, so it never
   // counts as a second appointment. A retirement step does. Rescheduling moves
   // an appointment rather than making one, so nothing is double-counted.
-  const ATTENDED = ['sale','nosale','cont','dropped'];
+  const ATTENDED = SAT_OUTCOMES;
   // 'closed' and 'superseded' are artifacts of resolving a stranded record -
   // the appointment never happened. Counting them made 37 appointments out of
   // 34, and put resolved leads (Gwendolyn) back in this week's list.
@@ -2353,7 +2361,7 @@ function renderScore() {
   // --- ASK RATES: the behaviours that compound. Denominator is resolved sits -
   // you can only ask someone who actually sat with you.
   const resolvedTps = clients.flatMap(c => (c.cases||[]).flatMap(cs => (cs.touchpoints||[]).filter(tp => {
-    if (!['sale','nosale','cont'].includes(tp.outcome)) return false;
+    if (!SAT_OUTCOMES.includes(tp.outcome) || tp.outcome === 'dropped') return false;
     const d = new Date(tp.datetime); return d >= pStart && d <= pEnd;
   })));
   const nAsk = resolvedTps.filter(t => t.ref_ask).length;
@@ -2496,7 +2504,7 @@ function renderSourceComparison(pStart, pEnd, label) {
 
     // Appointments that actually happened (showed OR no-showed) - excludes pending.
     const apptsResolved = sourceClients.filter(c =>
-      tpsOf(c).some(tp => ['sale','nosale','cont','noshow'].includes(tp.outcome) && inPeriod(tp.datetime)) ||
+      tpsOf(c).some(tp => (SAT_OUTCOMES.includes(tp.outcome) || tp.outcome === 'noshow') && tp.outcome !== 'dropped' && inPeriod(tp.datetime)) ||
       (c.sits||[]).some(s => ['showed','noshow'].includes(s.outcome) && inPeriod(s.datetime))
     ).length;
 
@@ -3027,7 +3035,7 @@ function needsOutcomeList(){
   clients.forEach(c => {
     if (RESOLVED_LEAD.includes(c.status)) return;   // lead already answered
     (c.cases||[]).forEach(cs => {
-      const decided = (cs.touchpoints||[]).some(t => t && ['sale','nosale','dropped'].includes(t.outcome));
+      const decided = (cs.touchpoints||[]).some(t => t && VERDICT_OUTCOMES.includes(t.outcome));
       if (decided) return;                          // case already has a verdict
       const ci = (c.cases||[]).indexOf(cs);
       (cs.touchpoints||[]).forEach(tp => {
@@ -3203,7 +3211,7 @@ function drillDown(type) {
     if (type === 'attended') {
       // The numerator of the show ratio: every appointment you turned up to,
       // continuations included. Listed per appointment, like the Appts drill.
-      const A = ['sale','nosale','cont','dropped'];
+      const A = SAT_OUTCOMES;
       const rows = [];
       clients.forEach(c => (c.cases||[]).filter(_ddOn).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
         if (!tp || !tp.datetime || tp.continues_appt) return;
@@ -4276,7 +4284,7 @@ function hasSold(c) {
 // missed two PPUs and came back to close is SIX appointments and ONE sale -
 // counted as appointments that reads like chaos, counted as a case it's a
 // grind that closed. These helpers say which kind of trouble each one is.
-const ATTENDED_OUTCOMES = ['sale','nosale','cont','dropped'];
+const ATTENDED_OUTCOMES = SAT_OUTCOMES;
 
 // Appointments on a case, oldest first, ignoring PPU/TAI legs of the same one.
 function caseAppts(cs) {
@@ -4735,7 +4743,7 @@ function getCaughtUpDaysThisWeek() {
 function caseIsDecided(cs) {
   if (!cs) return false;
   if (['Closed Won','Closed Lost'].includes(cs.status)) return true;
-  return (cs.touchpoints||[]).some(tp => tp && ['sale','nosale'].includes(tp.outcome));
+  return (cs.touchpoints||[]).some(tp => tp && ['sale','nosale','nooffer'].includes(tp.outcome));
 }
 function getNoShowCount(c) {
   // A case that sold contributes nothing. Neither does the call log once ANY case
@@ -6263,7 +6271,13 @@ function isRetirementApp(ap) {
 function commissionDetail(cl) {
   const rows = [];
   if (!cl) return { total: 0, rows };
-  const lvl = (getAgentSettings().contractLevel || 105) / 100;
+  // h208: PROMOTIONS MUST NOT REWRITE HISTORY. This used to read the CURRENT
+  // contract level and apply it to every application ever written, so moving from
+  // 90 to 95 silently changed last January's commission and a report exported
+  // last month stopped matching. An application now carries the level it was
+  // written at; only records from before this change fall back to the current one.
+  const curLevel = previewLevel() || (getAgentSettings().contractLevel || 105);
+  const lvlOf = (ap) => (Number(ap && ap.contract_level) || curLevel) / 100;
   const EARNING = ['Submitted','Approved','Issued','Paid'];
   const NETTED  = ['Lapse','Cancel'];
 
@@ -6271,6 +6285,7 @@ function commissionDetail(cl) {
     const st = normalizeAppStatus(ap.status);   // h199: legacy 'Free Look' reads as 'Not taken'
     if (ret) return EARNING.includes(st) ? retCommissionOf(ap, cl.age) : 0;
     const prem = Number(ap.premium) || 0;
+    const lvl = lvlOf(ap);
     if (NETTED.includes(st)) {
       const raw = ap.chargeback_amount;
       const back = (raw !== undefined && raw !== null && raw !== '') ? Number(raw) : prem;
@@ -6467,6 +6482,78 @@ async function cancelAppt(id, fallout) {
 // needsOutcomeList and computeInitialSet both only read pending/no-outcome, so
 // this neither nags for an outcome nor keeps counting as an appointment - the
 // same way cancelAppt has always behaved.
+// WHY THEY MADE NO OFFER. The outcome is one thing - nothing was presented - but
+// the cause is three different problems with three different fixes, so it is
+// asked as a second tap rather than three more buttons on an already crowded row.
+//   no need      - a lead quality or phone-qualification problem
+//   has cover    - a policy review sitting in front of you, and the one to coach:
+//                  raise the doubt and rebook in the room, do not call them back
+//   no present   - a booking problem. Wrong time, or the other decision-maker
+//                  was never going to be there.
+const NO_OFFER_REASONS = [
+  { k: 'no_need',    l: 'No need',                  h: 'Nothing to protect - no mortgage, already covered off' },
+  { k: 'has_cover',  l: 'Already has coverage',     h: 'A review opportunity. Raise the doubt in the room.' },
+  { k: 'no_present', l: "Couldn't present",         h: 'Spouse absent, no time, interrupted' },
+  { k: 'other',      l: 'Something else',           h: '' },
+];
+
+function openNoOfferReason(id, ci) {
+  const c = clients.find(x => x.id === id); if (!c) return;
+  showSubModal(id, '<button class="close-x" onclick="closeToLead()">x</button>' +
+    '<div class="modal-title">Sat - no offer made</div>' +
+    '<div class="modal-sub">' + esc(c.name || '') + '</div>' +
+    '<div style="font-size:11px;color:#5f7a99;background:#f0f4f8;border-radius:6px;padding:7px 10px;margin-bottom:10px;">Counts as a sit. Stays out of your close ratio - you cannot fail to close an offer you never made.</div>' +
+    '<div style="display:grid;gap:6px;">' +
+    NO_OFFER_REASONS.map(r =>
+      '<button class="call-btn" style="background:#5F7A99;color:#fff;padding:11px;text-align:left;" onclick="_noOfferPick(\'' + id + '\',' + ci + ',\'' + r.k + '\')">' +
+        esc(r.l) + (r.h ? '<div style="font-size:10px;opacity:.85;font-weight:400;">' + esc(r.h) + '</div>' : '') +
+      '</button>').join('') +
+    '</div>');
+}
+
+function _noOfferPick(id, ci, reason) {
+  const c = clients.find(x => x.id === id); if (!c) return;
+  const r = NO_OFFER_REASONS.find(x => x.k === reason) || {};
+  showSubModal(id, '<button class="close-x" onclick="closeToLead()">x</button>' +
+    '<div class="modal-title">' + esc(r.l || 'No offer') + '</div>' +
+    '<div class="modal-sub">' + esc(c.name || '') + '</div>' +
+    '<div class="field"><label>What happened? <span style="font-weight:400;color:#8A94A2;">(optional)</span></label>' +
+      '<textarea id="nooffer-note" rows="3" placeholder="' +
+      (reason === 'has_cover' ? 'What do they have? What did they not know about it?'
+       : reason === 'no_present' ? 'Who was missing, what got in the way?'
+       : 'Anything worth remembering') + '" style="width:100%;box-sizing:border-box;font-size:14px;"></textarea></div>' +
+    '<button class="save-btn" onclick="confirmNoOffer(\'' + id + '\',' + ci + ',\'' + reason + '\')">Log it</button>');
+  setTimeout(() => { const t = document.getElementById('nooffer-note'); if (t) t.focus(); }, 60);
+}
+
+async function confirmNoOffer(id, ci, reason) {
+  const el = document.getElementById('nooffer-note');
+  const note = el ? el.value.trim() : '';
+  return confirmSitOutcome(id, ci, 'nooffer', { noOfferReason: reason, noOfferNote: note });
+}
+
+// The other half of a cancellation. h208: 'Cancelled - still live' keeps them in
+// the queue; this is the call where they say they are done. Both are logged as
+// cancellations so the two can be counted apart - what matters is what share of
+// cancellations you save - but this one carries the Not interested verdict, so
+// the appointment is retracted exactly as it is anywhere else.
+async function cancelApptDead(id, ci) {
+  const c = clients.find(x => x.id === id); if (!c) return;
+  const ts = new Date().toISOString();
+  const dials = window._dialCount || 1;
+  await recordAction(id, 'Cancelled - not interested', async () => {
+    const before = snapshotOf(c);
+    const log = [...(c.call_log||[]), { ts, outcome: 'Cancelled', dials, cancel_dead: true }];
+    log[log.length - 1]._before = before;
+    c.call_log = log;
+    disarmDial();
+    window._dialCount = 1;
+    await sb.from('clients').update({ call_log: log }).eq('id', id);
+  });
+  // then the verdict itself, which retracts the appointment and closes the case
+  return quickLog(id, 'Not interested', 'dead');
+}
+
 async function cancelApptLive(id, ci) {
   return recordAction(id, 'Client cancelled', () => _cancelApptLive(id, ci));
 }
@@ -7125,7 +7212,11 @@ function showSitOutcomeModal(id, ci) {
       '<button onclick="confirmSitOutcome(\''+_id+'\','+_ci+',\'noshow_dead\')" style="background:#7A4A0F;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">✗ No Show - dead</button>' +
       // They cancelled but they are still a prospect: no verdict, case stays
       // open, straight back into the call queue.
-      '<button onclick="cancelApptLive(\''+_id+'\','+_ci+')" style="grid-column:1/-1;background:#138181;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">Cancelled - still live</button>' +
+      // Sat and nothing was presented. Not a no sale - see confirmSitOutcome.
+      '<button onclick="openNoOfferReason(\''+_id+'\','+_ci+')" style="grid-column:1/-1;background:#5F7A99;color:#fff;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:600;cursor:pointer;">Sat - no offer made</button>' +
+      '<button onclick="cancelApptLive(\''+_id+'\','+_ci+')" style="background:#138181;color:#fff;border:none;border-radius:8px;padding:14px;font-size:13px;font-weight:600;cursor:pointer;">Cancelled - still live</button>' +
+      // The other half of a cancellation: they rang to say they are done.
+      '<button onclick="cancelApptDead(\''+_id+'\','+_ci+')" style="background:#A32D2D;color:#fff;border:none;border-radius:8px;padding:14px;font-size:13px;font-weight:600;cursor:pointer;">Cancelled - not interested</button>' +
     '</div>' +
     '<button onclick="openResetToPicker(\''+_id+'\')" style="width:100%;background:none;border:1px solid #BA7517;border-radius:8px;padding:10px;font-size:12px;color:#BA7517;cursor:pointer;font-weight:500;">↺ Reset to new product</button>');
 }
@@ -7260,6 +7351,12 @@ async function _confirmSitOutcome(id, ci, outcome, opts) {
       created: now.toISOString()
     };
   }
+  // h208: why no offer was made, and whatever she wrote about it. Both land on
+  // the touchpoint so they survive editing and show up in the drill-downs.
+  if (outcome === 'nooffer') {
+    tp.no_offer_reason = opts.noOfferReason || 'other';
+    if (opts.noOfferNote) tp.notes = (tp.notes ? tp.notes + ' - ' : '') + opts.noOfferNote;
+  }
 
   // The sit answers land on the touchpoint on BOTH branches. They used to be
   // written only when resolving an existing pending tp - an outcome logged on
@@ -7319,6 +7416,14 @@ async function _confirmSitOutcome(id, ci, outcome, opts) {
   let newApptNotes = apptNotesOf(c);
 
   if (outcome === 'sale') { newStatus = 'Closed'; }
+  // h208: SAT, NO OFFER. They sat and nothing was ever presented - no need, they
+  // already have coverage, the spouse wasn't there. It counts as a sit, because
+  // one happened, and it counts against the lead, because the lead produced
+  // nothing. It is deliberately OUT of close ratio in both directions: a close
+  // ratio is a measure of closing, and you cannot fail to close an offer you
+  // never made. A high count here is a qualification problem, not a closing one -
+  // an entirely different thing to coach.
+  else if (outcome === 'nooffer') { newStatus = 'No sale'; newApptDt = null; newApptNotes = null; }
   else if (outcome === 'nosale') { newStatus = 'No sale'; newApptDt = null; newApptNotes = null; }
   else if (outcome === 'noshow') {
     // alive -> stays workable in the queue; dead -> closed out, stops nagging
@@ -8048,7 +8153,7 @@ function renderFunnelHTML(f, kind) {
 function computeInitialSet(pStart, pEnd, board) {
   const nowMs = Date.now();
   const byDate = (a,b) => new Date(a.datetime) - new Date(b.datetime);
-  const ATT = ['sale','nosale','cont','dropped'];
+  const ATT = SAT_OUTCOMES;
   const out = [];
   clients.forEach(c => (c.cases||[]).filter(cs => boardOf(cs) === board).forEach(cs => {
     const tps = cs.touchpoints||[];
@@ -9413,9 +9518,18 @@ function clientCareDue() {
       const first = p.name.split(' ')[0];
       const slug = p.name.toLowerCase().replace(/\s+/g, '_') + '_' + p.when.getFullYear();
       const cardDays = birthdayCardLead(), textDays = birthdayTextLead();
+      // Anchor a birthday prompt to the START of its day. Birthdays are stored at
+      // noon, so subtracting whole days landed the reminder at noon too - a
+      // "day before" text would not appear until midday, which is no use to
+      // anyone dialing in the morning.
+      const dueAt = (daysBefore) => {
+        const d = new Date(p.when.getTime() - daysBefore * 86400000);
+        d.setHours(0, 0, 0, 0);
+        return d.getTime();
+      };
       if (cardDays !== null) {
         push(c, 'bcard_' + slug, 'Birthday card - ' + p.name,
-             p.when.getTime() - cardDays * 86400000, 'card',
+             dueAt(cardDays), 'card',
              // the date, not "N days out" - once this has been pushed a few times
              // the lead time is no longer the truth and the date always is
              'Send a card - ' + p.name + "'s birthday is " +
@@ -9423,7 +9537,7 @@ function clientCareDue() {
       }
       if (textDays !== null) {
         push(c, 'bday_' + slug, 'Birthday - ' + p.name,
-             p.when.getTime() - textDays * 86400000, 'call',
+             dueAt(textDays), 'call',
              textDays > 0
                ? 'Hi ' + first + ', Holli here - happy birthday for tomorrow! Hope you get spoiled.'
                : 'Hi ' + first + ', Holli here - happy birthday! Hope you get spoiled today.');
@@ -11858,8 +11972,13 @@ async function _saveAppsToTouchpoint(id, ci, ti) {
       const comp = carrier && productName && _compBasis ? calcAppComp(carrier, productName, _compBasis, null, undefined, age, productRange) : null;
       apps.push({
         carrier, product: productName, product_range: productRange, face, premium: apv, who, age, dob: dob || null,
+        contract_level: getAgentSettings().contractLevel || 105,   // h208: locked at the level it was written at
         amount: _amount, is_account: _isAccount,
-        status:'Written', written_date: appDate, writtenDate: appDate, id: Date.now()+idx,
+        // h209: defaults to Submitted. An application that never leaves your desk is
+        // rare; the ordinary case is that you took it and sent it. Written was
+        // costing a status change on nearly every app, and a forgotten one meant
+        // the commission never counted.
+        status:'Submitted', written_date: appDate, writtenDate: appDate, id: Date.now()+idx,
         // Set when this app replaces a declined one. The declined app is then
         // superseded and its premium stops counting - one sale, one premium.
         rewrite_of: (idx === 0 && window._rewriteOf) ? window._rewriteOf : null,
@@ -11958,6 +12077,9 @@ function openEditApp(id, ci, ti, ai) {
   <div class="field"><label>Monthly premium ($ and cents — the number you quote)</label><input type="number" step="0.01" id="edit-app-monthly" value="${ap.premium ? (ap.premium/12).toFixed(2) : ''}" placeholder="e.g. 95.20" style="font-size:16px;" oninput="const a=document.getElementById('edit-app-apv-display'); if(a) a.textContent = this.value ? '= $' + (parseFloat(this.value)*12).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' APV' : '';">
   <div id="edit-app-apv-display" style="font-size:10px;color:#5f7a99;margin-top:3px;">${ap.premium ? '= $' + ap.premium.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' APV' : ''}</div></div>
   <div class="field"><label>Who</label><input type="text" id="edit-app-who" value="${ap.who||'Borrower'}"></div>
+  <div class="field"><label>What this did for them <span style="font-weight:400;color:#8A94A2;">(optional)</span></label>
+    <textarea id="edit-app-notes" rows="2" placeholder="Six months of mortgage payments. Kids stay in the house." style="width:100%;box-sizing:border-box;font-size:14px;">${esc(ap.notes||'')}</textarea>
+    <div style="font-size:10px;color:#8A94A2;margin-top:3px;">The sentence you will want at the 13 month review, and the one that makes a referral ask concrete.</div></div>
   <div class="field"><label>Their birth date <span style="font-weight:400;color:#8A94A2;">(for the birthday reminder)</span></label><input type="date" id="edit-app-dob" value="${appDobIso(ap.dob)}" style="font-size:16px;"></div>
   <div class="field"><label>Date written (the day this app was actually done)</label><input type="date" id="edit-app-date" value="${(ap.writtenDate||ap.written_date||new Date().toISOString()).slice(0,10)}" style="font-size:16px;"></div>
   <div class="field"><label>Status</label><select id="edit-app-status">${APP_STATUSES.map(s=>`<option${ap.status===s?' selected':''}>${s}</option>`).join('')}</select></div>
@@ -11988,6 +12110,8 @@ async function saveEditApp(id, ci, ti, ai) {
   ap.who = document.getElementById('edit-app-who').value.trim()||'Borrower';
   const _dob = document.getElementById('edit-app-dob');
   if (_dob) ap.dob = _dob.value || null;
+  const _an = document.getElementById('edit-app-notes');
+  if (_an) ap.notes = _an.value.trim();
   ap.status = document.getElementById('edit-app-status').value;
   const _dd = document.getElementById('edit-app-draft-day');
   if (_dd) ap.draft_day = _dd.value ? Number(_dd.value) : null;
@@ -13049,7 +13173,7 @@ function referralOnlyStats(pStart, pEnd) {
   let sales = 0, decided = 0, apv = 0, comm = 0;
   cohort.forEach(c => {
     const tps = (c.cases || []).flatMap(cs => (cs.touchpoints || []));
-    const verdicts = tps.filter(tp => ['sale', 'nosale', 'dropped'].includes(tp.outcome));
+    const verdicts = tps.filter(tp => VERDICT_OUTCOMES.includes(tp.outcome));
     if (verdicts.length) decided++;
     if (verdicts.some(tp => tp.outcome === 'sale')) sales++;
     tps.filter(tp => tp.outcome === 'sale').forEach(tp => (tp.apps || []).forEach(ap => {
@@ -13151,7 +13275,8 @@ function reportStats(pStart, pEnd) {
   let contacted = 0, apptsBooked = 0, apptsSat = 0, noShows = 0, decided = 0,
       sales = 0, apps = 0, appsPPU = 0, ppu = 0, resolved = 0,
       apvSub = 0, apvPlaced = 0, comm = 0, advance = 0, chargeback = 0,
-      leadToApptDays = [], apptToSaleDays = [], resets = 0, resetSold = 0;
+      leadToApptDays = [], apptToSaleDays = [], resets = 0, resetSold = 0,
+      noOffer = 0, cancelSaved = 0, cancelLost = 0;
 
   cohort.forEach(c => {
     const log = c.call_log || [];
@@ -13170,7 +13295,8 @@ function reportStats(pStart, pEnd) {
     (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => {
       if (!tp) return;
       if (tp.datetime && !firstAppt) firstAppt = new Date(tp.datetime);
-      if (['sale','nosale'].includes(tp.outcome)) sat = true;
+      if (['sale','nosale','nooffer'].includes(tp.outcome)) sat = true;
+      if (tp.outcome === 'nooffer') noOffer++;
       if (tp.outcome === 'noshow') noShows++;
       if (/PPU|Pickup/i.test(tp.type || '')) ppu++;
       if (tp.outcome === 'sale') {
@@ -13190,7 +13316,14 @@ function reportStats(pStart, pEnd) {
         }
       });
     }));
-    if (sat) { decided++; if (sold) sales++; }
+    // h208: a no-offer sit is a SIT but not a DECISION. A close ratio measures
+    // closing, and nothing was presented to close.
+    const offered = (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp =>
+      tp && ['sale','nosale'].includes(tp.outcome)));
+    if (sat) { if (offered) decided++; if (sold) sales++; }
+    // the two halves of a cancellation, counted apart - what matters is the
+    // share you save, and that is invisible if they are added together
+    log.forEach(e => { if (e.outcome === 'Cancelled') { if (e.cancel_dead) cancelLost++; else cancelSaved++; } });
     if (firstAppt && saleAt) apptToSaleDays.push(Math.max(0, (saleAt - firstAppt) / 86400000));
 
     const r = resetCountFor(c, pStart, pEnd);
@@ -13214,7 +13347,7 @@ function reportStats(pStart, pEnd) {
   const refAppts = (clients||[]).filter(c => c.referred_by && inWin(c.assigned_date || c.created_at) &&
     (c.call_log||[]).some(e => e.outcome === 'Appt set')).length;
   const refSits = (clients||[]).filter(c => c.referred_by && inWin(c.assigned_date || c.created_at) &&
-    (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => ['sale','nosale'].includes(tp.outcome)))).length;
+    (c.cases||[]).some(cs => (cs.touchpoints||[]).some(tp => ['sale','nosale','nooffer'].includes(tp.outcome)))).length;
   const avg = (a) => a.length ? a.reduce((x,y)=>x+y,0) / a.length : null;
 
   return {
@@ -13222,6 +13355,7 @@ function reportStats(pStart, pEnd) {
     leads: cohort.length, contacted, resolved, dials, texts,
     dialHours: dialSecs / 3600, apptHours: apptSecs / 3600,
     apptsBooked, apptsSat, noShows, decided, sales, apps, ppu, appsPPU,
+    noOffer, cancelSaved, cancelLost, cancelTotal: cancelSaved + cancelLost,
     resets, resetSold,
     refLeads: ref.count, refAppts, refSits, refSales: ref.sales, refApv: ref.apv,
     apvSub, apvPlaced, chargeback,
@@ -13255,7 +13389,11 @@ const REPORT_METRICS = [
   {k:'appsPPU',      g:'Production', l:'Sales from PPU',        t:'int',   c:'sum'},
   {k:'sales',        g:'Production', l:'Sales',                 t:'int',   c:'sum'},
   {k:'apps',         g:'Production', l:'Apps written',          t:'int',   c:'sum'},
+  {k:'noOffer',      g:'Production', l:'Sat, no offer made',    t:'int',   c:'sum'},
   {k:'_closeRatio',  g:'Production', l:'Sit to sale ratio',     t:'pct',   c:'ratio', n:'sales', d:'decided'},
+  {k:'cancelSaved',  g:'Production', l:'Cancelled, kept alive', t:'int',   c:'sum'},
+  {k:'cancelLost',   g:'Production', l:'Cancelled, lost',       t:'int',   c:'sum'},
+  {k:'_cancelSave',  g:'Production', l:'Cancellations saved',   t:'pct',   c:'ratio', n:'cancelSaved', d:'cancelTotal'},
   {k:'_leadToApp',   g:'Production', l:'Lead to app CR',        t:'pct',   c:'ratio', n:'sales', d:'leads'},
   {k:'leadToApptDays', g:'Production', l:'Days lead to appt',   t:'days',  c:'avg'},
   {k:'apptToSaleDays', g:'Production', l:'Days appt to sale',   t:'days',  c:'avg'},
@@ -13382,6 +13520,14 @@ function reportColumns() {
 function reportRows() {
   const c = reportCfg();
   return REPORT_METRICS.filter(m => !c.metrics || c.metrics.includes(m.k));
+}
+
+// h207: the guide is guide.html in the same repo, so a RELATIVE link follows
+// whatever domain the app is served from - banksadvantage.com, the vercel.app
+// address, or an agent's own deploy - with no URL to hardcode or keep in sync.
+function openGuide() {
+  try { window.open('guide.html', '_blank', 'noopener'); }
+  catch (e) { alert('Open guide.html in your browser.'); }
 }
 
 function openReportBuilder() {
@@ -14241,6 +14387,61 @@ async function loadAgentSettings() {
   if (COMP_DATA['Foresters']) COMP_DATA['Foresters'].as_earned = settings.forestersAsEarned !== false;
 }
 
+// A TEMPORARY level, for showing an agent what a promotion is worth. Nothing is
+// written: every commission figure recalculates while it is on, and turning it
+// off puts everything back. Deliberately not persisted - a preview that survives
+// a refresh is just a wrong setting.
+// A promotion should not rewrite what you earned before it. Applications written
+// from now on carry the new level; the ones already on file get stamped with the
+// OLD one so their numbers stay exactly where they were. Defaults to yes because
+// that is almost always what happened - you were at 90 when you wrote them.
+async function lockExistingLevels(oldLevel) {
+  let n = 0;
+  const touched = [];
+  (clients || []).forEach(c => {
+    let changed = false;
+    (c.cases||[]).forEach(cs => (cs.touchpoints||[]).forEach(tp => (tp.apps||[]).forEach(ap => {
+      if (ap && !ap.contract_level) { ap.contract_level = oldLevel; changed = true; n++; }
+    })));
+    (c.sits||[]).forEach(si => (si.apps||[]).forEach(ap => {
+      if (ap && !ap.contract_level) { ap.contract_level = oldLevel; changed = true; n++; }
+    }));
+    if (changed) touched.push(c);
+  });
+  for (const c of touched) {
+    try { await sb.from('clients').update({ cases: c.cases, sits: c.sits }).eq('id', c.id); }
+    catch (e) { console.error('lockExistingLevels', e); }
+  }
+  return n;
+}
+
+// Called by every path that changes the level. Asks once, then gets on with it.
+async function onContractLevelChanged(oldLevel, newLevel) {
+  if (!oldLevel || !newLevel || oldLevel === newLevel) return;
+  const unstamped = (clients || []).reduce((a, c) =>
+    a + (c.cases||[]).reduce((b, cs) => b + (cs.touchpoints||[]).reduce((d, tp) =>
+      d + ((tp.apps||[]).filter(ap => ap && !ap.contract_level).length), 0), 0), 0);
+  if (!unstamped) return;
+  const lock = confirm(
+    'You were at ' + oldLevel + '%, now ' + newLevel + '%.\n\n' +
+    'Lock your ' + unstamped + ' existing application' + (unstamped === 1 ? '' : 's') + ' at ' + oldLevel + '%?\n\n' +
+    'OK  - keep past commission as it was (recommended)\n' +
+    'Cancel - recalculate everything at ' + newLevel + '%');
+  if (!lock) return;
+  showSync('Locking ' + unstamped + ' applications at ' + oldLevel + '%...');
+  const n = await lockExistingLevels(oldLevel);
+  hideSync();
+  showSync(n + ' applications locked at ' + oldLevel + '%');
+  setTimeout(hideSync, 2200);
+  render();
+}
+
+function previewLevel() { return window._previewLevel || null; }
+function setPreviewLevel(v) {
+  window._previewLevel = v ? parseInt(v) : null;
+  render();
+}
+
 function getContractLevel() {
   return getAgentSettings().contractLevel || 105;
 }
@@ -14472,11 +14673,13 @@ function openCompSettings() {
     '<button class="save-btn" onclick="saveCompSettings()">Save</button>');
 }
 
-function saveCompSettings() {
+async function saveCompSettings() {
   const level = parseInt(document.getElementById('comp-contract-level').value);
   const settings = getAgentSettings();
+  const wasLevel = settings.contractLevel || 105;
   settings.contractLevel = level;
-  saveAgentSettings(settings);
+  await saveAgentSettings(settings);
+  await onContractLevelChanged(wasLevel, level);
   closeModal();
   // Re-render any open app entry forms
 }
@@ -14535,6 +14738,12 @@ function openSettings() {
   showModal(
     '<button class="close-x" onclick="closeToLead()">x</button>' +
     '<div class="modal-title">⚙️ Settings</div>' +
+
+    '<div style="background:#E1F5EE;border-radius:10px;padding:12px;margin-bottom:12px;">' +
+      '<div style="font-size:10px;font-weight:600;color:#0E6363;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Help</div>' +
+      '<button class="save-btn" style="margin-bottom:4px;background:#138181;" onclick="openGuide()">How to work your day</button>' +
+      '<div style="font-size:11px;color:#5f7a99;">Step by step, with the answers to whatever has you stuck. Search it. Opens in a new tab.</div>' +
+    '</div>' +
 
     '<div style="background:#f0f4f8;border-radius:10px;padding:12px;margin-bottom:12px;">' +
       '<div style="font-size:10px;font-weight:600;color:#5f7a99;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Reports</div>' +
@@ -14687,7 +14896,9 @@ function saveProfileSettings() {
   settings.agentName = document.getElementById('s-name').value.trim();
   { const _ag = document.getElementById('s-agency');
     if (_ag) settings.agencyName = _ag.value.trim() || 'Banks Advantage - CWC'; }
+  const _wasLevel = settings.contractLevel || 105;
   settings.contractLevel = parseInt(document.getElementById('s-level').value);
+  if (_wasLevel !== settings.contractLevel) setTimeout(() => onContractLevelChanged(_wasLevel, settings.contractLevel), 250);
   const dm = document.getElementById('s-appt-mins');
   if (dm) settings.defaultApptMins = parseInt(dm.value) || 40;
   const da = document.getElementById('s-dorm-att'), dd = document.getElementById('s-dorm-days');
