@@ -2204,6 +2204,19 @@ html,body{ overflow-x:hidden !important; }
   background:rgb(255 255 255 / .08) !important; border:1px solid var(--line-2) !important;
   border-radius:7px !important; padding:3px 9px !important;
 }
+
+/* h259: anything filled with the accent carries white text, full stop. Two
+   buttons - Save, top right, and Mark paid beside "owe $30" - were rendering as
+   accent-on-accent because a broad "everything in a modal is ink" rule was
+   beating their inline white. */
+.modal [style*="background:var(--accent)"],
+.modal [style*="background: var(--accent)"],
+.modal .save-btn, .modal button.save-btn,
+}
+.modal [style*="background:var(--accent)"] *,
+.modal .save-btn *{ color:#fff !important; }
+/* and the same on the board, where the pattern repeats */
+[style*="background:var(--accent)"]{ color:#fff !important; }
 </style>
 </head>
 <body>
@@ -2222,7 +2235,7 @@ html,body{ overflow-x:hidden !important; }
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h258</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h259</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
