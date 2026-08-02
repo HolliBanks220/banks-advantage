@@ -571,29 +571,35 @@ body{ background:var(--field) !important; color:var(--ink) !important; }
 /* ---- THE FOUR HEADLINE NUMBERS. A permanent gradient in the agent's accent.
    They look different because they ARE different, not because of how today is
    going - which is the bar's job, below. ---- */
-.stat.hero{
+.stat.hero, .stat.stat-navy.hero, .stat.stat-teal.hero, .stat.stat-navy-lt.hero{
   background:linear-gradient(145deg, var(--accent) 0%, var(--accent-dark) 100%) !important;
   border-color:transparent !important;
-  box-shadow:0 1px 2px rgba(22,32,46,.10), 0 8px 20px -8px color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow:0 1px 2px rgba(22,32,46,.14), 0 10px 22px -10px rgba(22,32,46,.40);
 }
-.stat.hero .stat-lbl{ color:rgba(255,255,255,.68) !important; }
-.stat.hero .stat-val{ color:var(--accent-ink) !important; font-size:32px !important; }
+.stat.hero .stat-lbl, .stat.hero .lbl-white{ color:rgba(255,255,255,.68) !important; }
+.stat.hero .stat-val, .stat.hero .val-white, .stat.hero .val-navy{ color:var(--accent-ink) !important; font-size:32px !important; }
 .stat.hero .stat-sub{ color:rgba(255,255,255,.72) !important; }
-.stat.hero:hover{ box-shadow:0 2px 4px rgba(22,32,46,.12), 0 16px 30px -10px color-mix(in srgb, var(--accent) 60%, transparent); }
+.stat.hero:hover{ box-shadow:0 2px 4px rgba(22,32,46,.16), 0 18px 34px -12px rgba(22,32,46,.45); }
 
 /* ---- GOAL STATE. The card NEVER floods. A bar at the bottom carries it, and
    the number goes green only when the goal is actually hit. ---- */
-.stat.tile-goal-red, .stat.tile-goal-yellow, .stat.tile-goal-green{
+/* h217: :not(.hero) throughout. A hero tile is already coloured, so the goal
+   rules must not repaint it white - that put hero's WHITE text on a WHITE card
+   the moment a goal was set, and the tile faded into the page. */
+.stat.tile-goal-red:not(.hero), .stat.tile-goal-yellow:not(.hero), .stat.tile-goal-green:not(.hero){
   background:#fff !important; border-color:var(--hair) !important;
 }
-.stat.tile-goal-red .stat-lbl, .stat.tile-goal-yellow .stat-lbl, .stat.tile-goal-green .stat-lbl{
+.stat.tile-goal-red:not(.hero) .stat-lbl, .stat.tile-goal-yellow:not(.hero) .stat-lbl, .stat.tile-goal-green:not(.hero) .stat-lbl{
   color:var(--ink-faint) !important;
 }
-.stat.tile-goal-red .stat-val, .stat.tile-goal-yellow .stat-val{ color:var(--ink) !important; }
-.stat.tile-goal-green .stat-val{ color:var(--goal-green) !important; }
-.stat.tile-goal-red .stat-sub, .stat.tile-goal-yellow .stat-sub, .stat.tile-goal-green .stat-sub{
+.stat.tile-goal-red:not(.hero) .stat-val, .stat.tile-goal-yellow:not(.hero) .stat-val{ color:var(--ink) !important; }
+.stat.tile-goal-green:not(.hero) .stat-val{ color:var(--goal-green) !important; }
+.stat.tile-goal-red:not(.hero) .stat-sub, .stat.tile-goal-yellow:not(.hero) .stat-sub, .stat.tile-goal-green:not(.hero) .stat-sub{
   color:var(--ink-dim) !important; font-weight:500 !important;
 }
+/* A hero that has HIT its goal gets a green rim - the gradient already carries
+   the "this is a headline" job, so it needs nothing louder. */
+.stat.tile-goal-green.hero{ box-shadow:0 0 0 2px var(--goal-green), 0 10px 22px -10px rgba(22,32,46,.40) !important; }
 /* the goal-settable marker was a teal strip down the right edge - unnecessary
    now that an unset tile simply says "+ set a goal" */
 .stat.goal-able{ border-right-width:1px !important; }
@@ -658,7 +664,7 @@ input:focus, select:focus, textarea:focus{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h216</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h217</span>
         <button class="gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <button class="gear-btn" id="undo-btn" onclick="undoLastAction()" style="display:none;" title="Undo the last action">&#8634;</button>
         <button class="arrow-btn" onclick="shiftPeriod(-1)">&#8592;</button>
@@ -695,17 +701,17 @@ input:focus, select:focus, textarea:focus{
     <div id="alerts-section" style="margin-bottom:4px;"></div>
     <div class="section-lbl">Dialing activity</div>
     <div class="stat-row">
-      <div class="stat stat-navy">
+      <div class="stat stat-navy hero">
         <div class="stat-lbl lbl-white">Dials</div>
-        <div class="stat-val val-white hero" id="s-dials">0</div>
+        <div class="stat-val val-white" id="s-dials">0</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.6);margin-top:-4px;margin-bottom:2px;" id="s-dials-per-hr"></div>
         <div class="stat-btns">
           
         </div>
       </div>
-      <div class="stat stat-navy-lt">
+      <div class="stat stat-navy-lt hero">
         <div class="stat-lbl lbl-navy">Appts set</div>
-        <div class="stat-val val-navy hero" id="s-appts">0</div>
+        <div class="stat-val val-navy" id="s-appts">0</div>
         <div class="stat-sub sub-navy" id="p-appts-sub"></div>
         <div class="stat-btns">
         </div>
@@ -789,9 +795,9 @@ input:focus, select:focus, textarea:focus{
       </div>
     </div>
     <div class="stat-row" style="grid-template-columns:repeat(4,minmax(0,1fr));">
-      <div class="stat stat-teal">
+      <div class="stat stat-teal hero">
         <div class="stat-lbl lbl-white">Sales</div>
-        <div class="stat-val val-white hero" id="p-sales" style="cursor:pointer;" onclick="drillDown('sales')">0</div>
+        <div class="stat-val val-white" id="p-sales" style="cursor:pointer;" onclick="drillDown('sales')">0</div>
         <div class="stat-sub sub-white" id="p-sales-sub">- close rate</div>
       </div>
       <div class="stat stat-red">
@@ -853,9 +859,9 @@ input:focus, select:focus, textarea:focus{
     </div>
     <!-- APV summary row - compact -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
-      <div class="stat stat-teal">
+      <div class="stat stat-teal hero">
         <div class="stat-lbl lbl-white">Submitted APV</div>
-        <div class="stat-val val-white hero" id="p-apv" style="font-size:20px;">$0</div>
+        <div class="stat-val val-white" id="p-apv" style="font-size:20px;">$0</div>
         <div class="stat-sub sub-white" id="p-apv-goalsub"></div>
       </div>
       <div class="stat stat-navy-lt">
@@ -913,9 +919,13 @@ input:focus, select:focus, textarea:focus{
       <div class="stat"><div class="stat-lbl">Comm / lead</div><div class="stat-val" id="lp-commlead" style="font-size:18px;">-</div><div class="stat-sub">before cost</div></div>
       <div class="stat"><div class="stat-lbl">Profit / lead</div><div class="stat-val" id="lp-profitlead" style="font-size:18px;">-</div><div class="stat-sub" id="lp-profit-sub">after lead spend</div></div>
     </div>
-    <div class="stat-row" style="grid-template-columns:repeat(3,minmax(0,1fr));">
-      <div class="stat"><div class="stat-lbl">Avg APV / sale</div><div class="stat-val" id="lp-avgapv" style="font-size:18px;">-</div><div class="stat-sub">per sale</div></div>
-      <div class="stat" style="cursor:pointer;" onclick="openLeadSpend()"><div class="stat-lbl">Lead spend</div><div class="stat-val" id="lp-spend" style="font-size:18px;">-</div><div class="stat-sub" style="color:var(--teal);font-weight:700;">tap to add a charge</div></div>
+    <!-- h217: 'Avg APV / sale' left. Production already shows APV / Sale and the
+         two disagreed - Production counts sales made IN the period, this counted
+         the cohort assigned in it. Same label, two questions, two numbers. -->
+    <div class="stat-row" style="grid-template-columns:repeat(2,minmax(0,1fr));">
+      <div class="stat" style="cursor:pointer;" onclick="openLeadSpend()"><div class="stat-lbl">Lead spend</div><div class="stat-val" id="lp-spend" style="font-size:20px;">-</div><div class="stat-sub" style="color:var(--accent);font-weight:700;">tap to add a charge</div></div>
+      <div class="stat"><div class="stat-lbl">Return on spend</div><div class="stat-val" id="lp-roi" style="font-size:20px;">-</div><div class="stat-sub">for every $1 out</div></div>
+      <div class="stat-val" id="lp-avgapv" style="display:none;">-</div>
     </div>
   </div>
 
@@ -2851,7 +2861,10 @@ function renderSourceComparison(pStart, pEnd, label) {
     setEl('lp-profit-sub', spend > 0
       ? Math.round(((A.comm - spend) / spend) * 100) + '% ROI'
       : 'no spend entered yet');
-    setEl('lp-avgapv', fmtAvg(apv, A.sales));
+    setEl('lp-avgapv', fmtAvg(apv, A.sales));   // kept hidden; Production owns APV / Sale
+    // h217: the two wide tiles at the bottom - what you spent, and what each
+    // dollar of it returned. A multiple reads faster than a percentage here.
+    setEl('lp-roi', spend > 0 ? '$' + (A.comm / spend).toFixed(2) : '-');
     const neverN = Math.round(((mia.m ? mia.m.neverPct : 0) * mia.assigned +
                                (cia.m ? cia.m.neverPct : 0) * cia.assigned) / (A.assigned || 1));
     setEl('lp-never', A.assigned ? neverN + '%' : '-');   // h211: no longer on the board; setEl no-ops when absent
@@ -14539,7 +14552,10 @@ function applyTheme(){
   migrateThemeH135();
   applyBoardName();
   const t = getTheme(); const r = document.documentElement.style;
-  r.setProperty('--tile-base', t.base);    r.setProperty('--tile-base2', _shift(t.base, 0.10));   // h141: 0.05 was too subtle to see  r.setProperty('--tile-text', _lum(t.base) > 0.45 ? '#1D2733' : '#D9DEE6');
+  // h216: this used to push the saved theme's base colour into --tile-base at
+  // runtime, which silently overrode the white cards - the reason the light pass
+  // still rendered grey. Theme presets are gone; cards are white and the accent
+  // picker is the styling control. Only the goal colours are still driven here.
   // --dk-card / --dk-ink are deliberately NOT theme-driven (h135). The app chrome
   // (lead cards, sidebar, modals) is a fixed light-gray/near-black baseline; the
   // theme picker retints the SCORE TILES and goal colors only. This is what makes
