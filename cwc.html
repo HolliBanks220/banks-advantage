@@ -1153,6 +1153,80 @@ html,body{ overflow-x:hidden !important; }
 }
 #pace-line .pace-banner{ flex:1 1 auto !important; margin:0 !important; }
 #pace-line .pace-actions{ margin-left:auto !important; }
+
+/* ============================================================================
+   h229 - THE HEADER, ONE LINE, NO WRAPPING
+   The last attempt still stacked because .hdr and the two .nav-row groups inside
+   .hdr-right were all allowed to wrap - so the right-hand side dropped to its
+   own line and then split in two again. Nothing in this band wraps now.
+   ========================================================================== */
+.hdr{
+  display:flex !important; align-items:center !important;
+  gap:24px !important; flex-wrap:nowrap !important;
+  padding:26px 0 20px !important; margin:0 !important;
+  background:transparent !important; border:none !important;
+  border-bottom:1px solid var(--line) !important;
+  min-height:0 !important; width:100% !important;
+}
+
+/* LEFT: eyebrow, then name and date on one baseline */
+.hdr-left{
+  display:flex !important; flex-direction:column !important; gap:2px !important;
+  margin-right:auto !important; flex:0 1 auto !important; min-width:0 !important;
+}
+.hdr-title{
+  font-size:11px !important; font-weight:600 !important; letter-spacing:.22em !important;
+  text-transform:uppercase !important; color:var(--accent-lift) !important;
+  line-height:1.4 !important; margin:0 !important; white-space:nowrap !important;
+}
+.hdr-name-row{
+  display:flex !important; align-items:baseline !important; gap:12px !important;
+  flex-wrap:nowrap !important;
+}
+.hdr-who{
+  font-size:20px !important; font-weight:700 !important; color:#fff !important;
+  letter-spacing:-.01em !important; line-height:1.2 !important; margin:0 !important;
+  white-space:nowrap !important;
+}
+.hdr-sub{
+  font-size:13px !important; font-weight:500 !important; color:var(--faint) !important;
+  letter-spacing:0 !important; margin:0 !important; white-space:nowrap !important;
+}
+
+/* MIDDLE: the tab row */
+.tab-bar{
+  display:flex !important; align-items:center !important; gap:18px !important;
+  margin:0 !important; padding:0 !important; border:none !important;
+  background:transparent !important; flex:0 0 auto !important; flex-wrap:nowrap !important;
+}
+.tab{
+  padding:7px 4px !important; font-size:13.5px !important; font-weight:600 !important;
+  background:none !important; border:none !important; border-radius:0 !important;
+  flex:0 0 auto !important; white-space:nowrap !important;
+}
+.tab.on{ background:none !important; }
+.tab.on::after{ bottom:-21px !important; }
+
+/* RIGHT: the two control groups sit SIDE BY SIDE, never stacked */
+.hdr-right{
+  display:flex !important; align-items:center !important; gap:10px !important;
+  flex:0 0 auto !important; flex-wrap:nowrap !important; margin-left:0 !important;
+}
+.hdr-right .nav-row{
+  display:flex !important; align-items:center !important; gap:4px !important;
+  margin:0 !important; flex:0 0 auto !important; flex-wrap:nowrap !important;
+}
+.period-label{
+  font-size:12.5px !important; font-weight:600 !important; color:var(--muted) !important;
+  min-width:78px !important; text-align:center !important; white-space:nowrap !important;
+}
+
+/* below 1100px the tab row steps out of the band rather than squashing it */
+@media(max-width:1100px){
+  .hdr{ flex-wrap:wrap !important; }
+  .tab-bar{ order:3; width:100%; margin-top:14px !important; }
+  .tab.on::after{ bottom:-6px !important; }
+}
 </style>
 </head>
 <body>
@@ -1160,19 +1234,18 @@ html,body{ overflow-x:hidden !important; }
 <div class="page-outer"><div class="wrap app-main" id="app">
   <div class="hdr">
     <div class="hdr-left">
-      <div style="display:flex;align-items:baseline;gap:0;flex-wrap:wrap;">
-        <div class="hdr-title" id="hdr-title">Banks Advantage - CWC</div>
-        <!-- h226: the WHITE text says WHO you are looking at. You today; a team,
-             base shop or the whole agency once those exist. -->
+      <div class="hdr-title" id="hdr-title">Banks Advantage - CWC</div>
+      <!-- h229: name and date share one baseline, the way v0 has it. The WHITE
+           text says WHO you are looking at - you today; a team, a base shop or
+           the whole agency once those exist. -->
+      <div class="hdr-name-row">
         <div class="hdr-who" id="hdr-who"></div>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;">
         <div class="hdr-sub" id="hdr-date"></div>
-        </div>
+      </div>
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h228</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h229</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
