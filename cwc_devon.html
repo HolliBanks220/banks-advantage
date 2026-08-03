@@ -2934,6 +2934,22 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
   border-color:var(--accent) !important;
   color:#ffffff !important; -webkit-text-fill-color:#ffffff !important;
 }
+
+/* h299: the calendar tick on a callback or a follow-up. It reads as a choice,
+   not as fine print - it is the difference between a day that looks full and one
+   that looks manageable. */
+.cal-opt{
+  display:flex !important; align-items:center !important; gap:9px !important;
+  margin:2px 0 12px !important; padding:10px 12px !important;
+  background:#F4F7FA !important; border:1px solid #D5DEE8 !important;
+  border-radius:8px !important; cursor:pointer;
+  font-size:13px !important; font-weight:500 !important; color:#16202E !important;
+}
+.cal-opt:hover{ border-color:#9FB2C4 !important; }
+.cal-opt input[type="checkbox"]{
+  width:17px !important; height:17px !important; margin:0 !important;
+  accent-color:var(--accent); cursor:pointer; flex:0 0 auto;
+}
 </style>
 </head>
 <body>
@@ -2960,7 +2976,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h298</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h299</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -10975,6 +10991,7 @@ function openFollowUpPicker(id) {
       ).join('')}
     </div>
   </div>
+  <label class="cal-opt"><input type="checkbox" id="followup-cal"${existing && existing.on_calendar ? ' checked' : ''}><span>Put this on my Google Calendar</span></label>
   <button class="save-btn" style="background:#534AB7;" onclick="confirmFollowUp('${id}')">Save follow-up</button>`);
 }
 
@@ -10998,13 +11015,18 @@ async function confirmFollowUp(id) {
     const [hours,minutes] = dtVal.split('T')[1].split(':').map(Number);
     followupDt = new Date(year, month-1, day, hours, minutes).toISOString();
   }
+  const _fuCal = document.getElementById('followup-cal');
   const callLog = [...(c.call_log||[]), {
     ts: new Date().toISOString(),
     outcome: 'Follow-up scheduled',
     note,
     followup_dt: followupDt,
-    dials: 0
+    dials: 0,
+    on_calendar: !!(_fuCal && _fuCal.checked && followupDt)   // h299
   }];
+  if (callLog[callLog.length-1].on_calendar) {
+    try { await pushCommitmentToCalendar(c, callLog[callLog.length-1], 'upsert'); } catch (e) {}
+  }
   showSync('Saving...');
   // Follow-up lives ONLY in the call_log record. The appointment is over —
   // appt_datetime is cleared so the follow-up never masquerades as an appointment.
@@ -12377,6 +12399,10 @@ function openCallbackPicker(id) {
     '<div class="field"><label>Date</label><input type="date" id="cb-date" value="' + tomorrowStr + '" style="font-size:16px;"></div>' +
     '<div class="field"><label>Time (optional)</label><input type="time" id="cb-time" placeholder="Leave blank if no specific time" style="font-size:16px;"></div>' +
     '<div class="field"><label>What are you doing next?</label><input type="text" id="cb-note" placeholder="e.g. send illustrations, 20 vs 30 year" style="font-size:15px;"></div>' +
+    // h299: a callback at 3:00 to a real person is worth blocking out; "try again
+    // Thursday" is not. Off by default, because most of them are the second kind
+    // and twenty a day would bury the appointments that matter.
+    '<label class="cal-opt"><input type="checkbox" id="cb-cal"><span>Put this on my Google Calendar</span></label>' +
     '<button class="save-btn" style="background:#BA7517;" onclick="confirmCallback(\''+id+'\',true)">Save callback date</button>' +
     '<button onclick="confirmCallback(\''+id+'\',false)" style="width:100%;background:none;border:none;padding:8px;font-size:12px;color:#8fa8c0;cursor:pointer;">No specific date — just log callback</button>');
 }
@@ -12417,7 +12443,11 @@ async function confirmCallback(id, hasDate) {
   // what you told them you'd do, and it's the whole point of the log entry.
   const noteEl = document.getElementById('cb-note');
   const userNote = noteEl && noteEl.value ? noteEl.value.trim() : '';
-  const callLog = [...(c.call_log||[]), {ts, outcome:'Callback', dials:dialCount, callback_dt:callbackDt, callback_note:callbackNote, callback_has_time:callbackHasTime, note:userNote}];
+  const _cbCal = document.getElementById('cb-cal');
+  const wantCal = !!(_cbCal && _cbCal.checked && callbackDt);
+  const _cbEntry = {ts, outcome:'Callback', dials:dialCount, callback_dt:callbackDt, callback_note:callbackNote, callback_has_time:callbackHasTime, note:userNote, on_calendar:wantCal};
+  if (wantCal) { try { await pushCommitmentToCalendar(c, _cbEntry, 'upsert'); } catch (e) {} }
+  const callLog = [...(c.call_log||[]), _cbEntry];
   // Scheduling a callback on an appointment holder ("call Friday to confirm
   // Monday") must not demote the appointment - the callback rides alongside.
   c.call_log = callLog; c.status = (c.status === 'Appointment set') ? c.status : 'Working';
@@ -17413,6 +17443,36 @@ async function disconnectGoogleCalendar() {
 
 // Push an appointment to Google. Called on set / move / cancel.
 // Fails quietly: a calendar hiccup must never block booking an appointment.
+// h299: appointments always sync. A callback or a follow-up only goes across if
+// it was ticked when it was scheduled - so the calendar shows commitments to
+// people, not every "try again Thursday". Each one carries its own event id, so
+// unticking or moving it later updates the right event and not the appointment.
+async function pushCommitmentToCalendar(client, entry, action) {
+  try {
+    if (!entry) return;
+    const when = entry.callback_dt || entry.followup_dt;
+    if (!when) return;
+    const isCb = !!entry.callback_dt;
+    const res = await fetch(SB_FN_BASE + '/calendar-sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        agent_id: getAgentId(),
+        action: action,
+        client_id: client.id + ':' + (isCb ? 'cb' : 'fu') + ':' + when,
+        event_id: entry.gcal_event_id || null,
+        summary: client.name + ' - ' + (isCb ? 'callback' : 'follow-up'),
+        description: 'CWC - ' + (entry.note || entry.callback_note || '') +
+                     (client.phone ? '\n' + client.phone : ''),
+        start: when,
+        minutes: 15,
+      })
+    });
+    const out = await res.json().catch(() => null);
+    if (out && out.event_id) entry.gcal_event_id = out.event_id;
+  } catch (e) {}
+}
+
 async function pushApptToCalendar(client, action) {
   try {
     const res = await fetch(SB_FN_BASE + '/calendar-sync', {
