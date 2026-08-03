@@ -2833,6 +2833,107 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
 
 /* and the section labels' rule */
 .section-lbl::after{ background:var(--grid-line) !important; }
+
+/* ============================================================================
+   h295 - THE GOAL BAR IS FULL WIDTH AGAIN
+   .goal-slot carries align-self:start, which was written for the small tiles -
+   they are grid items, where align-self works on the block axis and start simply
+   means "sit at the top". A hero card is a FLEX COLUMN, and there align-self
+   works on the cross axis, which is horizontal - so the slot shrank to the width
+   of its text and took the bar with it. 65 of 72 was drawing a 90% fill inside a
+   70px box.
+   ========================================================================== */
+.stat.hero .goal-slot, .stat.hero .stat-sub{
+  align-self:stretch !important;
+  width:100% !important;
+}
+.hero-meter{ width:100% !important; display:block !important; }
+.hero-meter-fill{ display:block !important; }
+/* the small tiles keep their own meter full width too */
+.stat .goal-slot{ width:100% !important; }
+.tile-goal{ width:100% !important; }
+
+/* ============================================================================
+   h296 - THE DRILL-DOWN LISTS ARE READABLE
+   Tapping a tile opens a list of who is in it, and those rows were written with
+   inline sizes but no colour - so they inherited, and inside a modal that landed
+   as near-black on near-black. Stated outright, and stated last.
+   ========================================================================== */
+.drill-row{
+  padding:11px 12px !important;
+  border:1px solid #E2EAF2 !important;
+  border-radius:9px !important;
+  margin-bottom:6px !important;
+  background:#ffffff !important;
+  cursor:pointer;
+}
+.drill-row:hover{ background:#F7FAFD !important; border-color:#C9D6E2 !important; }
+.drill-name{
+  font-size:14.5px !important; font-weight:600 !important;
+  color:#16202E !important; -webkit-text-fill-color:#16202E !important;
+  line-height:1.35 !important;
+}
+.drill-note{
+  font-size:12.5px !important; color:#5F7A99 !important;
+  -webkit-text-fill-color:#5F7A99 !important;
+  margin-top:3px !important; line-height:1.45 !important;
+}
+.drill-note:empty{ display:none !important; }
+/* whatever else a row carries, it stays on the light sheet */
+.drill-row *{ background:transparent !important; }
+
+/* h296b: a .client-card is a DARK-board object - dark face, white name. Reused
+   inside a light modal, the modal's blanket ink rule repaints its text dark and
+   you get dark on dark. Every list that opens over the board gets the light
+   treatment instead, so the same markup works in both places. */
+.modal .client-card, #modal-ov .client-card{
+  background:#ffffff !important;
+  border:1px solid #E2EAF2 !important;
+  border-radius:9px !important;
+  padding:11px 12px !important;
+  margin-bottom:6px !important;
+}
+.modal .client-card:hover, #modal-ov .client-card:hover{
+  background:#F7FAFD !important; border-color:#C9D6E2 !important;
+}
+.modal .client-card .client-name, #modal-ov .client-card .client-name{
+  color:#16202E !important; -webkit-text-fill-color:#16202E !important;
+  font-size:14.5px !important;
+}
+.modal .client-card .client-meta, #modal-ov .client-card .client-meta,
+.modal .client-card .log-row, #modal-ov .client-card .log-row{
+  color:#5F7A99 !important; -webkit-text-fill-color:#5F7A99 !important;
+  font-size:12.5px !important; border-top-color:#EDF2F7 !important;
+}
+.modal .client-card .lead-phone, #modal-ov .client-card .lead-phone{
+  color:#16202E !important; -webkit-text-fill-color:#16202E !important;
+}
+.modal .client-card .lead-counters, #modal-ov .client-card .lead-counters{
+  color:#5F7A99 !important; -webkit-text-fill-color:#5F7A99 !important;
+}
+/* chips inside those rows stay legible too */
+.modal .client-card .lead-chip, .modal .client-card .ns-chip,
+#modal-ov .client-card .lead-chip, #modal-ov .client-card .ns-chip{
+  background:#EEF3F8 !important; border:1px solid #D5DEE8 !important;
+  color:#16202E !important; -webkit-text-fill-color:#16202E !important;
+}
+
+/* h297: the sit questions - did you ask for a reset, a referral, a recruit. The
+   answer you pick fills with the accent, and nothing can repaint it. */
+.modal button.sit-yn, button.sit-yn{
+  flex:1; background:#ffffff !important;
+  border:1px solid #D5DEE8 !important;
+  color:#16202E !important; -webkit-text-fill-color:#16202E !important;
+  border-radius:8px !important; padding:13px !important;
+  font-size:14.5px !important; font-weight:600 !important;
+  font-family:inherit; cursor:pointer;
+}
+.modal button.sit-yn:hover{ border-color:#9FB2C4 !important; }
+.modal button.sit-yn.sit-yn-on, button.sit-yn.sit-yn-on{
+  background:var(--accent) !important;
+  border-color:var(--accent) !important;
+  color:#ffffff !important; -webkit-text-fill-color:#ffffff !important;
+}
 </style>
 </head>
 <body>
@@ -2859,7 +2960,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h292</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h297</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -5919,9 +6020,9 @@ function drillDown(type) {
     showModal('<button class="close-x" onclick="closeToLead()">x</button>' +
       '<div class="modal-title">' + head + ' (' + rows.length + ')</div>' +
       rows.map(r =>
-        '<div onclick="openClient(\'' + r.c.id + '\')" style="padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.08);cursor:pointer;">' +
-          '<div style="font-size:13px;font-weight:600;">' + esc(r.c.name) + '</div>' +
-          '<div style="font-size:11px;color:#5E6A78;">' + esc(r.note || '') + '</div>' +
+        '<div class="drill-row" onclick="openClient(\'' + r.c.id + '\')">' +
+          '<div class="drill-name">' + esc(r.c.name) + '</div>' +
+          '<div class="drill-note">' + esc(r.note || '') + '</div>' +
         '</div>').join(''));
     return;
   }
@@ -14343,7 +14444,7 @@ function openEditOutcome(id, ci, ti) {
   <button class="save-btn" onclick="saveEditOutcome('${id}',${ci},${ti})">Save</button>
   <div style="border-top:1px solid rgba(0,0,0,0.10);margin-top:14px;padding-top:12px;">
     ${hasApps
-      ? '<div style="font-size:11px;color:#5E6A78;">This sit has ' + (tp.apps||[]).length + ' application(s) on it, so it cannot be removed here \u2014 move or delete those first, or the applications go with it.</div>'
+      ? '<div class="drill-note">This sit has ' + (tp.apps||[]).length + ' application(s) on it, so it cannot be removed here \u2014 move or delete those first, or the applications go with it.</div>'
       : '<div style="font-size:11px;color:#5E6A78;margin-bottom:6px;">Logged twice by mistake? Removing it takes this sit off the case. It is kept so you can put it back.</div>' +
         '<button class="save-btn" style="background:var(--goal-red);" onclick="confirmDeleteTouchpoint(\'' + id + '\',' + ci + ',' + ti + ')">Remove this sit</button>'}
   </div>`);
@@ -15857,8 +15958,12 @@ async function startSitFlow(id, ci, outcome) {
       '<div id="sit-step-' + i + '" style="display:' + (i===0?'block':'none') + ';">' +
         '<div style="font-size:15px;color:#1D3557;line-height:1.4;margin-bottom:12px;font-weight:500;">' + s.q + '</div>' +
         '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
-          '<button id="q-' + s.k + '-yes" onclick="answerSit(\'' + s.k + '\',true)"  style="flex:1;background:#fff;border:1px solid #e2eaf2;color:#5f7a99;border-radius:8px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;">Yes</button>' +
-          '<button id="q-' + s.k + '-no"  onclick="answerSit(\'' + s.k + '\',false)" style="flex:1;background:#fff;border:1px solid #e2eaf2;color:#5f7a99;border-radius:8px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;">No</button>' +
+          // h297: these carried an inline background:#fff, which the modal's
+          // "neutralise every inline fill" rule then locked with !important - so
+          // the accent the click applies could never show. The answer registered
+          // and looked as though it had not. A class the stylesheet owns instead.
+          '<button class="sit-yn" id="q-' + s.k + '-yes" onclick="answerSit(\'' + s.k + '\',true)">Yes</button>' +
+          '<button class="sit-yn" id="q-' + s.k + '-no"  onclick="answerSit(\'' + s.k + '\',false)">No</button>' +
         '</div>' +
         sitStepDetail(s.k) +
         '<button id="sit-next-' + i + '" onclick="nextSitStep()" style="display:none;width:100%;background:#1D3557;color:#fff;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;">' + (i === SIT_STEPS.length-1 ? 'Finish' : 'Continue') + '</button>' +
@@ -15870,8 +15975,10 @@ function answerSit(k, val) {
   window._q[k] = val;
   const yes = document.getElementById('q-' + k + '-yes');
   const no  = document.getElementById('q-' + k + '-no');
-  if (yes) { yes.style.background = val ? 'var(--accent)' : '#fff'; yes.style.color = val ? '#fff' : '#5f7a99'; yes.style.borderColor = val ? 'var(--accent)' : '#e2eaf2'; }
-  if (no)  { no.style.background  = !val ? '#1D3557' : '#fff'; no.style.color  = !val ? '#fff' : '#5f7a99'; no.style.borderColor  = !val ? '#1D3557' : '#e2eaf2'; }
+  // h297: selection is a class now, not an inline style - nothing in the
+  // stylesheet can outrank it, and the two answers read the same weight.
+  if (yes) yes.classList.toggle('sit-yn-on', val === true);
+  if (no)  no.classList.toggle('sit-yn-on', val === false);
   const d = document.getElementById('q-' + k + '-detail');
   if (d) d.style.display = val ? 'block' : 'none';
   const i = SIT_STEPS.findIndex(s => s.k === k);
@@ -16909,7 +17016,7 @@ function reportTableHtml(cols, rows, total, avg) {
       }
     }
     out += '<div style="' + grid + 'padding:3px 0;border-bottom:1px solid rgba(0,0,0,.05);">' +
-      '<div style="font-size:11px;color:#5E6A78;">' + esc(m.l) + '</div>' +
+      '<div class="drill-note">' + esc(m.l) + '</div>' +
       cells.map(v => '<div style="font-size:11px;font-weight:600;text-align:right;color:' + (v === 'N/A' ? '#c3ccd6' : '#1D3557') + ';">' + v + '</div>').join('') +
       (total ? '<div style="font-size:11px;font-weight:700;text-align:right;color:var(--accent-dark);">' + reportFmt(m, reportValue(m, total)) + '</div>' : '') +
       (avg ? '<div style="font-size:11px;font-weight:700;text-align:right;color:var(--accent-dark);">' + reportFmt(m, reportValue(m, avg)) + '</div>' : '') +
@@ -17041,7 +17148,7 @@ function _rptRowTap(label, a, b, c, keys) {
     (bold ? '700' : '600') + ';text-align:right;cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;color:' +
     (bold ? 'var(--accent-dark)' : 'var(--accent)') + ';">' + v + '</div>';
   return '<div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:4px;padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.06);">' +
-    '<div style="font-size:11px;color:#5E6A78;">' + label + '</div>' +
+    '<div class="drill-note">' + label + '</div>' +
     cell(a, keys[0]) + cell(b, keys[1]) + cell(c, keys[2], true) +
   '</div>';
 }
@@ -17112,7 +17219,7 @@ function toggleRoiGifts() { window._roiWithGifts = !window._roiWithGifts; openRe
 
 function _rptRow(label, a, b, c) {
   return '<div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:4px;padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.06);">' +
-    '<div style="font-size:11px;color:#5E6A78;">' + label + '</div>' +
+    '<div class="drill-note">' + label + '</div>' +
     '<div style="font-size:12px;font-weight:600;text-align:right;">' + a + '</div>' +
     '<div style="font-size:12px;font-weight:600;text-align:right;">' + b + '</div>' +
     '<div style="font-size:12px;font-weight:700;text-align:right;color:var(--accent-dark);">' + c + '</div>' +
