@@ -2976,7 +2976,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h299</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h300</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -17351,9 +17351,45 @@ function openReferralList() {
     '<div id="referral-list">' + renderReferralRows('') + '</div>');
 }
 
+// h300: this read one localStorage key, and localStorage is per DOMAIN - not per
+// file. So banksadvantage.com/cwc, /cwc_chiara and /cwc_devon all shared a single
+// agent id on the same browser. Opening an agent's board to check on it made you
+// that agent: their appointments synced under YOUR Google token, and landed on
+// your calendar with their clients' names on them.
+//
+// The id is keyed to the Supabase project now. Each file points at a different
+// one, so each gets its own identity no matter whose machine it is opened on.
 function getAgentId() {
-  let id = localStorage.getItem('cwc_agent_id');
-  if (!id) { id = 'agent_' + Math.random().toString(36).slice(2, 11); localStorage.setItem('cwc_agent_id', id); saveDeviceState(); }
+  // the project ref is the part of the URL before .supabase.co
+  const proj = (String(SUPABASE_URL).match(/\/\/([a-z0-9]+)\./) || [,'default'])[1];
+  const key = 'cwc_agent_id_' + proj;
+
+  let id = localStorage.getItem(key);
+
+  // carry the old shared id across, but ONLY for the project that owned it. The
+  // owner is stamped whenever the shared key is written, so the first board to
+  // claim it keeps it and no other board can inherit it by being opened second.
+  if (!id) {
+    const legacy = localStorage.getItem('cwc_agent_id');
+    const legacyProj = localStorage.getItem('cwc_agent_id_project');
+    if (legacy && legacyProj === proj) id = legacy;
+    // an unstamped legacy id is from before this fix: it belongs to whichever
+    // project claims it first, and every other board starts fresh
+    if (!id && legacy && !legacyProj) {
+      id = legacy;
+      localStorage.setItem('cwc_agent_id_project', proj);
+    }
+  }
+
+  if (!id) {
+    id = 'agent_' + Math.random().toString(36).slice(2, 11);
+    try { saveDeviceState(); } catch (e) {}
+  }
+  localStorage.setItem(key, id);
+  // the shared key and its owner are always written together, so it can never
+  // again be picked up by a project that did not create it
+  localStorage.setItem('cwc_agent_id', id);
+  localStorage.setItem('cwc_agent_id_project', proj);
   return id;
 }
 
