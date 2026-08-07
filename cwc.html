@@ -6418,6 +6418,58 @@ function getAllAppts() {
   return clients.flatMap(c => getClientAppts(c));
 }
 
+// h301: READ ONLY. Every lead the sidebar is showing an appointment for, split
+// by whether the card can actually render it. The card needs an OPEN case with
+// a pending touchpoint within five minutes of the appointment time - the same
+// match getClientAppts uses. Anything without one draws blank and has no
+// history to link back to. This function writes nothing, anywhere.
+function findOrphanAppts() {
+  const out = [];
+  clients.forEach(c => {
+    const appts = getClientAppts(c);
+    if (!appts.length) return;
+    const dt = apptOf(c);
+    if (!dt) return;
+    const apptMs = new Date(dt).getTime();
+    const linked = (c.cases||[]).filter(Boolean).some(cs =>
+      cs.status === 'Open' && (cs.touchpoints||[]).filter(Boolean).some(tp =>
+        tp && tp.outcome === 'pending' && tp.datetime &&
+        Math.abs(new Date(tp.datetime).getTime() - apptMs) < 5 * 60 * 1000));
+    if (linked) return;
+    out.push({ id: c.id, name: c.name || '(no name)', datetime: dt, status: c.status || '',
+               nCases: (c.cases||[]).length, nLog: (c.call_log||[]).length });
+  });
+  return out.sort((a,b) => new Date(a.datetime) - new Date(b.datetime));
+}
+
+function scanOrphanAppts() {
+  const rows = findOrphanAppts();
+  const total = getAllAppts().length;
+  let h = '<div class="modal-title">Appointment links</div>' +
+    '<div style="font-size:12px;color:#5f7a99;margin-bottom:10px;">' +
+      esc(String(total)) + ' appointment' + (total === 1 ? '' : 's') + ' in the sidebar. ' +
+      esc(String(rows.length)) + ' cannot be opened from the card.</div>';
+  if (!rows.length) {
+    h += '<div style="font-size:13px;padding:10px 0;">Every appointment links to a case. Nothing to repair.</div>';
+  } else {
+    h += rows.map(r => {
+      const d = new Date(r.datetime);
+      return '<div style="border-bottom:1px solid #e6edf5;padding:7px 0;font-size:13px;">' +
+        '<div style="font-weight:600;">' + esc(r.name) + '</div>' +
+        '<div style="font-size:11px;color:#5f7a99;">' +
+          esc(d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})) + ' - ' +
+          esc(d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})) +
+          ' &middot; ' + esc(r.status || 'no status') +
+          ' &middot; ' + esc(String(r.nCases)) + ' case' + (r.nCases === 1 ? '' : 's') +
+          ' &middot; ' + esc(String(r.nLog)) + ' call log entr' + (r.nLog === 1 ? 'y' : 'ies') +
+        '</div></div>';
+    }).join('');
+    h += '<div style="font-size:11px;color:#5f7a99;margin-top:10px;">Nothing has been changed. This is a report.</div>';
+  }
+  h += '<div style="margin-top:12px;"><button class="set-save" onclick="closeModal()">Close</button></div>';
+  showModal(h);
+}
+
 // h263: getAllAppts returns APPOINTMENTS ONLY. The schedule looked complete
 // because renderSidebar gathered callbacks and follow-ups separately, in local
 // variables nothing else could reach - so the status line, pointed at
@@ -18630,7 +18682,13 @@ function openSettings(tab) {
       (settings.showSourceComparison
         ? '<button class="save-btn" style="margin:10px 0 4px;" onclick="openReports()">Lead source comparison</button>' +
           '<div style="font-size:11px;color:#5f7a99;">Performance by source and combined, referral-only numbers, spend and ROI, recruits.</div>'
-        : ''));
+        : '') +
+      // h301: appointments visible in the sidebar but blank on the card. The
+      // sidebar will trust a bare appt_datetime; the card can only DRAW an
+      // appointment that has a case and touchpoint behind it. This reports the
+      // gap and writes nothing.
+      '<button class="save-btn" style="margin:10px 0 4px;" onclick="scanOrphanAppts()">Check appointment links</button>' +
+      '<div style="font-size:11px;color:#5f7a99;">Finds appointments the sidebar shows but the card cannot open. Read-only - nothing is changed.</div>');
   }
 
   else {
