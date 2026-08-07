@@ -2976,7 +2976,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h300</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h301</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -10163,6 +10163,13 @@ function openClient(id, keepDialCount) {
     timerStart('admin');
   } else if (dialEligible(c)) {
     timerStart('dial');
+    // h301: 1x rendered lit but nothing was armed - _dialCountSet only flipped
+    // true when a dial button was physically tapped, so touching a lead and
+    // moving on logged NOTHING. The lit 1x is now true: open a dial-eligible
+    // card in Leads and one dial is armed. Tap nothing and leave = 1 dial, No
+    // answer. Tap 2x and leave = 2 dials, No answer. An outcome button still
+    // spends the armed count and disarms, so nothing double-counts.
+    if (!keepDialCount) window._dialCountSet = true;
   } else {
     timerStop();   // on Leads tab but not dial-eligible (callback/resolved) -> no clock
   }
@@ -10274,10 +10281,19 @@ function openClient(id, keepDialCount) {
       const r = clients.find(x=>x.id===c.referred_by);
       if (r) h += `<div style="font-size:11px;color:#5f7a99;margin-bottom:4px;">Referred by: <strong onclick="closeModal();openClient('${r.id}')" style="color:var(--accent);cursor:pointer;text-decoration:underline;">${r.name}</strong></div>`;
     }
-    if ((c.referrals||[]).length) {
+    // h301: the stored referrals[] array is one of two records of the same fact,
+    // and it was the one that never got written - so a referral linked back to
+    // its referrer while the referrer's file showed nothing. Every referred lead
+    // carries referred_by, which DID save, so read the link from both and dedupe
+    // by id. This repairs the ones already lost without touching stored data.
+    const _refRows = (c.referrals||[]).slice();
+    const _refSeen = new Set(_refRows.map(r=>r.id).filter(Boolean));
+    clients.forEach(x=>{ if (x.referred_by===c.id && !_refSeen.has(x.id)) { _refSeen.add(x.id); _refRows.push({id:x.id, name:x.name}); } });
+    if (_refRows.length) {
       h += `<div style="font-size:11px;color:#5f7a99;margin-bottom:2px;">Referrals given:</div>`;
-      h += (c.referrals||[]).map(rf=>{
-        const nm = rf.name || 'referral';
+      h += _refRows.map(rf=>{
+        const _lead = clients.find(x=>x.id===rf.id);
+        const nm = (_lead && _lead.name) || rf.name || 'referral';
         // h265: the payout tracker is gone. Paying a client for a referral is
         // rebating, the rules vary by state, and an app that tallies what you
         // "owe" a referrer is not a record anyone should want to be holding.
@@ -16025,16 +16041,11 @@ function answerSit(k, val) {
     if ((k === 'ref' || k === 'rec') && !window._people[k].length) addPerson(k);
     if (next) next.style.display = 'block';
   } else {
-    // No has nothing to add - advance on its own after a beat, but only if
-    // the answer is STILL no (they may flip to Yes in that beat), and never
-    // double-advance on a double-tap.
-    if (next) next.style.display = 'none';
-    if (window._sitAdvancing) return;
-    window._sitAdvancing = true;
-    setTimeout(() => {
-      window._sitAdvancing = false;
-      if (window._q[k] === false && window._sitCtx && SIT_STEPS[window._sitCtx.step] && SIT_STEPS[window._sitCtx.step].k === k) nextSitStep();
-    }, 250);
+    // h301: No used to auto-advance after 250ms. The fill class landed, then the
+    // whole step was hidden before the eye caught it - the answer registered and
+    // read as though it had not. No now waits for Continue exactly like Yes, so
+    // the colour you tapped is still on screen when you move on.
+    if (next) next.style.display = 'block';
   }
 }
 
@@ -19117,6 +19128,12 @@ async function capMaybeCreateASR(k,i){
     if(data&&data[0]){ clients.push(sanitizeClient(data[0])); row._asrId=data[0].id;
       referrer.referrals=referrer.referrals||[];
       referrer.referrals.push({id:data[0].id,name,phone,relationship:row.relationship||'',paid:false,amount:30,paidDate:null});
+      // h301: this push only ever lived in memory. capPersist writes {cases},
+      // so on the next load the referrer's "Referrals given" line was empty
+      // while the new lead's referred_by pointer survived in its own insert -
+      // the link worked one way only. Write the referrals column too.
+      try{ await sb.from('clients').update({referrals:referrer.referrals}).eq('id',referrer.id); }
+      catch(e){ console.warn('referrer referrals persist',e); }
       capRenderPeople(k); await capPersist();
     }
   }catch(e){ console.warn('capMaybeCreateASR',e); }
