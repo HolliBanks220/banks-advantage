@@ -1388,12 +1388,17 @@ html,body{ overflow-x:hidden !important; }
    on the arrows' line, so both selectors occupy the same two-row block and
    nothing sticks out below the other.
    ========================================================================== */
+/* h302: scoped. This is the rule that turns the header into a three-across grid,
+   and it was firing on phones too - where there is no room for three of anything
+   across. The phone block near the end of this file stacks them instead. */
+@media(min-width:801px){
 .hdr{
   display:grid !important;
   grid-template-columns:1fr auto auto !important;
   align-items:start !important;
   gap:0 28px !important;
   padding:18px 0 0 !important;
+}
 }
 
 /* brand, tight */
@@ -1431,11 +1436,18 @@ html,body{ overflow-x:hidden !important; }
 }
 .tab{ position:relative !important; }
 
+/* h302: these were unscoped, so they also fired on a phone - and being LATER in
+   the file they beat the max-width:1180px rule above that drops the tabs onto
+   their own row. Three columns on a 390px screen is wider than the screen, which
+   is what pushed Board off the right edge and took the Day/Week/Month selector
+   with it. Scoped to real estate that can hold three columns. */
+@media(min-width:801px){
 .tab-bar{ grid-column:2 !important; align-self:start !important; }
 .hdr-right{
   grid-column:3 !important; align-self:start !important;
   display:flex !important; flex-direction:column !important;
   align-items:flex-end !important; gap:6px !important; margin:0 !important;
+}
 }
 .hdr-right .nav-row:first-child{ order:2 !important; gap:8px !important; }
 .hdr-right .nav-row:last-child{ order:1 !important; }
@@ -1701,12 +1713,17 @@ html,body{ overflow-x:hidden !important; }
 .page-outer{ grid-column:2 !important; }
 
 /* the header follows: brand over the rail, selectors over the board */
+/* h302: same scoping fix. The 360px first column is a fixed width - on a phone
+   it alone is most of the screen, and the tabs and date controls were still
+   being asked to sit beside it. */
+@media(min-width:801px){
 .hdr{ grid-template-columns:360px 1fr auto !important; }
 .hdr-left{ grid-column:1 !important; }
 .tab-bar{ grid-column:2 !important; justify-self:start !important; }
 .hdr-right{ grid-column:3 !important; }
+}
 
-@media(max-width:1180px){
+@media(min-width:801px) and (max-width:1180px){
   .page-layout{ grid-template-columns:320px minmax(0,1fr) !important; }
   .hdr{ grid-template-columns:320px 1fr auto !important; }
 }
@@ -2950,6 +2967,29 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
   width:17px !important; height:17px !important; margin:0 !important;
   accent-color:var(--accent); cursor:pointer; flex:0 0 auto;
 }
+/* ============================================================================
+   h302 - PHONE HEADER. Last block in the stylesheet on purpose: three separate
+   earlier rules turn the header into a three-across grid, all of them unscoped
+   and all of them !important, so the only way a phone rule holds is to be both
+   scoped and last. Those three are now capped at 801px and up; this stacks the
+   header for anything narrower. Name, tabs, date controls - one per line.
+   ========================================================================== */
+@media(max-width:800px){
+  .hdr{ display:block !important; grid-template-columns:minmax(0,1fr) !important; }
+  .hdr-left, .tab-bar, .hdr-right{
+    grid-column:1 / -1 !important; width:100% !important;
+    justify-self:stretch !important; margin:0 0 8px 0 !important;
+  }
+  .hdr-right{
+    display:flex !important; flex-direction:row !important; flex-wrap:wrap !important;
+    align-items:center !important; justify-content:flex-start !important; gap:8px !important;
+  }
+  .tab-bar{
+    display:flex !important; flex-wrap:nowrap !important; overflow-x:auto !important;
+    gap:18px !important; -webkit-overflow-scrolling:touch !important;
+  }
+  .tab{ flex:0 0 auto !important; margin-right:0 !important; }
+}
 </style>
 </head>
 <body>
@@ -2976,7 +3016,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h301</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h302</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -3059,16 +3099,25 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
       </div>
       <!-- h274: was one "Messages" tile counting both. They are different actions -
            a text they can reply to, a voicemail they cannot - and the slot Appt
-           time used to occupy was better spent separating them. -->
+           time used to occupy was better spent separating them.
+           h301: merged back on purpose. Neither tile carried a goal, so folding
+           them into one costs nothing and frees a slot for Rescheduled - which
+           is real recovery work that had nowhere to live. The split survives in
+           the subtext, so no number is lost. -->
       <div class="stat">
-        <div class="stat-lbl">Texts</div>
-        <div class="stat-val" id="s-texts">0</div>
-        <div class="stat-sub" id="s-texts-sub">-</div>
+        <div class="stat-lbl">Messages</div>
+        <div class="stat-val" id="s-msgs">0</div>
+        <div class="stat-sub" id="s-msgs-sub">-</div>
       </div>
-      <div class="stat">
-        <div class="stat-lbl">Voicemails</div>
-        <div class="stat-val" id="s-vms">0</div>
-        <div class="stat-sub" id="s-vms-sub">-</div>
+      <div class="stat stat-purple">
+        <!-- h301: a reschedule is NOT a resolution - the lead was already
+             resolved when it was first set, and counting it again would inflate
+             Appointments set and skew the whole resolution picture. It is still
+             time spent and a no-show recovered, so it gets its own count here in
+             activity, where that work belongs. -->
+        <div class="stat-lbl">Rescheduled</div>
+        <div class="stat-val" id="s-resched">0</div>
+        <div class="stat-sub" id="s-resched-sub">-</div>
       </div>
       <div class="stat stat-amber">
         <!-- h243: the hint used to sit BETWEEN the label and the number, which
@@ -4552,7 +4601,7 @@ const HERO_IDS = ['s-dials', 's-appts', 's-resolved', 's-time-dial'];
 //      tiles sat alone across a wide board with the rest of the row empty
 //   3. put each section's tiles in the order she reads them
 const SECTION_ORDER = {
-  'dialing activity': ['s-callbacks', 's-texts', 's-vms', 's-dead'],
+  'dialing activity': ['s-callbacks', 's-msgs', 's-resched', 's-dead'],
   // h250: four rows of four. Appointments and what happened at them, then the
   // verdicts, then what is still open, then the asks.
   // h274: Appt time closes the fourth row, under Plans sent - it is time spent
@@ -4831,8 +4880,6 @@ function renderScore() {
     const el = document.getElementById('s-'+k);
     if (el && el.tagName !== 'INPUT') el.textContent = [dials,convos,appts,callbacks,dead][i];
   });
-  const textsEl = document.getElementById('s-texts');
-  const vmsEl = document.getElementById('s-vms');
   // h223: a voicemail logs a dial but never had a stat of its own, so a counter
   // would read zero. Counted from the call log instead, which also picks up every
   // voicemail already sent rather than starting from today.
@@ -4841,13 +4888,26 @@ function renderScore() {
     const d = new Date(e.ts);
     return d >= aStart && d <= aEnd;
   }).length, 0);
-  // h274: two tiles, each counting its own thing
-  if (textsEl) textsEl.textContent = texts;
-  if (vmsEl) vmsEl.textContent = vms;
+  // h301: one Messages tile now. The two counts still exist separately - they
+  // just render as the subtext split instead of two tiles.
+  const msgsEl = document.getElementById('s-msgs');
+  if (msgsEl) msgsEl.textContent = texts + vms;
+  const msgsSubEl = document.getElementById('s-msgs-sub');
+  if (msgsSubEl) msgsSubEl.textContent = (texts + vms) === 0 ? '-' : (texts + ' text' + (texts===1?'':'s') + ' \u00b7 ' + vms + ' vm');
+  // h301: reschedules, counted straight off the call log entries confirmReschedule
+  // already writes. No stat of its own, so this reads correctly for periods that
+  // predate the tile. Deliberately NOT added to appts - see the tile comment.
+  const resched = (clients || []).reduce((n, c) => n + (c.call_log || []).filter(e => {
+    if (!e || e.outcome !== 'Rescheduled') return false;
+    const d = new Date(e.ts);
+    return d >= aStart && d <= aEnd;
+  }).length, 0);
+  const reschedEl = document.getElementById('s-resched');
+  if (reschedEl) reschedEl.textContent = resched;
+  const reschedSubEl = document.getElementById('s-resched-sub');
+  if (reschedSubEl) reschedSubEl.textContent = resched === 0 ? '-' : 'no-shows recovered';
   const _sub = (id, v, per) => { const e = document.getElementById(id); if (!e) return;
     e.textContent = v === 0 ? '-' : (per > 0 ? Math.round((v / per) * 100) + '% of dials' : ''); };
-  _sub('s-texts-sub', texts, dials);
-  _sub('s-vms-sub', vms, dials);
 
   // Time tracking - sum from stats table for the period
   const dialSecs = sumStat('time_dial_' + aStart.toISOString().slice(0,10) + (aStart.toISOString().slice(0,10) === aEnd.toISOString().slice(0,10) ? '' : '_multi'), aStart, aEnd);
