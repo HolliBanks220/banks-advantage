@@ -3450,7 +3450,12 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
       <button onclick="addTask()" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-weight:500;">+</button>
     </div>
   </div>
-  <div class="appt-sidebar" id="appt-sidebar" style="display:block!important;">
+  <!-- h302: the inline display:block!important here outranked every stylesheet
+       rule, so the flex-column that gives the list a bounded height never
+       applied - the box had no height limit, overflow:hidden clipped it, and
+       anything past ~8 appointments was simply unreachable with no scrollbar.
+       Removed rather than fought; the rules below already set display. -->
+  <div class="appt-sidebar" id="appt-sidebar">
     <div class="appt-sidebar-title">Schedule</div>
     <div id="sidebar-appts"><div style="font-size:11px;color:#a0b8cc;">No appointments</div></div>
   </div>
@@ -11284,9 +11289,13 @@ async function confirmReschedule(id) {
 
   showSync('Saving...');
   await sb.from('clients').update({call_log:callLog, status:'Appointment set', appt_datetime:apptDatetime, appt_notes:apptNotes, appt_mins:apptMins, cases}).eq('id',id);
-  c.appt_datetime = apptDatetime; c.appt_mins = apptMins;
+  // h302: the calendar push used to sit ABOVE this line, so c.cases was still
+  // the pre-reschedule copy when it fired. apptOf reads the touchpoint first and
+  // only falls back to appt_datetime, so Google was handed the OLD time and the
+  // event never moved - the appointment looked missing because it was still
+  // sitting at the slot they no-showed. Update memory first, then push.
+  c.call_log=callLog; c.status='Appointment set'; c.appt_datetime=apptDatetime; c.appt_notes=apptNotes; c.appt_mins=apptMins; c.cases=cases;
   pushApptToCalendar(c, 'upsert'); // moving an appt moves the Google event too
-  c.call_log=callLog; c.status='Appointment set'; c.appt_datetime=apptDatetime; c.appt_notes=apptNotes; c.cases=cases;
   await addStat('dials', dialCount); // No convos, no appt stat — reschedule is not a new sit
   window._dialCount=1; window._dialCountSet=false; hideSync(); closeModal();
 
@@ -13699,12 +13708,35 @@ async function handleImportFile(f) {
           let key = y;
           for (const k of rows.keys()) { if (Math.abs(k - y) <= 2) { key = k; break; } }
           if (!rows.has(key)) rows.set(key, []);
-          rows.get(key).push({ x, s: it.str });
+          rows.get(key).push({ x, s: it.str, w: (typeof it.width === 'number' ? it.width : 0) });
         });
+        // h302: items on one line used to be joined with a single space, which
+        // erased the gap between COLUMNS. On the LeadPros card the borrower block
+        // is left and the mailing address is right, so "Name: Alexander Arroyo"
+        // and "318 Brooklyn Ave" arrived as one line with nothing marking the
+        // boundary - and the labelled-field parser, which cuts a value at two or
+        // more spaces, had no gap to cut on. It took the street as part of the
+        // name. A wide horizontal jump now becomes a real gap, which is exactly
+        // what pdftotext -layout produces and what the parser already expects.
+        const GAP = 18; // pdf units; a normal word space is ~3-6 at these sizes
         return [...rows.entries()]
           .sort((a,b) => b[0] - a[0])                       // top of page down
-          .map(([, items]) => items.sort((a,b) => a.x - b.x).map(i => i.s).join(' ')
-                                   .replace(/[ \t]+/g,' ').trim())
+          .map(([, items]) => {
+            const line = items.sort((a,b) => a.x - b.x);
+            let out = '', prevEnd = null;
+            line.forEach(it => {
+              const w = (typeof it.w === 'number' && it.w > 0) ? it.w : 0;
+              // pdf.js emits explicit " " items. They are real characters, so
+              // they must advance the cursor but must NOT get a separator of
+              // their own - adding one doubled every space and truncated last
+              // names on the first attempt at this.
+              if (!it.s.trim()) { prevEnd = (prevEnd === null) ? it.x + w : Math.max(prevEnd, it.x + w); return; }
+              if (prevEnd === null) { out = it.s; }
+              else { out += ((it.x - prevEnd) > GAP ? '   ' : ' ') + it.s; }
+              prevEnd = it.x + w;
+            });
+            return out.replace(/[ \t]{4,}/g, '   ').replace(/^[ \t]+|[ \t]+$/g, '');
+          })
           .filter(Boolean).join('\n');
       })();
       let row = parseLeadText(linedText || text);
@@ -14212,7 +14244,24 @@ function parseLeadText(text, opts) {
           bestTime: r.bestTime || '', tobacco: r.tobacco || '', coBorrower: r.coBorrower || '',
           source: classifyLeadSource(text), layout: r.layout,
           phone_flag: (r.flags.find(f => /phone|US number/.test(f)) || ''),
-          flags: r.flags, _parser: 'h156'
+          // h302: this path never set _conf, and importTextIsThin reads _conf to
+          // decide "clean digital page" vs "scan with a garbled text layer". So a
+          // page the layout parser read PERFECTLY was still classed as a scan,
+          // sent to OCR, and its correct name/address/age were then overwritten by
+          // the OCR guess - which is where "Alexander Arroyo 318 Brooklyn Ave"
+          // came from. A successful layout parse is by definition label-confident:
+          // detectLayout matched a known card and parseLeadPage found a real name.
+          _conf: true,
+          // h302: THIS was the import bug. importTextIsThin decides "clean digital
+          // page" vs "scan with a garbled text layer" purely from _conf, and only
+          // the legacy fallback parser ever set it. So a page this layout parser
+          // read perfectly - name, age, phone, address, lender all correct - was
+          // still called thin, sent to OCR, and had its good fields OVERWRITTEN by
+          // the OCR guess. That is where "Alexander Arroyo 318 Brooklyn Ave" came
+          // from: two columns mashed by OCR, replacing a correct read. Reaching
+          // here means detectLayout classified the page AND a clean name came out,
+          // which is a stronger signal than the label regex it stands in for.
+          flags: r.flags, _parser: 'h156', _conf: true
         };
       }
       if (r && r.flags.length) { window._importFlagged = (window._importFlagged||0) + 1; }
