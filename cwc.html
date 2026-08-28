@@ -3016,7 +3016,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h302</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h303</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -8937,7 +8937,13 @@ function getFilteredClients(q='') {
     // pinned to the top: a lead that pushed you off needs TIME, not urgency - the
     // two that just booked did so because three weeks had passed and they'd
     // forgotten they were avoiding you. Let the normal sort decide when.
-    const reentry = clients.filter(c => apptNeedsOutcome(c) && !filtered.includes(c));
+    // h302: this rule ignored status entirely, so a lead that booked, then later
+    // went Not interested while the old appointment sat unlogged, walked straight
+    // back into the queue - resurfacing weeks after it was resolved. A resolved
+    // lead is resolved; the stale appointment is a contradiction for the repair
+    // scan to report, not a reason to dial someone who already said no.
+    const reentry = clients.filter(c => apptNeedsOutcome(c) && !filtered.includes(c)
+      && !['Dead','Closed','No sale'].includes(c.status));
     return [...filtered, ...reentry]
       .filter(c => !isDormant(c) && !isResting(c))
       .sort((a, b) => {
@@ -10268,7 +10274,7 @@ function openClient(id, keepDialCount) {
   window._openClientId = id;
   const c = clients.find(x => x.id === id);
   if (!c) return;
-  if (!keepDialCount) { window._dialCount = 1; window._dialCountSet = false; }
+  if (!keepDialCount) { window._dialCount = 1; window._dialCountSet = false; window._dialAutoArmed = false; }
   // Appt time for any live-appointment lead (prep or running it) until an outcome
   // is logged. Dial time ONLY while a genuinely dial-eligible card is open. A
   // callback/resolved lead stops the clock - you're not cold-dialing it. Off the
@@ -10286,7 +10292,7 @@ function openClient(id, keepDialCount) {
     // card in Leads and one dial is armed. Tap nothing and leave = 1 dial, No
     // answer. Tap 2x and leave = 2 dials, No answer. An outcome button still
     // spends the armed count and disarms, so nothing double-counts.
-    if (!keepDialCount) window._dialCountSet = true;
+    if (!keepDialCount) { window._dialCountSet = true; window._dialAutoArmed = true; }
   } else {
     timerStop();   // on Leads tab but not dial-eligible (callback/resolved) -> no clock
   }
@@ -10842,6 +10848,14 @@ async function _confirmSitOutcome(id, ci, outcome, opts) {
   await sb.from('clients').update(updatePayload).eq('id',id);
   c.call_log = callLog;
   Object.assign(c, {cases, status:newStatus, appt_datetime:newApptDt, appt_notes:newApptNotes});
+  // h303: this path booked a real appointment - PPU, think-about-it, retirement
+  // step - wrote it, and never told Google. Every other booking path pushes; this
+  // one had no calendar call at all, so an entire CATEGORY of appointment was
+  // missing from the calendar while showing correctly in the schedule. Memory is
+  // assigned above, so apptOf reads the new touchpoint and the push carries the
+  // right time. A cleared appointment (no sale) removes the event instead.
+  if (outcome === 'cont' && nextDt) { try { pushApptToCalendar(c, 'upsert'); } catch(e) { console.warn('cont calendar push', e); } }
+  else if (outcome === 'nosale' && c.gcal_event_id) { try { pushApptToCalendar(c, 'delete'); } catch(e) {} }
   hideSync();
 
   // Bank-only mode: outcome is saved; hand the capture screen the exact
@@ -11286,6 +11300,32 @@ async function confirmReschedule(id) {
     tps[pick.i] = {...pick.t, datetime: apptDatetime, notes: apptNotes || pick.t.notes};
     return {...cs, touchpoints: tps};
   });
+  // h303: MISSED APPOINTMENT BUG. The map above only MOVES a pending touchpoint.
+  // Logging a no-show resolves that touchpoint, so after a no-show there is
+  // nothing pending left and the map returned every case untouched. The lead got
+  // appt_datetime and status "Appointment set", but apptOf reads the touchpoint
+  // and only falls back to appt_datetime when a lead has NO cases - so the
+  // rescheduled appointment existed in the record and appeared NOWHERE: not in
+  // the schedule, not in Google. One was missed because of it. If nothing moved,
+  // create the appointment on the open case. This adds a pending touchpoint only
+  // - it records no appointment stat and resolves nothing, so
+  // Appointments set and lead resolution are untouched, exactly as a reschedule
+  // should be. It only makes the appointment visible.
+  let _moved = false;
+  cases.forEach((cs, i) => {
+    const before = ((c.cases||[])[i]||{}).touchpoints;
+    if (cs !== (c.cases||[])[i] && before !== cs.touchpoints) _moved = true;
+  });
+  if (!_moved) {
+    const openIdx = cases.findIndex(cs => cs && cs.status === 'Open');
+    const tp = { datetime: apptDatetime, outcome: 'pending', notes: apptNotes || '', kind: 'reschedule' };
+    if (openIdx >= 0) {
+      cases[openIdx] = {...cases[openIdx], touchpoints: [...(cases[openIdx].touchpoints||[]), tp]};
+    } else {
+      cases.push({ status:'Open', product: (c.cases||[]).length ? (c.cases[c.cases.length-1].product||'') : '',
+                   opened: new Date().toISOString(), touchpoints: [tp] });
+    }
+  }
 
   showSync('Saving...');
   await sb.from('clients').update({call_log:callLog, status:'Appointment set', appt_datetime:apptDatetime, appt_notes:apptNotes, appt_mins:apptMins, cases}).eq('id',id);
@@ -11925,7 +11965,13 @@ window._dialCount = 1;
 window._dialCountSet = false;
 
 function autoIncrementDial() {
-  const newCount = Math.min((window._dialCount || 0) + 1, 3);
+  // h302: opening a dial-eligible card arms 1 (h301). This used to add to that,
+  // so opening a lead and tapping the number - one call - logged 2 dials. The
+  // first tap IS the armed dial, not a second one; only a genuine second tap
+  // climbs. _dialAutoArmed marks a count nobody has confirmed yet.
+  const base = window._dialAutoArmed ? 0 : (window._dialCount || 0);
+  window._dialAutoArmed = false;
+  const newCount = Math.min(base + 1, 3);
   window._dialCount = newCount;
   window._dialCountSet = true;
   [1,2,3].forEach(i => {
@@ -11937,6 +11983,7 @@ function autoIncrementDial() {
 function setDialCount(n) {
   window._dialCount = n;
   window._dialCountSet = true;
+  window._dialAutoArmed = false;   // h302: an explicit tap is confirmed, not armed
   [1,2,3].forEach(i => {
     const btn = document.getElementById('dcb-'+i);
     if (btn) btn.classList.toggle('on', i===n);
@@ -15025,6 +15072,11 @@ async function saveTouchpoint(id, ci) {
   showSync('Saving...');
   await sb.from('clients').update(updatePayload).eq('id',id);
   c.status = newLeadStatus;
+  // h303: second calendar gap, same shape as the continuation one. This screen
+  // books continuations and resets and wrote them without telling Google, so
+  // those appointments were in the schedule and nowhere else. apptOf reads the
+  // touchpoint that was just pushed onto the case, so the time is right here.
+  if (apptOf(c)) { try { pushApptToCalendar(c, 'upsert'); } catch(e) { console.warn('touchpoint calendar push', e); } }
   hideSync();
   if (outcome === 'sale') {
     const newTi = c.cases[ci].touchpoints.length - 1;
