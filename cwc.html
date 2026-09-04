@@ -3016,7 +3016,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h303</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h304</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -8432,14 +8432,25 @@ function getUrgencyScore(c) {
   // Future scheduled callback — sits quietly, doesn't surface until 2 min before
   if (isCallbackFuture(c)) return 150 + windowPenalty;
 
-  // Tier 3: No-show follow-up — only urgent if no follow-up attempt made yet since no-show
-  const hrsSinceNS = getHoursSinceNoShow(c);
-  const followedUp = hasFollowedUpAfterNoShow(c);
-  if (!followedUp) {
-    if (noShowCount >= 3 && hrsSinceNS >= 2 && hrsSinceNS <= 72) return 22 - timeFraction + breakPenalty + windowPenalty;
-    if (noShowCount === 2 && hrsSinceNS >= 2 && hrsSinceNS <= 48) return 21 - timeFraction + breakPenalty + windowPenalty;
-    if (noShowCount === 1 && hrsSinceNS >= 2 && hrsSinceNS <= 48) return 20 - timeFraction + breakPenalty + windowPenalty;
+  // Tier 3: No-show rebook LADDER.
+  // h303: this used to be a single window gated on "has she followed up yet".
+  // The day-0 recovery (two calls + a text) flipped that gate, the lead fell out
+  // of the band, and nothing ever scheduled a third touch - so a no-show went
+  // quiet for days or forever unless it was hunted down deliberately. It also
+  // ranked ABOVE never-called leads, which is backwards: an uncalled lead is paid
+  // for and decaying, a no-show already knows who you are.
+  // The ladder is day 0, 1, 3, 7 - front-loaded, then spaced - and each logged
+  // attempt advances it. Ranked just BELOW fresh-uncontacted (30/32) and above
+  // everything already worked.
+  const _nsRung = noShowLadderRung(c);
+  if (_nsRung >= 0) {
+    // A no-show is usually a conflict at that hour, not a refusal - so prefer a
+    // slot you have NOT already tried. slotPenalty does exactly that.
+    if (noShowLadderDue(c)) return 34 + _nsRung - timeFraction + breakPenalty + windowPenalty + slotPenalty + touchedTodayPenalty;
+    return 151 + timeFraction;         // on the ladder, not due yet - rests quietly
   }
+  // Past the ladder: falls through to normal cadence, and the existing
+  // noShowTries dormancy gate retires it from there.
 
   // Tier 4: High-value uncontacted leads — CIA and MIA both get day 1-2 urgency boost
   // CIA: digital, decays fast. MIA: $75 mailer, high deliberate intent. Both deserve immediate attention.
@@ -8828,6 +8839,19 @@ function renderAlerts() {
     // h251: always shown - "0 appts today" is information, not an empty state.
     parts.push('<span class="pace-count">' + todayCount +
       ' on the books today</span>');
+    // h303: no-shows have their own ladder now (day 0, 1, 3, 7), but a lead that
+    // is due on that ladder still sits below every uncalled lead - so on a busy
+    // day it can be genuinely due and never reached. This counts the ones due
+    // right now and says so, because rebooking a no-show is often the cheapest
+    // appointment available and it was the easiest thing to lose track of.
+    try {
+      // Reads the ladder directly, not the sort score - the score carries a
+      // large out-of-window penalty, so counting off it reported zero all
+      // evening even when leads were genuinely due.
+      const nsDue = (clients || []).filter(c => noShowLadderDue(c) && isGoodTimeToCall(c)).length;
+      if (nsDue > 0) parts.push('<span class="pace-count">' + nsDue +
+        ' no-show' + (nsDue > 1 ? 's' : '') + ' to rebook</span>');
+    } catch (e) {}
     // h228: the inline light-mode fill is gone. The line is plain white text on
     // the board; only the "behind pace" span carries a colour, and it carries it
     // from the stylesheet where the glow lives.
@@ -10046,6 +10070,21 @@ function hasSignsOfLife(c) {
   return /callback|conversation|interested|reschedul/i.test(last.outcome || '');
 }
 // Dial attempts made on a lead since its no-show.
+// h303: the no-show rebook ladder, in one place. Day 0, 1, 3, 7 after the missed
+// appointment, each logged attempt advancing to the next rung. Both the dial sort
+// and the banner count read this, so they can never disagree about what is due.
+const NO_SHOW_DUE_AT = [0, 24, 72, 168];   // hours since the missed appointment
+function noShowLadderRung(c) {
+  if (!c || c.status !== 'No show') return -1;
+  const tries = noShowRebookTries(c);
+  return tries < NO_SHOW_DUE_AT.length ? tries : -1;   // -1 = past the ladder
+}
+function noShowLadderDue(c) {
+  const rung = noShowLadderRung(c);
+  if (rung < 0) return false;
+  return getHoursSinceNoShow(c) >= NO_SHOW_DUE_AT[rung];
+}
+
 function noShowRebookTries(c) {
   const log = c.call_log || [];
   let i = -1;
