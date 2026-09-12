@@ -3016,7 +3016,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h304</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h305</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -11144,11 +11144,17 @@ async function confirmMoveAppt(id) {
 
   showSync('Saving...');
   await sb.from('clients').update({appt_datetime: newDt, appt_notes: notes, cases}).eq('id',id);
-  c.appt_datetime = newDt;
-  pushApptToCalendar(c, 'upsert'); // editing the time updates the Google event
+  // h304: the push used to sit here, one line above the assignments, with only
+  // appt_datetime set. apptOf reads the touchpoint out of c.cases FIRST and only
+  // falls back to appt_datetime - and c.cases was still the pre-move copy, so
+  // Google was handed the OLD time and the event never moved. An appointment
+  // dragged from today to Tuesday stayed on today. Identical to the reschedule
+  // ordering bug fixed in h302; this screen had the same two lines reversed.
+  // Memory first, then push.
   c.appt_datetime = newDt;
   c.appt_notes = notes;
   c.cases = cases;
+  pushApptToCalendar(c, 'upsert'); // editing the time updates the Google event
   hideSync(); closeModal(); openClient(id); renderSidebar();
 }
 
@@ -15879,9 +15885,12 @@ async function confirmReset(id) {
   const callLog = [...(c.call_log||[]), {ts:new Date().toISOString(),outcome:'Reset scheduled',appt_datetime:resetDatetime,appt_notes:resetNotes}];
   showSync('Saving...');
   await sb.from('clients').update({call_log:callLog,status:'Appointment set',appt_datetime:resetDatetime,appt_notes:resetNotes}).eq('id',id);
-  c.appt_datetime = resetDatetime;
-  pushApptToCalendar(c, 'upsert');
+  // h304: same ordering bug as the move and reschedule paths - the push ran with
+  // only appt_datetime set, and apptOf prefers the touchpoint on c.cases. This
+  // one does not rewrite cases at all, so the push carried whatever pending
+  // touchpoint was already there rather than the reset time. Assign first.
   c.call_log=callLog; c.status='Appointment set'; c.appt_datetime=resetDatetime; c.appt_notes=resetNotes;
+  pushApptToCalendar(c, 'upsert');
   await markResolvedOnce(c, 'appt'); // no-op if this lead already resolved
   hideSync(); closeModal();
   renderClients(document.getElementById('client-search') ? document.getElementById('client-search').value : '');
