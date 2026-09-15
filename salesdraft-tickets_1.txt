@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SalesDraft Ticket Ledger — Banks Advantage</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style id="app-style">
+  :root{
+    --ink:#161c22; --ink-soft:#57626c; --ink-faint:#8b95a0;
+    --paper:#f4f5f1; --surface:#ffffff; --surface-2:#eef0ea;
+    --line:#dde0d7; --line-soft:#e9ebe4;
+    --accent:#1f6f6b; --accent-ink:#ffffff; --accent-soft:#e3f0ee;
+    --danger:#b3261e; --danger-bg:#fdecea; --danger-line:#f3c9c5;
+    --warn:#93590f; --warn-bg:#fbf0da; --warn-line:#edd8a4;
+    --good:#1e7a4c; --good-bg:#e7f5ee; --good-line:#bfe3cf;
+    --neutral:#4a5568; --neutral-bg:#eef0ec;
+    --focus:#1f6f6b;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#e7eae3; --ink-soft:#aab3a4; --ink-faint:#78827a;
+      --paper:#12151a; --surface:#191d23; --surface-2:#20252b;
+      --line:#2b3138; --line-soft:#242a30;
+      --accent:#59c1ba; --accent-ink:#0a1512; --accent-soft:#173330;
+      --danger:#ff8179; --danger-bg:#3a1a17; --danger-line:#5c2822;
+      --warn:#e7b25c; --warn-bg:#3a2c11; --warn-line:#5c451c;
+      --good:#5fd696; --good-bg:#122a1d; --good-line:#1f4a32;
+      --neutral:#aab3a4; --neutral-bg:#20252b;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#e7eae3; --ink-soft:#aab3a4; --ink-faint:#78827a;
+    --paper:#12151a; --surface:#191d23; --surface-2:#20252b;
+    --line:#2b3138; --line-soft:#242a30;
+    --accent:#59c1ba; --accent-ink:#0a1512; --accent-soft:#173330;
+    --danger:#ff8179; --danger-bg:#3a1a17; --danger-line:#5c2822;
+    --warn:#e7b25c; --warn-bg:#3a2c11; --warn-line:#5c451c;
+    --good:#5fd696; --good-bg:#122a1d; --good-line:#1f4a32;
+    --neutral:#aab3a4; --neutral-bg:#20252b;
+    color-scheme: dark;
+  }
+
+  *{ box-sizing:border-box; }
+  html, body{ height:100%; }
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  }
+  img{ max-width:100%; }
+  [hidden]{ display:none !important; }
+  h1,h2,h3{ font-family:'Barlow Condensed', 'Public Sans', sans-serif; text-wrap:balance; margin:0; }
+  .mono{ font-family:'IBM Plex Mono', ui-monospace, monospace; font-variant-numeric:tabular-nums; }
+  button, input, select, textarea{ font-family:inherit; font-size:inherit; color:inherit; }
+  a{ color:var(--accent); }
+  :focus-visible{ outline:2px solid var(--focus); outline-offset:2px; border-radius:4px; }
+
+  .wrap{ max-width:920px; margin:0 auto; padding:28px 20px 64px; }
+
+  .masthead{
+    display:flex; justify-content:space-between; align-items:flex-start; gap:16px;
+    flex-wrap:wrap; padding-bottom:20px; border-bottom:2px solid var(--ink);
+    margin-bottom:22px;
+  }
+  .masthead-title{ display:flex; flex-direction:column; gap:2px; }
+  .masthead-title .eyebrow{
+    font-family:'IBM Plex Mono', monospace; font-size:11.5px; letter-spacing:.09em;
+    text-transform:uppercase; color:var(--accent); font-weight:600;
+  }
+  .masthead-title h1{ font-size:clamp(28px,5vw,36px); font-weight:700; letter-spacing:.01em; }
+  .masthead-title p{ margin:2px 0 0; color:var(--ink-soft); font-size:13.5px; max-width:46ch; }
+
+  .identity{
+    text-align:right; font-size:13px; color:var(--ink-soft); display:flex;
+    flex-direction:column; align-items:flex-end; gap:4px; min-width:180px;
+  }
+  .identity .who{ font-weight:600; color:var(--ink); }
+  .identity button.link{
+    background:none; border:none; padding:0; color:var(--accent); cursor:pointer;
+    font-size:12.5px; text-decoration:underline; text-underline-offset:2px;
+  }
+
+  .steps{
+    display:flex; gap:0; margin-bottom:26px; border:1px solid var(--line);
+    border-radius:10px; overflow:hidden; background:var(--surface);
+  }
+  .step{ flex:1; padding:10px 12px; position:relative; }
+  .step + .step{ border-left:1px solid var(--line); }
+  .step .n{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--accent); font-weight:600; }
+  .step .t{ font-size:12.5px; font-weight:600; margin-top:2px; }
+  .step .d{ font-size:11.5px; color:var(--ink-faint); margin-top:1px; }
+
+  .banner{
+    display:flex; gap:10px; align-items:flex-start; padding:12px 14px; border-radius:10px;
+    font-size:13.5px; margin-bottom:18px; border:1px solid;
+  }
+  .banner-readonly{ background:var(--warn-bg); border-color:var(--warn-line); color:var(--warn); }
+  .banner-error{ background:var(--danger-bg); border-color:var(--danger-line); color:var(--danger); }
+  .banner-toast{ background:var(--surface-2); border-color:var(--line); color:var(--ink); }
+  .banner strong{ display:block; margin-bottom:2px; }
+  .banner .bx{ margin-left:auto; background:none; border:none; cursor:pointer; color:inherit; opacity:.65; font-size:16px; line-height:1; padding:0 2px; }
+  .banner code{ background:rgba(0,0,0,.08); padding:1px 5px; border-radius:4px; font-size:12px; }
+
+  .stats{ display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:10px; }
+  .stat{ background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:12px 12px 11px; }
+  .stat .v{ font-family:'IBM Plex Mono',monospace; font-size:24px; font-weight:600; line-height:1; }
+  .stat .l{ font-size:11.5px; color:var(--ink-soft); margin-top:6px; letter-spacing:.01em; }
+  .stat.tone-danger .v{ color:var(--danger); }
+  .stat.tone-warn .v{ color:var(--warn); }
+  .stat.tone-good .v{ color:var(--good); }
+  .substats{ display:flex; gap:18px; flex-wrap:wrap; font-size:12.5px; color:var(--ink-soft); margin:8px 2px 24px; }
+  .substats b{ color:var(--ink); font-family:'IBM Plex Mono',monospace; font-weight:600; }
+
+  .toolbar{ display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+  .tabs{ display:flex; gap:6px; flex-wrap:wrap; }
+  .tab{ background:var(--surface); border:1px solid var(--line); color:var(--ink-soft); padding:6px 12px; border-radius:999px; font-size:12.5px; font-weight:600; cursor:pointer; }
+  .tab[aria-pressed="true"]{ background:var(--ink); border-color:var(--ink); color:var(--paper); }
+
+  .btn{ display:inline-flex; align-items:center; gap:6px; border-radius:8px; border:1px solid var(--line); background:var(--surface); color:var(--ink); padding:9px 14px; font-size:13.5px; font-weight:600; cursor:pointer; white-space:nowrap; }
+  .btn:hover{ border-color:var(--ink-faint); }
+  .btn-primary{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+  .btn-primary:hover{ filter:brightness(1.06); }
+  .btn-notify{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent); }
+  .btn:disabled{ opacity:.55; cursor:default; }
+  .btn-sm{ padding:7px 11px; font-size:12.5px; }
+  .btn-danger-ghost{ background:none; border-color:transparent; color:var(--danger); padding:6px 8px; font-size:12.5px; }
+
+  .panel{ background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
+  .panel h2{ font-size:19px; font-weight:600; margin-bottom:12px; }
+  .field{ display:flex; flex-direction:column; gap:5px; margin-bottom:13px; }
+  .field label{ font-size:12px; font-weight:600; color:var(--ink-soft); }
+  .field input, .field select, .field textarea{ border:1px solid var(--line); border-radius:8px; padding:9px 10px; background:var(--paper); color:var(--ink); width:100%; }
+  .field textarea{ min-height:78px; resize:vertical; font-family:inherit; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:520px){
+    .grid2{ grid-template-columns:1fr; } .stats{ grid-template-columns:repeat(2,1fr); }
+    .row-head{ flex-wrap:wrap; row-gap:6px; }
+    .row-id{ order:1; min-width:0; }
+    .row-chev{ order:2; margin-left:auto; }
+    .row-main{ order:3; flex-basis:100%; }
+    .row-age{ order:4; flex-basis:100%; white-space:normal; }
+    .masthead{ flex-direction:column; }
+    .identity{ align-items:flex-start; text-align:left; }
+  }
+  .form-actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:4px; }
+
+  .list{ display:flex; flex-direction:column; gap:10px; }
+  .row{ background:var(--surface); border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .row-head{ display:flex; align-items:center; gap:12px; padding:13px 14px; cursor:pointer; border-left:4px solid var(--neutral); }
+  .row-head.p-critical{ border-left-color:var(--danger); }
+  .row-head.p-high{ border-left-color:var(--warn); }
+  .row-head.p-normal{ border-left-color:var(--accent); }
+  .row-head.p-low{ border-left-color:var(--ink-faint); }
+  .row-id{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-faint); min-width:64px; }
+  .row-main{ flex:1; min-width:0; }
+  .row-title{ font-weight:600; font-size:14.5px; }
+  .row-meta{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:4px; font-size:12px; color:var(--ink-soft); }
+  .row-age{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-faint); white-space:nowrap; }
+  .row-chev{ color:var(--ink-faint); transition:transform .15s ease; }
+  .row.open .row-chev{ transform:rotate(90deg); }
+
+  .badge{ display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:999px; font-size:11px; font-weight:600; border:1px solid; letter-spacing:.01em; }
+  .badge-neutral{ background:var(--neutral-bg); border-color:var(--line); color:var(--neutral); }
+  .badge-danger{ background:var(--danger-bg); border-color:var(--danger-line); color:var(--danger); }
+  .badge-warn{ background:var(--warn-bg); border-color:var(--warn-line); color:var(--warn); }
+  .badge-good{ background:var(--good-bg); border-color:var(--good-line); color:var(--good); }
+  .badge-dot{ width:6px; height:6px; border-radius:50%; background:currentColor; }
+
+  .detail{ border-top:1px solid var(--line); padding:16px 16px 18px; background:var(--surface-2); }
+  .detail-desc{ font-size:13.5px; color:var(--ink-soft); margin-bottom:14px; white-space:pre-wrap; }
+  .timeline{ display:flex; flex-direction:column; gap:0; margin-bottom:14px; }
+  .tl-item{ display:grid; grid-template-columns:16px 1fr; gap:10px; padding-bottom:14px; position:relative; }
+  .tl-item:not(:last-child)::before{ content:""; position:absolute; left:7px; top:16px; bottom:0; width:1px; background:var(--line); }
+  .tl-dot{ width:16px; height:16px; border-radius:50%; background:var(--surface); border:2px solid var(--ink-faint); margin-top:2px; }
+  .tl-dot.tone-danger{ border-color:var(--danger); }
+  .tl-dot.tone-warn{ border-color:var(--warn); }
+  .tl-dot.tone-good{ border-color:var(--good); }
+  .tl-dot.tone-accent{ border-color:var(--accent); }
+  .tl-head{ display:flex; gap:8px; flex-wrap:wrap; align-items:baseline; font-size:12.5px; }
+  .tl-who{ font-weight:700; }
+  .tl-role{ color:var(--ink-faint); font-size:11.5px; }
+  .tl-when{ font-family:'IBM Plex Mono',monospace; color:var(--ink-faint); font-size:11px; margin-left:auto; }
+  .tl-body{ font-size:13.5px; margin-top:4px; white-space:pre-wrap; }
+  .tl-eta{ font-size:12px; margin-top:5px; color:var(--ink-soft); }
+  .tl-eta b{ color:var(--ink); }
+
+  .actions-row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .example-tag{ font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-faint); font-weight:700; }
+
+  .empty{ text-align:center; padding:48px 20px; color:var(--ink-soft); }
+  .empty h3{ font-size:18px; margin-bottom:6px; color:var(--ink); }
+  .loading{ text-align:center; padding:60px 20px; color:var(--ink-faint); font-family:'IBM Plex Mono',monospace; font-size:13px; }
+
+  .confirm-box{ background:var(--danger-bg); border:1px solid var(--danger-line); border-radius:8px; padding:10px 12px; margin-top:8px; font-size:13px; color:var(--danger); }
+  .confirm-box .row2{ display:flex; gap:8px; margin-top:8px; }
+
+  footer{ margin-top:30px; padding-top:16px; border-top:1px solid var(--line); font-size:11.5px; color:var(--ink-faint); text-align:center; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* =====================================================================
+     CONFIG — fill these in during setup. See the setup guide Claude gave you.
+     ===================================================================== */
+  var CONFIG = {
+    SUPABASE_URL: "https://dhylpytlgzsdjuvjgigm.supabase.co",
+    SUPABASE_ANON_KEY: "sb_publishable_13_-Y2ZkUpqYKc3r9i6OPA_Fv3CrrUv",
+    SALESDRAFT_EMAIL: "",                      // SalesDraft's support email — fill in once you have it
+    BANKS_ADVANTAGE_EMAIL: "holli.banks220@gmail.com"
+  };
+  var TABLE = "sd_tickets";
+
+  var IDENTITY_KEY = "sdledger_identity";
+  var CATEGORIES = ["Licensing & Onboarding","Platform / Technical Bug","Billing & Payments","Account Setup","Support Responsiveness","Other"];
+  var PRIORITIES = [["critical","Critical"],["high","High"],["normal","Normal"],["low","Low"]];
+  var STATUS_META = {
+    open:        { label:"Reported",        badge:"badge-neutral" },
+    acknowledged:{ label:"Acknowledged",    badge:"badge-warn" },
+    resolved:    { label:"Marked resolved", badge:"badge-warn" },
+    verified:    { label:"Verified fixed",  badge:"badge-good" },
+    reopened:    { label:"Reopened",        badge:"badge-danger" }
+  };
+
+  var db = null;               // supabase client
+  var configured = false;
+  var state = { tickets: [] };
+  var loading = true;
+  var loadError = null;
+  var ui = { filter:"active", expandedId:null, newTicketOpen:false, confirmDeleteId:null, formMode:{} };
+  var identity = null;
+  var toast = null;
+
+  function safeLS(fn, fallback){ try{ return fn(); }catch(e){ return fallback; } }
+  function loadIdentity(){ return safeLS(function(){ var r=window.localStorage.getItem(IDENTITY_KEY); return r?JSON.parse(r):null; }, null); }
+  function saveIdentity(id){ identity=id; safeLS(function(){ window.localStorage.setItem(IDENTITY_KEY, JSON.stringify(id)); return true; }, null); }
+
+  function pad(n){ return String(n).padStart(4,"0"); }
+  function nowIso(){ return new Date().toISOString(); }
+  function escapeHtml(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]; }); }
+
+  function fmtDate(iso){ if(!iso) return ""; var d=new Date(iso); return d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})+" · "+d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"}); }
+  function fmtDateOnly(iso){ if(!iso) return ""; var d=new Date(iso+"T12:00:00"); return d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"}); }
+  function fmtDur(ms){ if(ms<0) ms=0; var mins=Math.floor(ms/60000); var days=Math.floor(mins/1440); mins-=days*1440; var hrs=Math.floor(mins/60); mins-=hrs*60; if(days>0) return days+"d "+hrs+"h"; if(hrs>0) return hrs+"h "+mins+"m"; return mins+"m"; }
+
+  /* ---------------- domain logic ---------------- */
+  function clockStart(t){
+    if(t.status==="reopened"){ var l=null; for(var i=t.updates.length-1;i>=0;i--){ if(t.updates[i].type==="reopen"){ l=t.updates[i]; break; } } return l?l.at:t.created_at; }
+    if(t.status==="acknowledged"){ var a=null; for(var j=t.updates.length-1;j>=0;j--){ if(t.updates[j].type==="ack"){ a=t.updates[j]; break; } } return a?a.at:t.created_at; }
+    if(t.status==="resolved"){ var r=null; for(var k=t.updates.length-1;k>=0;k--){ if(t.updates[k].type==="resolve"){ r=t.updates[k]; break; } } return r?r.at:t.created_at; }
+    return t.created_at;
+  }
+  function etaDateOf(t){ for(var i=t.updates.length-1;i>=0;i--){ if(t.updates[i].type==="ack" && t.updates[i].etaDate) return t.updates[i].etaDate; } return null; }
+  function sla(t){
+    var now = Date.now();
+    if(t.status==="open" || t.status==="reopened"){
+      var age = now - new Date(clockStart(t)).getTime();
+      return { overdue: age>24*3600*1000, label: fmtDur(age)+" since reported", tone: age>24*3600*1000?"danger":"neutral" };
+    }
+    if(t.status==="acknowledged"){
+      var eta = etaDateOf(t);
+      if(eta){ var etaMs=new Date(eta+"T23:59:59").getTime(); var over=now>etaMs; return { overdue:over, label: over? "ETA passed · "+fmtDur(now-etaMs)+" over" : "ETA "+fmtDateOnly(eta), tone: over?"danger":"warn" }; }
+      return { overdue:false, label: fmtDur(now-new Date(clockStart(t)).getTime())+" in progress", tone:"warn" };
+    }
+    if(t.status==="resolved"){ var age2=now-new Date(clockStart(t)).getTime(); return { overdue: age2>48*3600*1000, label: fmtDur(age2)+" awaiting your confirmation", tone: age2>48*3600*1000?"warn":"neutral" }; }
+    return { overdue:false, label:"Verified", tone:"good" };
+  }
+  function statusBadgeTone(t){ var s=sla(t); if(t.status==="verified") return "badge-good"; if(s.overdue) return "badge-danger"; if(t.status==="open") return "badge-neutral"; return STATUS_META[t.status].badge; }
+
+  function computeStats(){
+    var awaiting=0, awaitingOverdue=0, inProgress=0, inProgressOverdue=0, awaitingConfirm=0, verified=0, reopenedTotal=0;
+    var firstResponseMs=[], resolutionMs=[];
+    state.tickets.forEach(function(t){
+      var s=sla(t);
+      if(t.status==="open"||t.status==="reopened"){ awaiting++; if(s.overdue) awaitingOverdue++; }
+      if(t.status==="acknowledged"){ inProgress++; if(s.overdue) inProgressOverdue++; }
+      if(t.status==="resolved"){ awaitingConfirm++; }
+      if(t.status==="verified"){ verified++; }
+      reopenedTotal += (t.reopen_count||0);
+      var created=new Date(t.created_at).getTime(), ack=null, resolvedAt=null;
+      t.updates.forEach(function(u){ if(u.type==="ack" && ack===null) ack=new Date(u.at).getTime(); if(u.type==="resolve") resolvedAt=new Date(u.at).getTime(); });
+      if(ack) firstResponseMs.push(ack-created);
+      if(ack && resolvedAt) resolutionMs.push(resolvedAt-ack);
+    });
+    function avg(arr){ return arr.length? arr.reduce(function(a,b){return a+b;},0)/arr.length : null; }
+    return { awaiting:awaiting, awaitingOverdue:awaitingOverdue, inProgress:inProgress, inProgressOverdue:inProgressOverdue, awaitingConfirm:awaitingConfirm, verified:verified, reopenedTotal:reopenedTotal, avgFirstResponse:avg(firstResponseMs), avgResolution:avg(resolutionMs) };
+  }
+  function isExample(t){ return t.id==="WO-0001" || t.id==="WO-0002" || t.id==="WO-0003"; }
+
+  /* ---------------- Supabase layer ---------------- */
+  function initDb(){
+    configured = CONFIG.SUPABASE_URL.indexOf("YOUR_") !== 0 && CONFIG.SUPABASE_ANON_KEY.indexOf("YOUR_") !== 0;
+    if(!configured || !window.supabase){ loading=false; render(); return; }
+    db = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+    loadAll();
+    db.channel("sd_tickets_changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: TABLE }, function(){ loadAll(true); })
+      .subscribe();
+  }
+
+  function loadAll(quiet){
+    if(!quiet){ loading = true; render(); }
+    db.from(TABLE).select("*").order("created_at", { ascending: false }).then(function(res){
+      if(res.error){ loadError = res.error.message; loading=false; render(); return; }
+      var rows = res.data || [];
+      if(rows.length === 0 && !quiet){
+        seedExamples();
+        return;
+      }
+      state.tickets = rows;
+      loading = false; loadError = null; render();
+    }).catch(function(err){ loadError = String(err); loading=false; render(); });
+  }
+
+  function seedExamples(){
+    var examples = buildExampleTickets();
+    db.from(TABLE).insert(examples).then(function(){ loadAll(true); }).catch(function(){ loading=false; render(); });
+  }
+
+  function dbWrite(promise, errMsg){
+    return promise.then(function(res){
+      if(res && res.error){ showToast(errMsg + ": " + res.error.message, "error"); return false; }
+      return true;
+    }).catch(function(err){ showToast(errMsg + ": " + String(err), "error"); return false; });
+  }
+
+  function showToast(msg, tone){
+    toast = { msg: msg, tone: tone || "accent" };
+    render();
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(function(){ toast=null; render(); }, 6000);
+  }
+
+  /* ---------------- actions ---------------- */
+  function nextTicketId(){
+    var max = 0;
+    state.tickets.forEach(function(t){
+      var m = /^WO-(\d+)$/.exec(t.id);
+      if(m){ var n = parseInt(m[1],10); if(n>max) max=n; }
+    });
+    return "WO-" + pad(max+1);
+  }
+
+  function actionNewTicket(fields){
+    var id = nextTicketId();
+    var row = {
+      id: id, title: fields.title, description: fields.description, category: fields.category,
+      priority: fields.priority, status: "open", created_by: identity, created_at: nowIso(), reopen_count: 0,
+      updates: [{ type:"created", by: identity, at: nowIso(), text: fields.description }]
+    };
+    ui.newTicketOpen = false;
+    dbWrite(db.from(TABLE).insert(row), "Couldn't submit that ticket");
+  }
+  function findT(id){ for(var i=0;i<state.tickets.length;i++){ if(state.tickets[i].id===id) return state.tickets[i]; } return null; }
+
+  function patchTicket(id, patch){ return dbWrite(db.from(TABLE).update(patch).eq("id", id), "Couldn't save that update"); }
+
+  function actionAck(id, fields){
+    var t = findT(id); if(!t) return;
+    var updates = t.updates.concat([{ type:"ack", by: identity, at: nowIso(), etaDate: fields.etaDate||null, text: fields.text }]);
+    setFormMode(id, null);
+    patchTicket(id, { status:"acknowledged", updates: updates });
+  }
+  function actionResolve(id, fields){
+    var t = findT(id); if(!t) return;
+    var updates = t.updates.concat([{ type:"resolve", by: identity, at: nowIso(), text: fields.text }]);
+    setFormMode(id, null);
+    patchTicket(id, { status:"resolved", updates: updates });
+  }
+  function actionVerify(id, worked, fields){
+    var t = findT(id); if(!t) return;
+    var updates, patch;
+    if(worked){
+      updates = t.updates.concat([{ type:"verify", by: identity, at: nowIso(), text: (fields&&fields.text) || "Confirmed — this is working now." }]);
+      patch = { status:"verified", updates: updates };
+    } else {
+      updates = t.updates.concat([{ type:"reopen", by: identity, at: nowIso(), text: fields.text }]);
+      patch = { status:"reopened", updates: updates, reopen_count: (t.reopen_count||0)+1 };
+    }
+    setFormMode(id, null);
+    patchTicket(id, patch);
+  }
+  function actionComment(id, fields){
+    var t = findT(id); if(!t) return;
+    var updates = t.updates.concat([{ type:"comment", by: identity, at: nowIso(), text: fields.text }]);
+    setFormMode(id, null);
+    patchTicket(id, { updates: updates });
+  }
+  function actionDelete(id){
+    ui.confirmDeleteId = null;
+    if(ui.expandedId===id) ui.expandedId=null;
+    dbWrite(db.from(TABLE).delete().eq("id", id), "Couldn't delete that ticket");
+  }
+  function actionClearExamples(){
+    dbWrite(db.from(TABLE).delete().in("id", ["WO-0001","WO-0002","WO-0003"]), "Couldn't clear examples");
+  }
+
+  function setFormMode(id, mode){ ui.formMode = {}; if(mode) ui.formMode[id]=mode; render(); }
+
+  /* ---------------- notify (mailto) ---------------- */
+  function notifyMailto(t, toRole){
+    var to = toRole==="vendor" ? CONFIG.SALESDRAFT_EMAIL : CONFIG.BANKS_ADVANTAGE_EMAIL;
+    var last = t.updates[t.updates.length-1];
+    var pageUrl = window.location.origin + window.location.pathname + "?ticket=" + t.id;
+    var subject = "[" + t.id + "] " + t.title + " — " + STATUS_META[t.status].label;
+    var body = "Ticket: " + pageUrl + "\nStatus: " + STATUS_META[t.status].label + "\n\n"
+      + "Latest update from " + last.by.name + ":\n" + last.text + "\n\n— SalesDraft Ticket Ledger";
+    var mailto = "mailto:" + encodeURIComponent(to) + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+    window.location.href = mailto;
+  }
+
+  /* ---------------- rendering ---------------- */
+  function renderIdentityGate(){
+    return "<div class=\"panel\" style=\"max-width:420px;margin:60px auto;\">"
+      + "<h2>Who's updating this log?</h2>"
+      + "<p style=\"font-size:13px;color:var(--ink-soft);margin-top:-6px;margin-bottom:14px;\">This name is shown on everything you submit. Not a login — just attribution.</p>"
+      + "<form id=\"identity-form\">"
+      + "<div class=\"field\"><label>Your name</label><input id=\"id-name\" type=\"text\" required placeholder=\"e.g. Holli Banks\"></div>"
+      + "<div class=\"field\"><label>You're with</label><select id=\"id-role\">"
+      + "<option value=\"client\">Banks Advantage (Holli's team)</option>"
+      + "<option value=\"vendor\">SalesDraft Support</option>"
+      + "</select></div>"
+      + "<div class=\"form-actions\"><button type=\"submit\" class=\"btn btn-primary\">Continue</button></div>"
+      + "</form></div>";
+  }
+
+  function renderMasthead(){
+    var who = identity ? escapeHtml(identity.name) + " · " + (identity.role==="client"?"Banks Advantage":"SalesDraft Support") : "";
+    return "<div class=\"masthead\"><div class=\"masthead-title\">"
+      + "<div class=\"eyebrow\">Work Order Log</div><h1>SalesDraft Ticket Ledger</h1>"
+      + "<p>Every issue reported to SalesDraft, with a timestamped record of acknowledgment, ETA, resolution, and whether it actually worked.</p></div>"
+      + "<div class=\"identity\"><div class=\"who\">"+who+"</div><button class=\"link\" data-act=\"change-identity\">change</button></div></div>";
+  }
+
+  function renderSteps(){
+    var steps = [["01","Report","An issue is logged with details & priority"],["02","Acknowledge","SalesDraft confirms receipt & gives an ETA"],["03","Resolve","SalesDraft marks what was fixed"],["04","Verify","Holli confirms it actually works"]];
+    var html = "<div class=\"steps\">";
+    steps.forEach(function(s){ html += "<div class=\"step\"><div class=\"n\">"+s[0]+"</div><div class=\"t\">"+s[1]+"</div><div class=\"d\">"+s[2]+"</div></div>"; });
+    return html + "</div>";
+  }
+
+  function renderBanners(){
+    var html = "";
+    if(!configured){
+      html += "<div class=\"banner banner-readonly\"><div><strong>Not connected yet</strong>Add your Supabase project URL and anon key to the <code>CONFIG</code> section near the top of this file, then reload.</div></div>";
+    }
+    if(loadError){
+      html += "<div class=\"banner banner-error\"><div><strong>Couldn't load tickets</strong>"+escapeHtml(loadError)+"</div></div>";
+    }
+    if(toast){
+      html += "<div class=\"banner "+(toast.tone==="error"?"banner-error":"banner-toast")+"\"><div>"+escapeHtml(toast.msg)+"</div></div>";
+    }
+    return html;
+  }
+
+  function renderStats(){
+    var s = computeStats();
+    function tile(v,l,tone){ return "<div class=\"stat"+(tone?" tone-"+tone:"")+"\"><div class=\"v\">"+v+"</div><div class=\"l\">"+l+"</div></div>"; }
+    var html = "<div class=\"stats\">"
+      + tile(s.awaiting, "Awaiting SalesDraft"+(s.awaitingOverdue?" · "+s.awaitingOverdue+" overdue":""), s.awaitingOverdue>0?"danger":null)
+      + tile(s.inProgress, "In progress"+(s.inProgressOverdue?" · "+s.inProgressOverdue+" past ETA":""), s.inProgressOverdue>0?"danger":"warn")
+      + tile(s.awaitingConfirm, "Awaiting your confirmation", s.awaitingConfirm>0?"warn":null)
+      + tile(s.reopenedTotal, "Reopened — didn't actually work", s.reopenedTotal>0?"danger":null)
+      + tile(s.verified, "Verified fixed", "good")
+      + "</div>";
+    html += "<div class=\"substats\"><span>Avg. time to first response: <b>"+(s.avgFirstResponse!=null?fmtDur(s.avgFirstResponse):"—")+"</b></span>"
+      + "<span>Avg. time acknowledge → resolve: <b>"+(s.avgResolution!=null?fmtDur(s.avgResolution):"—")+"</b></span></div>";
+    return html;
+  }
+
+  function renderToolbar(){
+    var tabs = [["active","Active"],["all","All"],["open","Reported"],["acknowledged","Acknowledged"],["resolved","Resolved"],["verified","Verified"]];
+    var html = "<div class=\"toolbar\"><div class=\"tabs\">";
+    tabs.forEach(function(t){ html += "<button class=\"tab\" aria-pressed=\""+(ui.filter===t[0])+"\" data-act=\"filter\" data-val=\""+t[0]+"\">"+t[1]+"</button>"; });
+    html += "</div><button class=\"btn btn-primary\" data-act=\"open-new\">+ Report an issue</button></div>";
+    return html;
+  }
+
+  function renderNewTicketForm(){
+    if(!ui.newTicketOpen) return "";
+    var cats = CATEGORIES.map(function(c){ return "<option value=\""+c+"\">"+c+"</option>"; }).join("");
+    var pris = PRIORITIES.map(function(p){ return "<option value=\""+p[0]+"\">"+p[1]+"</option>"; }).join("");
+    return "<div class=\"panel\"><h2>Report an issue</h2><form id=\"new-ticket-form\">"
+      + "<div class=\"field\"><label>What's wrong, in one line</label><input id=\"nt-title\" required maxlength=\"140\" placeholder=\"e.g. Agent appointment paperwork never confirmed\"></div>"
+      + "<div class=\"field\"><label>Details</label><textarea id=\"nt-desc\" required placeholder=\"What happened, when, and who's affected\"></textarea></div>"
+      + "<div class=\"grid2\"><div class=\"field\"><label>Category</label><select id=\"nt-cat\">"+cats+"</select></div>"
+      + "<div class=\"field\"><label>Priority</label><select id=\"nt-pri\">"+pris+"</select></div></div>"
+      + "<div class=\"form-actions\"><button type=\"button\" class=\"btn\" data-act=\"close-new\">Cancel</button>"
+      + "<button type=\"submit\" class=\"btn btn-primary\">Submit</button></div></form></div>";
+  }
+
+  function updateTone(u){ if(u.type==="reopen") return "danger"; if(u.type==="ack") return "warn"; if(u.type==="resolve") return "accent"; if(u.type==="verify") return "good"; return "neutral"; }
+  function updateVerb(u){ return { created:"reported this", ack:"acknowledged & gave an ETA", resolve:"marked this resolved", verify:"confirmed it's working", reopen:"reopened — didn't work", comment:"added a note" }[u.type] || "updated"; }
+
+  function renderTimeline(t){
+    var html = "<div class=\"timeline\">";
+    t.updates.forEach(function(u){
+      html += "<div class=\"tl-item\"><div class=\"tl-dot tone-"+updateTone(u)+"\"></div><div>"
+        + "<div class=\"tl-head\"><span class=\"tl-who\">"+escapeHtml(u.by.name)+"</span>"
+        + "<span class=\"tl-role\">"+(u.by.role==="client"?"Banks Advantage":"SalesDraft")+"</span>"
+        + "<span class=\"tl-role\">· "+updateVerb(u)+"</span>"
+        + "<span class=\"tl-when\">"+fmtDate(u.at)+"</span></div>"
+        + "<div class=\"tl-body\">"+escapeHtml(u.text)+"</div>"
+        + (u.etaDate ? "<div class=\"tl-eta\">ETA: <b>"+fmtDateOnly(u.etaDate)+"</b></div>" : "")
+        + "</div></div>";
+    });
+    return html + "</div>";
+  }
+
+  function renderActionForm(t){
+    var mode = ui.formMode[t.id];
+    if(!mode) return "";
+    if(mode==="ack"){
+      return "<form class=\"panel\" style=\"margin-top:10px;\" data-form=\"ack\" data-id=\""+t.id+"\">"
+        + "<div class=\"field\"><label>ETA (optional)</label><input type=\"date\" id=\"f-eta-"+t.id+"\"></div>"
+        + "<div class=\"field\"><label>Response — what's the plan? Include what can and can't be done.</label><textarea id=\"f-text-"+t.id+"\" required></textarea></div>"
+        + "<div class=\"form-actions\"><button type=\"button\" class=\"btn\" data-act=\"cancel-form\">Cancel</button><button type=\"submit\" class=\"btn btn-primary\">Acknowledge</button></div></form>";
+    }
+    if(mode==="resolve"){
+      return "<form class=\"panel\" style=\"margin-top:10px;\" data-form=\"resolve\" data-id=\""+t.id+"\">"
+        + "<div class=\"field\"><label>What was fixed / how</label><textarea id=\"f-text-"+t.id+"\" required></textarea></div>"
+        + "<div class=\"form-actions\"><button type=\"button\" class=\"btn\" data-act=\"cancel-form\">Cancel</button><button type=\"submit\" class=\"btn btn-primary\">Mark resolved</button></div></form>";
+    }
+    if(mode==="reopen-note"){
+      return "<form class=\"panel\" style=\"margin-top:10px;\" data-form=\"reopen\" data-id=\""+t.id+"\">"
+        + "<div class=\"field\"><label>What's still wrong</label><textarea id=\"f-text-"+t.id+"\" required></textarea></div>"
+        + "<div class=\"form-actions\"><button type=\"button\" class=\"btn\" data-act=\"cancel-form\">Cancel</button><button type=\"submit\" class=\"btn btn-primary\">Reopen ticket</button></div></form>";
+    }
+    if(mode==="comment"){
+      return "<form class=\"panel\" style=\"margin-top:10px;\" data-form=\"comment\" data-id=\""+t.id+"\">"
+        + "<div class=\"field\"><label>Add a note</label><textarea id=\"f-text-"+t.id+"\" required></textarea></div>"
+        + "<div class=\"form-actions\"><button type=\"button\" class=\"btn\" data-act=\"cancel-form\">Cancel</button><button type=\"submit\" class=\"btn btn-primary\">Add note</button></div></form>";
+    }
+    return "";
+  }
+
+  function renderRowActions(t){
+    var html = "<div class=\"actions-row\" style=\"margin-top:12px;\">";
+    if((t.status==="open"||t.status==="reopened") && identity.role==="vendor"){
+      html += "<button class=\"btn btn-sm btn-primary\" data-act=\"form\" data-mode=\"ack\" data-id=\""+t.id+"\">Acknowledge & give ETA</button>";
+    }
+    if(t.status==="acknowledged" && identity.role==="vendor"){
+      html += "<button class=\"btn btn-sm btn-primary\" data-act=\"form\" data-mode=\"resolve\" data-id=\""+t.id+"\">Mark resolved</button>";
+    }
+    if(t.status==="resolved" && identity.role==="client"){
+      html += "<button class=\"btn btn-sm btn-primary\" data-act=\"verify-yes\" data-id=\""+t.id+"\">Confirm it works</button>";
+      html += "<button class=\"btn btn-sm\" data-act=\"form\" data-mode=\"reopen-note\" data-id=\""+t.id+"\">Didn't work</button>";
+    }
+    if(t.status==="verified" && identity.role==="client"){
+      html += "<button class=\"btn btn-sm\" data-act=\"form\" data-mode=\"reopen-note\" data-id=\""+t.id+"\">Actually, it broke again</button>";
+    }
+    html += "<button class=\"btn btn-sm\" data-act=\"form\" data-mode=\"comment\" data-id=\""+t.id+"\">Add a note</button>";
+    var notifyLabel = identity.role==="client" ? "Notify SalesDraft" : "Notify Banks Advantage";
+    var notifyTo = identity.role==="client" ? "vendor" : "client";
+    html += "<button class=\"btn btn-sm btn-notify\" data-act=\"notify\" data-id=\""+t.id+"\" data-to=\""+notifyTo+"\">✉ "+notifyLabel+"</button>";
+    if(identity.role==="client"){
+      html += "<button class=\"btn-danger-ghost\" data-act=\"delete\" data-id=\""+t.id+"\" style=\"margin-left:auto;\">Delete</button>";
+    }
+    html += "</div>";
+    if(ui.confirmDeleteId === t.id){
+      html += "<div class=\"confirm-box\">Delete "+t.id+" permanently? This removes the whole record.<div class=\"row2\">"
+        + "<button class=\"btn btn-sm\" data-act=\"cancel-delete\">Cancel</button>"
+        + "<button class=\"btn btn-sm\" style=\"background:var(--danger);color:#fff;border-color:var(--danger);\" data-act=\"confirm-delete\" data-id=\""+t.id+"\">Delete permanently</button></div></div>";
+    }
+    return html;
+  }
+
+  function renderRow(t){
+    var s = sla(t);
+    var expanded = ui.expandedId === t.id;
+    var pri = t.priority || "normal";
+    var priLabel = { critical:"Critical", high:"High", normal:"Normal", low:"Low" }[pri];
+    var priBadge = { critical:"badge-danger", high:"badge-warn", normal:"badge-neutral", low:"badge-neutral" }[pri];
+    var html = "<div class=\"row"+(expanded?" open":"")+"\" data-row=\""+t.id+"\">";
+    html += "<div class=\"row-head p-"+pri+"\" data-act=\"toggle\" data-id=\""+t.id+"\">";
+    html += "<span class=\"row-id mono\">"+t.id+"</span>";
+    html += "<div class=\"row-main\"><div class=\"row-title\">"+escapeHtml(t.title)+(isExample(t)?" <span class=\"example-tag\">Example</span>":"")+"</div>";
+    html += "<div class=\"row-meta\"><span class=\"badge "+priBadge+"\">"+priLabel+"</span>";
+    html += "<span class=\"badge "+statusBadgeTone(t)+"\"><span class=\"badge-dot\"></span>"+STATUS_META[t.status].label+"</span>";
+    html += "<span>"+escapeHtml(t.category)+"</span></div></div>";
+    html += "<span class=\"row-age mono\">"+s.label+"</span><span class=\"row-chev\">›</span></div>";
+    if(expanded){
+      html += "<div class=\"detail\"><div class=\"detail-desc\">"+escapeHtml(t.description)+"</div>"
+        + renderTimeline(t) + renderRowActions(t) + renderActionForm(t) + "</div>";
+    }
+    html += "</div>";
+    return html;
+  }
+
+  function filterTickets(){
+    return state.tickets.filter(function(t){
+      if(ui.filter==="all") return true;
+      if(ui.filter==="active") return t.status!=="verified";
+      return t.status===ui.filter;
+    }).sort(function(a,b){
+      var oa=sla(a).overdue?0:1, ob=sla(b).overdue?0:1;
+      if(oa!==ob) return oa-ob;
+      return new Date(b.created_at) - new Date(a.created_at);
+    });
+  }
+
+  function renderList(){
+    if(loading) return "<div class=\"loading\">Loading tickets…</div>";
+    var list = filterTickets();
+    if(list.length===0) return "<div class=\"empty\"><h3>Nothing here</h3><p>No tickets match this filter.</p></div>";
+    return "<div class=\"list\">" + list.map(renderRow).join("") + "</div>";
+  }
+
+  function renderFooter(){
+    var hasExamples = state.tickets.some(isExample);
+    return "<footer>Banks Advantage · SalesDraft accountability log" + (hasExamples ? " — <a href=\"#\" data-act=\"clear-examples\">clear the example tickets</a>" : "") + "</footer>";
+  }
+
+  function render(){
+    var root = document.getElementById("app");
+    if(!identity){ root.innerHTML = "<div class=\"wrap\">"+renderIdentityGate()+"</div>"; wireIdentityForm(); return; }
+    var html = "<div class=\"wrap\">" + renderMasthead() + renderSteps() + renderBanners() + renderStats() + renderToolbar() + renderNewTicketForm() + renderList() + renderFooter() + "</div>";
+    root.innerHTML = html;
+    wireEvents();
+  }
+
+  function wireIdentityForm(){
+    var f = document.getElementById("identity-form");
+    if(!f) return;
+    f.addEventListener("submit", function(e){
+      e.preventDefault();
+      var name = document.getElementById("id-name").value.trim();
+      var role = document.getElementById("id-role").value;
+      if(!name) return;
+      saveIdentity({ name:name, role:role });
+      render();
+    });
+  }
+
+  function wireEvents(){
+    var root = document.getElementById("app");
+    root.querySelectorAll("[data-act]").forEach(function(node){
+      node.addEventListener("click", function(e){
+        var act = node.getAttribute("data-act");
+        var id = node.getAttribute("data-id");
+        if(act==="change-identity"){ identity=null; render(); return; }
+        if(act==="filter"){ ui.filter=node.getAttribute("data-val"); render(); return; }
+        if(act==="open-new"){ ui.newTicketOpen=true; render(); return; }
+        if(act==="close-new"){ ui.newTicketOpen=false; render(); return; }
+        if(act==="toggle"){ ui.expandedId = (ui.expandedId===id)?null:id; ui.formMode={}; render(); return; }
+        if(act==="form"){ setFormMode(id, node.getAttribute("data-mode")); return; }
+        if(act==="cancel-form"){ setFormMode(id, null); return; }
+        if(act==="verify-yes"){ actionVerify(id, true, {}); return; }
+        if(act==="verify-no"){ setFormMode(id, "reopen-note"); return; }
+        if(act==="notify"){ var t=findT(id); if(t) notifyMailto(t, node.getAttribute("data-to")); return; }
+        if(act==="delete"){ ui.confirmDeleteId=id; render(); return; }
+        if(act==="cancel-delete"){ ui.confirmDeleteId=null; render(); return; }
+        if(act==="confirm-delete"){ actionDelete(id); return; }
+        if(act==="clear-examples"){ e.preventDefault(); actionClearExamples(); return; }
+      });
+    });
+    var ntForm = document.getElementById("new-ticket-form");
+    if(ntForm){
+      ntForm.addEventListener("submit", function(e){
+        e.preventDefault();
+        var fields = { title: document.getElementById("nt-title").value.trim(), description: document.getElementById("nt-desc").value.trim(), category: document.getElementById("nt-cat").value, priority: document.getElementById("nt-pri").value };
+        if(!fields.title || !fields.description) return;
+        actionNewTicket(fields);
+      });
+    }
+    root.querySelectorAll("form[data-form]").forEach(function(f){
+      f.addEventListener("submit", function(e){
+        e.preventDefault();
+        var kind = f.getAttribute("data-form");
+        var id = f.getAttribute("data-id");
+        var textEl = document.getElementById("f-text-"+id);
+        var text = textEl ? textEl.value.trim() : "";
+        if(!text) return;
+        if(kind==="ack"){ var etaEl=document.getElementById("f-eta-"+id); actionAck(id, { text:text, etaDate: etaEl?etaEl.value:"" }); }
+        else if(kind==="resolve"){ actionResolve(id, { text:text }); }
+        else if(kind==="reopen"){ actionVerify(id, false, { text:text }); }
+        else if(kind==="comment"){ actionComment(id, { text:text }); }
+      });
+    });
+  }
+
+  function buildExampleTickets(){
+    return [
+      {"id":"WO-0001","title":"SureLC licensing status not syncing to onboarding dashboard","description":"Three new agents completed carrier paperwork in SureLC last week but their status still shows \"Not Started\" on our onboarding dashboard. Can't tell who's actually appointed and who isn't.","category":"Licensing & Onboarding","priority":"critical","status":"acknowledged","created_by":{"name":"Holli Banks","role":"client"},"created_at":"2026-09-11T13:00:00.000Z","reopen_count":0,"updates":[
+        {"type":"created","by":{"name":"Holli Banks","role":"client"},"at":"2026-09-11T13:00:00.000Z","text":"Three new agents completed carrier paperwork in SureLC last week but their status still shows \"Not Started\" on our onboarding dashboard. Can't tell who's actually appointed and who isn't."},
+        {"type":"ack","by":{"name":"J. Ortiz","role":"vendor"},"at":"2026-09-12T18:30:00.000Z","etaDate":"2026-09-16","text":"Confirmed — this is a known sync delay between SureLC and the dashboard. We can force a manual resync on these 3 agents by the 16th. A permanent fix to the auto-sync job is scoped but not yet scheduled."}
+      ]},
+      {"id":"WO-0002","title":"No response on carrier appointment paperwork for 3 pending agents","description":"Submitted appointment paperwork for 3 agents on the 13th through the support form. No confirmation of receipt, no ticket number, nothing. This is blocking all three from writing business.","category":"Licensing & Onboarding","priority":"critical","status":"open","created_by":{"name":"Holli Banks","role":"client"},"created_at":"2026-09-13T14:15:00.000Z","reopen_count":0,"updates":[
+        {"type":"created","by":{"name":"Holli Banks","role":"client"},"at":"2026-09-13T14:15:00.000Z","text":"Submitted appointment paperwork for 3 agents on the 13th through the support form. No confirmation of receipt, no ticket number, nothing. This is blocking all three from writing business."}
+      ]},
+      {"id":"WO-0003","title":"Contract tier showing wrong percentage on agent profile","description":"Agent profile page shows 90% contract instead of the 105% on file. Agent noticed it before I did.","category":"Platform / Technical Bug","priority":"high","status":"reopened","created_by":{"name":"Holli Banks","role":"client"},"created_at":"2026-09-08T15:00:00.000Z","reopen_count":1,"updates":[
+        {"type":"created","by":{"name":"Holli Banks","role":"client"},"at":"2026-09-08T15:00:00.000Z","text":"Agent profile page shows 90% contract instead of the 105% on file. Agent noticed it before I did."},
+        {"type":"ack","by":{"name":"J. Ortiz","role":"vendor"},"at":"2026-09-09T20:00:00.000Z","etaDate":"2026-09-10","text":"This looks like a stale cache on the profile view. Pushing a fix to the contract display layer, should clear by end of day tomorrow."},
+        {"type":"resolve","by":{"name":"J. Ortiz","role":"vendor"},"at":"2026-09-10T17:00:00.000Z","text":"Deployed the fix and spot-checked this agent's profile — showing 105% correctly on our end now."},
+        {"type":"reopen","by":{"name":"Holli Banks","role":"client"},"at":"2026-09-12T13:00:00.000Z","text":"Still showing 90% as of this morning, checked on two different browsers. Whatever was deployed didn't take, or it reverted."}
+      ]}
+    ];
+  }
+
+  function boot(){
+    identity = loadIdentity();
+    render();
+    initDb();
+    setInterval(function(){ if(identity) render(); }, 60000);
+  }
+
+  if(document.readyState==="loading"){ document.addEventListener("DOMContentLoaded", boot); } else { boot(); }
+})();
+</script>
+</body>
+</html>
