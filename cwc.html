@@ -3016,7 +3016,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h305</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h306</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -11446,11 +11446,15 @@ function openResetToPicker(id) {
   const dt = toLocalDT(d);
 
   // Reset type options with case type mapping
+  // h305: all four of these were built here and then thrown away - the <select>
+  // below was hardcoded to the last two, so resetting an existing client onto a
+  // new LIFE policy was simply not offerable. Values must match RESET_TYPE_MAP
+  // and the 'IBC/DFL' test in toggleSMEField / confirmResetTo exactly.
   const resetOptions = [
     {value:'Mortgage Protection', label:'Mortgage Protection', caseType:'Mortgage Protection'},
     {value:'General Life', label:'General Life', caseType:'General Life'},
     {value:'Retirement Solutions', label:'Retirement Solutions (self reset)', caseType:'Retirement'},
-    {value:'DFL/IBC', label:'DFL / IBC (outside reset)', caseType:'Debt Free Life'}
+    {value:'IBC/DFL', label:'IBC / DFL (outside reset - SME)', caseType:'Debt Free Life'}
   ].map(o=>`<option value="${o.value}">${o.label}</option>`).join('');
 
   const openCases = (c.cases||[]).filter(cs=>cs.status==='Open');
@@ -11468,8 +11472,7 @@ function openResetToPicker(id) {
   ${buildWeekGrid(id)}
   <div class="field"><label>Reset to</label>
     <select id="reset-to-type" onchange="toggleSMEField()">
-      <option value="Retirement Solutions">Retirement Solutions (self reset)</option>
-      <option value="IBC/DFL">IBC / DFL (outside reset - SME)</option>
+      ${resetOptions}
     </select>
   </div>
   <div id="sme-name-field" style="display:none;" class="field"><label>SME name</label><input type="text" id="reset-sme-name" placeholder="Who are you resetting to?"></div>
@@ -11479,7 +11482,12 @@ function openResetToPicker(id) {
 }
 
 // Map reset label to internal case type
+// h305: the two life products were missing, so a reset to them fell through to
+// the raw label. They map to themselves, but listing them makes that deliberate
+// rather than accidental.
 const RESET_TYPE_MAP = {
+  'Mortgage Protection': 'Mortgage Protection',
+  'General Life': 'General Life',
   'Retirement Solutions': 'Retirement',
   'IBC/DFL': 'Debt Free Life'
 };
@@ -11752,10 +11760,18 @@ async function confirmResetTo(id) {
   const apptNotes = resetLabel + (smeName?' - '+smeName:'') + (notes?' - '+notes:'');
   const caseNotes = smeName ? 'Reset from '+fromType+' - SME: '+smeName : (notes || 'Reset from '+fromType);
 
+  // h305: board routing was a two-way guess - anything that was not IBC/DFL got
+  // stamped advanced_market. With Mortgage Protection and General Life now
+  // offerable, that would have filed a life reset onto the retirement board.
+  // Life products belong to the main pipeline.
+  const _resetBoard = resetLabel === 'IBC/DFL' ? 'sme_handoff'
+    : (resetLabel === 'Mortgage Protection' || resetLabel === 'General Life') ? 'mp_life'
+    : 'advanced_market';
+
   const newCase = {
     type: caseType,
     status: 'Open',
-    board: resetLabel === 'IBC/DFL' ? 'sme_handoff' : 'advanced_market',
+    board: _resetBoard,
     notes: caseNotes,
     touchpoints: [{
       type: 'Initial',
@@ -11791,7 +11807,14 @@ async function confirmResetTo(id) {
   pushApptToCalendar(c, 'upsert');
 
   await addStat('dials', dialCount);
-  await markResolvedOnce(c, 'appt');
+  // h305: markResolvedOnce counts a LEAD once, ever - right for lead resolution,
+  // wrong here. A reset to a new product opens a genuinely new case with its own
+  // appointment, and on an existing client the lead resolved long ago, so the
+  // appointment silently never counted. Count it directly. Lead resolution is
+  // untouched: resolved_at still gets stamped on a lead that has none, so the
+  // resolution picture stays one-per-lead.
+  if (c.resolved_at) { await addStat('appts', 1); }
+  else { await markResolvedOnce(c, 'appt'); }
   await addStat('convos', 1);
 
   window._dialCount = 1; window._dialCountSet = false;
@@ -12087,12 +12110,18 @@ function logStatsOf(entry) {
   if (o === 'Not interested') return { dials: d, convos: 1, dead: 1 };
   if (o === 'No answer')      return { dials: d };
   if (o === 'Cancelled')      return { dials: d };
+  // h305: a reset to a new product now counts its own appointment (a new case on
+  // an already-resolved client would otherwise never count). Anything written
+  // must be reversible from the log, so the entry it writes - "Reset to
+  // <product>" - maps back to the same bundle. Without this, deleting or editing
+  // a reset entry left the appts number permanently high.
+  if (typeof o === 'string' && o.indexOf('Reset to ') === 0) return { dials: d, convos: 1, appts: 1 };
   return d ? { dials: d } : {};
 }
 
 const LOG_STAT_LABELS = {
   dials: 'Dials', convos: 'Conversations', callbacks: 'Callbacks',
-  dead: 'Not interested', texts: 'Texts',
+  dead: 'Not interested', texts: 'Texts', appts: 'Appointments set',
 };
 
 // Reverse (or apply) a stat bundle. The stats ledger is append-only and sumStat
