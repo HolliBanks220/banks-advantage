@@ -3016,7 +3016,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h306</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h307</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -4859,7 +4859,25 @@ function renderScore() {
     }
     const t = new Date(r.ts);
     return t >= aStart && t <= aEnd;
-  }).length;
+  }).length
+  // h306: the tile counts LEADS, one appointment per lead ever, off the
+  // resolution stamp. A reset to a new product on an existing client opens a
+  // real new case with its own appointment, but the lead resolved long ago, so
+  // the tile could never see it - h305 made the stats ledger count it and this
+  // number still did not move. Counted here from the reset entries themselves,
+  // the same source the ledger and the log reversal use, so all three agree.
+  // Reschedules are deliberately NOT here: not a new resolution, not a new
+  // case, and they have their own tile.
+  // No double-count guard is needed here: the block above counts a lead off
+  // lastResolution, which reads ONLY 'Appt set' and 'Not interested' entries. A
+  // reset writes neither, so the two sources are disjoint. A client who books an
+  // appointment AND resets to a second product on the same day counts two -
+  // which is right, because two appointments were set.
+  + clients.reduce((n, c) => n + (c.call_log||[]).filter(cl => {
+      if (!cl || typeof cl.outcome !== 'string' || cl.outcome.indexOf('Reset to ') !== 0) return false;
+      const t = new Date(cl.ts);
+      return t >= aStart && t <= aEnd;
+    }).length, 0);
   const dead = clients.filter(c => {
     const r = lastResolution(c);
     if (!r || r.kind !== 'dead') return false;
@@ -11452,7 +11470,10 @@ function openResetToPicker(id) {
   // and the 'IBC/DFL' test in toggleSMEField / confirmResetTo exactly.
   const resetOptions = [
     {value:'Mortgage Protection', label:'Mortgage Protection', caseType:'Mortgage Protection'},
-    {value:'General Life', label:'General Life', caseType:'General Life'},
+    // h306: shown as "Life Insurance" because that is what it is called out
+    // loud. The VALUE stays General Life so existing cases, RESET_TYPE_MAP and
+    // every report keep matching - label only.
+    {value:'General Life', label:'Life Insurance', caseType:'General Life'},
     {value:'Retirement Solutions', label:'Retirement Solutions (self reset)', caseType:'Retirement'},
     {value:'IBC/DFL', label:'IBC / DFL (outside reset - SME)', caseType:'Debt Free Life'}
   ].map(o=>`<option value="${o.value}">${o.label}</option>`).join('');
