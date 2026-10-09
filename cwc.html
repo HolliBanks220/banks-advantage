@@ -2990,6 +2990,30 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
   }
   .tab{ flex:0 0 auto !important; margin-right:0 !important; }
 }
+/* ============================================================================
+   h308 - THE PACE BAR NAMES NAMES
+   The status line is one non-wrapping flex row with a dot between each span.
+   Two new spans need their OWN row (they carry names, not counts), so the row
+   wraps and these two claim full width. The separator dot is suppressed before
+   them - a dot belongs between items on one line, not at the head of a new one.
+   Last block in the stylesheet on purpose: the rules above are !important and
+   later wins.
+   ========================================================================== */
+#alerts-section .pace-banner{ flex-wrap:wrap !important; row-gap:5px !important; }
+#alerts-section .pace-banner > span.pace-line{
+  flex:0 0 100% !important; white-space:normal !important;
+  font-size:12.5px !important; font-weight:600 !important; line-height:1.4 !important;
+}
+#alerts-section .pace-banner > span.pace-line::before{ content:"" !important; margin:0 !important; }
+.pace-start u{
+  cursor:pointer; text-underline-offset:3px; text-decoration-thickness:1px;
+}
+.pace-start .pl-sep{ margin:0 9px; opacity:.5; text-decoration:none !important; display:inline-block; }
+.pace-ns{
+  cursor:pointer; color:#E8A33D !important;
+}
+#alerts-section .pace-banner > span.pace-ns{ color:#E8A33D !important; }
+#alerts-section .pace-banner > span.pace-ns *{ color:#E8A33D !important; }
 </style>
 </head>
 <body>
@@ -3016,7 +3040,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h307</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h309</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -6146,7 +6170,12 @@ function drillDown(type) {
       const lbl = LBL[key] || key;
       const col = COL[key] || '#5f7a99';
       const ns = (a.c.call_log||[]).filter(l => /no show/i.test(l.outcome||'')).length;
-      const rebook = (a.fate!=='noshow' && ns>0)
+      // h309: a rebooked appointment is its own row now, so the same name can
+      // appear twice - once as the miss, once as the new meeting. Say which is
+      // which, or the list reads like a duplicate.
+      const rebook = a.rebook
+        ? '<div style="font-size:10px;color:#BA7517;font-weight:600;">Rebooked after a no-show' + (ns>1 ? ' \u00b7 ' + ns + ' no-shows' : '') + '</div>'
+        : (a.fate!=='noshow' && ns>0)
         ? '<div style="font-size:10px;color:#BA7517;font-weight:600;">Sat after a no-show' + (ns>1 ? ' \u00b7 ' + ns + ' no-shows' : '') + '</div>' : '';
       return '<div class="client-card" onclick="closeModal();setTimeout(()=>openClient(\'' + a.c.id + '\'),100)">' +
         '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">' +
@@ -6159,7 +6188,8 @@ function drillDown(type) {
     }).join('');
     showModal('<button class="close-x" onclick="closeToLead()">x</button>' +
       '<div class="modal-title">Appointments - ' + label + '</div>' +
-      '<div class="modal-sub">' + rows.length + ' lead' + (rows.length===1?'':'s') + ' \u00b7 one initial appt each</div>' +
+      '<div class="modal-sub">' + rows.length + ' appointment' + (rows.length===1?'':'s') +
+        (rows.filter(r=>r.rebook).length ? ' \u00b7 ' + rows.filter(r=>r.rebook).length + ' rebooked' : '') + '</div>' +
       '<div style="max-height:70vh;overflow-y:auto;margin-top:8px;">' + body + '</div>');
     return;
   }
@@ -8862,13 +8892,31 @@ function renderAlerts() {
     // day it can be genuinely due and never reached. This counts the ones due
     // right now and says so, because rebooking a no-show is often the cheapest
     // appointment available and it was the easiest thing to lose track of.
+    // h308: "Start here" - the three leads the board would hand you anyway, by
+    // name and tappable. The count above says you are behind; this says who to
+    // call, which is the part that was missing.
     try {
-      // Reads the ladder directly, not the sort score - the score carries a
-      // large out-of-window penalty, so counting off it reported zero all
-      // evening even when leads were genuinely due.
-      const nsDue = (clients || []).filter(c => noShowLadderDue(c) && isGoodTimeToCall(c)).length;
-      if (nsDue > 0) parts.push('<span class="pace-count">' + nsDue +
-        ' no-show' + (nsDue > 1 ? 's' : '') + ' to rebook</span>');
+      const starters = topLeadsToCall(3);
+      if (starters.length) {
+        parts.push('<span class="pace-line pace-start">Start here: ' +
+          starters.map(c => '<u onclick="event.stopPropagation();openClient(\'' + c.id + '\')">' +
+            esc(c.name) + '</u>').join('<span class="pl-sep">\u00b7</span>') + '</span>');
+      }
+    } catch (e) {}
+    // Reads the ladder directly, not the sort score - the score carries a large
+    // out-of-window penalty, so counting off it reported zero all evening even
+    // when leads were genuinely due. h308: now names the first two as well, and
+    // taps through to the no-show list rather than the general pass.
+    try {
+      const nsList = noShowsDueList();
+      if (nsList.length) {
+        const names = nsList.slice(0, 2).map(c => esc(c.name)).join(', ');
+        const more = nsList.length > 2 ? ', +' + (nsList.length - 2) : '';
+        parts.push('<span class="pace-line pace-ns" ' +
+          'onclick="event.stopPropagation();showTab(\'clients\');setFilter(\'noshow\');">' +
+          nsList.length + ' no-show' + (nsList.length > 1 ? 's' : '') + ' to rebook \u2014 ' +
+          names + more + '</span>');
+      }
     } catch (e) {}
     // h228: the inline light-mode fill is gone. The line is plain white text on
     // the board; only the "behind pace" span carries a colour, and it carries it
@@ -10097,6 +10145,55 @@ function noShowLadderRung(c) {
   const tries = noShowRebookTries(c);
   return tries < NO_SHOW_DUE_AT.length ? tries : -1;   // -1 = past the ladder
 }
+// h308: getNoShowCount sums the call_log AND the touchpoints, but logging a
+// no-show through the sit-outcome screen writes BOTH - one miss, counted twice.
+// (The touchpoint screen writes only the touchpoint, so neither source alone is
+// enough; they have to be merged.) This dedupes by the minute, so one missed
+// appointment is one no-show. Used by the new banner and rows; the older chip
+// and thresholds still call getNoShowCount until that change is agreed.
+function noShowEvents(c) {
+  try {
+    const seen = new Set();
+    const add = (v) => {
+      if (!v) return;
+      const t = new Date(v).getTime();
+      if (isNaN(t)) return;
+      seen.add(Math.round(t / 60000));
+    };
+    const anyDecided = (c.cases||[]).filter(Boolean).some(caseIsDecided);
+    if (!anyDecided) (c.call_log||[]).forEach(cl => { if (cl && cl.outcome === 'No show') add(cl.ts); });
+    (c.cases||[]).filter(Boolean).filter(cs => !caseIsDecided(cs)).forEach(cs =>
+      (cs.touchpoints||[]).filter(Boolean).forEach(tp => {
+        if (tp && tp.outcome === 'noshow') add(tp.datetime || tp.logged_at);
+      }));
+    return seen.size;
+  } catch (e) { return 0; }
+}
+
+// h308: the pace bar counted ("call 27 now") and a count is easy to walk past.
+// These two give it NAMES, which is the difference between a nag and a next
+// action. Both are read-only and defensive - the banner must never throw.
+function topLeadsToCall(n) {
+  try {
+    const skip = ['Dead','Closed','No sale','Appointment set','Nurture'];
+    return (clients || [])
+      .filter(c => c && c.name && !skip.includes(c.status))
+      .filter(c => { try { return !isDormant(c); } catch (e) { return true; } })
+      .map(c => ({ c, s: getUrgencyScore(c) }))
+      .filter(x => typeof x.s === 'number' && x.s < 150)   // 150+ = resting or out of window
+      .sort((a, b) => a.s - b.s)
+      .slice(0, n)
+      .map(x => x.c);
+  } catch (e) { return []; }
+}
+function noShowsDueList() {
+  try {
+    return (clients || [])
+      .filter(c => c && noShowLadderDue(c) && isGoodTimeToCall(c))
+      .sort((a, b) => getHoursSinceNoShow(b) - getHoursSinceNoShow(a));
+  } catch (e) { return []; }
+}
+
 function noShowLadderDue(c) {
   const rung = noShowLadderRung(c);
   if (rung < 0) return false;
@@ -10261,6 +10358,46 @@ function renderClients(q='') {
           <span class="lead-counters">${getDaysSinceAssigned(c)}d \u00b7 ${attemptCount(c)} att</span>
         </div>
       </div>
+      ${(function(){
+        // h308: a no-show row used to say "No show" and nothing else - not when,
+        // not what the mortgage was, not who else is on it. Not enough to dial
+        // from, so these were only ever worked by opening each file one at a
+        // time, which is to say rarely. This line carries the facts you'd ask
+        // for before picking up the phone.
+        try {
+          if (!noShowEvents(c)) return '';
+          const bits = [];
+          const missed = lastNoShowAt(c);
+          if (missed) {
+            const d = new Date(missed);
+            const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+            bits.push('Missed ' + d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) +
+              ' ' + d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) +
+              (days > 0 ? ' (' + days + 'd ago)' : ' (today)'));
+          }
+          if (c.mortgage_amount) {
+            const m = Number(String(c.mortgage_amount).replace(/[^0-9.]/g,''));
+            if (m > 0) bits.push('$' + Math.round(m).toLocaleString() + ' mtg');
+          }
+          if (c.lender) bits.push(esc(String(c.lender).slice(0,28)));
+          // The importer stores this as Y/N from the card, not a name - "co-borrower
+          // Y" reads like a typo. A bare N means there isn't one, so say nothing.
+          if (c.coBorrower) {
+            const cb = String(c.coBorrower).trim();
+            if (/^(y|yes)$/i.test(cb)) bits.push('has co-borrower');
+            else if (!/^(n|no)$/i.test(cb)) bits.push('co-borrower ' + esc(cb));
+          }
+          const rung = noShowLadderRung(c);
+          if (rung >= 0) {
+            bits.push(noShowLadderDue(c)
+              ? '<b style="color:#E8A33D;">touch ' + (rung+1) + ' of 4 due</b>'
+              : 'touch ' + (rung+1) + ' of 4');
+          }
+          if (!bits.length) return '';
+          return '<div style="font-size:11px;color:#BA7517;background:#FFF8E6;border-radius:6px;' +
+            'padding:4px 8px;margin-top:6px;line-height:1.45;">' + bits.join(' \u00b7 ') + '</div>';
+        } catch (e) { return ''; }
+      })()}
       ${sits.length?`<div class="journey-row">${journey}</div>`:''}
       ${lastCall?`<div class="log-row"><span class="log-time">${new Date(lastCall.ts).toLocaleDateString('en-US',{month:'short',day:'numeric'})} ${new Date(lastCall.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</span> - ${lastCall.outcome}${lastCall.outcome==='No show'&&apptOf(c)?' <span style="color:#BA7517;font-weight:500;">(appt: '+new Date(apptOf(c)).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})+' at '+new Date(apptOf(c)).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})+')</span>':''}</div>`:''}
     </div>`;
@@ -10546,6 +10683,42 @@ function openClient(id, keepDialCount) {
       return '<div style="margin-bottom:8px;">' + rebookNote + '<div onclick="openSitOutcome(\'' + id + '\')" style="font-size:12px;font-weight:600;color:var(--accent);background:var(--accent-pale);border:1px solid var(--accent-line);border-radius:6px;padding:5px 10px;margin-bottom:4px;cursor:pointer;display:block;">' + apptLabel + ' <span style="font-size:10px;opacity:0.6;">tap to log outcome</span></div><button onclick="openMoveAppt(\'' + id + '\')" style="font-size:10px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:3px 10px;color:#5f7a99;cursor:pointer;">Edit or delete</button></div>';
     }
   })():''}
+  ${(function(){
+    // h308: NO-SHOW BANNER. The card gave no sign that this person had already
+    // stood you up - the only tell was a small chip in the list behind it and a
+    // line at the bottom of the log. By the time you noticed, you were already
+    // talking. This sits above the dial buttons, so you read it before you call.
+    try {
+      const ns = noShowEvents(c);
+      if (!ns) return '';
+      const missedAt = lastNoShowAt(c);
+      const when = missedAt ? new Date(missedAt) : null;
+      const rung = noShowLadderRung(c);
+      const due  = noShowLadderDue(c);
+      let line2 = '';
+      if (rung >= 0) {
+        const DUE = [0, 24, 72, 168];
+        if (due) {
+          line2 = 'Rebook touch ' + (rung + 1) + ' of 4 \u2014 due now';
+        } else {
+          const hrsLeft = Math.max(0, Math.round(DUE[rung] - getHoursSinceNoShow(c)));
+          line2 = 'Rebook touch ' + (rung + 1) + ' of 4 \u2014 in ' +
+            (hrsLeft >= 24 ? Math.round(hrsLeft / 24) + 'd' : hrsLeft + 'h');
+        }
+      } else {
+        line2 = 'Rebook ladder finished';
+      }
+      return '<div style="background:#FFF2E0;border:1px solid #E8A33D;border-left:4px solid #E8A33D;' +
+        'border-radius:8px;padding:8px 11px;margin-bottom:9px;">' +
+        '<div style="font-size:12.5px;font-weight:700;color:#8A4B00;letter-spacing:.02em;">' +
+          'NO-SHOW' + (ns > 1 ? ' \u00d7' + ns : '') +
+          (when ? ' \u2014 missed ' + when.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) +
+                  ', ' + when.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : '') +
+        '</div>' +
+        '<div style="font-size:11px;color:#A2651A;margin-top:2px;">' + line2 + '</div>' +
+      '</div>';
+    } catch (e) { return ''; }
+  })()}
   <div class="dial-row">
     <span class="dial-lbl">Dials:</span>
     ${[1,2,3].map(n=>`<button class="dial-cnt-btn${(window._dialCount||1)===n?' on':''}" id="dcb-${n}" onclick="setDialCount(${n})">${n}x</button>`).join('')}
@@ -11692,8 +11865,34 @@ function computeInitialSet(pStart, pEnd, board) {
       if (_r && _r.kind === 'dead') return;
     }
     const d = new Date(rep.datetime);
-    if (d < pStart || d > pEnd) return;
-    out.push({c, cs, tp:rep, fate, d});
+    if (d >= pStart && d <= pEnd) out.push({c, cs, tp:rep, fate, d});
+
+    // h309: ONE REP PER CASE HID EVERY REBOOK. The selection above is
+    // sat -> no-showed -> upcoming, so a case that no-showed keeps the no-show
+    // as its representative forever. Rebook that appointment and the new one
+    // never counted anywhere, and the case stayed filed under the original
+    // no-show date weeks back. Verified: 15 appointments booked, 5 counted -
+    // the 10 rebooks were invisible. The more rebooking done, the worse the
+    // undercount, which is exactly backwards.
+    // A rebooked appointment is a real meeting on a real day, so it counts in
+    // the period it is scheduled for - as its own entry, not by replacing the
+    // no-show, because both things happened. Only fires on a no-show case:
+    // a case that already SAT and has a later pending is a continuation (PPU /
+    // TAI / retirement step), which has its own funnel and must not land here.
+    if (fate === 'noshow') {
+      const lastNs = new Date(nsh[nsh.length - 1].datetime).getTime();
+      const rebook = pend.filter(t => new Date(t.datetime).getTime() > lastNs)
+                         .sort(byDate)[0];
+      if (rebook) {
+        const _r2 = lastResolution(c);
+        if (!(_r2 && _r2.kind === 'dead')) {
+          const rd = new Date(rebook.datetime);
+          if (rd >= pStart && rd <= pEnd) {
+            out.push({c, cs, tp:rebook, fate: rd.getTime() >= nowMs ? 'upcoming' : 'needs', d: rd, rebook: true});
+          }
+        }
+      }
+    }
   }));
   return out;
 }
