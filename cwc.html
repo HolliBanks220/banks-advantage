@@ -3014,6 +3014,49 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
 }
 #alerts-section .pace-banner > span.pace-ns{ color:#E8A33D !important; }
 #alerts-section .pace-banner > span.pace-ns *{ color:#E8A33D !important; }
+/* ============================================================================
+   h311 - THE NO-SHOW MARKS, WHERE NOTHING CAN REPAINT THEM
+   Two earlier attempts at this were flattened: the card strip by
+   `.client-card [style*="background:#FFF"]` and the lead banner by
+   `.modal [style*="background:#"]`. Both sweeps match on the INLINE style
+   attribute, so the cure is to carry no inline colour at all - a class they
+   cannot select. Last block in the stylesheet, so later-wins settles any tie.
+   Amber on the dark board, loud on purpose: a missed appointment is money
+   sitting on the floor and it should look like it.
+   ========================================================================== */
+.ns-strip{
+  font-size:12px !important; font-weight:600 !important; line-height:1.45 !important;
+  color:#F0B44A !important;
+  background:rgba(232,163,61,.13) !important;
+  border-left:4px solid #E8A33D !important;
+  border-radius:0 7px 7px 0 !important;
+  padding:6px 10px !important; margin-top:7px !important;
+}
+.client-card .ns-strip, .client-card .ns-strip *{ color:#F0B44A !important; }
+.ns-strip .ns-due, .client-card .ns-strip .ns-due{
+  color:#1B1205 !important; background:#E8A33D !important;
+  border-radius:5px !important; padding:1px 7px !important; font-weight:800 !important;
+}
+/* the whole card reads as a no-show, not just one line inside it */
+.client-card.ns-card{
+  border-left:4px solid #E8A33D !important;
+  background:linear-gradient(90deg, rgba(232,163,61,.10), transparent 62%), var(--dk-card) !important;
+}
+
+.ns-banner, .modal .ns-banner{
+  background:#E8A33D !important;
+  border:none !important; border-radius:9px !important;
+  padding:10px 13px !important; margin-bottom:11px !important;
+}
+.ns-banner-t, .modal .ns-banner .ns-banner-t{
+  font-size:14px !important; font-weight:800 !important;
+  color:#1B1205 !important; -webkit-text-fill-color:#1B1205 !important;
+  letter-spacing:.02em !important; line-height:1.3 !important;
+}
+.ns-banner-s, .modal .ns-banner .ns-banner-s{
+  font-size:11.5px !important; font-weight:600 !important; margin-top:3px !important;
+  color:#5A3B07 !important; -webkit-text-fill-color:#5A3B07 !important;
+}
 </style>
 </head>
 <body>
@@ -3040,7 +3083,7 @@ button.opt-chip.opt-on, #apps-tab-list button.opt-chip.opt-on{
     </div>
     <div class="hdr-right">
       <div class="nav-row">
-        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h309</span>
+        <span class="build-tag" id="build-tag" title="build" style="display:none;">b715h313</span>
         <!-- h218: the gear and undo are one pair - both "act on the app" rather
              than "move through time" - so they sit together with a gap before
              the period arrows instead of drifting apart across the row. -->
@@ -6186,11 +6229,32 @@ function drillDown(type) {
           '<span style="font-size:11px;font-weight:700;color:' + col + ';white-space:nowrap;">' + lbl + '</span>' +
         '</div></div>';
     }).join('');
+    // h310: the meetings in this period that did NOT count, each with its reason.
+    // Greyed and listed under the counted ones, so the tile reconciles against
+    // the calendar instead of being argued with.
+    let unc = [];
+    try { unc = uncountedMeetings(start, end, _ddBoard); } catch (e) {}
+    const uncBody = !unc.length ? '' :
+      '<div style="margin-top:14px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.12);">' +
+        '<div style="font-size:10px;font-weight:700;color:#8fa8c0;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">' +
+          'Not counted here (' + unc.length + ')</div>' +
+        unc.map(u =>
+          '<div class="client-card" style="opacity:.62;" onclick="closeModal();setTimeout(()=>openClient(\'' + u.c.id + '\'),100)">' +
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">' +
+            '<div><div class="client-name">' + esc(u.c.name||'Unknown') + '</div>' +
+            '<div class="client-meta">' + esc(u.cs.type||'') + (u.tp.type ? ' \u00b7 ' + esc(u.tp.type) : '') + '</div>' +
+            '<div style="font-size:11px;color:var(--accent);font-weight:500;">' +
+              u.d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' +
+              u.d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + '</div>' +
+            '<div style="font-size:10px;color:#BA7517;font-weight:600;">' + esc(u.why) + '</div></div>' +
+          '</div></div>').join('') +
+      '</div>';
     showModal('<button class="close-x" onclick="closeToLead()">x</button>' +
       '<div class="modal-title">Appointments - ' + label + '</div>' +
-      '<div class="modal-sub">' + rows.length + ' appointment' + (rows.length===1?'':'s') +
-        (rows.filter(r=>r.rebook).length ? ' \u00b7 ' + rows.filter(r=>r.rebook).length + ' rebooked' : '') + '</div>' +
-      '<div style="max-height:70vh;overflow-y:auto;margin-top:8px;">' + body + '</div>');
+      '<div class="modal-sub">' + rows.length + ' counted' +
+        (rows.filter(r=>r.rebook).length ? ' \u00b7 ' + rows.filter(r=>r.rebook).length + ' rebooked' : '') +
+        (unc.length ? ' \u00b7 ' + unc.length + ' not counted' : '') + '</div>' +
+      '<div style="max-height:70vh;overflow-y:auto;margin-top:8px;">' + body + uncBody + '</div>');
     return;
   }
 
@@ -7160,7 +7224,7 @@ function renderAppsTab() {
     // range-aware matching, so it self-heals even where stored comp was wrong
     let periodGrossComp = 0, periodUpfront = 0;
     submittedApps.forEach(ap => {
-      const comp = calcAppComp(ap.carrier, ap.product, ap.premium||0, null, undefined, ap.age, ap.product_range || null);
+      const comp = calcAppComp(ap.carrier, ap.product, compBasisOf(ap), null, undefined, ap.age, ap.product_range || null);
       if (comp) {
         periodGrossComp += comp.grossComp || 0;
         // As-earned (Gerber): one month pays "up front" — that's the deposit to expect
@@ -7213,15 +7277,18 @@ function renderAppsTab() {
             ${(ap.status||'') === 'Declined' ? (isSuperseded(ap)
               ? `<div style="font-size:10px;color:#8fa8c0;margin-top:3px;">Declined - rewritten. Premium counted on the replacement.</div>`
               : `<div style="font-size:10px;color:#BA7517;font-weight:600;margin-top:3px;">Declined - needs a replacement</div>`) : ''}
-            <div style="font-size:11px;color:#8fa8c0;margin-top:1px;"><strong style="color:#1D3557;">$${((ap.premium||0)/12).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}/mo</strong> · ${fmt(ap.premium||0)} APV · ${ap.caseType||''} · ${dt}</div>
+            <div style="font-size:11px;color:#8fa8c0;margin-top:1px;">${appAmountLine(ap)} · ${ap.caseType||''} · ${dt}</div>
             ${(() => {
-              const comp = calcAppComp(ap.carrier, ap.product, ap.premium||0, null, undefined, ap.age, ap.product_range || null);
+              const comp = calcAppComp(ap.carrier, ap.product, compBasisOf(ap), null, undefined, ap.age, ap.product_range || null);
               if (!comp) {
                 if (ap.comp_gross) return `<div style="font-size:11px;color:#BA7517;margin-top:1px;">Comp (stored): ${fmt(ap.comp_gross)} \u00B7 upfront ${fmt(ap.comp_advance||0)} \u00B7 rate not found in grid \u2014 tap Edit to fix product/range</div>`;
                 return `<div style="font-size:11px;color:#BA7517;margin-top:1px;">Comp: rate not found \u2014 tap Edit to set product/range</div>`;
               }
               const upfront = comp.isAsEarned ? (comp.grossComp / 12) : comp.advance;
-              const suspicious = comp.grossComp > (ap.premium||0) * 1.35;
+              // h313: this ceiling compared comp against `premium`, which on an
+              // account app is the 5% credit - so a correct IR comp at a higher
+              // contract level would have been flagged red as "exceeds premium".
+              const suspicious = comp.grossComp > compBasisOf(ap) * 1.35;
               return `<div style="font-size:11px;color:${suspicious ? '#A32D2D' : '#3B6D11'};margin-top:1px;font-weight:500;">${comp.rate}% \u00B7 ${fmt(comp.grossComp)} comp \u00B7 ${fmt(upfront)} upfront${comp.isAsEarned ? ' (as-earned, 1st month)' : ''}${suspicious ? ' \u26A0\uFE0F comp exceeds premium \u00D7 rate ceiling \u2014 check this app' : ''}</div>`;
             })()}
             <button onclick="event.stopPropagation();openEditApp('${ap.clientId}',${ap.ci},${ap.ti},${ap.ai})" style="margin-top:4px;background:none;border:1px solid #d0dcea;border-radius:6px;padding:2px 10px;font-size:10px;color:#5f7a99;cursor:pointer;">Edit app</button>
@@ -7327,7 +7394,7 @@ function renderAppsTab() {
       ${(() => {
         let g = 0, u = 0;
         placedApps.forEach(ap => {
-          const comp = calcAppComp(ap.carrier, ap.product, ap.premium||0, null, undefined, ap.age, ap.product_range || null);
+          const comp = calcAppComp(ap.carrier, ap.product, compBasisOf(ap), null, undefined, ap.age, ap.product_range || null);
           if (comp) { g += comp.grossComp || 0; u += comp.isAsEarned ? (comp.grossComp||0)/12 : (comp.advance||0); }
           else { g += ap.comp_gross || 0; u += ap.is_as_earned ? (ap.comp_gross||0)/12 : (ap.comp_advance||0); }
         });
@@ -7377,7 +7444,7 @@ function renderAppsTab() {
                 <div style="flex:1;min-width:0;cursor:pointer;" onclick="openClient('${ap.clientId}')">
                   <div style="font-size:12px;font-weight:600;color:#1D3557;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ap.clientName}</div>
                   <div style="font-size:11px;color:#5f7a99;">${ap.carrier||''} · ${fmt(ap.premium||0)} APV${(() => {
-                    const comp = calcAppComp(ap.carrier, ap.product, ap.premium||0, null, undefined, ap.age, ap.product_range || null);
+                    const comp = calcAppComp(ap.carrier, ap.product, compBasisOf(ap), null, undefined, ap.age, ap.product_range || null);
                     if (!comp) return '';
                     const up = comp.isAsEarned ? (comp.grossComp||0)/12 : (comp.advance||0);
                     return ' · <strong style="color:#3B6D11;">$' + up.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' upfront</strong>' + (comp.isAsEarned ? ' (mo-1)' : '');
@@ -7995,12 +8062,15 @@ function caseIsDecided(cs) {
 function getNoShowCount(c) {
   // A case that sold contributes nothing. Neither does the call log once ANY case
   // has sold - log entries carry no case reference, so they cannot be split.
-  const anyDecided = (c.cases||[]).filter(Boolean).some(caseIsDecided);
-  const fromLog = anyDecided ? 0
-    : (c.call_log||[]).filter(cl => cl.outcome === 'No show').length;
-  const fromTps = (c.cases||[]).reduce((n, cs) =>
-    n + (caseIsDecided(cs) ? 0 : (cs.touchpoints||[]).filter(Boolean).filter(tp => tp && tp.outcome === 'noshow').length), 0);
-  return fromLog + fromTps;
+  //
+  // h311: this used to ADD the two sources. Logging a no-show through the sit
+  // screen writes BOTH a call_log entry and a touchpoint outcome, so one missed
+  // appointment counted as two - every no-show on the board was doubled, and the
+  // "N no-shows to rebook" line was reading roughly twice the truth. The two
+  // sources still both have to be read (the touchpoint screen writes only a
+  // touchpoint, so neither alone is complete); they are merged by the minute
+  // instead, which makes one miss one no-show however it was logged.
+  return noShowEvents(c);
 }
 // Most recent no-show from either place - drives the 72hr recovery window.
 function lastNoShowAt(c) {
@@ -10060,7 +10130,10 @@ async function _cancelApptLive(id, ci) {
 function dodgeDays() { return parseInt(getAgentSettings().pushOffDays) || 18; }
 
 function noShowCount(c) {
-  return (c.call_log||[]).filter(cl => cl.outcome === 'No show').length;
+  // h311: same double-count, second copy. Kept as a separate name because the
+  // dodge cadence calls it, but it now reads the same deduped source so the two
+  // can never disagree about how many times someone stood you up.
+  return noShowEvents(c);
 }
 
 // The moment they entered the cadence - the most recent of the three doors.
@@ -10345,7 +10418,10 @@ function renderClients(q='') {
     // every part of it looked equally important, which is to say none of it did.
     // The phone number is what she dials, so it leads; everything else is a
     // quiet second line beneath it.
-    return `<div class="client-card" onclick="openClient('${c.id}')">
+    // h311: the card itself is marked, rather than relying on :has() - same
+    // result, no dependency on a selector an older browser might skip.
+    const _nsCard = (function(){ try { return noShowEvents(c) ? ' ns-card' : ''; } catch(e){ return ''; } })();
+    return `<div class="client-card${_nsCard}" onclick="openClient('${c.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
         <div style="min-width:0;">
           <div class="client-name">${c.name||'Unknown'}${fresh?'<span class="fresh-tag">fresh</span>':''}</div>
@@ -10390,12 +10466,16 @@ function renderClients(q='') {
           const rung = noShowLadderRung(c);
           if (rung >= 0) {
             bits.push(noShowLadderDue(c)
-              ? '<b style="color:#E8A33D;">touch ' + (rung+1) + ' of 4 due</b>'
+              ? '<b class="ns-due">touch ' + (rung+1) + ' of 4 due</b>'
               : 'touch ' + (rung+1) + ' of 4');
           }
           if (!bits.length) return '';
-          return '<div style="font-size:11px;color:#BA7517;background:#FFF8E6;border-radius:6px;' +
-            'padding:4px 8px;margin-top:6px;line-height:1.45;">' + bits.join(' \u00b7 ') + '</div>';
+          // h311: this carried inline colour and was repainted grey by
+          // `.client-card [style*="background:#FFF"]` - #FFF8E6 matches that
+          // substring. Fifth thing one of these broad sweeps has flattened. No
+          // inline colour at all now: a class the stylesheet owns, defined last,
+          // which no [style*=] selector can even see.
+          return '<div class="ns-strip">' + bits.join(' \u00b7 ') + '</div>';
         } catch (e) { return ''; }
       })()}
       ${sits.length?`<div class="journey-row">${journey}</div>`:''}
@@ -10708,14 +10788,16 @@ function openClient(id, keepDialCount) {
       } else {
         line2 = 'Rebook ladder finished';
       }
-      return '<div style="background:#FFF2E0;border:1px solid #E8A33D;border-left:4px solid #E8A33D;' +
-        'border-radius:8px;padding:8px 11px;margin-bottom:9px;">' +
-        '<div style="font-size:12.5px;font-weight:700;color:#8A4B00;letter-spacing:.02em;">' +
+      // h311: was an inline amber fill, which `.modal [style*="background:#"]`
+      // repainted to neutral grey - the banner rendered as a plain grey box and
+      // read as nothing. Classes only, defined last in the stylesheet.
+      return '<div class="ns-banner">' +
+        '<div class="ns-banner-t">' +
           'NO-SHOW' + (ns > 1 ? ' \u00d7' + ns : '') +
           (when ? ' \u2014 missed ' + when.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) +
                   ', ' + when.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : '') +
         '</div>' +
-        '<div style="font-size:11px;color:#A2651A;margin-top:2px;">' + line2 + '</div>' +
+        '<div class="ns-banner-s">' + line2 + '</div>' +
       '</div>';
     } catch (e) { return ''; }
   })()}
@@ -11837,6 +11919,46 @@ function renderFunnelHTML(f, kind) {
 //   upcoming= a live pending appt still in the future
 //   needs   = a live pending appt already past due, awaiting an outcome
 // PPU/TAI follow-ups (continues_appt) and ghost pendings are never the initial.
+// h310: WHY ISN'T MY NUMBER MY NUMBER.
+// The Appointments tile counts INITIAL appointments on one board. Plenty of real
+// meetings are deliberately excluded - a PPU booked off a sit is a continuation
+// with its own funnel, a retirement case lives on the other board, a superseded
+// pending is a leftover. All correct, all invisible, and the gap between "14 on
+// my calendar" and "11 on the board" was unexplainable without reading code.
+// This lists every meeting in the period that did NOT count, and why. Read-only.
+const _BOARD_LBL = { mp_life:'Life / MP', advanced_market:'Retirement', sme_handoff:'SME handoff' };
+function uncountedMeetings(pStart, pEnd, board) {
+  const counted = new Set(computeInitialSet(pStart, pEnd, board).map(x => x.tp));
+  const out = [];
+  (clients || []).forEach(c => (c.cases || []).filter(Boolean).forEach(cs => {
+    const tps = cs.touchpoints || [];
+    const satFirst = tps.filter(t => t && SAT_OUTCOMES.includes(t.outcome) && t.datetime)
+                        .sort((a,b) => new Date(a.datetime) - new Date(b.datetime))[0];
+    tps.filter(Boolean).forEach(tp => {
+      if (!tp.datetime) return;
+      const d = new Date(tp.datetime);
+      if (isNaN(d) || d < pStart || d > pEnd) return;
+      if (counted.has(tp)) return;
+      // Only MEETINGS - a decided outcome in the period is history, not a slot
+      // on the calendar she is asking about.
+      if (tp.outcome && tp.outcome !== 'pending') return;
+      let why = '';
+      if (boardOf(cs) !== board) why = 'on the ' + (_BOARD_LBL[boardOf(cs)] || boardOf(cs)) + ' board';
+      else if (tp.continues_appt) why = 'continuation of an earlier appointment';
+      else if (isGhostPending(tps, tp)) why = 'superseded \u2014 an outcome is already logged at this time';
+      else if (satFirst && new Date(satFirst.datetime).getTime() < d.getTime())
+        why = 'follow-up after a sit (PPU / TAI) \u2014 counted in its own funnel';
+      else {
+        const r = lastResolution(c);
+        if (r && r.kind === 'dead') why = 'lead went Not interested after booking';
+        else why = 'another appointment on this case is the one counted';
+      }
+      out.push({ c, cs, tp, d, why });
+    });
+  }));
+  return out.sort((a, b) => a.d - b.d);
+}
+
 function computeInitialSet(pStart, pEnd, board) {
   const nowMs = Date.now();
   const byDate = (a,b) => new Date(a.datetime) - new Date(b.datetime);
@@ -15130,7 +15252,7 @@ function renderCasesHtml(c) {
       return '<div style="background:#f7fafd;border:1px solid #e2eaf2;border-radius:6px;padding:6px 8px;margin-top:4px;display:flex;justify-content:space-between;align-items:center;">' +
         '<div>' +
           '<div style="font-size:11px;font-weight:500;color:#1D3557;">' + ap.carrier + ' - ' + ap.product + '</div>' +
-          '<div style="font-size:10px;color:#5f7a99;"><strong style="color:#1D3557;">$' + ((ap.premium||0)/12).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + '/mo</strong> · $' + (ap.premium||0).toLocaleString() + ' APV · ' + (ap.who||'Borrower') + '</div>' +
+          '<div style="font-size:10px;color:#5f7a99;">' + appAmountLine(ap) + ' · ' + (ap.who||'Borrower') + '</div>' +
         '</div>' +
         '<select onchange="updateAppStatus(\''+c.id+'\','+ci+','+ap.ti+','+ap.ai+',this.value)" style="font-size:10px;border:1px solid #e2eaf2;border-radius:4px;padding:2px 4px;color:'+sc+';font-weight:600;background:#fff;">' +
           appStatusOptions(ap.status) +
@@ -15773,8 +15895,15 @@ function updateAppCompDisplay(i) {
   const age = parseInt((document.getElementById('app-age-'+i)||{value:''}).value)||null;
   const compEl = document.getElementById('app-comp-display-'+i);
   if (!compEl) return;
+  // h312: this preview computed comp off `apv`. On an account app that is the 5%
+  // leaderboard credit, not the money - so a $400k account previewed its comp as
+  // 6% of $20k. The saved record was already right (h159), which is why the board
+  // and the preview disagreed and the preview was the one lying.
+  const _isAcct = (window._appFreq && window._appFreq[i]) === 'account';
+  const _entered = parseFloat((document.getElementById('app-prem-'+i)||{value:0}).value) || 0;
+  const basis = _isAcct ? _entered : apv;
   
-  if (!carrier || !productVal || !apv) { compEl.innerHTML = ''; return; }
+  if (!carrier || !productVal || !basis) { compEl.innerHTML = ''; return; }
   
   // The dropdown value is "Name|Range" - the range IS the age band the user picked.
   // Dropping it (as this line used to) sent the lookup to the age-guess fallback,
@@ -15782,10 +15911,14 @@ function updateAppCompDisplay(i) {
   // back 75% instead of 90%. Pass the range through, same as the save path does.
   const productName = productVal.split('|')[0];
   const productRange = productVal.split('|')[1] || null;
-  const comp = calcAppComp(carrier, productName, apv, null, undefined, age, productRange);
+  const comp = calcAppComp(carrier, productName, basis, null, undefined, age, productRange);
   
   if (comp) {
-    const advStr = comp.isAsEarned ? 'As earned' : '$' + Math.round(comp.advance).toLocaleString() + ' adv';
+    // h312: a product paid 100% upfront has no advance to report - calling the
+    // whole cheque "advance" invites the question "and when does the rest land?"
+    const advStr = comp.isAsEarned ? 'As earned'
+      : comp.advancePct >= 100 ? 'Paid upfront'
+      : '$' + Math.round(comp.advance).toLocaleString() + ' adv';
     compEl.innerHTML = '<div style="background:#F0FBF7;border:1px solid var(--accent-line);border-radius:8px;padding:6px 10px;margin-bottom:8px;display:flex;justify-content:space-between;">' +
       '<span style="font-size:11px;color:#5f7a99;">' + comp.rate + '% comp</span>' +
       '<span style="font-size:11px;font-weight:600;color:var(--accent);">$' + Math.round(comp.grossComp).toLocaleString() + ' gross</span>' +
@@ -15896,7 +16029,7 @@ function renderAppsSection(c) {
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
         <div>
           <div style="font-size:12px;font-weight:600;color:#1D3557;">${ap.carrier} - ${ap.product}</div>
-          <div style="font-size:11px;color:#5f7a99;margin-top:1px;"><strong style="color:#1D3557;">$${((ap.premium||0)/12).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}/mo</strong> · $${(ap.premium||0).toLocaleString()} APV · $${(ap.face||0).toLocaleString()} face · ${ap.who||'Borrower'}</div>
+          <div style="font-size:11px;color:#5f7a99;margin-top:1px;">${appAmountLine(ap)} · ${ap.who||'Borrower'}</div>
           <div style="font-size:10px;color:#a0b8cc;margin-top:1px;">${dt}</div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
@@ -15991,7 +16124,7 @@ async function saveEditApp(id, ci, ti, ai) {
     ap.writtenDate = iso; ap.written_date = iso;
   }
   // Recompute comp with the corrected matching — editing an app repairs its stored comp
-  const _comp = calcAppComp(ap.carrier, ap.product, ap.premium, null, undefined, ap.age, ap.product_range);
+  const _comp = calcAppComp(ap.carrier, ap.product, compBasisOf(ap), null, undefined, ap.age, ap.product_range);
   if (_comp) {
     ap.comp_rate = _comp.rate;
     ap.comp_gross = Math.round(_comp.grossComp);
@@ -18753,6 +18886,13 @@ function resolveCarrierKey(name) {
 function getCompRate(carrierName, productName, contractLevel, clientAge, productRange) {
   const level = contractLevel || getContractLevel();
   carrierName = resolveCarrierKey(carrierName);
+  // h312: Insure Realty had TWO rate sources that happened to agree at 105 and
+  // would have silently diverged on promotion - the custom-carrier entry (flat
+  // 6% at every level) and INSURE_REALTY_LADDER (3.5% at 80 up to 9% at 130,
+  // which lands on 6% at 105). The ladder is the IR-specific one, so it wins
+  // everywhere; the custom-carrier rate for IR is now ignored rather than
+  // competing with it.
+  if (/insure\s*realty/i.test(carrierName)) return insureRealtyRate(level);
   const carrier = COMP_DATA[carrierName];
   if (!carrier) return null;
   if (productName && PRODUCT_ALIASES[(productName||'').toLowerCase().trim()]) {
@@ -18826,6 +18966,11 @@ function getCarrierAdvance(carrierName) {
   const overrides = settings.advanceOverrides || {};
   if (overrides[carrierName] !== undefined) return overrides[carrierName];
   // System defaults
+  // h312: the lending product pays the whole commission on funding - there is no
+  // advance and no backend to wait for. A custom carrier can carry an advance
+  // setting, but nothing ever read it, so IR was falling through to the generic
+  // 75/25 below and inventing a backend that does not exist.
+  if (/insure\s*realty/i.test(carrierName)) return 100;
   if (carrierName === 'Gerber') return 'as_earned';
   if (carrierName === 'Foresters') return settings.forestersAsEarned !== false ? 'as_earned' : 75;
   return 75; // everyone else
@@ -18839,8 +18984,8 @@ function recheckComp() {
   const unknown = [];
   clients.forEach(c => (c.cases||[]).filter(Boolean).forEach(cs => (cs.touchpoints||[]).filter(Boolean).forEach(tp =>
     (tp.apps||[]).filter(Boolean).filter(Boolean).forEach(ap => {
-      if (!ap.carrier || !ap.product || !ap.premium) return;
-      const fresh = calcAppComp(ap.carrier, ap.product, ap.premium, null, undefined, ap.age, ap.product_range || null);
+      if (!ap.carrier || !ap.product || !compBasisOf(ap)) return;
+      const fresh = calcAppComp(ap.carrier, ap.product, compBasisOf(ap), null, undefined, ap.age, ap.product_range || null);
       if (!fresh) { unknown.push({c, ap}); return; }
       const stored = ap.comp_gross;
       if (stored === undefined || stored === null) return;
@@ -18876,7 +19021,7 @@ function recheckComp() {
   if (!confirm(msg)) return;
 
   drift.forEach(d => {
-    const fresh = calcAppComp(d.ap.carrier, d.ap.product, d.ap.premium, null, undefined, d.ap.age, d.ap.product_range || null);
+    const fresh = calcAppComp(d.ap.carrier, d.ap.product, compBasisOf(d.ap), null, undefined, d.ap.age, d.ap.product_range || null);
     d.ap.comp_gross = fresh.grossComp;
     d.ap.comp_advance = fresh.advance;
     d.ap.comp_rate = fresh.rate;
@@ -18885,6 +19030,44 @@ function recheckComp() {
   touched.forEach(c => saveClientRecord(c));
   alert('Updated ' + drift.length + ' app(s). Net ' + (delta >= 0 ? '+' : '') + '$' + Math.round(delta) + '.');
   render();
+}
+
+// h312: WHAT IS THE COMP CALCULATED ON.
+// For every life product the answer is the APV, and `premium` holds it. The
+// Insure Realty lending product is the exception: the APV credit is 5% of the
+// account value and exists only for the leaderboard, while the comp is a
+// percentage of the WHOLE account value. `premium` on an account app holds the
+// 5% credit, so eight separate call sites were quietly computing comp on a
+// twentieth of the real basis. One helper now answers the question, so a new
+// call site cannot get it wrong by copying an old one.
+// h313: ONE LINE THAT KNOWS WHAT KIND OF MONEY THIS IS.
+// Three separate cards each divided premium by 12 and printed "/mo". For a life
+// policy that is the monthly premium and reads correctly. For the Insure Realty
+// lending product there IS no monthly - the client rolls an account over once
+// and it is done - so the card invented a payment schedule that does not exist.
+// Face is added here too: it was only on one of the three, and it is needed on
+// the business list to upload business without opening every app to find it.
+function appAmountLine(ap) {
+  if (!ap) return '';
+  const prem = Number(ap.premium) || 0;
+  const face = Number(ap.face) || 0;
+  const strong = (t) => '<strong style="color:#1D3557;">' + t + '</strong>';
+  if (ap.is_account && ap.amount != null && ap.amount !== '') {
+    const amt = Number(ap.amount) || 0;
+    // The account value is the real number; the 5% credit is a leaderboard
+    // figure, so it is labelled as one rather than left to look like premium.
+    return strong('$' + amt.toLocaleString() + ' account') +
+      ' \u00b7 $' + prem.toLocaleString() + ' APV credit';
+  }
+  return strong('$' + (prem/12).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + '/mo') +
+    ' \u00b7 $' + prem.toLocaleString() + ' APV' +
+    (face > 0 ? ' \u00b7 $' + face.toLocaleString() + ' face' : '');
+}
+
+function compBasisOf(ap) {
+  if (!ap) return 0;
+  if (ap.is_account && ap.amount != null && ap.amount !== '') return Number(ap.amount) || 0;
+  return Number(ap.premium) || 0;
 }
 
 function calcAppComp(carrierName, productName, apv, contractLevel, forceAdvancePct, clientAge, productRange) {
